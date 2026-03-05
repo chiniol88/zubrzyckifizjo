@@ -177,12 +177,15 @@ const VISITS = [];
 const FINANCES = [];
 
 function visitStatus(v) {
+  // Ręcznie ustawiony status ma pierwszeństwo
+  if(v.status === "zakończona") return "zakończona";
+  if(v.status === "anulowana") return "anulowana";
+  // Jeśli zaplanowana, sprawdź czy czas już minął
   const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
-  const startTime = v.timeStart || v.time || "00:00";
+  const startTime = v.time || "00:00";
   const visitDT = new Date(`${v.date}T${startTime}:00`);
-  if(visitDT <= now) return "zakończona";
-  return v.status || "zaplanowana";
+  if(visitDT < now) return "zakończona";
+  return "zaplanowana";
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
@@ -204,7 +207,10 @@ function Dashboard({visits, setVisits, rentals, setRentals, setFinances, patient
 
   const saveNewVisit = () => {
     if(!vForm.patientName) return;
-    const newV = {id:Date.now(),...vForm,price:+vForm.price};
+    // Spróbuj znaleźć patientId po imieniu jeśli nie ustawiony
+    const matchedPatient = patients.find(p => p.name === vForm.patientName);
+    const newV = {id:Date.now(),...vForm,price:+vForm.price,
+      patientId: vForm.patientId || matchedPatient?.id || null};
     setVisits(vs=>[...vs,newV]);
     setShowAddVisit(false);
   };
@@ -447,8 +453,20 @@ function Patients({patients, setPatients, visits, setVisits, setFinances, rental
           <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             setPatients(ps=>ps.map(p=>p.id===selected.id?{...p,...editPatientForm}:p));
             setSelected(s=>({...s,...editPatientForm}));
+            if(editPatientForm.name !== selected.name) {
+              setVisits(vs=>vs.map(v=>v.patientId===selected.id?{...v,patientName:editPatientForm.name}:v));
+            }
             setShowEditPatient(false);
           }}>Zapisz zmiany</Btn>
+          <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{
+            // Usuń pacjenta + jego wizyty + powiązane finanse
+            const patVisitIds = visits.filter(v=>v.patientId===selected.id).map(v=>v.id);
+            setVisits(vs=>vs.filter(v=>v.patientId!==selected.id));
+            setFinances(fs=>fs.filter(f=>!patVisitIds.some(id=>f.sourceId==="visit-"+id)));
+            setPatients(ps=>ps.filter(p=>p.id!==selected.id));
+            setShowEditPatient(false);
+            setSelected(null);
+          }}>🗑️ Usuń pacjenta</Btn>
         </Modal>
       )}
 
@@ -528,6 +546,33 @@ const EQUIPMENT_LIST = [
 const MOCK_RENTALS = [];
 
 const emptyRentalForm = {equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:new Date().toISOString().split("T")[0],endDate:"",renewable:false,amount:"",amountPaid:"",notes:""};
+
+function PaymentForm({rentalId, rentalAmount, setRentals}) {
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const add = () => {
+    const val = +amount;
+    if(!val) return;
+    const newPayment = {id:Date.now(), amount:val, date};
+    setRentals(rs=>rs.map(x=>x.id===rentalId?{
+      ...x,
+      payments:[...(x.payments||[]),newPayment],
+      amountPaid:Math.min((x.amountPaid||0)+val, x.amount)
+    }:x));
+    setAmount("");
+  };
+  return (
+    <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="Kwota wpłaty..."
+          style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+          style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
+      </div>
+      <button onClick={add} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"8px 14px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj wpłatę</button>
+    </div>
+  );
+}
 
 function RentalCard({r, onClick}) {
   const today = new Date();
@@ -667,27 +712,7 @@ function Rentals({rentals, setRentals, setFinances, patients, initialDetail, onD
                 ))}
               </div>
               {/* Dodaj wpłatę */}
-              <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <input type="number" placeholder="Kwota wpłaty..." id="paymentInput"
-                    style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
-                  <input type="date" id="paymentDate" defaultValue={new Date().toISOString().split("T")[0]}
-                    style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
-                </div>
-                <Btn small onClick={()=>{
-                  const inp=document.getElementById("paymentInput");
-                  const dt=document.getElementById("paymentDate");
-                  const val=+inp.value;
-                  if(!val)return;
-                  const newPayment={id:Date.now(),amount:val,date:dt.value};
-                  setRentals(rs=>rs.map(x=>x.id===r.id?{
-                    ...x,
-                    payments:[...(x.payments||[]),newPayment],
-                    amountPaid:Math.min((x.amountPaid||0)+val,x.amount)
-                  }:x));
-                  inp.value="";
-                }} style={{justifyContent:"center"}}>+ Dodaj wpłatę</Btn>
-              </div>
+              <PaymentForm rentalId={r.id} rentalAmount={r.amount} setRentals={setRentals}/>
               {/* Historia wpłat */}
               {(r.payments||[]).length>0&&(
                 <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
@@ -800,7 +825,16 @@ function Rentals({rentals, setRentals, setFinances, patients, initialDetail, onD
           <Inp label="Zapłacono (zł)" value={editForm.amountPaid} onChange={v=>setEditForm(f=>({...f,amountPaid:v}))} type="number"/>
           <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
           <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-            setRentals(rs=>rs.map(x=>x.id===detail?{...x,...editForm,amount:+editForm.amount,amountPaid:+(editForm.amountPaid||0)}:x));
+            const updated = {...editForm,amount:+editForm.amount,amountPaid:+(editForm.amountPaid||0)};
+            setRentals(rs=>rs.map(x=>x.id===detail?{...x,...updated}:x));
+            // Aktualizuj opis w finansach jeśli zmienił się pacjent lub sprzęt
+            setFinances(fs=>fs.map(f=>{
+              const r = rentals.find(x=>x.id===detail);
+              if(!r) return f;
+              const isPayment = (r.payments||[]).some(p=>f.sourceId==="payment-"+p.id);
+              if(!isPayment) return f;
+              return {...f, description:"Wypożyczenie – "+updated.patientName+" ("+updated.equipment+")"};
+            }));
             setShowEdit(false);
           }}>Zapisz zmiany</Btn>
         </Modal>
@@ -1085,8 +1119,10 @@ function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,
       visits.forEach(v => {
         const sourceId = "visit-" + v.id;
         if (existingIds.has(sourceId)) return;
-        const visitDT = new Date(v.date + "T" + (v.timeStart || v.time || "00:00") + ":00");
-        if (visitDT <= now && v.date <= todayStr) {
+        // Sync jeśli ręcznie oznaczona jako zakończona LUB czas minął
+        const visitDT = new Date(v.date + "T" + (v.time || "00:00") + ":00");
+        const isDone = v.status === "zakończona" || visitDT <= now;
+        if (isDone) {
           toAdd.push({id:Date.now()+Math.random(),sourceId,date:v.date,type:"przychód",category:"Wizyta",amount:v.price||0,description:"Wizyta – "+v.patientName});
         }
       });
