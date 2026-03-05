@@ -453,16 +453,30 @@ function Patients({patients, setPatients, visits, setVisits, setFinances, rental
           <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             setPatients(ps=>ps.map(p=>p.id===selected.id?{...p,...editPatientForm}:p));
             setSelected(s=>({...s,...editPatientForm}));
+            // Propaguj zmiany do wizyt (imię)
             if(editPatientForm.name !== selected.name) {
               setVisits(vs=>vs.map(v=>v.patientId===selected.id?{...v,patientName:editPatientForm.name}:v));
             }
+            // Propaguj zmiany do wypożyczeń (imię, telefon, adres)
+            setRentals(rs=>rs.map(r=>r.patientName===selected.name?{
+              ...r,
+              patientName:editPatientForm.name||r.patientName,
+              phone:editPatientForm.phone||r.phone,
+              address:editPatientForm.address||r.address
+            }:r));
             setShowEditPatient(false);
           }}>Zapisz zmiany</Btn>
           <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{
-            // Usuń pacjenta + jego wizyty + powiązane finanse
+            // Usuń pacjenta + jego wizyty + wypożyczenia + powiązane finanse
             const patVisitIds = visits.filter(v=>v.patientId===selected.id).map(v=>v.id);
+            const patRentals = rentals.filter(r=>r.patientName===selected.name);
+            const patPaymentIds = patRentals.flatMap(r=>(r.payments||[]).map(p=>p.id));
             setVisits(vs=>vs.filter(v=>v.patientId!==selected.id));
-            setFinances(fs=>fs.filter(f=>!patVisitIds.some(id=>f.sourceId==="visit-"+id)));
+            setRentals(rs=>rs.filter(r=>r.patientName!==selected.name));
+            setFinances(fs=>fs.filter(f=>
+              !patVisitIds.some(id=>f.sourceId==="visit-"+id) &&
+              !patPaymentIds.some(id=>f.sourceId==="payment-"+id)
+            ));
             setPatients(ps=>ps.filter(p=>p.id!==selected.id));
             setShowEditPatient(false);
             setSelected(null);
@@ -1109,37 +1123,6 @@ function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,
 
   const goToRental = (id) => { setDeepLinkRental(id); setTab("rentals"); };
 
-  // Auto-sync: wizyty i wpłaty z wypożyczeń -> finanse
-  useEffect(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    setFinances(prev => {
-      const existingIds = new Set(prev.map(f => f.sourceId).filter(Boolean));
-      const toAdd = [];
-      visits.forEach(v => {
-        const sourceId = "visit-" + v.id;
-        if (existingIds.has(sourceId)) return;
-        // Sync jeśli ręcznie oznaczona jako zakończona LUB czas minął
-        const visitDT = new Date(v.date + "T" + (v.time || "00:00") + ":00");
-        const isDone = v.status === "zakończona" || visitDT <= now;
-        if (isDone) {
-          toAdd.push({id:Date.now()+Math.random(),sourceId,date:v.date,type:"przychód",category:"Wizyta",amount:v.price||0,description:"Wizyta – "+v.patientName});
-        }
-      });
-      rentals.forEach(r => {
-        (r.payments||[]).forEach(p => {
-          const sourceId = "payment-" + p.id;
-          if (existingIds.has(sourceId)) return;
-          if (p.date <= todayStr) {
-            toAdd.push({id:Date.now()+Math.random(),sourceId,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+")"});
-          }
-        });
-      });
-      if (toAdd.length===0) return prev;
-      return [...toAdd,...prev];
-    });
-  }, [visits, rentals]);
-
   return (
     <>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased}input,select,textarea,button{font-family:'DM Sans',sans-serif}::-webkit-scrollbar{display:none}`}</style>
@@ -1181,6 +1164,44 @@ function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,
           <div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div>
         </div>
       );
+
+      return <AppWithSync
+        visits={visits} setVisits={setVisits}
+        patients={patients} setPatients={setPatients}
+        rentals={rentals} setRentals={setRentals}
+        finances={finances} setFinances={setFinances}
+      />;
+    }
+
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances}) {
+      // Auto-sync uruchamia się TYLKO gdy wszystkie dane są już załadowane z Supabase
+      useEffect(() => {
+        if(!visits || !rentals || !finances) return;
+        const now = new Date();
+        const todayStr = now.toISOString().split("T")[0];
+        const existingIds = new Set(finances.map(f => f.sourceId).filter(Boolean));
+        const toAdd = [];
+        visits.forEach(v => {
+          const sourceId = "visit-" + v.id;
+          if(existingIds.has(sourceId)) return;
+          const visitDT = new Date(v.date + "T" + (v.time || "00:00") + ":00");
+          const isDone = v.status === "zakończona" || visitDT <= now;
+          if(isDone) {
+            toAdd.push({id:Date.now()+Math.random(),sourceId,date:v.date,type:"przychód",category:"Wizyta",amount:v.price||0,description:"Wizyta – "+v.patientName});
+          }
+        });
+        rentals.forEach(r => {
+          (r.payments||[]).forEach(p => {
+            const sourceId = "payment-" + p.id;
+            if(existingIds.has(sourceId)) return;
+            if(p.date <= todayStr) {
+              toAdd.push({id:Date.now()+Math.random(),sourceId,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+")"});
+            }
+          });
+        });
+        if(toAdd.length === 0) return;
+        setFinances(prev => [...toAdd, ...prev]);
+      }, [visits, rentals, finances]);
 
       return <App
         visits={visits} setVisits={setVisits}
