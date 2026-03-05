@@ -4,629 +4,975 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="theme-color" content="#0A7C7C"/>
   <title>ZubrzyckiFizjo</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
     input,select,textarea,button{font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent}
-    ::-webkit-scrollbar{display:none}
-    *{scrollbar-width:none}
+    ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect } = React;
-    const { createClient } = supabase;
+    const { useState, useEffect, useCallback } = React;
 
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+function usePersistedState(key, defaultValue) {
+  const [state, setState] = useState(defaultValue);
+  const set = useCallback((val) => {
+    setState(prev => typeof val === "function" ? val(prev) : val);
+  }, []);
+  return [state, set, true];
+}
 
-const SUPABASE_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxanJsenNkZnlqZWFqZmthdGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjUzMzgsImV4cCI6MjA4ODE0MTMzOH0.sFWfnIV0tpNnwB65du9dNYTMSelrlEpMXxWf4Mcww4g";
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ─── UI PRIMITIVES ────────────────────────────────────────────────────────────
-const Icon = ({ d, size = 22, color = "currentColor", fill = "none" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <path d={d} />
-  </svg>
-);
-const ic = {
-  home: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",
-  users: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75",
-  equip: "M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z",
-  fin: "M12 1v22 M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6",
-  mkt: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
-  plus: "M12 5v14 M5 12h14",
-  check: "M20 6L9 17l-5-5",
-  phone: "M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.8 19.79 19.79 0 01.99 2.18 2 2 0 013 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z",
-  back: "M19 12H5 M12 5l-7 7 7 7",
-  close: "M18 6L6 18 M6 6l12 12",
-  spark: "M12 3l1.5 5h5l-4 3 1.5 5-4-3-4 3 1.5-5-4-3h5z",
-  trend: "M23 6l-9.5 9.5-5-5L1 18",
-  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9",
-  cal: "M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18",
+const Ico = ({d,s=22,c="currentColor",f="none"}) => <svg width={s} height={s} viewBox="0 0 24 24" fill={f} stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+const I = {
+  home:"M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",
+  users:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M23 21v-2a4 4 0 00-3-3.87 M16 3.13a4 4 0 010 7.75",
+  equip:"M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z",
+  fin:"M12 1v22 M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6",
+  mkt:"M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+  plus:"M12 5v14 M5 12h14",
+  chk:"M20 6L9 17l-5-5",
+  ph:"M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.8 19.79 19.79 0 01.99 2.18 2 2 0 013 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.72 6.72l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z",
+  back:"M19 12H5 M12 5l-7 7 7 7",
+  x:"M18 6L6 18 M6 6l12 12",
+  sp:"M12 3l1.5 5h5l-4 3 1.5 5-4-3-4 3 1.5-5-4-3h5z",
+  tr:"M23 6l-9.5 9.5-5-5L1 18",
+  cal:"M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18",
 };
 
-const Card = ({ children, style = {}, onClick }) => (
-  <div onClick={onClick} style={{ background: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.06)", cursor: onClick ? "pointer" : "default", ...style }}>{children}</div>
-);
-const Badge = ({ children, color = "#0A7C7C" }) => (
-  <span style={{ background: color + "22", color, fontSize: 11, fontWeight: 600, padding: "3px 9px", borderRadius: 20, whiteSpace: "nowrap" }}>{children}</span>
-);
-const Btn = ({ children, onClick, variant = "primary", small, disabled, style = {} }) => {
-  const v = { primary: { background: "#0A7C7C", color: "#fff" }, secondary: { background: "#E6F4F4", color: "#0A7C7C" }, orange: { background: "#F4A261", color: "#fff" }, ghost: { background: "transparent", color: "#7A8FA6" } };
-  return <button onClick={onClick} disabled={disabled} style={{ ...v[variant], border: "none", borderRadius: 12, padding: small ? "8px 14px" : "12px 20px", fontSize: small ? 13 : 15, fontWeight: 600, cursor: disabled ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, opacity: disabled ? 0.6 : 1, fontFamily: "inherit", ...style }}>{children}</button>;
+const Card = ({children,style={},onClick}) => <div onClick={onClick} style={{background:"#fff",borderRadius:16,padding:16,marginBottom:12,boxShadow:"0 2px 12px rgba(0,0,0,.06)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
+const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"22",color,fontSize:11,fontWeight:600,padding:"3px 9px",borderRadius:20,whiteSpace:"nowrap"}}>{children}</span>;
+const Btn = ({children,onClick,variant="primary",small,disabled,style={}}) => {
+  const v={primary:{background:"#0A7C7C",color:"#fff"},secondary:{background:"#E6F4F4",color:"#0A7C7C"},orange:{background:"#F4A261",color:"#fff"},danger:{background:"#FEE2E2",color:"#E05C5C"}};
+  return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"8px 14px":"12px 20px",fontSize:small?13:15,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,opacity:disabled?0.6:1,fontFamily:"inherit",...style}}>{children}</button>;
 };
-const Input = ({ label, value, onChange, placeholder, type = "text" }) => (
-  <div style={{ marginBottom: 14 }}>
-    {label && <div style={{ fontSize: 12, fontWeight: 600, color: "#7A8FA6", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>}
-    <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E4EAF0", borderRadius: 12, fontSize: 15, outline: "none", background: "#FAFCFD", color: "#1C2B3A", fontFamily: "inherit", boxSizing: "border-box" }} />
+const Inp = ({label,value,onChange,placeholder,type="text"}) => (
+  <div style={{marginBottom:14}}>
+    {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{width:"100%",padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,outline:"none",background:"#FAFCFD",color:"#1C2B3A",fontFamily:"inherit",boxSizing:"border-box"}}/>
   </div>
 );
-const Sel = ({ label, value, onChange, options }) => (
-  <div style={{ marginBottom: 14 }}>
-    {label && <div style={{ fontSize: 12, fontWeight: 600, color: "#7A8FA6", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>}
-    <select value={value} onChange={e => onChange(e.target.value)} style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E4EAF0", borderRadius: 12, fontSize: 15, outline: "none", background: "#FAFCFD", color: "#1C2B3A", fontFamily: "inherit", boxSizing: "border-box" }}>
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+const Sel = ({label,value,onChange,options}) => (
+  <div style={{marginBottom:14}}>
+    {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    <select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,outline:"none",background:"#FAFCFD",color:"#1C2B3A",fontFamily:"inherit",boxSizing:"border-box"}}>
+      {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   </div>
 );
-const Textarea = ({ label, value, onChange, placeholder, rows = 3 }) => (
-  <div style={{ marginBottom: 14 }}>
-    {label && <div style={{ fontSize: 12, fontWeight: 600, color: "#7A8FA6", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>}
-    <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows} style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #E4EAF0", borderRadius: 12, fontSize: 15, outline: "none", background: "#FAFCFD", color: "#1C2B3A", fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+const Txa = ({label,value,onChange,placeholder,rows=3}) => (
+  <div style={{marginBottom:14}}>
+    {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows} style={{width:"100%",padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,outline:"none",background:"#FAFCFD",color:"#1C2B3A",fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
   </div>
 );
-const Modal = ({ title, onClose, children }) => (
-  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={e => e.target === e.currentTarget && onClose()}>
-    <div style={{ background: "#fff", width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", maxHeight: "92vh", overflowY: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 700 }}>{title}</span>
-        <button onClick={onClose} style={{ background: "#E4EAF0", border: "none", borderRadius: 10, width: 34, height: 34, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon d={ic.close} size={16} color="#7A8FA6" /></button>
+const Modal = ({title,onClose,children}) => (
+  <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={{background:"#fff",width:"100%",maxWidth:480,borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",maxHeight:"92vh",overflowY:"auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <span style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:700}}>{title}</span>
+        <button onClick={onClose} style={{background:"#E4EAF0",border:"none",borderRadius:10,width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={I.x} s={16} c="#7A8FA6"/></button>
       </div>
       {children}
     </div>
   </div>
 );
-const Avatar = ({ name, size = 44 }) => (
-  <div style={{ width: size, height: size, borderRadius: size * 0.32, background: "#E6F4F4", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Syne',sans-serif", fontWeight: 800, color: "#0A7C7C", fontSize: size * 0.36, flexShrink: 0 }}>
-    {name?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-  </div>
-);
-const Loading = () => <div style={{ display: "flex", justifyContent: "center", padding: 40, color: "#7A8FA6" }}>Ładowanie...</div>;
-const Empty = ({ text }) => <Card><div style={{ textAlign: "center", color: "#7A8FA6", padding: "8px 0" }}>{text}</div></Card>;
+const Av = ({name,size=44}) => <div style={{width:size,height:size,borderRadius:size*.32,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Syne',sans-serif",fontWeight:800,color:"#0A7C7C",fontSize:size*.36,flexShrink:0}}>{name?.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}</div>;
+const Empty = ({text}) => <Card><div style={{textAlign:"center",color:"#7A8FA6",padding:"8px 0"}}>{text}</div></Card>;
 
-// ─── AUTH ────────────────────────────────────────────────────────────────────
-function Auth() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mode, setMode] = useState("login");
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
+// ── MOCK DATA ────────────────────────────────────────────────────────────────
+const PATIENTS = [
+  {id:1,name:"Krzysztof Malinowski",phone:"601 234 567",address:"ul. Zwycięstwa 12, Gliwice",diagnosis:"Po endoprotezoplastyce biodra (podejście przednie)",notes:"Wymaga CPM"},
+  {id:2,name:"Maria Kowalska",phone:"512 345 678",address:"ul. Korfantego 5, Katowice",diagnosis:"Polineuropatia, ryzyko upadków",notes:"Używa balkoniku"},
+  {id:3,name:"Andrzej Nowak",phone:"693 456 789",address:"ul. Górna 3, Zabrze",diagnosis:"Złamanie kości udowej przed operacją",notes:"Pacjent w gipsie"},
+];
+const VISITS = [
+  {id:1,patientId:1,patientName:"Krzysztof Malinowski",date:"2026-03-03",time:"10:00",type:"Rehabilitacja domowa",price:150,status:"zaplanowana"},
+  {id:2,patientId:2,patientName:"Maria Kowalska",date:"2026-03-03",time:"12:30",type:"Rehabilitacja domowa",price:150,status:"zaplanowana"},
+  {id:3,patientId:1,patientName:"Krzysztof Malinowski",date:"2026-03-01",time:"10:00",type:"Rehabilitacja domowa",price:150,status:"zakończona"},
+];
+const RENTALS = [
+  {id:1,equipment:"Maszyna CPM (kolano)",patientName:"Krzysztof Malinowski",phone:"601 234 567",startDate:"2026-02-20",endDate:"2026-03-20",dailyRate:25,deposit:300,status:"aktywne"},
+  {id:2,equipment:"Balkonik aluminiowy",patientName:"Maria Kowalska",phone:"512 345 678",startDate:"2026-02-15",endDate:"2026-04-15",dailyRate:8,deposit:100,status:"aktywne"},
+];
+const FINANCES = [
+  {id:1,date:"2026-03-02",type:"przychód",category:"Wizyta",amount:150,description:"Wizyta u Andrzej Nowak"},
+  {id:2,date:"2026-03-01",type:"przychód",category:"Wizyta",amount:150,description:"Wizyta u Krzysztof Malinowski"},
+  {id:3,date:"2026-03-01",type:"przychód",category:"Wypożyczalnia",amount:175,description:"CPM Malinowski (7 dni)"},
+  {id:4,date:"2026-02-28",type:"koszt",category:"Paliwo",amount:120,description:"Paliwo – luty"},
+];
 
-  const handle = async () => {
-    setLoading(true); setErr(""); setMsg("");
-    if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setErr("Błędny email lub hasło.");
-    } else if (mode === "register") {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setErr(error.message);
-      else setMsg("Sprawdź email — wyślemy link aktywacyjny.");
-    } else {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      if (error) setErr(error.message);
-      else setMsg("Link do resetowania hasła wysłany.");
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F2F5F7", padding: 20 }}>
-      <div style={{ width: "100%", maxWidth: 380 }}>
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 20, background: "#0A7C7C", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 24px rgba(10,124,124,0.3)" }}>
-            <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, color: "#fff", fontSize: 32 }}>Z</span>
-          </div>
-          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 24 }}>ZubrzyckiFizjo</div>
-          <div style={{ color: "#7A8FA6", fontSize: 14, marginTop: 4 }}>Panel zarządzania praktyką</div>
-        </div>
-        <div style={{ background: "#fff", borderRadius: 20, padding: 24, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }}>
-          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 20 }}>
-            {mode === "login" ? "Zaloguj się" : mode === "register" ? "Załóż konto" : "Reset hasła"}
-          </div>
-          <Input label="Email" value={email} onChange={setEmail} placeholder="patryk@zubrzyckifizjo.pl" type="email" />
-          {mode !== "reset" && <Input label="Hasło" value={password} onChange={setPassword} placeholder="••••••••" type="password" />}
-          {err && <div style={{ background: "#FEE2E2", color: "#E05C5C", padding: "10px 14px", borderRadius: 10, fontSize: 14, marginBottom: 14 }}>{err}</div>}
-          {msg && <div style={{ background: "#E8F7EE", color: "#3DAA72", padding: "10px 14px", borderRadius: 10, fontSize: 14, marginBottom: 14 }}>{msg}</div>}
-          <Btn onClick={handle} disabled={loading} style={{ width: "100%", justifyContent: "center" }}>{loading ? "Chwilę..." : mode === "login" ? "Zaloguj" : mode === "register" ? "Zarejestruj" : "Wyślij link"}</Btn>
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-            {mode === "login" && <>
-              <button onClick={() => setMode("reset")} style={{ background: "none", border: "none", color: "#7A8FA6", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Zapomniałem hasła</button>
-              <button onClick={() => setMode("register")} style={{ background: "none", border: "none", color: "#0A7C7C", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Nie masz konta? Zarejestruj się</button>
-            </>}
-            {mode !== "login" && <button onClick={() => setMode("login")} style={{ background: "none", border: "none", color: "#0A7C7C", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>← Wróć do logowania</button>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+function visitStatus(v) {
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
+  const startTime = v.timeStart || v.time || "00:00";
+  const visitDT = new Date(`${v.date}T${startTime}:00`);
+  if(visitDT <= now) return "zakończona";
+  return v.status || "zaplanowana";
 }
 
-// ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ user }) {
-  const [stats, setStats] = useState(null);
-  const [todayVisits, setTodayVisits] = useState([]);
-  const [activeRentals, setActiveRentals] = useState([]);
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+const VISIT_TYPES = ["Rehabilitacja domowa","Konsultacja","Wizyta kontrolna","Terapia manualna"];
+const emptyVisitForm = {patientName:"",date:new Date().toISOString().split("T")[0],time:"10:00",type:"Rehabilitacja domowa",price:"150"};
+
+function Dashboard({visits, setVisits, rentals, setRentals, setFinances}) {
   const today = new Date().toISOString().split("T")[0];
-  const monthStart = today.slice(0, 7) + "-01";
+  const [showAddVisit, setShowAddVisit] = useState(false);
+  const [vForm, setVForm] = useState(emptyVisitForm);
+  const [editVisit, setEditVisit] = useState(null);
+  const [confirmDeleteVisit, setConfirmDeleteVisit] = useState(null);
+  const [editRental, setEditRental] = useState(null);
+  const [confirmDeleteRental, setConfirmDeleteRental] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      const [{ data: pts }, { data: vis }, { data: ren }, { data: fin }] = await Promise.all([
-        supabase.from("patients").select("id").eq("user_id", user.id),
-        supabase.from("visits").select("*").eq("user_id", user.id).eq("date", today),
-        supabase.from("rentals").select("*").eq("user_id", user.id).eq("status", "aktywne"),
-        supabase.from("finances").select("*").eq("user_id", user.id).gte("date", monthStart),
-      ]);
-      const income = fin?.filter(f => f.type === "przychód").reduce((s, f) => s + +f.amount, 0) || 0;
-      const costs = fin?.filter(f => f.type === "koszt").reduce((s, f) => s + +f.amount, 0) || 0;
-      setStats({ patients: pts?.length || 0, income, costs, profit: income - costs });
-      setTodayVisits(vis || []);
-      setActiveRentals(ren || []);
-    })();
-  }, []);
+  const todayVisits = visits.filter(v=>v.date===today).sort((a,b)=>a.time.localeCompare(b.time));
 
-  if (!stats) return <Loading />;
-  const month = new Date().toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
+  // 3 najwcześniej kończące się aktywne wypożyczenia
+  const upcomingRentals = (rentals||[])
+    .filter(r=>r.status==="aktywne" && r.endDate)
+    .sort((a,b)=>new Date(a.endDate)-new Date(b.endDate))
+    .slice(0,3);
 
   return (
+    <>
     <div>
-      <div style={{ padding: "28px 20px 8px" }}>
-        <div style={{ color: "#7A8FA6", fontSize: 14, marginBottom: 4 }}>Dzień dobry, Patryk 👋</div>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 26, fontWeight: 800 }}>ZubrzyckiFizjo</div>
+      {/* Header */}
+      <div style={{padding:"32px 20px 20px",textAlign:"center"}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#1C2B3A"}}>ZubrzyckiFizjo</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, padding: "12px 20px" }}>
-        {[
-          { label: "Wizyty dziś", value: todayVisits.length, color: "#0A7C7C", icon: ic.cal },
-          { label: "Aktywne wypożyczenia", value: activeRentals.length, color: "#F4A261", icon: ic.equip },
-          { label: `Przychód (${month})`, value: `${stats.income} zł`, color: "#3DAA72", icon: ic.trend },
-          { label: "Pacjenci", value: stats.patients, color: "#7C6AF4", icon: ic.users },
-        ].map((item, i) => (
-          <div key={i} style={{ background: item.color, borderRadius: 16, padding: "16px 14px", color: "#fff" }}>
-            <Icon d={item.icon} size={20} color="rgba(255,255,255,0.8)" />
-            <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, margin: "6px 0 2px", wordBreak: "break-word" }}>{item.value}</div>
-            <div style={{ fontSize: 12, opacity: 0.85 }}>{item.label}</div>
+
+      <div style={{padding:"0 20px"}}>
+
+        {/* Dzisiejsze wizyty */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:700}}>
+              Dzisiaj — {new Date(today).toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}
+            </div>
+            <div style={{fontSize:13,color:"#7A8FA6"}}>{todayVisits.length} wizyt</div>
           </div>
-        ))}
-      </div>
-      <div style={{ padding: "0 20px" }}>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 17, fontWeight: 700, marginBottom: 10 }}>
-          Dzisiaj — {new Date().toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
+          <Btn small onClick={()=>{setVForm(emptyVisitForm);setShowAddVisit(true);}}>
+            <Ico d={I.plus} s={15} c="#fff"/> Wizyta
+          </Btn>
         </div>
-        {todayVisits.length === 0
-          ? <Empty text="Brak wizyt na dziś" />
-          : todayVisits.sort((a, b) => a.time?.localeCompare(b.time)).map(v => (
-            <Card key={v.id}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+
+        {todayVisits.length===0
+          ? <Empty text="Brak wizyt na dziś"/>
+          : todayVisits.map(v=>(
+            <Card key={v.id} onClick={()=>setEditVisit({...v,price:String(v.price)})} style={{cursor:"pointer"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{v.patient_name}</div>
-                  <div style={{ fontSize: 13, color: "#7A8FA6" }}>{v.time?.slice(0, 5)} · {v.type}</div>
+                  <div style={{fontWeight:600}}>{v.patientName}</div>
+                  <div style={{fontSize:13,color:"#7A8FA6"}}>{v.time} · {v.type}</div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                  <Badge color={v.status === "zakończona" ? "#3DAA72" : "#0A7C7C"}>{v.status}</Badge>
-                  <span style={{ fontWeight: 600 }}>{v.price} zł</span>
-                </div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                    <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
+                    <span style={{fontWeight:600}}>{v.price} zł</span>
+                  </div>
               </div>
             </Card>
-          ))}
-        {activeRentals.length > 0 && <>
-          <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 17, fontWeight: 700, margin: "16px 0 10px" }}>Aktywne wypożyczenia</div>
-          {activeRentals.map(r => {
-            const days = Math.ceil((new Date(r.end_date) - new Date()) / 86400000);
-            return (
-              <Card key={r.id}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div><div style={{ fontWeight: 600 }}>{r.equipment}</div><div style={{ fontSize: 13, color: "#7A8FA6" }}>{r.patient_name}</div></div>
-                  <Badge color={days < 3 ? "#E05C5C" : days < 7 ? "#F4A261" : "#3DAA72"}>{days > 0 ? `${days}d` : "Termin!"}</Badge>
+          ))
+        }
+
+        {/* Najbliższe zakończenia wypożyczeń */}
+        {upcomingRentals.length>0&&<>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:700,margin:"20px 0 10px"}}>
+            Najbliższe zwroty
+          </div>
+          {upcomingRentals.map(r=>{
+            const days=Math.ceil((new Date(r.endDate)-new Date(today))/86400000);
+            return(
+              <Card key={r.id} onClick={()=>setEditRental({...r,amount:String(r.amount),amountPaid:String(r.amountPaid||0)})} style={{cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontWeight:600}}>{r.equipment}</div>
+                    <div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName}</div>
+                    <div style={{fontSize:12,color:"#7A8FA6"}}>do {r.endDate}</div>
+                  </div>
+                  <Badge color={days<0?"#E05C5C":days<7?"#F4A261":"#3DAA72"}>
+                      {days<0?`${Math.abs(days)}d po term.`:days===0?"Dziś!":days+"d"}
+                    </Badge>
                 </div>
               </Card>
             );
           })}
         </>}
-        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 17, fontWeight: 700, margin: "16px 0 10px" }}>Wynik miesiąca</div>
-        <Card>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-            {[{ label: "Przychód", value: stats.income, color: "#3DAA72" }, { label: "Koszty", value: stats.costs, color: "#E05C5C" }, { label: "Zysk", value: stats.profit, color: stats.profit >= 0 ? "#0A7C7C" : "#E05C5C" }].map((item, i) => (
-              <div key={i} style={{ textAlign: "center", padding: "8px 4px", background: item.color + "14", borderRadius: 12 }}>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 15, color: item.color }}>{item.value} zł</div>
-                <div style={{ fontSize: 11, color: "#7A8FA6", marginTop: 2 }}>{item.label}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
+    </div>
+
+    {/* Modal dodaj wizytę */}
+    {showAddVisit&&(
+      <Modal title="Dodaj wizytę" onClose={()=>setShowAddVisit(false)}>
+        <Inp label="Pacjent" value={vForm.patientName} onChange={v=>setVForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Inp label="Data" value={vForm.date} onChange={v=>setVForm(f=>({...f,date:v}))} type="date"/>
+          <Inp label="Godzina" value={vForm.time} onChange={v=>setVForm(f=>({...f,time:v}))} type="time"/>
+        </div>
+        <Sel label="Typ" value={vForm.type} onChange={v=>setVForm(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
+        <Inp label="Cena (zł)" value={vForm.price} onChange={v=>setVForm(f=>({...f,price:v}))} type="number"/>
+        <Btn onClick={()=>{
+          if(!vForm.patientName)return;
+          setVisits(vs=>[...vs,{id:Date.now(),...vForm,price:+vForm.price,status:"zaplanowana"}]);
+          setShowAddVisit(false);
+        }} disabled={!vForm.patientName} style={{width:"100%",justifyContent:"center"}}>
+          Zapisz wizytę
+        </Btn>
+      </Modal>
+    )}
+
+    {/* Modal edytuj wizytę */}
+    {editVisit&&(
+      <Modal title="Edytuj wizytę" onClose={()=>setEditVisit(null)}>
+        <Inp label="Pacjent" value={editVisit.patientName} onChange={v=>setEditVisit(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Inp label="Data" value={editVisit.date} onChange={v=>setEditVisit(f=>({...f,date:v}))} type="date"/>
+          <Inp label="Godzina" value={editVisit.time} onChange={v=>setEditVisit(f=>({...f,time:v}))} type="time"/>
+        </div>
+        <Sel label="Typ" value={editVisit.type} onChange={v=>setEditVisit(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
+        <Inp label="Cena (zł)" value={editVisit.price} onChange={v=>setEditVisit(f=>({...f,price:v}))} type="number"/>
+        <Btn onClick={()=>{
+          setVisits(vs=>vs.map(v=>v.id===editVisit.id?{...v,...editVisit,price:+editVisit.price}:v));
+          setEditVisit(null);
+        }} style={{width:"100%",justifyContent:"center"}}>Zapisz zmiany</Btn>
+        <Btn variant="danger" onClick={()=>{setConfirmDeleteVisit(editVisit.id);setEditVisit(null);}} style={{width:"100%",justifyContent:"center",marginTop:8}}>🗑️ Usuń wizytę</Btn>
+      </Modal>
+    )}
+
+    {/* Potwierdź usuń wizytę */}
+    {confirmDeleteVisit&&(
+      <Modal title="Usuń wizytę" onClose={()=>setConfirmDeleteVisit(null)}>
+        <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć tę wizytę?</div>
+        <div style={{display:"flex",gap:10}}>
+          <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDeleteVisit(null)}>Anuluj</Btn>
+          <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setVisits(vs=>vs.filter(v=>v.id!==confirmDeleteVisit));setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDeleteVisit));setConfirmDeleteVisit(null);}}>Usuń</Btn>
+        </div>
+      </Modal>
+    )}
+
+    {/* Modal edytuj wypożyczenie */}
+    {editRental&&(
+      <Modal title="Edytuj wypożyczenie" onClose={()=>setEditRental(null)}>
+        <Inp label="Pacjent" value={editRental.patientName} onChange={v=>setEditRental(f=>({...f,patientName:v}))}/>
+        <Inp label="Sprzęt" value={editRental.equipment} onChange={v=>setEditRental(f=>({...f,equipment:v}))}/>
+        <Inp label="Data do" value={editRental.endDate||""} onChange={v=>setEditRental(f=>({...f,endDate:v}))} type="date"/>
+        <Inp label="Kwota (zł)" value={editRental.amount} onChange={v=>setEditRental(f=>({...f,amount:v}))} type="number"/>
+        <Btn onClick={()=>{
+          setRentals(rs=>rs.map(r=>r.id===editRental.id?{...r,...editRental,amount:+editRental.amount,amountPaid:+(editRental.amountPaid||0)}:r));
+          setEditRental(null);
+        }} style={{width:"100%",justifyContent:"center"}}>Zapisz zmiany</Btn>
+        <Btn variant="danger" onClick={()=>{setConfirmDeleteRental(editRental.id);setEditRental(null);}} style={{width:"100%",justifyContent:"center",marginTop:8}}>🗑️ Usuń wypożyczenie</Btn>
+      </Modal>
+    )}
+
+    {/* Potwierdź usuń wypożyczenie */}
+    {confirmDeleteRental&&(
+      <Modal title="Usuń wypożyczenie" onClose={()=>setConfirmDeleteRental(null)}>
+        <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć to wypożyczenie?</div>
+        <div style={{display:"flex",gap:10}}>
+          <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDeleteRental(null)}>Anuluj</Btn>
+          <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const r=rentals.find(x=>x.id===confirmDeleteRental);if(r)(r.payments||[]).forEach(p=>setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id)));setRentals(rs=>rs.filter(r=>r.id!==confirmDeleteRental));setConfirmDeleteRental(null);}}>Usuń</Btn>
+        </div>
+      </Modal>
+    )}
+    </>
+  );
+}
+
+// ── PATIENTS ─────────────────────────────────────────────────────────────────
+function Patients({patients, setPatients, visits, setVisits, setFinances}) {
+  const [selected,setSelected]=useState(null);
+  const [showAdd,setShowAdd]=useState(false);
+  const [showVisit,setShowVisit]=useState(false);
+  const [showEditPatient,setShowEditPatient]=useState(false);
+  const [editPatientForm,setEditPatientForm]=useState(null);
+  const [confirmDeleteVisit,setConfirmDeleteVisit]=useState(null);
+  const [editVisitP,setEditVisitP]=useState(null);
+  const [search,setSearch]=useState("");
+  const [form,setForm]=useState({name:"",phone:"",address:"",diagnosis:"",notes:""});
+  const [vf,setVf]=useState({date:new Date().toISOString().split("T")[0],time:"10:00",type:"Rehabilitacja domowa",price:"150"});
+
+  const patVisits = selected ? visits.filter(v=>v.patientId===selected.id) : [];
+
+  if(selected) return (
+    <>
+    <div>
+      <button onClick={()=>setSelected(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
+        <Ico d={I.back} s={18} c="#0A7C7C"/> Pacjenci
+      </button>
+      <div style={{padding:"12px 20px 0"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+          <div style={{display:"flex",gap:12,alignItems:"center"}}>
+            <Av name={selected.name} size={52}/>
+            <div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800}}>{selected.name}</div>
+              <div style={{fontSize:13,color:"#7A8FA6"}}>{selected.address}</div>
+            </div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end"}}>
+            <a href={`tel:${(selected.phone||"").replace(/\s/g,"")}`} style={{textDecoration:"none"}}>
+              <Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/>{selected.phone}</Btn>
+            </a>
+            <Btn small variant="secondary" onClick={()=>{setEditPatientForm({...selected});setShowEditPatient(true);}}>✏️ Edytuj</Btn>
+          </div>
+        </div>
+        {selected.diagnosis&&(
+          <Card style={{background:"#E6F4F4"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Diagnoza</div>
+            <div style={{lineHeight:1.5}}>{selected.diagnosis}</div>
+            {selected.notes&&<div style={{marginTop:8,fontSize:13,color:"#0A7C7C",borderTop:"1px solid #c3e0e0",paddingTop:8}}>📋 {selected.notes}</div>}
+          </Card>
+        )}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <span style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Wizyty ({patVisits.length})</span>
+          <Btn small onClick={()=>setShowVisit(true)}><Ico d={I.plus} s={15} c="#fff"/> Dodaj</Btn>
+        </div>
+        {patVisits.length===0?<Empty text="Brak wizyt"/>:patVisits.map(v=>(
+          <Card key={v.id} onClick={()=>setEditVisitP({...v,price:String(v.price)})} style={{cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div><div style={{fontWeight:600}}>{v.date} · {v.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{v.type}</div></div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontWeight:600,marginBottom:4}}>{v.price} zł</div>
+                <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+      {showVisit&&(
+        <Modal title="Nowa wizyta" onClose={()=>setShowVisit(false)}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
+            <Inp label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))} type="time"/>
+          </div>
+          <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={["Rehabilitacja domowa","Konsultacja","Wizyta kontrolna"].map(x=>({value:x,label:x}))}/>
+          <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
+          <Btn onClick={()=>{setVisits(vs=>[...vs,{id:Date.now(),patientId:selected.id,patientName:selected.name,...vf,price:+vf.price,status:"zaplanowana"}]);setShowVisit(false);}} style={{width:"100%",justifyContent:"center"}}>Zapisz wizytę</Btn>
+        </Modal>
+      )}
+      {showEditPatient&&editPatientForm&&(
+        <Modal title="Edytuj pacjenta" onClose={()=>setShowEditPatient(false)}>
+          <Inp label="Imię i nazwisko" value={editPatientForm.name} onChange={v=>setEditPatientForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
+          <Inp label="Telefon" value={editPatientForm.phone||""} onChange={v=>setEditPatientForm(f=>({...f,phone:v}))} placeholder="600 000 000" type="tel"/>
+          <Inp label="Adres" value={editPatientForm.address||""} onChange={v=>setEditPatientForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
+          <Txa label="Diagnoza" value={editPatientForm.diagnosis||""} onChange={v=>setEditPatientForm(f=>({...f,diagnosis:v}))} rows={2}/>
+          <Txa label="Notatki" value={editPatientForm.notes||""} onChange={v=>setEditPatientForm(f=>({...f,notes:v}))} rows={2}/>
+          <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+            setPatients(ps=>ps.map(p=>p.id===selected.id?{...p,...editPatientForm}:p));
+            setSelected(s=>({...s,...editPatientForm}));
+            setShowEditPatient(false);
+          }}>Zapisz zmiany</Btn>
+        </Modal>
+      )}
+      {editVisitP&&(
+        <Modal title="Edytuj wizytę" onClose={()=>setEditVisitP(null)}>
+          <Inp label="Pacjent" value={editVisitP.patientName} onChange={v=>setEditVisitP(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Data" value={editVisitP.date} onChange={v=>setEditVisitP(f=>({...f,date:v}))} type="date"/>
+            <Inp label="Godzina" value={editVisitP.time} onChange={v=>setEditVisitP(f=>({...f,time:v}))} type="time"/>
+          </div>
+          <Sel label="Typ" value={editVisitP.type} onChange={v=>setEditVisitP(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
+          <Inp label="Cena (zł)" value={editVisitP.price} onChange={v=>setEditVisitP(f=>({...f,price:v}))} type="number"/>
+          <Btn onClick={()=>{setVisits(vs=>vs.map(v=>v.id===editVisitP.id?{...v,...editVisitP,price:+editVisitP.price}:v));setEditVisitP(null);}} style={{width:"100%",justifyContent:"center"}}>Zapisz zmiany</Btn>
+          <Btn variant="danger" onClick={()=>{setConfirmDeleteVisit(editVisitP.id);setEditVisitP(null);}} style={{width:"100%",justifyContent:"center",marginTop:8}}>🗑️ Usuń wizytę</Btn>
+        </Modal>
+      )}
+      {confirmDeleteVisit&&(
+        <Modal title="Usuń wizytę" onClose={()=>setConfirmDeleteVisit(null)}>
+          <div style={{fontSize:15,marginBottom:20,color:"#1C2B3A"}}>Na pewno usunąć tę wizytę?</div>
+          <div style={{display:"flex",gap:10}}>
+            <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDeleteVisit(null)}>Anuluj</Btn>
+            <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setVisits(vs=>vs.filter(x=>x.id!==confirmDeleteVisit));setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDeleteVisit));setConfirmDeleteVisit(null);}}>Usuń</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+    </>
+  );
+
+  const filtered=patients.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())||p.phone?.includes(search));
+  return (
+    <div>
+      <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Pacjenci</div><div style={{fontSize:13,color:"#7A8FA6"}}>{patients.length} pacjentów</div></div>
+        <Btn small onClick={()=>setShowAdd(true)}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
+      </div>
+      <div style={{padding:"0 20px"}}>
+        <Inp value={search} onChange={setSearch} placeholder="🔍 Szukaj pacjenta..."/>
+        {filtered.map(p=>(
+          <Card key={p.id} onClick={()=>setSelected(p)}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                <Av name={p.name}/>
+                <div><div style={{fontWeight:600}}>{p.name}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{p.phone}</div></div>
+              </div>
+              <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
+            </div>
+            {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #E4EAF0"}}>{p.diagnosis}</div>}
+          </Card>
+        ))}
+      </div>
+      {showAdd&&(
+        <Modal title="Nowy pacjent" onClose={()=>setShowAdd(false)}>
+          <Inp label="Imię i nazwisko *" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
+          <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="600 000 000" type="tel"/>
+          <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
+          <Txa label="Diagnoza" value={form.diagnosis} onChange={v=>setForm(f=>({...f,diagnosis:v}))} placeholder="np. po endoprotezoplastyce" rows={2}/>
+          <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} placeholder="np. wymaga CPM" rows={2}/>
+          <Btn onClick={()=>{if(!form.name)return;setPatients(p=>[...p,{...form,id:Date.now()}]);setForm({name:"",phone:"",address:"",diagnosis:"",notes:""});setShowAdd(false);}} disabled={!form.name} style={{width:"100%",justifyContent:"center"}}>Dodaj pacjenta</Btn>
+        </Modal>
+      )}
     </div>
   );
 }
 
-// ─── PATIENTS ────────────────────────────────────────────────────────────────
-function Patients({ user }) {
-  const [patients, setPatients] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [visits, setVisits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [showVisit, setShowVisit] = useState(false);
-  const [search, setSearch] = useState("");
-  const [form, setForm] = useState({ name: "", phone: "", address: "", diagnosis: "", notes: "" });
-  const [vForm, setVForm] = useState({ date: new Date().toISOString().split("T")[0], time: "10:00", type: "Rehabilitacja domowa", price: "150" });
-  const [saving, setSaving] = useState(false);
+// ── RENTALS ──────────────────────────────────────────────────────────────────
+const EQUIPMENT_LIST = [
+  "Artromot K1 2025",
+  "Artromot K1 I",
+  "Kinetec Spectra",
+  "Kinetec Spectra SZ",
+  "Optiflex",
+  "Ambonka Paula",
+];
 
-  useEffect(() => {
-    supabase.from("patients").select("*").eq("user_id", user.id).order("name").then(({ data }) => { setPatients(data || []); setLoading(false); });
-  }, []);
+const MOCK_RENTALS = [
+  {id:1,equipment:"Artromot K1 2025",patientName:"Krzysztof Malinowski",phone:"601 234 567",address:"ul. Zwycięstwa 12, Gliwice",startDate:"2026-02-20",endDate:"2026-03-20",renewable:false,amount:400,amountPaid:200,payments:[{id:1,amount:200,date:"2026-02-20"}],notes:"Ostrożnie z zakresem — max 90°",status:"aktywne"},
+  {id:2,equipment:"Ambonka Paula",patientName:"Maria Kowalska",phone:"512 345 678",address:"ul. Korfantego 5, Katowice",startDate:"2026-02-15",endDate:null,renewable:true,amount:200,amountPaid:200,payments:[{id:1,amount:200,date:"2026-02-15"}],notes:"",status:"aktywne"},
+  {id:3,equipment:"Kinetec Spectra",patientName:"Andrzej Nowak",phone:"693 456 789",address:"ul. Górna 3, Zabrze",startDate:"2026-01-10",endDate:"2026-02-10",renewable:false,amount:350,amountPaid:350,payments:[{id:1,amount:350,date:"2026-01-10"}],notes:"",status:"zakończone"},
+];
 
-  const openPatient = async (p) => {
-    setSelected(p);
-    const { data } = await supabase.from("visits").select("*").eq("patient_id", p.id).order("date", { ascending: false });
-    setVisits(data || []);
-  };
+const emptyForm = {equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:new Date().toISOString().split("T")[0],endDate:"",renewable:false,amount:"",amountPaid:"",notes:""};
 
-  const addPatient = async () => {
-    if (!form.name) return;
-    setSaving(true);
-    const { data } = await supabase.from("patients").insert({ ...form, user_id: user.id }).select().single();
-    if (data) setPatients(p => [...p, data].sort((a, b) => a.name.localeCompare(b.name)));
-    setForm({ name: "", phone: "", address: "", diagnosis: "", notes: "" });
-    setShowAdd(false); setSaving(false);
-  };
-
-  const addVisit = async () => {
-    setSaving(true);
-    const { data } = await supabase.from("visits").insert({ ...vForm, price: +vForm.price, patient_id: selected.id, patient_name: selected.name, user_id: user.id }).select().single();
-    if (data) setVisits(v => [data, ...v]);
-    setShowVisit(false); setSaving(false);
-  };
-
-  const completeVisit = async (id) => {
-    await supabase.from("visits").update({ status: "zakończona" }).eq("id", id);
-    setVisits(v => v.map(x => x.id === id ? { ...x, status: "zakończona" } : x));
-  };
-
-  const filtered = patients.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search));
-
-  if (selected) {
-    const total = visits.filter(v => v.status === "zakończona").reduce((s, v) => s + +v.price, 0);
-    return (
-      <div>
-        <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: 6, color: "#0A7C7C", fontWeight: 600, cursor: "pointer", padding: "20px 20px 0", fontFamily: "inherit", fontSize: 14 }}>
-          <Icon d={ic.back} size={18} color="#0A7C7C" /> Pacjenci
-        </button>
-        <div style={{ padding: "12px 20px 0" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-              <Avatar name={selected.name} size={52} />
-              <div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{selected.name}</div>
-                <div style={{ fontSize: 13, color: "#7A8FA6" }}>{selected.address}</div>
-              </div>
-            </div>
-            {selected.phone && <a href={`tel:${selected.phone}`} style={{ textDecoration: "none" }}><Btn small variant="secondary"><Icon d={ic.phone} size={15} color="#0A7C7C" />{selected.phone}</Btn></a>}
+function RentalCard({r, onClick}) {
+  const today = new Date();
+  const daysLeft = r.endDate ? Math.ceil((new Date(r.endDate)-today)/86400000) : null;
+  const overdue = daysLeft !== null && daysLeft < 0;
+  return (
+    <Card onClick={onClick}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+            <div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>
+            {r.renewable && <Badge color="#7C6AF4">🔄 Odnawialne</Badge>}
           </div>
-          {selected.diagnosis && (
-            <Card style={{ background: "#E6F4F4" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#0A7C7C", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Diagnoza</div>
-              <div style={{ lineHeight: 1.5 }}>{selected.diagnosis}</div>
-              {selected.notes && <div style={{ marginTop: 8, fontSize: 13, color: "#0A7C7C", borderTop: "1px solid #c3e0e0", paddingTop: 8 }}>📋 {selected.notes}</div>}
-            </Card>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div>
-              <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 17, fontWeight: 700 }}>Wizyty ({visits.length})</span>
-              {total > 0 && <span style={{ fontSize: 13, color: "#3DAA72", marginLeft: 8 }}>łącznie {total} zł</span>}
-            </div>
-            <Btn small onClick={() => setShowVisit(true)}><Icon d={ic.plus} size={15} color="#fff" /> Dodaj</Btn>
-          </div>
-          {visits.length === 0 ? <Empty text="Brak wizyt" /> : visits.map(v => (
-            <Card key={v.id}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div><div style={{ fontWeight: 600 }}>{v.date} · {v.time?.slice(0, 5)}</div><div style={{ fontSize: 13, color: "#7A8FA6" }}>{v.type}</div></div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                  <div style={{ fontWeight: 600 }}>{v.price} zł</div>
-                  {v.status === "zaplanowana"
-                    ? <button onClick={() => completeVisit(v.id)} style={{ background: "#E8F7EE", color: "#3DAA72", border: "none", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>✓ Zakończ</button>
-                    : <Badge color="#3DAA72">zakończona</Badge>}
-                </div>
-              </div>
-            </Card>
-          ))}
+          <div style={{fontSize:14,color:"#1C2B3A"}}>{r.patientName}</div>
         </div>
-        {showVisit && (
-          <Modal title="Nowa wizyta" onClose={() => setShowVisit(false)}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Input label="Data" value={vForm.date} onChange={v => setVForm(f => ({ ...f, date: v }))} type="date" />
-              <Input label="Godzina" value={vForm.time} onChange={v => setVForm(f => ({ ...f, time: v }))} type="time" />
-            </div>
-            <Sel label="Typ wizyty" value={vForm.type} onChange={v => setVForm(f => ({ ...f, type: v }))} options={["Rehabilitacja domowa", "Konsultacja", "Wizyta kontrolna", "Terapia manualna"].map(x => ({ value: x, label: x }))} />
-            <Input label="Cena (zł)" value={vForm.price} onChange={v => setVForm(f => ({ ...f, price: v }))} type="number" />
-            <Btn onClick={addVisit} disabled={saving} style={{ width: "100%", justifyContent: "center" }}>{saving ? "Zapisywanie..." : "Zapisz wizytę"}</Btn>
-          </Modal>
+        {r.status==="aktywne" && (
+          r.renewable
+            ? <Badge color="#7C6AF4">miesięczne</Badge>
+            : <Badge color={overdue?"#E05C5C":daysLeft<7?"#F4A261":"#3DAA72"}>
+                {overdue?`${Math.abs(daysLeft)}d po term.`:daysLeft===0?"Dziś!":daysLeft+"d"}
+              </Badge>
         )}
       </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
+        <span>📅 {r.startDate}{r.endDate?` → ${r.endDate}`:" → odnawialne"}</span>
+        <span>💰 {r.amount} zł</span>
+        {(r.amount-(r.amountPaid||0))>0
+          ? <span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {r.amount-(r.amountPaid||0)} zł</span>
+          : <span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>
+        }
+      </div>
+    </Card>
+  );
+}
+
+function Rentals({rentals, setRentals, setFinances}) {
+  const rentalsLoaded = true;
+  const [view,setView]=useState("aktywne"); // aktywne | odnawialne | zakończone
+  const [showAdd,setShowAdd]=useState(false);
+  const [showEdit,setShowEdit]=useState(false);
+  const [detail,setDetail]=useState(null);
+  const [form,setForm]=useState(emptyForm);
+  const [editForm,setEditForm]=useState(null);
+  const [confirmDeleteRental,setConfirmDeleteRental]=useState(null);
+
+  const counts = {
+    aktywne: rentals.filter(r=>r.status==="aktywne"&&!r.renewable).length,
+    odnawialne: rentals.filter(r=>r.status==="aktywne"&&r.renewable).length,
+    zakończone: rentals.filter(r=>r.status==="zakończone").length,
+  };
+
+  const filtered = view==="aktywne"
+    ? rentals.filter(r=>r.status==="aktywne"&&!r.renewable)
+    : view==="odnawialne"
+    ? rentals.filter(r=>r.status==="aktywne"&&r.renewable)
+    : rentals.filter(r=>r.status==="zakończone");
+
+  // ── DETAIL VIEW ────────────────────────────────────────────────────────────
+  if(detail!==null) {
+    const r = rentals.find(x=>x.id===detail);
+    const today = new Date();
+    const daysLeft = r.endDate ? Math.ceil((new Date(r.endDate)-today)/86400000) : null;
+    const overdue = daysLeft !== null && daysLeft < 0;
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(r.address)}`;
+
+    return (
+      <>
+      <div>
+        <button onClick={()=>setDetail(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
+          <Ico d={I.back} s={18} c="#0A7C7C"/> Wypożyczalnia
+        </button>
+        <div style={{padding:"16px 20px 0"}}>
+
+          {/* Header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+            <div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{r.equipment}</div>
+              {r.renewable
+                ? <Badge color="#7C6AF4">🔄 Odnawialne miesięcznie</Badge>
+                : daysLeft!==null && <Badge color={overdue?"#E05C5C":daysLeft<7?"#F4A261":"#3DAA72"} style={{marginTop:4}}>
+                    {overdue?`${Math.abs(daysLeft)}d po terminie`:daysLeft===0?"Termin dziś!":daysLeft+" dni"}
+                  </Badge>
+              }
+            </div>
+            <Btn small variant="secondary" onClick={()=>{setEditForm({...r,amount:String(r.amount),amountPaid:String(r.amountPaid||0)});setShowEdit(true);}}>
+              ✏️ Edytuj
+            </Btn>
+          </div>
+
+          {/* Pacjent */}
+          <Card style={{marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Pacjent</div>
+            <div style={{fontWeight:700,fontSize:16,marginBottom:12}}>{r.patientName}</div>
+
+            {/* Telefon */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:14,color:"#7A8FA6"}}>{r.phone}</div>
+              <a href={`tel:${r.phone}`} style={{textDecoration:"none"}}>
+                <Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn>
+              </a>
+            </div>
+
+            {/* Adres */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{r.address}</div>
+              <a href={mapsUrl} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}>
+                <Btn small variant="secondary">🗺️ Trasa</Btn>
+              </a>
+            </div>
+          </Card>
+
+          {/* Szczegóły */}
+          <Card style={{marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wypożyczenie</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
+              <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
+              <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
+            </div>
+            {/* Płatność */}
+            <div style={{borderTop:"1px solid #E4EAF0",paddingTop:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Płatność</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                {[
+                  {l:"Kwota",v:`${r.amount} zł`,c:"#1C2B3A"},
+                  {l:"Zapłacono",v:`${r.amountPaid||0} zł`,c:"#3DAA72"},
+                  {l:"Pozostało",v:`${(r.amount-(r.amountPaid||0))} zł`,c:(r.amount-(r.amountPaid||0))>0?"#E05C5C":"#3DAA72"},
+                ].map((x,i)=>(
+                  <div key={i} style={{background:x.c==="#1C2B3A"?"#F2F5F7":x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c==="#1C2B3A"?"#E4EAF0":x.c+"30"}`}}>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c==="#1C2B3A"?"#1C2B3A":x.c}}>{x.v}</div>
+                    <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Szybka aktualizacja zapłaconej kwoty */}
+              <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <input
+                    type="number"
+                    placeholder="Kwota wpłaty..."
+                    id="paymentInput"
+                    style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}
+                  />
+                  <input
+                    type="date"
+                    id="paymentDate"
+                    defaultValue={new Date().toISOString().split("T")[0]}
+                    style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}
+                  />
+                </div>
+                <Btn small onClick={()=>{
+                  const inp=document.getElementById("paymentInput");
+                  const dt=document.getElementById("paymentDate");
+                  const val=+inp.value;
+                  if(!val)return;
+                  const newPayment={id:Date.now(),amount:val,date:dt.value};
+                  setRentals(rs=>rs.map(x=>x.id===r.id?{
+                    ...x,
+                    payments:[...(x.payments||[]),newPayment],
+                    amountPaid:Math.min((x.amountPaid||0)+val,x.amount)
+                  }:x));
+                  inp.value="";
+                }} style={{justifyContent:"center"}}>+ Dodaj wpłatę</Btn>
+              </div>
+
+              {/* Historia wpłat */}
+              {(r.payments||[]).length>0&&(
+                <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia wpłat</div>
+                  {[...(r.payments||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>(
+                    <div key={p.id} style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                        <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                          <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
+                          <div>
+                            <div style={{fontWeight:600,fontSize:14}}>{p.amount} zł</div>
+                            <div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}</div>
+                          </div>
+                        </div>
+                        <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{
+                          ...x,
+                          payments:(x.payments||[]).filter(q=>q.id!==p.id),
+                          amountPaid:Math.max(0,(x.amountPaid||0)-p.amount)
+                        }:x))} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>
+                          Usuń
+                        </button>
+                      </div>
+                      {/* Paragon / Faktura */}
+                      <div style={{display:"flex",gap:8}}>
+                        {[{k:"receipt",l:"🧾 Paragon"},{k:"invoice",l:"📄 Faktura"}].map(opt=>{
+                          const active = p.doc===opt.k;
+                          return(
+                            <button key={opt.k} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{
+                              ...x,
+                              payments:(x.payments||[]).map(q=>q.id===p.id?{...q,doc:active?null:opt.k}:q)
+                            }:x))} style={{
+                              flex:1,padding:"7px 8px",borderRadius:10,fontFamily:"inherit",fontSize:12,fontWeight:600,cursor:"pointer",
+                              border:`1.5px solid ${active?"#0A7C7C":"#E4EAF0"}`,
+                              background:active?"#E6F4F4":"#fff",
+                              color:active?"#0A7C7C":"#7A8FA6",
+                              display:"flex",alignItems:"center",justifyContent:"center",gap:4
+                            }}>
+                              {active&&<span style={{fontSize:10}}>✓</span>}{opt.l}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Notatki */}
+          {r.notes&&(
+            <Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
+              <div style={{fontSize:14,lineHeight:1.6}}>{r.notes}</div>
+            </Card>
+          )}
+
+          {/* Akcje */}
+          {r.status==="aktywne" && <>
+            {r.renewable && (
+              <Btn variant="secondary" onClick={()=>{
+                const newEnd = new Date(r.endDate||r.startDate);
+                newEnd.setMonth(newEnd.getMonth()+1);
+                setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:newEnd.toISOString().split("T")[0]}:x));
+              }} style={{width:"100%",justifyContent:"center",marginBottom:10}}>
+                🔄 Odnów o miesiąc
+              </Btn>
+            )}
+            <Btn variant="ghost" style={{width:"100%",justifyContent:"center",marginBottom:10,border:"1.5px dashed #E4EAF0"}}>
+              📄 Generuj umowę
+            </Btn>
+            <Btn onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone"}:x));setDetail(null);}}
+              style={{width:"100%",justifyContent:"center"}}>
+              <Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ
+            </Btn>
+          </>}
+          {r.status==="zakończone" && (
+            <Btn variant="secondary" onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne"}:x))}
+              style={{width:"100%",justifyContent:"center",marginBottom:10}}>
+              ↩️ Cofnij zakończenie
+            </Btn>
+          )}
+          <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}}
+            onClick={()=>setConfirmDeleteRental(r.id)}>
+            🗑️ Usuń wypożyczenie
+          </Btn>
+        </div>
+      </div>
+      {showEdit&&editForm&&(
+        <Modal title="Edytuj wypożyczenie" onClose={()=>setShowEdit(false)}>
+          <Sel label="Sprzęt" value={editForm.equipment} onChange={v=>setEditForm(f=>({...f,equipment:v}))} options={EQUIPMENT_LIST.map(x=>({value:x,label:x}))}/>
+          <Inp label="Pacjent" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
+          <Inp label="Telefon" value={editForm.phone} onChange={v=>setEditForm(f=>({...f,phone:v}))} placeholder="600 000 000" type="tel"/>
+          <Inp label="Adres" value={editForm.address} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
+            <div style={{display:"flex",gap:8}}>
+              {[{v:false,l:"Jednorazowe"},{v:true,l:"Odnawialne"}].map(opt=>(
+                <button key={String(opt.v)} onClick={()=>setEditForm(f=>({...f,renewable:opt.v}))}
+                  style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${editForm.renewable===opt.v?"#0A7C7C":"#E4EAF0"}`,background:editForm.renewable===opt.v?"#E6F4F4":"#fff",color:editForm.renewable===opt.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Inp label="Data od" value={editForm.startDate} onChange={v=>setEditForm(f=>({...f,startDate:v}))} type="date"/>
+          {!editForm.renewable&&<Inp label="Data do" value={editForm.endDate||""} onChange={v=>setEditForm(f=>({...f,endDate:v}))} type="date"/>}
+          <Inp label="Kwota (zł)" value={editForm.amount} onChange={v=>setEditForm(f=>({...f,amount:v}))} type="number"/>
+          <Inp label="Zapłacono (zł)" value={editForm.amountPaid} onChange={v=>setEditForm(f=>({...f,amountPaid:v}))} type="number"/>
+          <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
+          <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+            setRentals(rs=>rs.map(x=>x.id===detail?{...x,...editForm,amount:+editForm.amount,amountPaid:+(editForm.amountPaid||0)}:x));
+            setShowEdit(false);
+          }}>Zapisz zmiany</Btn>
+        </Modal>
+      )}
+      {confirmDeleteRental&&(
+        <Modal title="Usuń wypożyczenie" onClose={()=>setConfirmDeleteRental(null)}>
+          <div style={{fontSize:15,marginBottom:20,color:"#1C2B3A"}}>Na pewno usunąć to wypożyczenie?</div>
+          <div style={{display:"flex",gap:10}}>
+            <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDeleteRental(null)}>Anuluj</Btn>
+            <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const r=rentals.find(x=>x.id===confirmDeleteRental);if(r)(r.payments||[]).forEach(p=>setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id)));setRentals(rs=>rs.filter(x=>x.id!==confirmDeleteRental));setConfirmDeleteRental(null);setDetail(null);}}>Usuń</Btn>
+          </div>
+        </Modal>
+      )}
+      </>
     );
   }
 
-  if (loading) return <Loading />;
+  // ── LIST VIEW ──────────────────────────────────────────────────────────────
   return (
     <div>
-      <div style={{ padding: "28px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div><div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800 }}>Pacjenci</div><div style={{ fontSize: 13, color: "#7A8FA6" }}>{patients.length} pacjentów</div></div>
-        <Btn small onClick={() => setShowAdd(true)}><Icon d={ic.plus} size={16} color="#fff" /> Nowy</Btn>
+      <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wypożyczalnia</div>
+          <div style={{fontSize:13,color:"#7A8FA6"}}>{counts.aktywne+counts.odnawialne} aktywnych</div>
+        </div>
+        <Btn small onClick={()=>{setForm(emptyForm);setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowe</Btn>
       </div>
-      <div style={{ padding: "0 20px" }}>
-        <Input value={search} onChange={setSearch} placeholder="🔍 Szukaj pacjenta..." />
-        {filtered.length === 0 ? <Empty text={search ? "Brak wyników" : "Dodaj pierwszego pacjenta!"} /> : filtered.map(p => (
-          <Card key={p.id} onClick={() => openPatient(p)}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <Avatar name={p.name} />
-                <div><div style={{ fontWeight: 600 }}>{p.name}</div><div style={{ fontSize: 13, color: "#7A8FA6" }}>{p.phone}</div></div>
-              </div>
-              <Icon d="M9 18l6-6-6-6" size={20} color="#7A8FA6" />
-            </div>
-            {p.diagnosis && <div style={{ fontSize: 12, color: "#7A8FA6", marginTop: 8, paddingTop: 8, borderTop: "1px solid #E4EAF0" }}>{p.diagnosis}</div>}
-          </Card>
-        ))}
-      </div>
-      {showAdd && (
-        <Modal title="Nowy pacjent" onClose={() => setShowAdd(false)}>
-          <Input label="Imię i nazwisko *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} placeholder="Jan Kowalski" />
-          <Input label="Telefon" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="600 000 000" type="tel" />
-          <Input label="Adres" value={form.address} onChange={v => setForm(f => ({ ...f, address: v }))} placeholder="ul. Przykładowa 1, Gliwice" />
-          <Textarea label="Diagnoza" value={form.diagnosis} onChange={v => setForm(f => ({ ...f, diagnosis: v }))} placeholder="np. po endoprotezoplastyce kolana" rows={2} />
-          <Textarea label="Notatki" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} placeholder="np. wymaga CPM" rows={2} />
-          <Btn onClick={addPatient} disabled={saving || !form.name} style={{ width: "100%", justifyContent: "center" }}>{saving ? "Zapisywanie..." : "Dodaj pacjenta"}</Btn>
-        </Modal>
-      )}
-    </div>
-  );
-}
 
-// ─── RENTALS ─────────────────────────────────────────────────────────────────
-function Rentals({ user }) {
-  const [rentals, setRentals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("aktywne");
-  const [showAdd, setShowAdd] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ equipment: "Maszyna CPM (kolano)", patient_name: "", phone: "", start_date: new Date().toISOString().split("T")[0], end_date: "", daily_rate: "", deposit: "" });
-
-  useEffect(() => {
-    supabase.from("rentals").select("*").eq("user_id", user.id).order("start_date", { ascending: false }).then(({ data }) => { setRentals(data || []); setLoading(false); });
-  }, []);
-
-  const add = async () => {
-    if (!form.patient_name || !form.end_date) return;
-    setSaving(true);
-    const { data } = await supabase.from("rentals").insert({ ...form, daily_rate: +form.daily_rate, deposit: +form.deposit, status: "aktywne", user_id: user.id }).select().single();
-    if (data) setRentals(r => [data, ...r]);
-    setForm({ equipment: "Maszyna CPM (kolano)", patient_name: "", phone: "", start_date: new Date().toISOString().split("T")[0], end_date: "", daily_rate: "", deposit: "" });
-    setShowAdd(false); setSaving(false);
-  };
-
-  const returnIt = async (id) => {
-    await supabase.from("rentals").update({ status: "zakończone" }).eq("id", id);
-    setRentals(r => r.map(x => x.id === id ? { ...x, status: "zakończone" } : x));
-  };
-
-  const filtered = rentals.filter(r => r.status === filter);
-  if (loading) return <Loading />;
-
-  return (
-    <div>
-      <div style={{ padding: "28px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div><div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800 }}>Wypożyczalnia</div></div>
-        <Btn small onClick={() => setShowAdd(true)}><Icon d={ic.plus} size={16} color="#fff" /> Nowe</Btn>
-      </div>
-      <div style={{ display: "flex", gap: 8, padding: "0 20px 16px" }}>
-        {[["aktywne", rentals.filter(r => r.status === "aktywne").length], ["zakończone", rentals.filter(r => r.status === "zakończone").length]].map(([s, count]) => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding: "8px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, background: filter === s ? "#0A7C7C" : "#E4EAF0", color: filter === s ? "#fff" : "#7A8FA6", fontFamily: "inherit" }}>
-            {s.charAt(0).toUpperCase() + s.slice(1)} ({count})
+      {/* Zakładki */}
+      <div style={{display:"flex",gap:6,padding:"0 20px 16px",overflowX:"auto"}}>
+        {[
+          {k:"aktywne",l:`Aktywne (${counts.aktywne})`},
+          {k:"odnawialne",l:`🔄 Odnawialne (${counts.odnawialne})`},
+          {k:"zakończone",l:`Zakończone (${counts.zakończone})`},
+        ].map(x=>(
+          <button key={x.k} onClick={()=>setView(x.k)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:view===x.k?"#0A7C7C":"#E4EAF0",color:view===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>
+            {x.l}
           </button>
         ))}
       </div>
-      <div style={{ padding: "0 20px" }}>
-        {filtered.length === 0 ? <Empty text={`Brak ${filter} wypożyczeń`} /> : filtered.map(r => {
-          const days = Math.ceil((new Date(r.end_date) - new Date()) / 86400000);
-          return (
-            <Card key={r.id}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{r.equipment}</div>
-                  <div style={{ fontSize: 14, color: "#7A8FA6" }}>{r.patient_name}</div>
-                  {r.phone && <a href={`tel:${r.phone}`} style={{ fontSize: 13, color: "#0A7C7C", textDecoration: "none" }}>{r.phone}</a>}
-                </div>
-                {r.status === "aktywne" && <Badge color={days < 0 ? "#E05C5C" : days < 7 ? "#F4A261" : "#3DAA72"}>{days > 0 ? `${days}d` : days === 0 ? "Dziś!" : `${Math.abs(days)}d po terminie`}</Badge>}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", fontSize: 12, color: "#7A8FA6", marginBottom: r.status === "aktywne" ? 12 : 0 }}>
-                <span>📅 {r.start_date} → {r.end_date}</span>
-                <span>💰 {r.daily_rate} zł/dzień</span>
-                <span>🔒 Kaucja: {r.deposit} zł</span>
-              </div>
-              {r.status === "aktywne" && <Btn small variant="secondary" onClick={() => returnIt(r.id)} style={{ width: "100%", justifyContent: "center" }}><Icon d={ic.check} size={15} color="#0A7C7C" /> Sprzęt zwrócony</Btn>}
-            </Card>
-          );
-        })}
+
+      {/* Baner info dla odnawialnych */}
+      {view==="odnawialne" && (
+        <div style={{margin:"0 20px 12px",background:"#F0EDFF",borderRadius:14,padding:"12px 14px",fontSize:13,color:"#7C6AF4",lineHeight:1.5}}>
+          🔄 <strong>Odnawialne</strong> — bez ustalonej daty zwrotu. Możesz odnowić o miesiąc w dowolnym momencie.
+        </div>
+      )}
+
+      <div style={{padding:"0 20px"}}>
+        {filtered.length===0
+          ? <Empty text="Brak wypożyczeń w tej kategorii"/>
+          : filtered.map(r=><RentalCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)
+        }
       </div>
-      {showAdd && (
-        <Modal title="Nowe wypożyczenie" onClose={() => setShowAdd(false)}>
-          <Sel label="Sprzęt" value={form.equipment} onChange={v => setForm(f => ({ ...f, equipment: v }))} options={["Maszyna CPM (kolano)", "Maszyna CPM (biodro)", "Balkonik aluminiowy", "Kule łokciowe (para)", "Chodzik rehabilitacyjny", "Inne"].map(x => ({ value: x, label: x }))} />
-          <Input label="Pacjent *" value={form.patient_name} onChange={v => setForm(f => ({ ...f, patient_name: v }))} placeholder="Jan Kowalski" />
-          <Input label="Telefon" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} placeholder="600 000 000" type="tel" />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Input label="Data od" value={form.start_date} onChange={v => setForm(f => ({ ...f, start_date: v }))} type="date" />
-            <Input label="Data do *" value={form.end_date} onChange={v => setForm(f => ({ ...f, end_date: v }))} type="date" />
+
+      {/* MODAL NOWE WYPOŻYCZENIE */}
+      {showAdd&&(
+        <Modal title="Nowe wypożyczenie" onClose={()=>setShowAdd(false)}>
+          <Sel label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))}
+            options={EQUIPMENT_LIST.map(x=>({value:x,label:x}))}/>
+
+          <Inp label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
+          <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="600 000 000" type="tel"/>
+          <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
+
+          {/* Typ wypożyczenia */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ wypożyczenia</div>
+            <div style={{display:"flex",gap:8}}>
+              {[{v:false,l:"Jednorazowe"},{v:true,l:"🔄 Odnawialne miesięcznie"}].map(opt=>(
+                <button key={String(opt.v)} onClick={()=>setForm(f=>({...f,renewable:opt.v,endDate:opt.v?"":f.endDate}))}
+                  style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${form.renewable===opt.v?"#0A7C7C":"#E4EAF0"}`,background:form.renewable===opt.v?"#E6F4F4":"#fff",color:form.renewable===opt.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+                  {opt.l}
+                </button>
+              ))}
+            </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Input label="Stawka (zł/dzień)" value={form.daily_rate} onChange={v => setForm(f => ({ ...f, daily_rate: v }))} type="number" placeholder="25" />
-            <Input label="Kaucja (zł)" value={form.deposit} onChange={v => setForm(f => ({ ...f, deposit: v }))} type="number" placeholder="300" />
+
+          <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
+          {!form.renewable && (
+            <Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>
+          )}
+          <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Pozostało</div>
+              <div style={{padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,background:"#F2F5F7",color:(+form.amount-(+form.amountPaid||0))>0?"#E05C5C":"#3DAA72",fontWeight:700}}>
+                {form.amount?(+form.amount-(+form.amountPaid||0))+" zł":"—"}
+              </div>
+            </div>
           </div>
-          <Btn onClick={add} disabled={saving || !form.patient_name || !form.end_date} style={{ width: "100%", justifyContent: "center" }}>{saving ? "Zapisywanie..." : "Zapisz wypożyczenie"}</Btn>
+          <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} placeholder="np. max zakres 90°, uwagi..." rows={2}/>
+
+          <Btn onClick={()=>{
+            if(!form.patientName) return;
+            setRentals(r=>[{...form,id:Date.now(),amount:+form.amount,amountPaid:+(form.amountPaid||0),payments:form.amountPaid?[{id:Date.now(),amount:+(form.amountPaid||0),date:form.startDate}]:[],status:"aktywne"},...r]);
+            setShowAdd(false);
+          }} disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}}>
+            Zapisz wypożyczenie
+          </Btn>
         </Modal>
       )}
     </div>
   );
 }
 
-// ─── FINANCES ────────────────────────────────────────────────────────────────
-function Finances({ user }) {
-  const [finances, setFinances] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [form, setForm] = useState({ date: new Date().toISOString().split("T")[0], type: "przychód", category: "Wizyta", amount: "", description: "" });
-  const cats = { przychód: ["Wizyta", "Wypożyczalnia", "Konsultacja", "Inne"], koszt: ["Paliwo", "Sprzęt", "Marketing", "ZUS", "Podatki", "Inne"] };
+// ── FINANCES ─────────────────────────────────────────────────────────────────
+function Finances({finances, setFinances, visits, rentals}) {
+  const [showAdd,setShowAdd]=useState(false);
+  const [month,setMonth]=useState(new Date().toISOString().slice(0,7));
+  const [form,setForm]=useState({date:new Date().toISOString().split("T")[0],type:"przychód",category:"Wizyta",amount:"",description:""});
+  const [editEntry,setEditEntry]=useState(null);
+  const [confirmDelete,setConfirmDelete]=useState(null);
+  const cats={przychód:["Wizyta","Wypożyczalnia","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
+  const mly=finances.filter(f=>f.date.startsWith(month));
+  const inc=mly.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
+  const cst=mly.filter(f=>f.type==="koszt").reduce((s,f)=>s+f.amount,0);
 
-  useEffect(() => {
-    supabase.from("finances").select("*").eq("user_id", user.id).order("date", { ascending: false }).then(({ data }) => { setFinances(data || []); setLoading(false); });
-  }, []);
-
-  const add = async () => {
-    if (!form.amount) return;
-    setSaving(true);
-    const { data } = await supabase.from("finances").insert({ ...form, amount: +form.amount, user_id: user.id }).select().single();
-    if (data) setFinances(f => [data, ...f]);
-    setForm({ date: new Date().toISOString().split("T")[0], type: "przychód", category: "Wizyta", amount: "", description: "" });
-    setShowAdd(false); setSaving(false);
-  };
-
-  const monthly = finances.filter(f => f.date?.startsWith(month));
-  const income = monthly.filter(f => f.type === "przychód").reduce((s, f) => s + +f.amount, 0);
-  const costs = monthly.filter(f => f.type === "koszt").reduce((s, f) => s + +f.amount, 0);
-  const months = [...new Set(finances.map(f => f.date?.slice(0, 7)))].sort().reverse();
-  if (loading) return <Loading />;
+  // Generuj ostatnie 6 miesięcy
+  const months = Array.from({length:6},(_,i)=>{
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
+    return d.toISOString().slice(0,7);
+  });
 
   return (
+    <>
     <div>
-      <div style={{ padding: "28px 20px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800 }}>Finanse</div>
-        <Btn small onClick={() => setShowAdd(true)}><Icon d={ic.plus} size={16} color="#fff" /> Dodaj</Btn>
+      <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Finanse</div>
+        <Btn small onClick={()=>setShowAdd(true)}><Ico d={I.plus} s={16} c="#fff"/> Dodaj</Btn>
       </div>
-      <div style={{ padding: "0 20px" }}>
-        <div style={{ overflowX: "auto", display: "flex", gap: 8, paddingBottom: 4, marginBottom: 16 }}>
-          {(months.length ? months : [month]).map(m => (
-            <button key={m} onClick={() => setMonth(m)} style={{ padding: "8px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", background: month === m ? "#0A7C7C" : "#E4EAF0", color: month === m ? "#fff" : "#7A8FA6", fontFamily: "inherit" }}>
-              {new Date(m + "-01").toLocaleDateString("pl-PL", { month: "long", year: "numeric" })}
+      <div style={{padding:"0 20px"}}>
+        <div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+          {months.map(m=>(
+            <button key={m} onClick={()=>setMonth(m)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:month===m?"#0A7C7C":"#E4EAF0",color:month===m?"#fff":"#7A8FA6",fontFamily:"inherit"}}>
+              {new Date(m+"-01").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}
             </button>
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-          {[{ label: "Przychód", value: income, color: "#3DAA72" }, { label: "Koszty", value: costs, color: "#E05C5C" }, { label: "Wynik", value: income - costs, color: income - costs >= 0 ? "#0A7C7C" : "#E05C5C" }].map((item, i) => (
-            <div key={i} style={{ background: item.color + "14", borderRadius: 14, padding: "12px 8px", textAlign: "center", border: `1.5px solid ${item.color}30` }}>
-              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 15, color: item.color }}>{item.value} zł</div>
-              <div style={{ fontSize: 11, color: "#7A8FA6", marginTop: 2 }}>{item.label}</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+          {[{l:"Przychód",v:inc,c:"#3DAA72"},{l:"Koszty",v:cst,c:"#E05C5C"},{l:"Wynik",v:inc-cst,c:inc-cst>=0?"#0A7C7C":"#E05C5C"}].map((x,i)=>(
+            <div key={i} style={{background:x.c+"14",borderRadius:14,padding:"12px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:x.c}}>{x.v} zł</div>
+              <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
             </div>
           ))}
         </div>
-        {monthly.length === 0 ? <Empty text="Brak wpisów w tym miesiącu" /> : monthly.map(f => (
-          <Card key={f.id}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div><div style={{ fontWeight: 600 }}>{f.description || f.category}</div><div style={{ fontSize: 13, color: "#7A8FA6" }}>{f.date} · {f.category}</div></div>
-              <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: f.type === "przychód" ? "#3DAA72" : "#E05C5C" }}>{f.type === "przychód" ? "+" : "−"}{f.amount} zł</span>
+        {mly.length===0 && <Empty text="Brak wpisów w tym miesiącu"/>}
+        {mly.map(f=>(
+          <Card key={f.id} onClick={()=>setEditEntry({...f,amount:String(f.amount)})} style={{cursor:"pointer"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontWeight:600}}>{f.description||f.category}</div>
+                <div style={{fontSize:13,color:"#7A8FA6"}}>{f.date} · {f.category}</div>
+              </div>
+              <span style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,color:f.type==="przychód"?"#3DAA72":"#E05C5C"}}>{f.type==="przychód"?"+":"−"}{f.amount} zł</span>
             </div>
           </Card>
         ))}
       </div>
-      {showAdd && (
-        <Modal title="Nowy wpis" onClose={() => setShowAdd(false)}>
-          <Sel label="Typ" value={form.type} onChange={v => setForm(f => ({ ...f, type: v, category: cats[v][0] }))} options={[{ value: "przychód", label: "📈 Przychód" }, { value: "koszt", label: "📉 Koszt" }]} />
-          <Sel label="Kategoria" value={form.category} onChange={v => setForm(f => ({ ...f, category: v }))} options={cats[form.type].map(c => ({ value: c, label: c }))} />
-          <Input label="Kwota (zł) *" value={form.amount} onChange={v => setForm(f => ({ ...f, amount: v }))} type="number" placeholder="150" />
-          <Input label="Opis" value={form.description} onChange={v => setForm(f => ({ ...f, description: v }))} placeholder="np. wizyta u Jana Kowalskiego" />
-          <Input label="Data" value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} type="date" />
-          <Btn onClick={add} disabled={saving || !form.amount} style={{ width: "100%", justifyContent: "center" }}>{saving ? "Zapisywanie..." : "Zapisz"}</Btn>
-        </Modal>
-      )}
     </div>
+    {showAdd&&(
+      <Modal title="Nowy wpis" onClose={()=>setShowAdd(false)}>
+        <Sel label="Typ" value={form.type} onChange={v=>setForm(f=>({...f,type:v,category:cats[v][0]}))} options={[{value:"przychód",label:"📈 Przychód"},{value:"koszt",label:"📉 Koszt"}]}/>
+        <Sel label="Kategoria" value={form.category} onChange={v=>setForm(f=>({...f,category:v}))} options={cats[form.type].map(c=>({value:c,label:c}))}/>
+        <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="150"/>
+        <Inp label="Opis" value={form.description} onChange={v=>setForm(f=>({...f,description:v}))} placeholder="np. wizyta u Jana Kowalskiego"/>
+        <Inp label="Data" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>
+        <Btn onClick={()=>{if(!form.amount)return;setFinances(fs=>[{...form,id:Date.now(),amount:+form.amount},...fs]);setForm({date:new Date().toISOString().split("T")[0],type:"przychód",category:"Wizyta",amount:"",description:""});setShowAdd(false);}} disabled={!form.amount} style={{width:"100%",justifyContent:"center"}}>Zapisz</Btn>
+      </Modal>
+    )}
+    {editEntry&&(
+      <Modal title="Edytuj wpis" onClose={()=>setEditEntry(null)}>
+        <Sel label="Typ" value={editEntry.type} onChange={v=>setEditEntry(f=>({...f,type:v,category:cats[v][0]}))} options={[{value:"przychód",label:"📈 Przychód"},{value:"koszt",label:"📉 Koszt"}]}/>
+        <Sel label="Kategoria" value={editEntry.category} onChange={v=>setEditEntry(f=>({...f,category:v}))} options={cats[editEntry.type].map(c=>({value:c,label:c}))}/>
+        <Inp label="Kwota (zł)" value={editEntry.amount} onChange={v=>setEditEntry(f=>({...f,amount:v}))} type="number"/>
+        <Inp label="Opis" value={editEntry.description||""} onChange={v=>setEditEntry(f=>({...f,description:v}))} placeholder="np. wizyta u Jana Kowalskiego"/>
+        <Inp label="Data" value={editEntry.date} onChange={v=>setEditEntry(f=>({...f,date:v}))} type="date"/>
+        <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+          setFinances(fs=>fs.map(f=>f.id===editEntry.id?{...f,...editEntry,amount:+editEntry.amount}:f));
+          setEditEntry(null);
+        }}>Zapisz zmiany</Btn>
+      </Modal>
+    )}
+    {confirmDelete&&(
+      <Modal title="Usuń wpis" onClose={()=>setConfirmDelete(null)}>
+        <div style={{fontSize:15,marginBottom:20,color:"#1C2B3A"}}>Na pewno trwale usunąć ten wpis?</div>
+        <div style={{display:"flex",gap:10}}>
+          <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDelete(null)}>Anuluj</Btn>
+          <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setFinances(fs=>fs.filter(f=>f.id!==confirmDelete));setConfirmDelete(null);}}>Usuń</Btn>
+        </div>
+      </Modal>
+    )}
+    </>
   );
 }
 
-// ─── MARKETING ───────────────────────────────────────────────────────────────
+// ── MARKETING ────────────────────────────────────────────────────────────────
 function Marketing() {
-  const [topic, setTopic] = useState("fizjoterapia domowa – korzyści i jak działa");
-  const [tone, setTone] = useState("profesjonalny i merytoryczny");
-  const [post, setPost] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [topic,setTopic]=useState("fizjoterapia domowa");
+  const [tone,setTone]=useState("profesjonalny");
+  const [post,setPost]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [copied,setCopied]=useState(false);
 
-  const topics = [
-    { value: "fizjoterapia domowa – korzyści i jak działa", label: "Fizjoterapia domowa" },
-    { value: "rehabilitacja po endoprotezoplastyce biodra lub kolana", label: "Po endoprotezie" },
-    { value: "wypożyczanie maszyny CPM", label: "Maszyna CPM" },
-    { value: "rehabilitacja neurologiczna i polineuropatia", label: "Rehab neurologiczna" },
-    { value: "ćwiczenia profilaktyczne dla seniorów", label: "Seniorzy" },
-    { value: "wypożyczalnia sprzętu – balkoniki, kule, chodziki", label: "Wypożyczalnia" },
-  ];
-
-  const generate = async () => {
-    setLoading(true); setPost("");
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
-          messages: [{ role: "user", content: `Napisz post na Facebook dla ZubrzyckiFizjo z Gliwic/Katowic. Właściciel: Patryk Zubrzycki – fizjoterapeuta. Usługi: rehabilitacja domowa, wypożyczanie CPM, balkoników, kul.\n\nTemat: ${topic}\nTon: ${tone}\n\nZasady: po polsku, naturalnie, 3-5 zdań + emoji, 4-6 hashtagów na końcu, podpisz "Patryk Zubrzycki – fizjoterapeuta 💚". Tylko treść posta.` }]
-        })
-      });
-      const data = await res.json();
-      setPost(data.content?.[0]?.text || "Błąd generowania.");
-    } catch { setPost("Błąd połączenia."); }
+  const generate=async()=>{
+    setLoading(true);setPost("");
+    try{
+      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:`Napisz post na Facebook dla ZubrzyckiFizjo z Gliwic. Patryk Zubrzycki – fizjoterapeuta.\nTemat: ${topic}\nTon: ${tone}\nZasady: po polsku, 3-5 zdań + emoji, 4-6 hashtagów, podpisz "Patryk Zubrzycki 💚". Tylko treść posta.`}]})});
+      const d=await r.json();setPost(d.content?.[0]?.text||"Błąd.");
+    }catch{setPost("Błąd połączenia.");}
     setLoading(false);
   };
 
-  const copy = () => { navigator.clipboard.writeText(post); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-
   return (
     <div>
-      <div style={{ padding: "28px 20px 16px" }}>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800 }}>Generator postów</div>
-        <div style={{ fontSize: 13, color: "#7A8FA6", marginTop: 2 }}>AI tworzy posty na Facebooka</div>
+      <div style={{padding:"28px 20px 16px"}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Generator postów</div>
+        <div style={{fontSize:13,color:"#7A8FA6",marginTop:2}}>AI tworzy posty na Facebooka</div>
       </div>
-      <div style={{ padding: "0 20px" }}>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#7A8FA6", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Temat</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {topics.map(t => <button key={t.value} onClick={() => setTopic(t.value)} style={{ padding: "8px 14px", borderRadius: 20, border: `1.5px solid ${topic === t.value ? "#0A7C7C" : "#E4EAF0"}`, background: topic === t.value ? "#0A7C7C" : "#fff", color: topic === t.value ? "#fff" : "#1C2B3A", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>{t.label}</button>)}
+      <div style={{padding:"0 20px"}}>
+        <div style={{marginBottom:16}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Temat</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {["fizjoterapia domowa","po endoprotezie","maszyna CPM","seniorzy","wypożyczalnia"].map(t=>(
+              <button key={t} onClick={()=>setTopic(t)} style={{padding:"8px 14px",borderRadius:20,border:`1.5px solid ${topic===t?"#0A7C7C":"#E4EAF0"}`,background:topic===t?"#0A7C7C":"#fff",color:topic===t?"#fff":"#1C2B3A",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>
+            ))}
           </div>
         </div>
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#7A8FA6", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Ton</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[["profesjonalny i merytoryczny", "Profesjonalny"], ["ciepły i empatyczny", "Ciepły"], ["edukacyjny", "Edukacyjny"]].map(([v, l]) => <button key={v} onClick={() => setTone(v)} style={{ padding: "8px 14px", borderRadius: 20, border: `1.5px solid ${tone === v ? "#F4A261" : "#E4EAF0"}`, background: tone === v ? "#F4A261" : "#fff", color: tone === v ? "#fff" : "#1C2B3A", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>{l}</button>)}
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Ton</div>
+          <div style={{display:"flex",gap:8}}>
+            {["profesjonalny","ciepły","edukacyjny"].map(t=>(
+              <button key={t} onClick={()=>setTone(t)} style={{padding:"8px 14px",borderRadius:20,border:`1.5px solid ${tone===t?"#F4A261":"#E4EAF0"}`,background:tone===t?"#F4A261":"#fff",color:tone===t?"#fff":"#1C2B3A",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{t}</button>
+            ))}
           </div>
         </div>
-        <Btn onClick={generate} variant="orange" disabled={loading} style={{ width: "100%", justifyContent: "center", fontSize: 16, padding: 14 }}>
-          {loading ? "⏳ Generuję..." : <><Icon d={ic.spark} size={18} color="#fff" fill="#fff" /> Generuj post</>}
+        <Btn onClick={generate} variant="orange" disabled={loading} style={{width:"100%",justifyContent:"center",fontSize:16,padding:14}}>
+          {loading?"⏳ Generuję...":<><Ico d={I.sp} s={18} c="#fff" f="#fff"/> Generuj post</>}
         </Btn>
-        {post && (
-          <Card style={{ marginTop: 16, background: "#FFFBF5", border: "1.5px solid #F4A26140" }}>
-            <div style={{ lineHeight: 1.7, whiteSpace: "pre-wrap", fontSize: 15 }}>{post}</div>
-            <button onClick={copy} style={{ marginTop: 14, background: copied ? "#3DAA72" : "#F4A261", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 600, fontSize: 14, cursor: "pointer", width: "100%", fontFamily: "inherit" }}>{copied ? "✓ Skopiowano!" : "📋 Kopiuj do schowka"}</button>
+        {post&&(
+          <Card style={{marginTop:16,background:"#FFFBF5",border:"1.5px solid #F4A26140"}}>
+            <div style={{lineHeight:1.7,whiteSpace:"pre-wrap",fontSize:15}}>{post}</div>
+            <button onClick={()=>{navigator.clipboard.writeText(post);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{marginTop:14,background:copied?"#3DAA72":"#F4A261",color:"#fff",border:"none",borderRadius:10,padding:"10px 16px",fontWeight:600,fontSize:14,cursor:"pointer",width:"100%",fontFamily:"inherit"}}>
+              {copied?"✓ Skopiowano!":"📋 Kopiuj do schowka"}
+            </button>
           </Card>
         )}
       </div>
@@ -634,49 +980,95 @@ function Marketing() {
   );
 }
 
-// ─── APP ────────────────────────────────────────────────────────────────────
-const tabs = [
-  { id: "dashboard", icon: ic.home, label: "Pulpit" },
-  { id: "patients", icon: ic.users, label: "Pacjenci" },
-  { id: "rentals", icon: ic.equip, label: "Sprzęt" },
-  { id: "finances", icon: ic.fin, label: "Finanse" },
-  { id: "marketing", icon: ic.mkt, label: "Marketing" },
+// ── APP ───────────────────────────────────────────────────────────────────────
+const TABS=[
+  {id:"dashboard",i:I.home,l:"Pulpit"},
+  {id:"patients",i:I.users,l:"Pacjenci"},
+  {id:"rentals",i:I.equip,l:"Sprzęt"},
+  {id:"finances",i:I.fin,l:"Finanse"},
+  {id:"marketing",i:I.mkt,l:"Marketing"},
 ];
 
 function App() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("dashboard");
+  const [tab,setTab]=useState("dashboard");
+  const [visits,setVisits]     = usePersistedState("fizjo-visits",   VISITS);
+  const [patients,setPatients] = usePersistedState("fizjo-patients", PATIENTS);
+  const [rentals,setRentals]   = usePersistedState("fizjo-rentals",  MOCK_RENTALS);
+  const [finances,setFinances] = usePersistedState("fizjo-finances", FINANCES);
 
+  // Auto-sync: wizyty i wpłaty z wypożyczeń -> finanse
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setLoading(false); });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => setSession(session));
-    return () => subscription.unsubscribe();
-  }, []);
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    setFinances(prev => {
+      const existingIds = new Set(prev.map(f => f.sourceId).filter(Boolean));
+      const toAdd = [];
 
-  if (loading) return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F2F5F7" }}><div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 20, color: "#0A7C7C" }}>ZubrzyckiFizjo</div></div>;
-  if (!session) return <Auth />;
+      // Wizyty zakończone (data+godzina minęła, data <= dziś)
+      visits.forEach(v => {
+        const sourceId = "visit-" + v.id;
+        if (existingIds.has(sourceId)) return;
+        const visitDT = new Date(v.date + "T" + (v.timeStart || v.time || "00:00") + ":00");
+        if (visitDT <= now && v.date <= todayStr) {
+          toAdd.push({
+            id: Date.now() + Math.random(),
+            sourceId,
+            date: v.date,
+            type: "przychód",
+            category: "Wizyta",
+            amount: v.price || 0,
+            description: "Wizyta – " + v.patientName
+          });
+        }
+      });
+
+      // Płatności z wypożyczeń (data płatności <= dziś)
+      rentals.forEach(r => {
+        (r.payments || []).forEach(p => {
+          const sourceId = "payment-" + p.id;
+          if (existingIds.has(sourceId)) return;
+          if (p.date <= todayStr) {
+            toAdd.push({
+              id: Date.now() + Math.random(),
+              sourceId,
+              date: p.date,
+              type: "przychód",
+              category: "Wypożyczalnia",
+              amount: p.amount,
+              description: "Wypożyczenie – " + r.patientName + " (" + r.equipment + ")"
+            });
+          }
+        });
+      });
+
+      if (toAdd.length === 0) return prev;
+      return [...toAdd, ...prev];
+    });
+  }, [visits, rentals]);
 
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", background: "#F2F5F7", minHeight: "100vh" }}>
-      <div style={{ paddingBottom: 80, minHeight: "100vh" }}>
-        {tab === "dashboard" && <Dashboard user={session.user} />}
-        {tab === "patients" && <Patients user={session.user} />}
-        {tab === "rentals" && <Rentals user={session.user} />}
-        {tab === "finances" && <Finances user={session.user} />}
-        {tab === "marketing" && <Marketing />}
+    <>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased}input,select,textarea,button{font-family:'DM Sans',sans-serif}::-webkit-scrollbar{display:none}`}</style>
+      <div style={{maxWidth:480,margin:"0 auto",background:"#F2F5F7",minHeight:"100vh"}}>
+        <div style={{paddingBottom:80,minHeight:"100vh"}}>
+          {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} setFinances={setFinances}/>}
+          {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} setFinances={setFinances}/>}
+          {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} setFinances={setFinances}/>}
+          {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} rentals={rentals}/>}
+          {tab==="marketing"&&<Marketing/>}
+        </div>
+        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#fff",borderTop:"1px solid #E4EAF0",display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.06)"}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit"}}>
+              <div style={{width:36,height:36,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <Ico d={t.i} s={18} c={tab===t.id?"#fff":"#7A8FA6"}/>
+              </div>
+              <span style={{fontSize:10,fontWeight:600,color:tab===t.id?"#0A7C7C":"#7A8FA6"}}>{t.l}</span>
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#fff", borderTop: "1px solid #E4EAF0", display: "flex", padding: "8px 0 12px", zIndex: 50, boxShadow: "0 -4px 20px rgba(0,0,0,0.06)" }}>
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", fontFamily: "inherit" }}>
-            <div style={{ width: 36, height: 36, borderRadius: 12, background: tab === t.id ? "#0A7C7C" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Icon d={t.icon} size={18} color={tab === t.id ? "#fff" : "#7A8FA6"} />
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 600, color: tab === t.id ? "#0A7C7C" : "#7A8FA6" }}>{t.label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
+    </>
   );
 }
 
