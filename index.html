@@ -15,6 +15,9 @@
     body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
     input,select,textarea,button{font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent}
     ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
+    .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;background:#F2F5F7}
+    .spinner{width:40px;height:40px;border:3px solid #E4EAF0;border-top-color:#0A7C7C;border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
@@ -22,13 +25,60 @@
   <script type="text/babel">
     const { useState, useEffect, useCallback, useMemo } = React;
 
+
+const SUPA_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxanJsenNkZnlqZWFqZmthdGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjUzMzgsImV4cCI6MjA4ODE0MTMzOH0.sFWfnIV0tpNnwB65du9dNYTMSelrlEpMXxWf4Mcww4g";
+
+async function dbGet(key) {
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/app_data?key=eq.${key}&select=value`, {
+      headers: { "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` }
+    });
+    const data = await r.json();
+    return data?.[0]?.value ?? null;
+  } catch(e) { return null; }
+}
+
+async function dbSet(key, value) {
+  try {
+    await fetch(`${SUPA_URL}/rest/v1/app_data`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPA_KEY,
+        "Authorization": `Bearer ${SUPA_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({ key, value })
+    });
+  } catch(e) {}
+}
+
 function usePersistedState(key, defaultValue) {
   const [state, setState] = useState(defaultValue);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    dbGet(key).then(val => {
+      if (val !== null) setState(val);
+      setLoaded(true);
+    });
+  }, [key]);
+
   const set = useCallback((val) => {
-    setState(prev => typeof val === "function" ? val(prev) : val);
-  }, []);
-  return [state, set, true];
+    setState(prev => {
+      const next = typeof val === "function" ? val(prev) : val;
+      dbSet(key, next);
+      return next;
+    });
+  }, [key]);
+
+  return [state, set, loaded];
 }
+
+
+
 
 const Ico = ({d,s=22,c="currentColor",f="none"}) => <svg width={s} height={s} viewBox="0 0 24 24" fill={f} stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
 const I = {
@@ -122,22 +172,9 @@ function PatientPicker({label="Pacjent", value, onChange, onSelect, patients, re
 }
 
 // ── MOCK DATA ────────────────────────────────────────────────────────────────
-const PATIENTS = [
-  {id:1,name:"Krzysztof Malinowski",phone:"601 234 567",address:"ul. Zwycięstwa 12, Gliwice",diagnosis:"Po endoprotezoplastyce biodra (podejście przednie)",notes:"Wymaga CPM"},
-  {id:2,name:"Maria Kowalska",phone:"512 345 678",address:"ul. Korfantego 5, Katowice",diagnosis:"Polineuropatia, ryzyko upadków",notes:"Używa balkoniku"},
-  {id:3,name:"Andrzej Nowak",phone:"693 456 789",address:"ul. Górna 3, Zabrze",diagnosis:"Złamanie kości udowej przed operacją",notes:"Pacjent w gipsie"},
-];
-const VISITS = [
-  {id:1,patientId:1,patientName:"Krzysztof Malinowski",date:"2026-03-05",time:"10:00",type:"Rehabilitacja domowa",price:150,status:"zaplanowana"},
-  {id:2,patientId:2,patientName:"Maria Kowalska",date:"2026-03-05",time:"12:30",type:"Rehabilitacja domowa",price:150,status:"zaplanowana"},
-  {id:3,patientId:1,patientName:"Krzysztof Malinowski",date:"2026-03-01",time:"10:00",type:"Rehabilitacja domowa",price:150,status:"zakończona"},
-];
-const FINANCES = [
-  {id:1,date:"2026-03-02",type:"przychód",category:"Wizyta",amount:150,description:"Wizyta u Andrzej Nowak"},
-  {id:2,date:"2026-03-01",type:"przychód",category:"Wizyta",amount:150,description:"Wizyta u Krzysztof Malinowski"},
-  {id:3,date:"2026-03-01",type:"przychód",category:"Wypożyczalnia",amount:175,description:"CPM Malinowski (7 dni)"},
-  {id:4,date:"2026-02-28",type:"koszt",category:"Paliwo",amount:120,description:"Paliwo – luty"},
-];
+const PATIENTS = [];
+const VISITS = [];
+const FINANCES = [];
 
 function visitStatus(v) {
   const now = new Date();
@@ -488,11 +525,7 @@ const EQUIPMENT_LIST = [
   "Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula",
 ];
 
-const MOCK_RENTALS = [
-  {id:1,equipment:"Artromot K1 2025",patientName:"Krzysztof Malinowski",phone:"601 234 567",address:"ul. Zwycięstwa 12, Gliwice",startDate:"2026-02-20",endDate:"2026-03-20",renewable:false,amount:400,amountPaid:200,payments:[{id:1,amount:200,date:"2026-02-20"}],notes:"Ostrożnie z zakresem — max 90°",status:"aktywne"},
-  {id:2,equipment:"Ambonka Paula",patientName:"Maria Kowalska",phone:"512 345 678",address:"ul. Korfantego 5, Katowice",startDate:"2026-02-15",endDate:null,renewable:true,amount:200,amountPaid:200,payments:[{id:1,amount:200,date:"2026-02-15"}],notes:"",status:"aktywne"},
-  {id:3,equipment:"Kinetec Spectra",patientName:"Andrzej Nowak",phone:"693 456 789",address:"ul. Górna 3, Zabrze",startDate:"2026-01-10",endDate:"2026-02-10",renewable:false,amount:350,amountPaid:350,payments:[{id:1,amount:350,date:"2026-01-10"}],notes:"",status:"zakończone"},
-];
+const MOCK_RENTALS = [];
 
 const emptyRentalForm = {equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:new Date().toISOString().split("T")[0],endDate:"",renewable:false,amount:"",amountPaid:"",notes:""};
 
@@ -1036,13 +1069,9 @@ const TABS=[
   {id:"marketing",i:I.mkt,l:"Marketing"},
 ];
 
-function App() {
+function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances}) {
   const [tab,setTab]=useState("dashboard");
   const [deepLinkRental,setDeepLinkRental]=useState(null);
-  const [visits,setVisits]     = usePersistedState("fizjo-visits",   VISITS);
-  const [patients,setPatients] = usePersistedState("fizjo-patients", PATIENTS);
-  const [rentals,setRentals]   = usePersistedState("fizjo-rentals",  MOCK_RENTALS);
-  const [finances,setFinances] = usePersistedState("fizjo-finances", FINANCES);
 
   const goToRental = (id) => { setDeepLinkRental(id); setTab("rentals"); };
 
@@ -1101,8 +1130,31 @@ function App() {
   );
 }
 
+    function AppWrapper() {
+      const [visits, setVisits, visitsLoaded]       = usePersistedState("fizjo-visits",    VISITS);
+      const [patients, setPatients, patientsLoaded] = usePersistedState("fizjo-patients",  PATIENTS);
+      const [rentals, setRentals, rentalsLoaded]    = usePersistedState("fizjo-rentals",   MOCK_RENTALS);
+      const [finances, setFinances, financesLoaded] = usePersistedState("fizjo-finances",  FINANCES);
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+      const allLoaded = visitsLoaded && patientsLoaded && rentalsLoaded && financesLoaded;
+
+      if (!allLoaded) return (
+        <div className="loader">
+          <div className="spinner"/>
+          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div>
+          <div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div>
+        </div>
+      );
+
+      return <App
+        visits={visits} setVisits={setVisits}
+        patients={patients} setPatients={setPatients}
+        rentals={rentals} setRentals={setRentals}
+        finances={finances} setFinances={setFinances}
+      />;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
   </script>
 </body>
 </html>
