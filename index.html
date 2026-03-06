@@ -23,7 +23,8 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useContext, createContext } = React;
+    const DarkCtx = createContext(false);
 
     const SUPA_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co";
     const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxanJsenNkZnlqZWFqZmthdGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjUzMzgsImV4cCI6MjA4ODE0MTMzOH0.sFWfnIV0tpNnwB65du9dNYTMSelrlEpMXxWf4Mcww4g";
@@ -80,11 +81,15 @@
     const Ico = ({d,s=20,c="#1C2B3A",f="none"}) => <svg width={s} height={s} viewBox="0 0 24 24" fill={f} stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d.split(" M").map((p,i)=><path key={i} d={(i?"M":"")+p}/>)}</svg>;
 
     const Btn = ({children,onClick,variant="primary",small,disabled,style={}}) => {
-      const v={primary:{background:"#0A7C7C",color:"#fff"},secondary:{background:"#E6F4F4",color:"#0A7C7C"},orange:{background:"#F4A261",color:"#fff"},danger:{background:"#FEE2E2",color:"#E05C5C"}};
+      const dk=useContext(DarkCtx);
+      const v={primary:{background:"#0A7C7C",color:"#fff"},secondary:{background:dk?"#1E3A3A":"#E6F4F4",color:"#0A7C7C"},orange:{background:"#F4A261",color:"#fff"},danger:{background:dk?"#3A1C1C":"#FEE2E2",color:"#E05C5C"}};
       return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"8px 14px":"13px 18px",fontSize:small?13:15,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,opacity:disabled?.5:1,fontFamily:"inherit",...style}}>{children}</button>;
     };
-    const Card = ({children,onClick,style={}}) => <div onClick={onClick} style={{background:"#fff",borderRadius:16,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
-    const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"18",color,borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700}}>{children}</span>;
+    const Card = ({children,onClick,style={}}) => {
+      const dk=useContext(DarkCtx);
+      return <div onClick={onClick} style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
+    };
+    const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"28",color,borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700}}>{children}</span>;
     const Empty = ({text}) => <div style={{textAlign:"center",padding:"40px 20px",color:"#7A8FA6",fontSize:14}}>{text}</div>;
     const Av = ({name}) => { const i=(name||"?").split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(); return <div style={{width:40,height:40,borderRadius:12,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:"#0A7C7C",flexShrink:0}}>{i}</div>; };
 
@@ -94,11 +99,12 @@
     }
 
     function Modal({title,onClose,children}) {
-      return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
+      const dk=useContext(DarkCtx);
+      return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+        <div style={{background:dk?"#0F1F1F":"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-            <div style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700}}>{title}</div>
-            <button onClick={onClose} style={{background:"#F2F5F7",border:"none",borderRadius:10,width:32,height:32,cursor:"pointer",fontSize:18,color:"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{title}</div>
+            <button onClick={onClose} style={{background:dk?"#1A2A2A":"#F2F5F7",border:"none",borderRadius:10,width:32,height:32,cursor:"pointer",fontSize:18,color:"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
           </div>
           {children}
         </div>
@@ -106,37 +112,41 @@
     }
 
     function Inp({label,value,onChange,type="text",placeholder=""}) {
+      const dk=useContext(DarkCtx);
+      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       return <div style={{marginBottom:14}}>
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
-        <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)}
-          style={{width:"100%",padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
+        <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
       </div>;
     }
     function Txa({label,value,onChange,rows=3,placeholder=""}) {
+      const dk=useContext(DarkCtx);
+      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",resize:"vertical"};
       return <div style={{marginBottom:14}}>
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
-        <textarea value={value||""} rows={rows} placeholder={placeholder} onChange={e=>onChange(e.target.value)}
-          style={{width:"100%",padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,outline:"none",background:"#FAFCFD",fontFamily:"inherit",resize:"vertical"}}/>
+        <textarea value={value||""} rows={rows} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
       </div>;
     }
     function Sel({label,value,onChange,options}) {
+      const dk=useContext(DarkCtx);
+      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       return <div style={{marginBottom:14}}>
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
-        <select value={value} onChange={e=>onChange(e.target.value)}
-          style={{width:"100%",padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}>
+        <select value={value} onChange={e=>onChange(e.target.value)} style={s}>
           {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>;
     }
     function PatientPicker({label,value,onChange,onSelect,patients}) {
+      const dk=useContext(DarkCtx);
       const [open,setOpen]=useState(false);
       const matches=(patients||[]).filter(p=>value&&p.name.toLowerCase().includes(value.toLowerCase())).slice(0,6);
       return <div style={{marginBottom:14,position:"relative"}}>
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <input value={value||""} placeholder="Wpisz imię pacjenta..." onChange={e=>{onChange(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
-          style={{width:"100%",padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
-        {open&&matches.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.12)",zIndex:200,overflow:"hidden"}}>
-          {matches.map(p=><div key={p.id} onPointerDown={e=>{e.preventDefault();onChange(p.name);if(onSelect)onSelect(p);setOpen(false);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:"1px solid #F2F5F7",fontSize:14,fontWeight:500}}>
+          style={{width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+        {open&&matches.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden"}}>
+          {matches.map(p=><div key={p.id} onPointerDown={e=>{e.preventDefault();onChange(p.name);if(onSelect)onSelect(p);setOpen(false);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>
             {p.name} <span style={{color:"#7A8FA6",fontSize:12}}>{p.phone}</span>
           </div>)}
         </div>}
@@ -149,6 +159,7 @@
     }
 
     function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental}) {
+      const dk=useContext(DarkCtx);
       const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
       const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
       const [openDay,setOpenDay]=useState(null);
@@ -220,7 +231,7 @@
           </div>
         </div>
 
-        <div style={{background:"#fff",borderRadius:16,padding:"12px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
             {DOW.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
           </div>
@@ -231,8 +242,8 @@
               const rc=(rentalEventsByDay[d]||[]).length;
               const isToday=d===todayDay;
               const isOpen=d===openDay;
-              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?"#E6F4F4":"transparent"}}>
-                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":"#1C2B3A"}}>{d}</span>
+              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):"transparent"}}>
+                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":(dk?"#C8E8E8":"#1C2B3A")}}>{d}</span>
                 <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
                   {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
                   {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
@@ -240,37 +251,37 @@
               </div>;
             })}
           </div>
-          <div style={{display:"flex",gap:12,marginTop:10,paddingTop:8,borderTop:"1px solid #F2F5F7",justifyContent:"center"}}>
+          <div style={{display:"flex",gap:12,marginTop:10,paddingTop:8,borderTop:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,justifyContent:"center"}}>
             <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#0A7C7C",display:"inline-block"}}/>Wizyty</span>
             <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#7C6AF4",display:"inline-block"}}/>Wypożyczenia</span>
           </div>
         </div>
 
-        {openDay&&<div style={{marginTop:8,background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+        {openDay&&<div style={{marginTop:8,background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <div style={{fontWeight:700,fontSize:14}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
+            <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
             <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
           </div>
 
           {dayVisits.length===0&&dayRentals.length===0&&
             <div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak zdarzeń tego dnia</div>}
 
-          {dayVisits.map(v=><div key={v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid #F2F5F7",cursor:"pointer"}}>
+          {dayVisits.map(v=><div key={v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <div style={{width:6,height:6,borderRadius:"50%",background:"#0A7C7C",flexShrink:0}}/>
-              <div><div style={{fontWeight:600,fontSize:14}}>{v.time} · {v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
+              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
             </div>
-            <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
+            <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
           </div>)}
 
           {dayRentals.map((ev,i)=>{
             const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
             const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
             const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.r.amount+" zł";
-            return <div key={i} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid #F2F5F7",cursor:"pointer"}}>
+            return <div key={i} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14}}>{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
               </div>
               <Badge color={color}>{sub}</Badge>
             </div>;
@@ -282,15 +293,14 @@
     // ── DASHBOARD ─────────────────────────────────────────────────────────────
     function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental}) {
       const today = todayLocal();
+      const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
       const [vf,setVf]=useState(emptyVisit);
       const [editV,setEditV]=useState(null);
       const [confirmDel,setConfirmDel]=useState(null);
       const [toast,setToast]=useState(null);
 
-      const tomorrowDate=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
       const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
-      const tomorrowV = visits.filter(v=>v.date===tomorrowDate).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
       const upcoming = rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
       const unpaidCycles = rentals.filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid));
 
@@ -331,7 +341,7 @@
       return <>
         <div>
           <div style={{padding:"28px 20px 16px"}}>
-            <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Pulpit</div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>{dk?"🌙 Pulpit":"Pulpit"}</div>
             <div style={{fontSize:13,color:"#7A8FA6",marginTop:4,display:"flex",justifyContent:"space-between"}}>
               <span>{new Date(today+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</span>
               <span style={{fontWeight:600,color:"#0A7C7C"}}><ClockDisplay/></span>
@@ -355,17 +365,6 @@
               onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
               onGoToRental={goToRental}
             />
-            {tomorrowV.length>0&&<>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Jutro ({tomorrowV.length})</div>
-              {tomorrowV.map(v=>
-                <Card key={v.id} style={{opacity:.85}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div><div style={{fontWeight:600}}>{v.time} · {v.patientName}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{v.type}</div></div>
-                    <div style={{fontWeight:600}}>{v.price} zł</div>
-                  </div>
-                </Card>
-              )}
-            </>}
             {upcoming.length>0&&<>
               <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Najbliższe zwroty</div>
               {upcoming.map(r=>{const d=dateDiff(today,r.endDate);return(
@@ -412,6 +411,7 @@
           <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
           <Sel label="Status" value={editV.status||"zaplanowana"} onChange={v=>setEditV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
           <Btn onClick={saveEdit} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
+          <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setVf({...editV,id:undefined,date:todayLocal(),status:"zaplanowana",price:String(editV.price)});setEditV(null);setShowAdd(true);}}>📋 Powiel wizytę</Btn>
           <Btn variant="danger" onClick={()=>setConfirmDel(editV.id)} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
         </Modal>}
 
@@ -439,7 +439,10 @@
       const [editV,setEditV]=useState(null);
       const [confirmDelV,setConfirmDelV]=useState(null);
       const [search,setSearch]=useState("");
+      const [sort,setSort]=useState("alpha");
       const [toast,setToast]=useState(null);
+      const [showQuickV,setShowQuickV]=useState(false);
+      const [quickV,setQuickV]=useState(null);
 
       const pat = selId ? patients.find(p=>p.id===selId) : null;
       if(selId && !pat) { setSelId(null); return null; }
@@ -607,6 +610,7 @@
             <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
             <Sel label="Status" value={editV.status||"zaplanowana"} onChange={v=>setEditV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
             <Btn onClick={()=>{const u={...editV,price:+editV.price};setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));syncFinance(u,false);setEditV(null);setToast("Zmiany zapisane");}} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
+            <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setVf({...editV,date:todayLocal(),status:"zaplanowana",price:String(editV.price)});setEditV(null);setShowAddV(true);}}>📋 Powiel wizytę</Btn>
             <Btn variant="danger" onClick={()=>setConfirmDelV(editV.id)} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
           </Modal>}
 
@@ -624,7 +628,6 @@
       // Lista pacjentów
       const sl=search.toLowerCase(),sn=search.replace(/\s/g,"");
       const filtered=patients.filter(p=>p.name.toLowerCase().includes(sl)||(p.phone||"").replace(/\s/g,"").includes(sn)||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl));
-      const [sort,setSort]=useState("alpha");
       const lastVisitDate=p=>visits.filter(v=>v.patientId===p.id).map(v=>v.date).sort((a,b)=>b.localeCompare(a))[0]||"";
       const sorted=[...filtered].sort((a,b)=>sort==="alpha"?a.name.localeCompare(b.name,"pl"):lastVisitDate(b).localeCompare(lastVisitDate(a)));
       return <div>
@@ -648,7 +651,10 @@
                   {sort==="recent"&&lv&&<div style={{fontSize:11,color:"#0A7C7C",marginTop:2}}>ostatnia wizyta: {lv}</div>}
                 </div>
               </div>
-              <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <button onClick={e=>{e.stopPropagation();setQuickV({...emptyVisit(),patientName:p.name,patientId:p.id});setShowQuickV(true);}} style={{width:30,height:30,borderRadius:10,background:"#0A7C7C",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>
+                <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
+              </div>
             </div>
             {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #E4EAF0"}}>{p.diagnosis}</div>}
           </Card>);})}
@@ -660,6 +666,22 @@
           <Txa label="Diagnoza" value={newForm.diagnosis} onChange={v=>setNewForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={newForm.notes} onChange={v=>setNewForm(f=>({...f,notes:v}))} rows={2}/>
           <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;setPatients(ps=>[...ps,{...newForm,id:Date.now()}]);setNewForm({name:"",phone:"",address:"",diagnosis:"",notes:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
+        </Modal>}
+        {showQuickV&&quickV&&<Modal title={"Wizyta – "+quickV.patientName} onClose={()=>setShowQuickV(false)}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Inp label="Data" value={quickV.date} onChange={v=>setQuickV(f=>({...f,date:v}))} type="date"/>
+            <Inp label="Godzina" value={quickV.time} onChange={v=>setQuickV(f=>({...f,time:v}))} type="time"/>
+          </div>
+          <Sel label="Typ" value={quickV.type} onChange={v=>setQuickV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
+          <Inp label="Cena (zł)" value={quickV.price} onChange={v=>setQuickV(f=>({...f,price:v}))} type="number"/>
+          <Sel label="Status" value={quickV.status} onChange={v=>setQuickV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
+          <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+            const nv={...quickV,id:Date.now(),price:+quickV.price};
+            setVisits(vs=>[...vs,nv]);
+            const done=nv.status==="zakończona"||new Date(nv.date+"T"+(nv.time||"00:00")+":00")<=new Date();
+            if(done)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"visit-"+nv.id,date:nv.date,type:"przychód",category:"Wizyta",amount:nv.price,description:"Wizyta – "+nv.patientName},...fs]);
+            setShowQuickV(false);setToast("Wizyta dodana");
+          }}>Zapisz wizytę</Btn>
         </Modal>}
       </div>;
     }
@@ -1117,13 +1139,20 @@
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"marketing",i:I.mkt,l:"Marketing"}];
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,dark,setDark}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
       const goToRental=id=>{setDlRental(id);setTab("rentals");};
+      const dk=dark;
+
+      // Long-press on Pulpit to toggle dark mode
+      const lpTimer=React.useRef(null);
+      const lpStart=()=>{lpTimer.current=setTimeout(()=>{setDark(d=>!d);},700);};
+      const lpEnd=()=>{if(lpTimer.current)clearTimeout(lpTimer.current);};
+
       return <>
-        <div style={{maxWidth:480,margin:"0 auto",background:"#F2F5F7",minHeight:"100vh"}}>
+        <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
             {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental}/>}
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
@@ -1131,17 +1160,24 @@
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances}/>}
             {tab==="marketing"&&<Marketing/>}
           </div>
-          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#fff",borderTop:"1px solid #E4EAF0",display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.06)"}}>
-            {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit"}}>
-              <div style={{width:36,height:36,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={18} c={tab===t.id?"#fff":"#7A8FA6"}/></div>
-              <span style={{fontSize:10,fontWeight:600,color:tab===t.id?"#0A7C7C":"#7A8FA6"}}>{t.l}</span>
-            </button>)}
+          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
+            {TABS.map(t=>{
+              const isDash=t.id==="dashboard";
+              return <button key={t.id}
+                onClick={()=>setTab(t.id)}
+                onMouseDown={isDash?lpStart:undefined} onMouseUp={isDash?lpEnd:undefined} onMouseLeave={isDash?lpEnd:undefined}
+                onTouchStart={isDash?lpStart:undefined} onTouchEnd={isDash?lpEnd:undefined}
+                style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit",userSelect:"none",WebkitUserSelect:"none"}}>
+                <div style={{width:36,height:36,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={18} c={tab===t.id?"#fff":dk?"#5A8A8A":"#7A8FA6"}/></div>
+                <span style={{fontSize:10,fontWeight:600,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#7A8FA6"}}>{t.l}</span>
+              </button>;
+            })}
           </div>
         </div>
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,dark,setDark}) {
       // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
       // or are new (startDate is in current month)
       useEffect(()=>{
@@ -1182,7 +1218,7 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} dark={dark} setDark={setDark}/>;
     }
 
     function AppWrapper() {
@@ -1190,8 +1226,9 @@
       const [patients,setPatients,v2]=usePersistedState("fizjo-patients",[]);
       const [rentals,setRentals,v3]=usePersistedState("fizjo-rentals",[]);
       const [finances,setFinances,v4]=usePersistedState("fizjo-finances",[]);
+      const [dark,setDark]=useState(false);
       if(!v1||!v2||!v3||!v4)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
-      return <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances}/>;
+      return <DarkCtx.Provider value={dark}><AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} dark={dark} setDark={setDark}/></DarkCtx.Provider>;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
