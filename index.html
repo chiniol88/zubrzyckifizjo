@@ -1224,38 +1224,36 @@
 
     function NFZ({nfzCases,setNfzCases}) {
       const dk = useContext(DarkCtx);
-      const [showAdd,  setShowAdd]  = useState(false);
-      const [form,     setForm]     = useState(emptyNFZ);
-      const [selId,    setSelId]    = useState(null);
-      const [editForm, setEditForm] = useState(null);
-      const [confirmDel, setConfirmDel] = useState(false);
-      const [toast,    setToast]    = useState(null);
+      const [showAdd,setShowAdd] = useState(false);
+      const [form,setForm] = useState(emptyNFZ);
+      const [selId,setSelId] = useState(null);
+      const [editForm,setEditForm] = useState(null);
+      const [confirmDel,setConfirmDel] = useState(false);
+      const [toast,setToast] = useState(null);
 
       const cases = nfzCases || [];
 
-      // ── Detail view ──
       if (selId !== null) {
         const cas = cases.find(c => c.id === selId);
         if (!cas) { setSelId(null); return null; }
         return <>
           <div>
-            <button onClick={() => setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
-              <Ico d={I.back} s={18} c="#0A7C7C"/> NFZ
+            <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
+              <Ico d={I.back} s={18} c="#0A7C7C"/> Wózki NFZ
             </button>
             <div style={{padding:"16px 20px 0"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                 <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{cas.patientName}</div>
-                <Btn small variant="secondary" onClick={() => setEditForm({...cas})}>✏️ Edytuj</Btn>
+                <Btn small variant="secondary" onClick={()=>setEditForm({...cas})}>✏️ Edytuj</Btn>
               </div>
-
               <Card style={{marginBottom:10}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Dane pacjenta</div>
                 <div style={{display:"grid",gap:10}}>
-                  {cas.phone && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  {cas.phone&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,color:dk?"#C8E8E8":"#1C2B3A"}}>{cas.phone}</span>
                     <a href={`tel:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>
                   </div>}
-                  {cas.address && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  {cas.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{cas.address}</span>
                     <a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(cas.address)}`} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">🗺️ Trasa</Btn></a>
                   </div>}
@@ -1267,23 +1265,19 @@
                   </div>
                 </div>
               </Card>
-
-              {(cas.wheelchairModel || cas.orderDate) && <Card style={{marginBottom:10}}>
+              {(cas.wheelchairModel||cas.orderDate)&&<Card style={{marginBottom:10}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wózek</div>
-                {cas.wheelchairModel && <div style={{marginBottom:6}}><span style={{fontSize:12,color:"#7A8FA6"}}>Model: </span><span style={{fontWeight:600,fontSize:14}}>{cas.wheelchairModel}</span></div>}
-                {cas.orderDate && <div><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>}
+                {cas.wheelchairModel&&<div style={{marginBottom:6}}><span style={{fontSize:12,color:"#7A8FA6"}}>Model: </span><span style={{fontWeight:600,fontSize:14}}>{cas.wheelchairModel}</span></div>}
+                {cas.orderDate&&<div><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>}
               </Card>}
-
-              {cas.notes && <Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
+              {cas.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
                 <div style={{fontSize:14,lineHeight:1.6}}>{cas.notes}</div>
               </Card>}
-
-              <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={() => setConfirmDel(true)}>🗑️ Usuń</Btn>
+              <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń</Btn>
             </div>
           </div>
-
-          {editForm && <Modal title="Edytuj" onClose={() => setEditForm(null)}>
+          {editForm&&<Modal title="Edytuj" onClose={()=>setEditForm(null)}>
             <Inp label="Imię i nazwisko" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Inp label="Telefon" value={editForm.phone||""} onChange={v=>setEditForm(f=>({...f,phone:v}))} type="tel"/>
@@ -1296,13 +1290,9 @@
             <Inp label="Model wózka" value={editForm.wheelchairModel||""} onChange={v=>setEditForm(f=>({...f,wheelchairModel:v}))} placeholder="np. Wózek aktywny X"/>
             <Inp label="Data zamówienia" value={editForm.orderDate||""} onChange={v=>setEditForm(f=>({...f,orderDate:v}))} type="date"/>
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
-            <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-              setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...editForm}:x));
-              setEditForm(null);setToast("Zapisano zmiany");
-            }}>Zapisz zmiany</Btn>
+            <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...editForm}:x));setEditForm(null);setToast("Zapisano zmiany");}}>Zapisz zmiany</Btn>
           </Modal>}
-
-          {confirmDel && <Modal title="Usuń" onClose={()=>setConfirmDel(false)}>
+          {confirmDel&&<Modal title="Usuń" onClose={()=>setConfirmDel(false)}>
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć tę pozycję?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
@@ -1313,30 +1303,28 @@
         </>;
       }
 
-      // ── List view ──
       return <div>
         <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wózki NFZ</div>
           <Btn small onClick={()=>{setForm(emptyNFZ());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
         </div>
         <div style={{padding:"0 20px"}}>
-          {cases.length===0 && <Empty text="Brak wpisów"/>}
-          {cases.map(cas => <Card key={cas.id} onClick={()=>setSelId(cas.id)}>
+          {cases.length===0&&<Empty text="Brak wpisów"/>}
+          {cases.map(cas=><Card key={cas.id} onClick={()=>setSelId(cas.id)}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{cas.patientName}</div>
                 <div style={{fontSize:13,color:"#7A8FA6",display:"flex",gap:10,flexWrap:"wrap"}}>
-                  {cas.wheelchairModel && <span>🦽 {cas.wheelchairModel}</span>}
-                  {cas.orderDate && <span>📅 {cas.orderDate}</span>}
-                  {cas.hasDisabilityCert && <span style={{color:"#3DAA72",fontWeight:600}}>✓ Orzeczenie</span>}
+                  {cas.wheelchairModel&&<span>🦽 {cas.wheelchairModel}</span>}
+                  {cas.orderDate&&<span>📅 {cas.orderDate}</span>}
+                  {cas.hasDisabilityCert&&<span style={{color:"#3DAA72",fontWeight:600}}>✓ Orzeczenie</span>}
                 </div>
               </div>
               <Ico d="M9 18l6-6-6-6" s={18} c="#7A8FA6"/>
             </div>
           </Card>)}
         </div>
-
-        {showAdd && <Modal title="Nowy wózek NFZ" onClose={()=>setShowAdd(false)}>
+        {showAdd&&<Modal title="Nowy wózek NFZ" onClose={()=>setShowAdd(false)}>
           <Inp label="Imię i nazwisko *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
@@ -1349,24 +1337,11 @@
           <Inp label="Model wózka" value={form.wheelchairModel} onChange={v=>setForm(f=>({...f,wheelchairModel:v}))} placeholder="np. Wózek aktywny X"/>
           <Inp label="Data zamówienia" value={form.orderDate} onChange={v=>setForm(f=>({...f,orderDate:v}))} type="date"/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
-          <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-            if(!form.patientName)return;
-            setNfzCases(cs=>[{...form,id:Date.now()},...(cs||[])]);
-            setForm(emptyNFZ());setShowAdd(false);setToast("Dodano");
-          }}>Dodaj</Btn>
+          <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.patientName)return;setNfzCases(cs=>[{...form,id:Date.now()},...(cs||[])]);setForm(emptyNFZ());setShowAdd(false);setToast("Dodano");}}>Dodaj</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </div>;
     }
-      {k:"nowa",       l:"Nowa sprawa",   c:"#7A8FA6"},
-      {k:"upoważnienie",l:"Upoważnienie", c:"#7C6AF4"},
-      {k:"dokumenty",  l:"Dokumenty",     c:"#F4A261"},
-      {k:"wniosek",    l:"Wniosek",       c:"#0A7C7C"},
-      {k:"zamówiony",  l:"Zamówiony",     c:"#3DAA72"},
-      {k:"dostarczony",l:"Dostarczony ✓", c:"#1C2B3A"},
-    ];
-    const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",status:"nowa",notes:""});
-
 
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"NFZ"}];
