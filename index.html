@@ -231,15 +231,13 @@ function Dashboard({visits, setVisits, rentals, setRentals, finances, setFinance
     const updated = {...editVisit, price:+editVisit.price};
     setVisits(vs=>vs.map(v=>v.id===updated.id?{...v,...updated}:v));
     const sourceId = "visit-"+updated.id;
-    const finExists = finances.some(f=>f.sourceId===sourceId);
+    const finExists = finances.some(f=>f.sourceId===sourceId && !f._deleted);
     const isDone = updated.status==="zakończona" || new Date(updated.date+"T"+(updated.time||"00:00")+":00") <= new Date();
     if(finExists) {
-      // Aktualizuj istniejący wpis
-      setFinances(fs=>fs.map(f=>f.sourceId===sourceId
+      setFinances(fs=>fs.map(f=>f.sourceId===sourceId && !f._deleted
         ? {...f, amount:updated.price, description:"Wizyta – "+updated.patientName, date:updated.date}
         : f));
     } else if(isDone) {
-      // Utwórz nowy wpis jeśli wizyta zakończona
       setFinances(fs=>[{id:Date.now()+Math.random(),sourceId,date:updated.date,type:"przychód",category:"Wizyta",amount:updated.price||0,description:"Wizyta – "+updated.patientName},...fs]);
     }
     setEditVisit(null);
@@ -359,8 +357,9 @@ function Dashboard({visits, setVisits, rentals, setRentals, finances, setFinance
         <div style={{display:"flex",gap:10}}>
           <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDeleteVisit(null)}>Anuluj</Btn>
           <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{
-            setVisits(vs=>vs.filter(v=>v.id!==confirmDeleteVisit));
-            setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDeleteVisit));
+            const dvId = confirmDeleteVisit;
+            setVisits(vs=>vs.filter(v=>v.id!==dvId));
+            setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+dvId && f.sourceId!=="visit-"+String(dvId)));
             setConfirmDeleteVisit(null);
           }}>Usuń</Btn>
         </div>
@@ -394,10 +393,10 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
     const updated = {...editVisitP, price:+editVisitP.price};
     setVisits(vs=>vs.map(v=>v.id===updated.id?{...v,...updated}:v));
     const sourceId = "visit-"+updated.id;
-    const finExists = finances.some(f=>f.sourceId===sourceId);
+    const finExists = finances.some(f=>f.sourceId===sourceId && !f._deleted);
     const isDone = updated.status==="zakończona" || new Date(updated.date+"T"+(updated.time||"00:00")+":00") <= new Date();
     if(finExists) {
-      setFinances(fs=>fs.map(f=>f.sourceId===sourceId
+      setFinances(fs=>fs.map(f=>f.sourceId===sourceId && !f._deleted
         ? {...f, amount:updated.price, description:"Wizyta – "+updated.patientName, date:updated.date}
         : f));
     } else if(isDone) {
@@ -571,8 +570,8 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
           <Inp label="Adres" value={editPatientForm.address||""} onChange={v=>setEditPatientForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Txa label="Diagnoza" value={editPatientForm.diagnosis||""} onChange={v=>setEditPatientForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={editPatientForm.notes||""} onChange={v=>setEditPatientForm(f=>({...f,notes:v}))} rows={2}/>
-          <Btn style={{width:"100%",justifyContent:"center"}} onClick={savePatient}>Zapisz zmiany</Btn>
-          <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={deletePatient}>🗑️ Usuń pacjenta</Btn>
+          <button type="button" onClick={savePatient} style={{width:"100%",padding:"13px",background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"inherit",marginBottom:8}}>Zapisz zmiany</button>
+          <button type="button" onClick={deletePatient} style={{width:"100%",padding:"13px",background:"#FEE2E2",color:"#E05C5C",border:"none",borderRadius:12,fontSize:15,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>🗑️ Usuń pacjenta</button>
         </Modal>
       )}
 
@@ -597,8 +596,9 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
           <div style={{display:"flex",gap:10}}>
             <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDeleteVisit(null)}>Anuluj</Btn>
             <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{
-              setVisits(vs=>vs.filter(x=>x.id!==confirmDeleteVisit));
-              setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDeleteVisit));
+              const dvId2 = confirmDeleteVisit;
+              setVisits(vs=>vs.filter(x=>x.id!==dvId2));
+              setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+dvId2 && f.sourceId!=="visit-"+String(dvId2)));
               setConfirmDeleteVisit(null);
             }}>Usuń</Btn>
           </div>
@@ -1105,7 +1105,7 @@ function Finances({finances, setFinances, visits, rentals}) {
   const [form,setForm]=useState(()=>({date:(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(),type:"przychód",category:"Wizyta",amount:"",description:""}));
   const [editEntry,setEditEntry]=useState(null);
   const cats={przychód:["Wizyta","Wypożyczalnia","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
-  const mly=finances.filter(f=>f.date.startsWith(month) && !f._deleted);
+  const mly=finances.filter(f=>f.date.startsWith(month));
   const inc=mly.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
   const cst=mly.filter(f=>f.type==="koszt").reduce((s,f)=>s+f.amount,0);
 
@@ -1313,8 +1313,7 @@ function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,
         const d = now; const todayStr = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
         // existingIds includes both active entries AND manually deleted ones (marked with _deleted)
         const existingIds = new Set(finances.map(f => f.sourceId).filter(Boolean));
-        const deletedIds = new Set(finances.filter(f=>f._deleted).map(f=>f.sourceId));
-        const isSkipped = (id) => existingIds.has(id) || deletedIds.has(id);
+        const isSkipped = (id) => existingIds.has(id);
         const toAdd = [];
         visits.forEach(v => {
           const sourceId = "visit-" + v.id;
