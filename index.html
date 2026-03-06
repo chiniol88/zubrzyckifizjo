@@ -153,6 +153,7 @@
 
       const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
       const upcoming = rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
+      const unpaidCycles = rentals.filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid));
 
       const syncFinance = (v, isNew=false) => {
         const done = v.status==="zakończona" || new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
@@ -217,6 +218,17 @@
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div><div style={{fontWeight:600}}>{r.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName} · {r.endDate}</div></div>
                     <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
+                  </div>
+                </Card>
+              );})}
+            </>}
+            {unpaidCycles.length>0&&<>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Do opłacenia 🔄</div>
+              {unpaidCycles.map(r=>{const n=(r.cycles||[]).filter(c=>!c.paid).length;return(
+                <Card key={r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #E05C5C"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div><div style={{fontWeight:600}}>{r.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName}</div></div>
+                    <Badge color="#E05C5C">{n} {n===1?"miesiąc":"mies."}</Badge>
                   </div>
                 </Card>
               );})}
@@ -387,9 +399,10 @@
                       const _pr=rentals.filter(r=>r.patientId===_pid||r.patientName===_pn);
                       const _vids=visits.filter(v=>v.patientId===_pid).map(v=>v.id);
                       const _pids=_pr.flatMap(r=>(r.payments||[]).map(p=>p.id));
+                      const _cids=_pr.flatMap(r=>(r.cycles||[]).map(c=>"cycle-"+r.id+"-"+c.month));
                       setVisits(vs=>vs.filter(v=>v.patientId!==_pid));
                       setRentals(rs=>rs.filter(r=>r.patientId!==_pid&&r.patientName!==_pn));
-                      setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)));
+                      setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)&&!_cids.some(cid=>f.sourceId===cid)));
                       setPatients(ps=>ps.filter(p=>p.id!==_pid));
                       setShowEdit(false);
                       setEditForm(null);
@@ -488,17 +501,42 @@
       </div>;
     }
 
+    function CycleRow({r,cycle,setRentals,setFinances}) {
+      const [amt,setAmt]=useState(String(cycle.amount||""));
+      const label=new Date(cycle.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
+      const sid="cycle-"+r.id+"-"+cycle.month;
+      if(cycle.paid) return (
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
+          <div style={{display:"flex",gap:12,alignItems:"center"}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
+            <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{cycle.amount} zł · {cycle.paidDate}</div></div>
+          </div>
+          <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,paid:false,paidDate:null}:c)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
+        </div>
+      );
+      return (
+        <div style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
+          <div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",marginBottom:8,color:"#E05C5C"}}>⚠️ {label}</div>
+          <div style={{display:"flex",gap:8}}>
+            <input type="number" value={amt} onChange={e=>setAmt(e.target.value)} placeholder="Kwota..." style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
+            <button onClick={()=>{const v=+amt;if(!v)return;setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:todayLocal()}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label},...fs]);}} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Opłać</button>
+          </div>
+        </div>
+      );
+    }
+
     function RCard({r,onClick}) {
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
+      const unpaid=(r.cycles||[]).filter(c=>!c.paid).length;
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
           <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}</div><div style={{fontSize:14}}>{r.patientName}</div></div>
-          {r.status==="aktywne"&&(r.renewable?<Badge color="#7C6AF4">miesięczne</Badge>:<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>)}
+          {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>)}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
-          <span>📅 {r.startDate}{r.endDate?" → "+r.endDate:" → odnawialne"}</span>
-          <span>💰 {r.amount} zł</span>
-          {(r.amount-(r.amountPaid||0))>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {r.amount-(r.amountPaid||0)} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
+          <span>📅 {r.startDate}{r.renewable?" → odnawialne":r.endDate?" → "+r.endDate:""}</span>
+          <span>💰 {r.amount} zł{r.renewable?"/mies.":""}</span>
+          {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(r.amount-(r.amountPaid||0))>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {r.amount-(r.amountPaid||0)} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
         </div>
       </Card>;
     }
@@ -557,33 +595,39 @@
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{r.transport} zł</div></div>}
                 </div>
                 <div style={{borderTop:"1px solid #E4EAF0",paddingTop:12}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Płatność</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                    {[{l:"Kwota",v:r.amount+" zł",c:"#1C2B3A"},{l:"Zapłacono",v:(r.amountPaid||0)+" zł",c:"#3DAA72"},{l:"Pozostało",v:(r.amount-(r.amountPaid||0))+" zł",c:(r.amount-(r.amountPaid||0))>0?"#E05C5C":"#3DAA72"}].map((x,i)=>(
-                      <div key={i} style={{background:x.c==="#1C2B3A"?"#F2F5F7":x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c==="#1C2B3A"?"#E4EAF0":x.c+"30"}`}}>
-                        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v}</div>
-                        <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <PaymentForm rentalId={r.id} rentalAmount={r.amount} amountPaid={r.amountPaid||0} patientName={r.patientName} equipment={r.equipment} setRentals={setRentals} setFinances={setFinances}/>
-                  {(r.payments||[]).length>0&&<div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia wpłat</div>
-                    {[...(r.payments||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>(
-                      <div key={p.id} style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                          <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                            <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72"}}/>
-                            <div><div style={{fontWeight:600,fontSize:14}}>{p.amount} zł</div><div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}</div></div>
+                  {r.renewable ? <>
+                    <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Cykle miesięczne</div>
+                    {(r.cycles||[]).length===0&&<div style={{fontSize:14,color:"#7A8FA6",textAlign:"center",padding:"12px 0"}}>Brak cykli — pojawią się automatycznie</div>}
+                    {[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month)).map(c=><CycleRow key={c.month} r={r} cycle={c} setRentals={setRentals} setFinances={setFinances}/>)}
+                  </> : <>
+                    <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Płatność</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                      {[{l:"Kwota",v:r.amount+" zł",c:"#1C2B3A"},{l:"Zapłacono",v:(r.amountPaid||0)+" zł",c:"#3DAA72"},{l:"Pozostało",v:(r.amount-(r.amountPaid||0))+" zł",c:(r.amount-(r.amountPaid||0))>0?"#E05C5C":"#3DAA72"}].map((x,i)=>(
+                        <div key={i} style={{background:x.c==="#1C2B3A"?"#F2F5F7":x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c==="#1C2B3A"?"#E4EAF0":x.c+"30"}`}}>
+                          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v}</div>
+                          <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <PaymentForm rentalId={r.id} rentalAmount={r.amount} amountPaid={r.amountPaid||0} patientName={r.patientName} equipment={r.equipment} setRentals={setRentals} setFinances={setFinances}/>
+                    {(r.payments||[]).length>0&&<div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
+                      <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia wpłat</div>
+                      {[...(r.payments||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>(
+                        <div key={p.id} style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                              <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72"}}/>
+                              <div><div style={{fontWeight:600,fontSize:14}}>{p.amount} zł</div><div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}</div></div>
+                            </div>
+                            <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id),amountPaid:Math.max(0,(x.amountPaid||0)-p.amount)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Usuń</button>
                           </div>
-                          <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id),amountPaid:Math.max(0,(x.amountPaid||0)-p.amount)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Usuń</button>
+                          <div style={{display:"flex",gap:8}}>
+                            {[{k:"receipt",l:"🧾 Paragon"},{k:"invoice",l:"📄 Faktura"}].map(opt=>{const ac=p.doc===opt.k;return <button key={opt.k} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).map(q=>q.id===p.id?{...q,doc:ac?null:opt.k}:q)}:x))} style={{flex:1,padding:"7px 8px",borderRadius:10,fontFamily:"inherit",fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${ac?"#0A7C7C":"#E4EAF0"}`,background:ac?"#E6F4F4":"#fff",color:ac?"#0A7C7C":"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{ac&&<span style={{fontSize:10}}>✓</span>}{opt.l}</button>;})}
+                          </div>
                         </div>
-                        <div style={{display:"flex",gap:8}}>
-                          {[{k:"receipt",l:"🧾 Paragon"},{k:"invoice",l:"📄 Faktura"}].map(opt=>{const ac=p.doc===opt.k;return <button key={opt.k} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).map(q=>q.id===p.id?{...q,doc:ac?null:opt.k}:q)}:x))} style={{flex:1,padding:"7px 8px",borderRadius:10,fontFamily:"inherit",fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${ac?"#0A7C7C":"#E4EAF0"}`,background:ac?"#E6F4F4":"#fff",color:ac?"#0A7C7C":"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{ac&&<span style={{fontSize:10}}>✓</span>}{opt.l}</button>;})}
-                        </div>
-                      </div>
-                    ))}
-                  </div>}
+                      ))}
+                    </div>}
+                  </>}
                 </div>
               </Card>
 
@@ -593,7 +637,6 @@
               </Card>}
 
               {r.status==="aktywne"&&<>
-                {r.renewable&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{const e=new Date((r.endDate||r.startDate)+"T12:00:00");e.setMonth(e.getMonth()+1);const nd=e.getFullYear()+"-"+String(e.getMonth()+1).padStart(2,"0")+"-"+String(e.getDate()).padStart(2,"0");setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:nd}:x));}}>🔄 Odnów o miesiąc</Btn>}
                 <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone"}:x));close();}}><Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ</Btn>
               </>}
               {r.status==="zakończone"&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne"}:x))}>↩️ Cofnij zakończenie</Btn>}
@@ -629,7 +672,7 @@
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć to wypożyczenie?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
-              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===detail);if(cur)(cur.payments||[]).forEach(p=>setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id)));setRentals(rs=>rs.filter(x=>x.id!==detail));setConfirmDel(false);close();}}>Usuń</Btn>
+              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===detail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+c.month));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)));}setRentals(rs=>rs.filter(x=>x.id!==detail));setConfirmDel(false);close();}}>Usuń</Btn>
             </div>
           </Modal>}
         </>;
@@ -660,18 +703,18 @@
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
           {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
           <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
             <div style={{marginBottom:14}}><div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Pozostało</div><div style={{padding:"11px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:15,background:"#F2F5F7",color:(+form.amount-(+form.amountPaid||0))>0?"#E05C5C":"#3DAA72",fontWeight:700}}>{form.amount?(+form.amount-(+form.amountPaid||0))+" zł":"—"}</div></div>
-          </div>
+          </div>}
           <Inp label="Transport (zł)" value={form.transport||""} onChange={v=>setForm(f=>({...f,transport:v}))} type="number" placeholder="0"/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             if(!form.patientName)return;
             if(!form.renewable&&!form.endDate){alert("Podaj datę końca wypożyczenia");return;}
-            const pid=Date.now(),rid=Date.now()+1,paid=+(form.amountPaid||0);
+            const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
-            const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],status:"aktywne"};
+            const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:[],status:"aktywne"};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
             setShowAdd(false);
@@ -799,6 +842,19 @@
     }
 
     function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances}) {
+      // Auto-generate current month cycle for active renewable rentals
+      useEffect(()=>{
+        if(!rentals)return;
+        const cm=todayLocal().slice(0,7);
+        const needsUpdate=rentals.some(r=>r.status==="aktywne"&&r.renewable&&!(r.cycles||[]).some(c=>c.month===cm));
+        if(!needsUpdate)return;
+        setRentals(rs=>rs.map(r=>{
+          if(r.status!=="aktywne"||!r.renewable)return r;
+          if((r.cycles||[]).some(c=>c.month===cm))return r;
+          const last=[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month))[0];
+          return {...r,cycles:[...(r.cycles||[]),{month:cm,amount:last?last.amount:(r.amount||0),paid:false,paidDate:null}]};
+        }));
+      },[]);
       useEffect(()=>{
         if(!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];
@@ -810,6 +866,11 @@
         rentals.forEach(r=>(r.payments||[]).forEach(p=>{
           const sid="payment-"+p.id; if(ex.has(sid))return;
           toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+")"});
+        }));
+        rentals.forEach(r=>(r.cycles||[]).filter(c=>c.paid).forEach(c=>{
+          const sid="cycle-"+r.id+"-"+c.month; if(ex.has(sid))return;
+          const label=new Date(c.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
+          toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||c.month+"-15",type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label});
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
