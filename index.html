@@ -406,7 +406,58 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
     setEditVisitP(null);
   };
 
-  if(selected) {
+  const savePatient = () => {
+    const form = editPatientForm;
+    if(!form || !selected) return;
+    const pid = selected.id;
+    const oldPat = patients.find(p=>p.id===pid);
+    if(!oldPat) return;
+    const oldName = oldPat.name;
+    const newName = form.name || oldName;
+    // Aktualizuj pacjenta
+    setPatients(prev => prev.map(p => p.id===pid ? {...p,...form} : p));
+    // Propaguj imię do wizyt i finansów
+    if(newName !== oldName) {
+      setVisits(prev => prev.map(v => v.patientId===pid ? {...v,patientName:newName} : v));
+      setFinances(prev => prev.map(f => f.description
+        ? {...f, description:f.description.split(oldName).join(newName)}
+        : f));
+    }
+    // Propaguj dane do WSZYSTKICH wypożyczeń pacjenta
+    setRentals(prev => prev.map(r => {
+      if(r.patientId!==pid && r.patientName!==oldName) return r;
+      return {...r,
+        patientName: newName,
+        phone: form.phone,
+        address: form.address,
+        patientId: pid
+      };
+    }));
+    setShowEditPatient(false);
+    setEditPatientForm(null);
+  };
+
+  const deletePatient = () => {
+    if(!selected) return;
+    const pid = selected.id;
+    const oldPat = patients.find(p=>p.id===pid);
+    const pname = oldPat ? oldPat.name : '';
+    const patRentals = rentals.filter(r=>r.patientId===pid || r.patientName===pname);
+    const patVisitIds = visits.filter(v=>v.patientId===pid).map(v=>v.id);
+    const patPaymentIds = patRentals.flatMap(r=>(r.payments||[]).map(p=>p.id));
+    setVisits(prev => prev.filter(v=>v.patientId!==pid));
+    setRentals(prev => prev.filter(r=>r.patientId!==pid && r.patientName!==pname));
+    setFinances(prev => prev.filter(f=>
+      !patVisitIds.some(id=>f.sourceId==='visit-'+id) &&
+      !patPaymentIds.some(id=>f.sourceId==='payment-'+id)
+    ));
+    setPatients(prev => prev.filter(p=>p.id!==pid));
+    setShowEditPatient(false);
+    setEditPatientForm(null);
+    setSelected(null);
+  };
+
+    if(selected) {
     // Zawsze czytaj żywe dane z tablicy patients, nie snapshot
     const livePatient = patients.find(p=>p.id===selected.id);
     if(!livePatient) { setSelected(null); return null; }
@@ -514,61 +565,18 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
       )}
 
       {showEditPatient&&editPatientForm&&(
-        <Modal title="Edytuj pacjenta" onClose={()=>setShowEditPatient(false)}>
-          <Inp label="Imię i nazwisko" value={editPatientForm.name} onChange={v=>setEditPatientForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
+        <Modal title="Edytuj pacjenta" onClose={()=>{setShowEditPatient(false);setEditPatientForm(null);}}>
+          <Inp label="Imię i nazwisko" value={editPatientForm.name||""} onChange={v=>setEditPatientForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
           <Inp label="Telefon" value={editPatientForm.phone||""} onChange={v=>setEditPatientForm(f=>({...f,phone:v}))} placeholder="600 000 000" type="tel"/>
           <Inp label="Adres" value={editPatientForm.address||""} onChange={v=>setEditPatientForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Txa label="Diagnoza" value={editPatientForm.diagnosis||""} onChange={v=>setEditPatientForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={editPatientForm.notes||""} onChange={v=>setEditPatientForm(f=>({...f,notes:v}))} rows={2}/>
-          <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-            const pid = livePatient.id;
-            const oldName = livePatient.name;
-            const newName = editPatientForm.name;
-            const nameChanged = newName && newName !== oldName;
-            // 1. Zaktualizuj pacjenta
-            setPatients(ps=>ps.map(p=>p.id===pid ? {...p,...editPatientForm} : p));
-            // 2. Propaguj imię do wizyt i finansów
-            if(nameChanged) {
-              setVisits(vs=>vs.map(v=>v.patientId===pid ? {...v,patientName:newName} : v));
-              setFinances(fs=>fs.map(f=>f.description
-                ? {...f, description:f.description.split(oldName).join(newName)}
-                : f));
-            }
-            // 3. Propaguj WSZYSTKIE dane do wypożyczeń (aktywne, zakończone, odnawialne)
-            setRentals(rs=>rs.map(r=>{
-              const belongs = pid ? r.patientId===pid : r.patientName===oldName;
-              if(!belongs) return r;
-              return {
-                ...r,
-                patientName: editPatientForm.name || r.patientName,
-                phone: editPatientForm.phone !== undefined ? editPatientForm.phone : r.phone,
-                address: editPatientForm.address !== undefined ? editPatientForm.address : r.address,
-                patientId: pid
-              };
-            }));
-            // 4. Zamknij modal
-            setShowEditPatient(false);
-          }}>Zapisz zmiany</Btn>
-          <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{
-            const pid = livePatient.id;
-            const pname = livePatient.name;
-            const patRentals = rentals.filter(r=>pid ? r.patientId===pid : r.patientName===pname);
-            const patVisitIds = visits.filter(v=>v.patientId===pid).map(v=>v.id);
-            const patPaymentIds = patRentals.flatMap(r=>(r.payments||[]).map(p=>p.id));
-            setVisits(vs=>vs.filter(v=>v.patientId!==pid));
-            setRentals(rs=>rs.filter(r=>pid ? r.patientId!==pid : r.patientName!==pname));
-            setFinances(fs=>fs.filter(f=>
-              !patVisitIds.some(id=>f.sourceId==="visit-"+id) &&
-              !patPaymentIds.some(id=>f.sourceId==="payment-"+id)
-            ));
-            setPatients(ps=>ps.filter(p=>p.id!==pid));
-            setShowEditPatient(false);
-            setSelected(null);
-          }}>🗑️ Usuń pacjenta</Btn>
+          <Btn style={{width:"100%",justifyContent:"center"}} onClick={savePatient}>Zapisz zmiany</Btn>
+          <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={deletePatient}>🗑️ Usuń pacjenta</Btn>
         </Modal>
       )}
 
-      {editVisitP&&(
+            {editVisitP&&(
         <Modal title="Edytuj wizytę" onClose={()=>setEditVisitP(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={editVisitP.date} onChange={v=>setEditVisitP(f=>({...f,date:v}))} type="date"/>
