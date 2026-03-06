@@ -1172,7 +1172,7 @@
       const [toast,setToast]=useState(null);
       const ef=()=>({date:todayLocal(),type:"przychód",category:"Wizyta",amount:"",description:""});
       const [form,setForm]=useState(ef);
-      const cats={przychód:["Wizyta","Wypożyczalnia","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
+      const cats={przychód:["Wizyta","Wypożyczalnia","Wózek","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
 
       const months=useMemo(()=>{const c=todayLocal().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
       const years=useMemo(()=>{const c=todayLocal().slice(0,4),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,4));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
@@ -1274,7 +1274,7 @@
       return new Date(y+years,m-1,d).getFullYear()+"-"+String(new Date(y+years,m-1,d).getMonth()+1).padStart(2,"0")+"-"+String(new Date(y+years,m-1,d).getDate()).padStart(2,"0");
     };
 
-    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared}) {
+    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances}) {
       const dk = useContext(DarkCtx);
       const [showAdd,setShowAdd] = useState(false);
       const [form,setForm] = useState(emptyNFZ);
@@ -1283,6 +1283,8 @@
       const [confirmDel,setConfirmDel] = useState(false);
       const [toast,setToast] = useState(null);
       const [tab,setTab] = useState("orzeczenie");
+      const [payModal,setPayModal] = useState(null); // {casId, date, name}
+      const [payAmount,setPayAmount] = useState("");
 
       useEffect(()=>{if(initialSel!=null){setSelId(initialSel);}}, [initialSel]);
       const closeDetail=()=>{setSelId(null);if(onSelCleared)onSelCleared();};
@@ -1334,7 +1336,16 @@
               {(cas.wheelchairModel||cas.orderDate)&&<Card style={{marginBottom:10}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wózek</div>
                 {cas.wheelchairModel&&<div style={{marginBottom:6}}><span style={{fontSize:12,color:"#7A8FA6"}}>Model: </span><span style={{fontWeight:600,fontSize:14}}>{cas.wheelchairModel}</span></div>}
-                {cas.orderDate&&<div style={{marginBottom:6}}><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>}
+                {cas.orderDate&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                  <div><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    {cas.realized&&<span style={{fontSize:12,color:"#3DAA72",fontWeight:600}}>✓ Zrealizowano</span>}
+                    <div onClick={()=>{if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate,name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));setToast("Cofnięto realizację");}}}
+                      style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#E4EAF0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
+                      {cas.realized&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
+                    </div>
+                  </div>
+                </div>}
                 {nd&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #E4EAF0"}}>
                   <div style={{fontSize:12,color:"#7A8FA6",marginBottom:4}}>Kolejne zamówienie możliwe od:</div>
                   <div style={{fontWeight:700,fontSize:15}}>{nd}</div>
@@ -1372,6 +1383,16 @@
               <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setNfzCases(cs=>cs.filter(x=>x.id!==selId));setConfirmDel(false);setSelId(null);}}>Usuń</Btn>
             </div>
           </Modal>}
+          {payModal&&<Modal title="Kwota przychodu" onClose={()=>setPayModal(null)}>
+            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{payModal.name} · {payModal.date}</div>
+            <Inp label="Kwota (zł) *" value={payAmount} onChange={setPayAmount} type="number" placeholder="0"/>
+            <Btn disabled={!payAmount||+payAmount<=0} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+              const sid="wozek-"+payModal.casId;
+              setFinances(fs=>[{id:Date.now(),sourceId:sid,date:payModal.date,type:"przychód",category:"Wózek",amount:+payAmount,description:"Wózek – "+payModal.name},...(fs||[])]);
+              setNfzCases(cs=>cs.map(x=>x.id===payModal.casId?{...x,realized:true}:x));
+              setPayModal(null);setPayAmount("");setToast("Dodano do finansów");
+            }}>Zapisz i oznacz jako zrealizowany</Btn>
+          </Modal>}
           {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
         </>;
       }
@@ -1396,14 +1417,21 @@
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{flex:1}}>
                   <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{cas.patientName}</div>
-                  <div style={{fontSize:13,color:"#7A8FA6",display:"flex",gap:10,flexWrap:"wrap"}}>
+                  <div style={{fontSize:13,color:"#7A8FA6",display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
                     {cas.wheelchairModel&&<span>🦽 {cas.wheelchairModel}</span>}
                     {cas.orderDate&&<span>📅 {cas.orderDate}</span>}
+                    {cas.realized&&<span style={{color:"#3DAA72",fontWeight:600}}>✓ zrealizowany</span>}
                   </div>
                 </div>
-                <div style={{textAlign:"right",flexShrink:0,paddingLeft:10}}>
-                  {nd&&<div style={{fontSize:12,color:dl<=0?"#3DAA72":"#7A8FA6",fontWeight:dl<=0?700:400}}>{dl<=0?"➜ można złożyć":"➜ "+nd}</div>}
-                  <Ico d="M9 18l6-6-6-6" s={18} c="#7A8FA6"/>
+                <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,paddingLeft:10}}>
+                  <div onClick={e=>{e.stopPropagation();if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate||"",name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));}}}
+                    style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#E4EAF0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+                    {cas.realized&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    {nd&&<div style={{fontSize:12,color:dl<=0?"#3DAA72":"#7A8FA6",fontWeight:dl<=0?700:400}}>{dl<=0?"➜ można złożyć":"➜ "+nd}</div>}
+                    <Ico d="M9 18l6-6-6-6" s={18} c="#7A8FA6"/>
+                  </div>
                 </div>
               </div>
             </Card>;
@@ -1453,7 +1481,7 @@
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits}/>}
-            {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)}/>}
+            {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
             {TABS.map(t=>{
