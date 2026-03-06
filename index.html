@@ -291,7 +291,7 @@
     }
 
     // ── DASHBOARD ─────────────────────────────────────────────────────────────
-    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental,nfzCases,goToWozki}) {
+    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental,nfzCases,goToWozki,todos,setTodos}) {
       const today = todayLocal();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -349,6 +349,9 @@
         setConfirmDel(null); setEditV(null);
       };
 
+      const [todoOpen,setTodoOpen]=useState(false);
+      const [todoInput,setTodoInput]=useState("");
+
       return <>
         <div>
           <div style={{padding:"28px 20px 16px"}}>
@@ -356,6 +359,39 @@
             <div style={{fontSize:13,color:"#7A8FA6",marginTop:4,display:"flex",justifyContent:"space-between"}}>
               <span>{new Date(today+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</span>
               <span style={{fontWeight:600,color:"#0A7C7C"}}><ClockDisplay/></span>
+            </div>
+          </div>
+          <div style={{padding:"0 20px 4px"}}>
+            <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden",marginBottom:10}}>
+              <div onClick={()=>setTodoOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Do zrobienia</span>
+                  {(todos||[]).filter(t=>!t.done).length>0&&<span style={{background:"#0A7C7C",color:"#fff",borderRadius:20,fontSize:11,fontWeight:700,padding:"1px 7px"}}>{(todos||[]).filter(t=>!t.done).length}</span>}
+                </div>
+                <span style={{fontSize:11,color:"#7A8FA6"}}>{todoOpen?"▲":"▼"}</span>
+              </div>
+              {todoOpen&&<div style={{borderTop:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,padding:"10px 16px 14px"}}>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <input value={todoInput} onChange={e=>setTodoInput(e.target.value)}
+                    onKeyDown={e=>{if(e.key==="Enter"&&todoInput.trim()){setTodos(ts=>[...(ts||[]),{id:Date.now(),text:todoInput.trim(),done:false}]);setTodoInput("");}}}
+                    placeholder="Wpisz zadanie i naciśnij Enter..."
+                    style={{flex:1,padding:"9px 12px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:10,fontSize:14,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+                  <button onClick={()=>{if(todoInput.trim()){setTodos(ts=>[...(ts||[]),{id:Date.now(),text:todoInput.trim(),done:false}]);setTodoInput("");}}}
+                    style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontSize:18,cursor:"pointer",lineHeight:1}}>+</button>
+                </div>
+                {(todos||[]).length===0&&<div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"8px 0"}}>Brak zadań</div>}
+                {(todos||[]).map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+                  <div onClick={()=>setTodos(ts=>(ts||[]).map(x=>x.id===t.id?{...x,done:!x.done}:x))}
+                    style={{width:20,height:20,borderRadius:6,border:`2px solid ${t.done?"#3DAA72":"#E4EAF0"}`,background:t.done?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
+                    {t.done&&<span style={{color:"#fff",fontSize:12}}>✓</span>}
+                  </div>
+                  <span style={{flex:1,fontSize:14,color:t.done?"#7A8FA6":(dk?"#E8F5F5":"#1C2B3A"),textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
+                  <button onClick={()=>setTodos(ts=>(ts||[]).filter(x=>x.id!==t.id))}
+                    style={{background:"none",border:"none",color:"#7A8FA6",fontSize:16,cursor:"pointer",padding:"0 2px",lineHeight:1}}>×</button>
+                </div>)}
+                {(todos||[]).some(t=>t.done)&&<button onClick={()=>setTodos(ts=>(ts||[]).filter(x=>!x.done))}
+                  style={{background:"none",border:"none",fontSize:12,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",fontWeight:600}}>Usuń ukończone</button>}
+              </div>}
             </div>
           </div>
           <div style={{padding:"0 20px"}}>
@@ -1396,7 +1432,7 @@
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"}];
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,dark,setDark}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
@@ -1413,7 +1449,7 @@
       return <>
         <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
-            {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki}/>}
+            {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos}/>}
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits}/>}
@@ -1436,7 +1472,7 @@
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,dark,setDark}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark}) {
       // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
       // or are new (startDate is in current month)
       useEffect(()=>{
@@ -1477,7 +1513,7 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} dark={dark} setDark={setDark}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark}/>;
     }
 
     function AppWrapper() {
@@ -1487,9 +1523,10 @@
       const [finances,setFinances,v4]=usePersistedState("fizjo-finances",[]);
       const [stock,setStock,v5]=usePersistedState("fizjo-stock",{});
       const [nfzCases,setNfzCases,v6]=usePersistedState("fizjo-nfz",[]);
+      const [todos,setTodos,v7]=usePersistedState("fizjo-todos",[]);
       const [dark,setDark]=useState(false);
-      if(!v1||!v2||!v3||!v4||!v5||!v6)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
-      return <DarkCtx.Provider value={dark}><AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} dark={dark} setDark={setDark}/></DarkCtx.Provider>;
+      if(!v1||!v2||!v3||!v4||!v5||!v6||!v7)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
+      return <DarkCtx.Provider value={dark}><AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark}/></DarkCtx.Provider>;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
