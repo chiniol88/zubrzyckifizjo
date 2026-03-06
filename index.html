@@ -61,7 +61,7 @@
       if(!v.date) return "zaplanowana";
       return new Date(v.date+"T"+(v.time||"00:00")+":00") <= new Date() ? "zakończona" : "zaplanowana";
     };
-    const emptyVisit = () => ({date:todayLocal(),time:"10:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null});
+    const emptyVisit = () => ({date:todayLocal(),time:"10:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
     const emptyRental = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:todayLocal(),endDate:"",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
@@ -399,6 +399,7 @@
           <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
           <Sel label="Status" value={vf.status} onChange={v=>setVf(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
+          <Txa label="Notatka" value={vf.notes||""} onChange={v=>setVf(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>
           <Btn onClick={saveNew} disabled={!vf.patientName} style={{width:"100%",justifyContent:"center"}}>Zapisz wizytę</Btn>
         </Modal>}
 
@@ -410,7 +411,7 @@
           <Sel label="Typ" value={editV.type} onChange={v=>setEditV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
           <Sel label="Status" value={editV.status||"zaplanowana"} onChange={v=>setEditV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
-          <Btn onClick={saveEdit} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
+          <Txa label="Notatka" value={editV.notes||""} onChange={v=>setEditV(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>          <Btn onClick={saveEdit} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
           <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setVf({...editV,id:undefined,date:todayLocal(),status:"zaplanowana",price:String(editV.price)});setEditV(null);setShowAdd(true);}}>📋 Powiel wizytę</Btn>
           <Btn variant="danger" onClick={()=>setConfirmDel(editV.id)} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
         </Modal>}
@@ -440,6 +441,7 @@
       const [confirmDelV,setConfirmDelV]=useState(null);
       const [search,setSearch]=useState("");
       const [sort,setSort]=useState("alpha");
+      const [histFilter,setHistFilter]=useState("all");
       const [toast,setToast]=useState(null);
       const [showQuickV,setShowQuickV]=useState(false);
       const [quickV,setQuickV]=useState(null);
@@ -516,17 +518,23 @@
                 </div>
               </Card>}
 
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Historia ({history.length})</div>
                 <Btn small onClick={()=>{setVf({...emptyVisit(),patientName:pat.name,patientId:pat.id});setShowAddV(true);}}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
               </div>
-              {history.length===0?<Empty text="Brak historii"/>:history.map(item=>
+              <div style={{display:"flex",gap:6,marginBottom:10}}>
+                {[{k:"all",l:"Wszystko"},{k:"v",l:"Wizyty"},{k:"r",l:"Wypożyczenia"}].map(x=><button key={x.k} onClick={()=>setHistFilter(x.k)} style={{padding:"6px 12px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:histFilter===x.k?"#0A7C7C":"#E4EAF0",color:histFilter===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
+              </div>
+              {history.filter(item=>histFilter==="all"||(histFilter==="v"&&item._t==="v")||(histFilter==="r"&&item._t==="r")).length===0
+                ?<Empty text="Brak wpisów"/>
+                :history.filter(item=>histFilter==="all"||(histFilter==="v"&&item._t==="v")||(histFilter==="r"&&item._t==="r")).map(item=>
                 item._t==="v"
                 ? <Card key={"v"+item.id} onClick={()=>setEditV({...item,price:String(item.price)})}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div><div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div><div style={{fontWeight:600}}>{item.date} · {item.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div></div>
                       <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{item.price} zł</div><Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(item)}</Badge></div>
                     </div>
+                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",fontStyle:"italic"}}>📝 {item.notes}</div>}
                   </Card>
                 : <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -564,6 +572,7 @@
                     setEditForm(null);
                     setToast("Zapisano zmiany");
                   }}>Zapisz zmiany</Btn>
+                  <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setPatients(ps=>ps.map(p=>p.id===editForm.id?{...p,archived:!p.archived}:p));setShowEdit(false);setEditForm(null);setSelId(null);setToast(editForm.archived?"Pacjent przywrócony":"Pacjent zarchiwizowany");}}>📦 {editForm.archived?"Przywróć pacjenta":"Archiwizuj pacjenta"}</Btn>
                   <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>setConfirmDelPat(true)}>🗑️ Usuń pacjenta</Btn>
                 </>
               : <>
@@ -598,6 +607,7 @@
             <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
             <Sel label="Status" value={vf.status} onChange={v=>setVf(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
+            <Txa label="Notatka" value={vf.notes||""} onChange={v=>setVf(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>
             <Btn onClick={()=>{const nv={id:Date.now(),patientId:pat.id,patientName:pat.name,...vf,price:+vf.price};setVisits(vs=>[...vs,nv]);syncFinance(nv,true);setShowAddV(false);setToast("Wizyta dodana");}} style={{width:"100%",justifyContent:"center"}}>Zapisz wizytę</Btn>
           </Modal>}
 
@@ -609,6 +619,7 @@
             <Sel label="Typ" value={editV.type} onChange={v=>setEditV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
             <Sel label="Status" value={editV.status||"zaplanowana"} onChange={v=>setEditV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
+            <Txa label="Notatka" value={editV.notes||""} onChange={v=>setEditV(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>
             <Btn onClick={()=>{const u={...editV,price:+editV.price};setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));syncFinance(u,false);setEditV(null);setToast("Zmiany zapisane");}} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
             <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setVf({...editV,date:todayLocal(),status:"zaplanowana",price:String(editV.price)});setEditV(null);setShowAddV(true);}}>📋 Powiel wizytę</Btn>
             <Btn variant="danger" onClick={()=>setConfirmDelV(editV.id)} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
@@ -626,19 +637,24 @@
       }
 
       // Lista pacjentów
+      const [showArchived,setShowArchived]=useState(false);
       const sl=search.toLowerCase(),sn=search.replace(/\s/g,"");
-      const filtered=patients.filter(p=>p.name.toLowerCase().includes(sl)||(p.phone||"").replace(/\s/g,"").includes(sn)||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl));
+      const filtered=patients.filter(p=>(!!p.archived)===showArchived&&(p.name.toLowerCase().includes(sl)||(p.phone||"").replace(/\s/g,"").includes(sn)||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl)));
       const lastVisitDate=p=>visits.filter(v=>v.patientId===p.id).map(v=>v.date).sort((a,b)=>b.localeCompare(a))[0]||"";
       const sorted=[...filtered].sort((a,b)=>sort==="alpha"?a.name.localeCompare(b.name,"pl"):lastVisitDate(b).localeCompare(lastVisitDate(a)));
       return <div>
         <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Pacjenci</div><div style={{fontSize:13,color:"#7A8FA6"}}>{patients.length} pacjentów</div></div>
+          <div>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Pacjenci</div>
+            <div style={{fontSize:13,color:"#7A8FA6"}}>{patients.filter(p=>!p.archived).length} aktywnych · {patients.filter(p=>p.archived).length} w archiwum</div>
+          </div>
           <Btn small onClick={()=>setShowAdd(true)}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
         </div>
         <div style={{padding:"0 20px"}}>
           <Inp value={search} onChange={setSearch} placeholder="🔍 Szukaj..."/>
           <div style={{display:"flex",gap:6,marginBottom:12}}>
             {[{k:"alpha",l:"A–Z"},{k:"recent",l:"Ostatnio aktywni"}].map(x=><button key={x.k} onClick={()=>setSort(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:sort===x.k?"#0A7C7C":"#E4EAF0",color:sort===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
+            <button onClick={()=>setShowArchived(a=>!a)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#E4EAF0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit",marginLeft:"auto"}}>📦 {showArchived?"Aktywni":"Archiwum"}</button>
           </div>
           {search&&sorted.length===0&&<Empty text="Nie znaleziono pacjenta"/>}
           {sorted.map(p=>{const lv=lastVisitDate(p);return(<Card key={p.id} onClick={()=>setSelId(p.id)}>
@@ -675,7 +691,7 @@
           <Sel label="Typ" value={quickV.type} onChange={v=>setQuickV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={quickV.price} onChange={v=>setQuickV(f=>({...f,price:v}))} type="number"/>
           <Sel label="Status" value={quickV.status} onChange={v=>setQuickV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
-          <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+          <Txa label="Notatka" value={quickV.notes||""} onChange={v=>setQuickV(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>
             const nv={...quickV,id:Date.now(),price:+quickV.price};
             setVisits(vs=>[...vs,nv]);
             const done=nv.status==="zakończona"||new Date(nv.date+"T"+(nv.time||"00:00")+":00")<=new Date();
@@ -1080,10 +1096,10 @@
     }
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
-    function Finances({finances,setFinances}) {
+    function Finances({finances,setFinances,visits}) {
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
-      const [viewMode,setViewMode]=useState("month"); // "month" | "year"
+      const [viewMode,setViewMode]=useState("month"); // "month" | "year" | "stats"
       const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
       const [year,setYear]=useState(()=>todayLocal().slice(0,4));
       const [toast,setToast]=useState(null);
@@ -1113,7 +1129,7 @@
           </div>
           <div style={{padding:"0 20px"}}>
             <div style={{display:"flex",gap:8,marginBottom:12}}>
-              {[{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"}].map(x=><button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:viewMode===x.k?"#0A7C7C":"#E4EAF0",color:viewMode===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
+              {[{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"stats",l:"📊 Statystyki"}].map(x=><button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:viewMode===x.k?"#0A7C7C":"#E4EAF0",color:viewMode===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
             </div>
             {viewMode==="month"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {months.map(m=><button key={m} onClick={()=>setMonth(m)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:month===m?"#0A7C7C":"#E4EAF0",color:month===m?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</button>)}
@@ -1155,6 +1171,37 @@
                 </div>
               </Card>
             ))}</>}
+            {viewMode==="stats"&&(()=>{
+              const sm=todayLocal().slice(0,7);
+              const mVisits=visits.filter(v=>v.date&&v.date.startsWith(sm));
+              const mDone=mVisits.filter(v=>visitStatus(v)==="zakończona");
+              const avgPrice=mDone.length?Math.round(mDone.reduce((s,v)=>s+(+v.price||0),0)/mDone.length):0;
+              // patient visit counts this month
+              const patCounts={};mDone.forEach(v=>{patCounts[v.patientName]=(patCounts[v.patientName]||0)+1;});
+              const topPat=Object.entries(patCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+              // visit types this month
+              const typeCounts={};mDone.forEach(v=>{typeCounts[v.type]=(typeCounts[v.type]||0)+1;});
+              const topTypes=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]);
+              return <>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,marginBottom:10,color:"#7A8FA6",textTransform:"capitalize"}}>{new Date(sm+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+                  {[{l:"Wizyty łącznie",v:mVisits.length,c:"#0A7C7C"},{l:"Zakończone",v:mDone.length,c:"#3DAA72"},{l:"Średnia cena",v:avgPrice+" zł",c:"#7C6AF4"},{l:"Zaplanowane",v:mVisits.length-mDone.length,c:"#F4A261"}].map((x,i)=>(
+                    <div key={i} style={{background:x.c+"14",borderRadius:14,padding:"12px 10px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
+                      <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:16,color:x.c}}>{x.v}</div>
+                      <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+                    </div>
+                  ))}
+                </div>
+                {topPat.length>0&&<><div style={{fontWeight:700,fontSize:14,marginBottom:8}}>Najczęstsi pacjenci</div>
+                {topPat.map(([name,cnt])=><div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #F2F5F7"}}>
+                  <span style={{fontSize:14,fontWeight:500}}>{name}</span><Badge color="#0A7C7C">{cnt} {cnt===1?"wizyta":"wizyty"}</Badge>
+                </div>)}</>}
+                {topTypes.length>0&&<><div style={{fontWeight:700,fontSize:14,marginBottom:8,marginTop:16}}>Rodzaje wizyt</div>
+                {topTypes.map(([type,cnt])=><div key={type} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #F2F5F7"}}>
+                  <span style={{fontSize:14,fontWeight:500}}>{type}</span><Badge color="#7C6AF4">{cnt}</Badge>
+                </div>)}</>}
+              </>;
+            })()}
           </div>
         </div>
 
@@ -1227,7 +1274,7 @@
             {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental}/>}
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
-            {tab==="finances"&&<Finances finances={finances} setFinances={setFinances}/>}
+            {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits}/>}
             {tab==="marketing"&&<Marketing/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
