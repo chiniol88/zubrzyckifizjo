@@ -692,6 +692,7 @@
           <Inp label="Cena (zł)" value={quickV.price} onChange={v=>setQuickV(f=>({...f,price:v}))} type="number"/>
           <Sel label="Status" value={quickV.status} onChange={v=>setQuickV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
           <Txa label="Notatka" value={quickV.notes||""} onChange={v=>setQuickV(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>
+          <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             const nv={...quickV,id:Date.now(),price:+quickV.price};
             setVisits(vs=>[...vs,nv]);
             const done=nv.status==="zakończona"||new Date(nv.date+"T"+(nv.time||"00:00")+":00")<=new Date();
@@ -1095,6 +1096,41 @@
       </div>;
     }
 
+    function StatsPanel({visits}) {
+      const sm=todayLocal().slice(0,7);
+      const mVisits=visits.filter(v=>v.date&&v.date.startsWith(sm));
+      const mDone=mVisits.filter(v=>visitStatus(v)==="zakończona");
+      const avgPrice=mDone.length?Math.round(mDone.reduce((s,v)=>s+(+v.price||0),0)/mDone.length):0;
+      const patCounts={};mDone.forEach(v=>{patCounts[v.patientName]=(patCounts[v.patientName]||0)+1;});
+      const topPat=Object.entries(patCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const typeCounts={};mDone.forEach(v=>{typeCounts[v.type]=(typeCounts[v.type]||0)+1;});
+      const topTypes=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]);
+      return <>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,marginBottom:10,color:"#7A8FA6",textTransform:"capitalize"}}>{new Date(sm+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
+          {[{l:"Wizyty łącznie",v:mVisits.length,c:"#0A7C7C"},{l:"Zakończone",v:mDone.length,c:"#3DAA72"},{l:"Średnia cena",v:avgPrice+" zł",c:"#7C6AF4"},{l:"Zaplanowane",v:mVisits.length-mDone.length,c:"#F4A261"}].map((x,i)=>(
+            <div key={i} style={{background:x.c+"14",borderRadius:14,padding:"12px 10px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:16,color:x.c}}>{x.v}</div>
+              <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+            </div>
+          ))}
+        </div>
+        {topPat.length>0&&<>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>Najczęstsi pacjenci</div>
+          {topPat.map(([name,cnt])=><div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #F2F5F7"}}>
+            <span style={{fontSize:14,fontWeight:500}}>{name}</span><Badge color="#0A7C7C">{cnt} {cnt===1?"wizyta":"wizyty"}</Badge>
+          </div>)}
+        </>}
+        {topTypes.length>0&&<>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:8,marginTop:16}}>Rodzaje wizyt</div>
+          {topTypes.map(([type,cnt])=><div key={type} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #F2F5F7"}}>
+            <span style={{fontSize:14,fontWeight:500}}>{type}</span><Badge color="#7C6AF4">{cnt}</Badge>
+          </div>)}
+        </>}
+        {mVisits.length===0&&<Empty text="Brak wizyt w tym miesiącu"/>}
+      </>;
+    }
+
     // ── FINANCES ──────────────────────────────────────────────────────────────
     function Finances({finances,setFinances,visits}) {
       const [showAdd,setShowAdd]=useState(false);
@@ -1171,37 +1207,7 @@
                 </div>
               </Card>
             ))}</>}
-            {viewMode==="stats"&&(()=>{
-              const sm=todayLocal().slice(0,7);
-              const mVisits=visits.filter(v=>v.date&&v.date.startsWith(sm));
-              const mDone=mVisits.filter(v=>visitStatus(v)==="zakończona");
-              const avgPrice=mDone.length?Math.round(mDone.reduce((s,v)=>s+(+v.price||0),0)/mDone.length):0;
-              // patient visit counts this month
-              const patCounts={};mDone.forEach(v=>{patCounts[v.patientName]=(patCounts[v.patientName]||0)+1;});
-              const topPat=Object.entries(patCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-              // visit types this month
-              const typeCounts={};mDone.forEach(v=>{typeCounts[v.type]=(typeCounts[v.type]||0)+1;});
-              const topTypes=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1]);
-              return <>
-                <div style={{fontFamily:"'Syne',sans-serif",fontSize:15,fontWeight:700,marginBottom:10,color:"#7A8FA6",textTransform:"capitalize"}}>{new Date(sm+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-                  {[{l:"Wizyty łącznie",v:mVisits.length,c:"#0A7C7C"},{l:"Zakończone",v:mDone.length,c:"#3DAA72"},{l:"Średnia cena",v:avgPrice+" zł",c:"#7C6AF4"},{l:"Zaplanowane",v:mVisits.length-mDone.length,c:"#F4A261"}].map((x,i)=>(
-                    <div key={i} style={{background:x.c+"14",borderRadius:14,padding:"12px 10px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
-                      <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:16,color:x.c}}>{x.v}</div>
-                      <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
-                    </div>
-                  ))}
-                </div>
-                {topPat.length>0&&<><div style={{fontWeight:700,fontSize:14,marginBottom:8}}>Najczęstsi pacjenci</div>
-                {topPat.map(([name,cnt])=><div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #F2F5F7"}}>
-                  <span style={{fontSize:14,fontWeight:500}}>{name}</span><Badge color="#0A7C7C">{cnt} {cnt===1?"wizyta":"wizyty"}</Badge>
-                </div>)}</>}
-                {topTypes.length>0&&<><div style={{fontWeight:700,fontSize:14,marginBottom:8,marginTop:16}}>Rodzaje wizyt</div>
-                {topTypes.map(([type,cnt])=><div key={type} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #F2F5F7"}}>
-                  <span style={{fontSize:14,fontWeight:500}}>{type}</span><Badge color="#7C6AF4">{cnt}</Badge>
-                </div>)}</>}
-              </>;
-            })()}
+            {viewMode==="stats"&&<StatsPanel visits={visits}/>}
           </div>
         </div>
 
