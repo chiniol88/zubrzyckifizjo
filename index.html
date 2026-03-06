@@ -291,7 +291,7 @@
     }
 
     // ── DASHBOARD ─────────────────────────────────────────────────────────────
-    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental}) {
+    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental,nfzCases,goToWozki}) {
       const today = todayLocal();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -303,6 +303,17 @@
       const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
       const upcoming = rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
       const unpaidCycles = rentals.filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid));
+
+      const wózkiReminders = useMemo(()=>{
+        if(!nfzCases) return [];
+        return (nfzCases).filter(cas=>{
+          if(!cas.orderDate) return false;
+          const nd = nextOrderDate(cas);
+          if(!nd) return false;
+          const dl = dateDiff(today, nd);
+          return dl <= 14;
+        }).sort((a,b)=>nextOrderDate(a).localeCompare(nextOrderDate(b)));
+      },[nfzCases, today]);
 
       const syncFinance = (v, isNew=false) => {
         const done = v.status==="zakończona" || new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
@@ -353,8 +364,8 @@
               onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
               onGoToRental={goToRental}
             />
-            {upcoming.length>0&&<>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Najbliższe zwroty</div>
+            {(upcoming.length>0||wózkiReminders.length>0||unpaidCycles.length>0)&&<>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Nadchodzące</div>
               {upcoming.map(r=>{const d=dateDiff(today,r.endDate);return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -363,9 +374,19 @@
                   </div>
                 </Card>
               );})}
-            </>}
-            {unpaidCycles.length>0&&<>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Do opłacenia 🔄</div>
+              {wózkiReminders.map(cas=>{
+                const nd=nextOrderDate(cas);
+                const dl=dateDiff(today,nd);
+                return <Card key={cas.id} onClick={()=>goToWozki(cas.id)}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontWeight:600}}>🦽 {cas.patientName}</div>
+                      <div style={{fontSize:13,color:"#7A8FA6"}}>{cas.hasDisabilityCert?"Z orzeczeniem":"Bez orzeczenia"} · kolejne od {nd}</div>
+                    </div>
+                    <span style={{fontSize:13,fontWeight:600,color:"#1C2B3A"}}>{dl<=0?"można złożyć":"za "+dl+"d"}</span>
+                  </div>
+                </Card>;
+              })}
               {unpaidCycles.map(r=>{const n=(r.cycles||[]).filter(c=>!c.paid).length;return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #E05C5C"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -488,11 +509,11 @@
               </Card>
               {pat.diagnosis&&<Card style={{marginBottom:10,background:"#F0EDFF",border:"1.5px solid #7C6AF430"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Diagnoza</div>
-                <div style={{fontSize:14,lineHeight:1.6}}>{pat.diagnosis}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{pat.diagnosis}</div>
               </Card>}
               {pat.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
-                <div style={{fontSize:14,lineHeight:1.6}}>{pat.notes}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{pat.notes}</div>
               </Card>}
 
               {patTotal>0&&<Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
@@ -978,7 +999,7 @@
 
               {r.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
-                <div style={{fontSize:14,lineHeight:1.6}}>{r.notes}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{r.notes}</div>
               </Card>}
 
               {r.status==="aktywne"&&<>
@@ -1210,7 +1231,14 @@
     // ── NFZ ───────────────────────────────────────────────────────────────────
     const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:""});
 
-    function NFZ({nfzCases,setNfzCases}) {
+    const nextOrderDate = (cas) => {
+      if(!cas.orderDate) return null;
+      const [y,m,d] = cas.orderDate.split("-").map(Number);
+      const years = cas.hasDisabilityCert ? 1 : 4;
+      return new Date(y+years,m-1,d).getFullYear()+"-"+String(new Date(y+years,m-1,d).getMonth()+1).padStart(2,"0")+"-"+String(new Date(y+years,m-1,d).getDate()).padStart(2,"0");
+    };
+
+    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared}) {
       const dk = useContext(DarkCtx);
       const [showAdd,setShowAdd] = useState(false);
       const [form,setForm] = useState(emptyNFZ);
@@ -1218,12 +1246,26 @@
       const [editForm,setEditForm] = useState(null);
       const [confirmDel,setConfirmDel] = useState(false);
       const [toast,setToast] = useState(null);
+      const [tab,setTab] = useState("orzeczenie");
+
+      useEffect(()=>{if(initialSel!=null){setSelId(initialSel);}}, [initialSel]);
+      const closeDetail=()=>{setSelId(null);if(onSelCleared)onSelCleared();};
 
       const cases = nfzCases || [];
+      const today = todayLocal();
+
+      const withCert  = cases.filter(c=>c.hasDisabilityCert);
+      const withoutCert = cases.filter(c=>!c.hasDisabilityCert);
+      const sortByNext = arr => [...arr].sort((a,b)=>{
+        const na=nextOrderDate(a)||"9999", nb=nextOrderDate(b)||"9999";
+        return na.localeCompare(nb);
+      });
 
       if (selId !== null) {
         const cas = cases.find(c => c.id === selId);
         if (!cas) { setSelId(null); return null; }
+        const nd = nextOrderDate(cas);
+        const daysLeft = nd ? dateDiff(today, nd) : null;
         return <>
           <div>
             <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
@@ -1256,11 +1298,18 @@
               {(cas.wheelchairModel||cas.orderDate)&&<Card style={{marginBottom:10}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wózek</div>
                 {cas.wheelchairModel&&<div style={{marginBottom:6}}><span style={{fontSize:12,color:"#7A8FA6"}}>Model: </span><span style={{fontWeight:600,fontSize:14}}>{cas.wheelchairModel}</span></div>}
-                {cas.orderDate&&<div><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>}
+                {cas.orderDate&&<div style={{marginBottom:6}}><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>}
+                {nd&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #E4EAF0"}}>
+                  <div style={{fontSize:12,color:"#7A8FA6",marginBottom:4}}>Kolejne zamówienie możliwe od:</div>
+                  <div style={{fontWeight:700,fontSize:15}}>{nd}</div>
+                  <div style={{fontSize:13,marginTop:4,color:daysLeft<=0?"#3DAA72":daysLeft<=30?"#F4A261":"#7A8FA6"}}>
+                    {daysLeft<=0?"✓ Można już składać wniosek":daysLeft===1?"Jutro":daysLeft<0?`${Math.abs(daysLeft)} dni temu`:`za ${daysLeft} dni`}
+                  </div>
+                </div>}
               </Card>}
               {cas.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
-                <div style={{fontSize:14,lineHeight:1.6}}>{cas.notes}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{cas.notes}</div>
               </Card>}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń</Btn>
             </div>
@@ -1291,26 +1340,38 @@
         </>;
       }
 
+      const listItems = sortByNext(tab==="orzeczenie" ? withCert : withoutCert);
       return <div>
-        <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wózki</div>
           <Btn small onClick={()=>{setForm(emptyNFZ());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
         </div>
+        <div style={{display:"flex",gap:6,padding:"0 20px 14px"}}>
+          {[{k:"orzeczenie",l:`Z orzeczeniem (${withCert.length})`},{k:"bez",l:`Bez orzeczenia (${withoutCert.length})`}].map(t=>
+            <button key={t.k} onClick={()=>setTab(t.k)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:tab===t.k?"#0A7C7C":"#E4EAF0",color:tab===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>
+          )}
+        </div>
         <div style={{padding:"0 20px"}}>
-          {cases.length===0&&<Empty text="Brak wpisów"/>}
-          {cases.map(cas=><Card key={cas.id} onClick={()=>setSelId(cas.id)}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{flex:1}}>
-                <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{cas.patientName}</div>
-                <div style={{fontSize:13,color:"#7A8FA6",display:"flex",gap:10,flexWrap:"wrap"}}>
-                  {cas.wheelchairModel&&<span>🦽 {cas.wheelchairModel}</span>}
-                  {cas.orderDate&&<span>📅 {cas.orderDate}</span>}
-                  {cas.hasDisabilityCert&&<span style={{color:"#3DAA72",fontWeight:600}}>✓ Orzeczenie</span>}
+          {listItems.length===0&&<Empty text="Brak wpisów"/>}
+          {listItems.map(cas=>{
+            const nd=nextOrderDate(cas);
+            const dl=nd?dateDiff(today,nd):null;
+            return <Card key={cas.id} onClick={()=>setSelId(cas.id)}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{cas.patientName}</div>
+                  <div style={{fontSize:13,color:"#7A8FA6",display:"flex",gap:10,flexWrap:"wrap"}}>
+                    {cas.wheelchairModel&&<span>🦽 {cas.wheelchairModel}</span>}
+                    {cas.orderDate&&<span>📅 {cas.orderDate}</span>}
+                  </div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0,paddingLeft:10}}>
+                  {nd&&<div style={{fontSize:12,color:dl<=0?"#3DAA72":"#7A8FA6",fontWeight:dl<=0?700:400}}>{dl<=0?"➜ można złożyć":"➜ "+nd}</div>}
+                  <Ico d="M9 18l6-6-6-6" s={18} c="#7A8FA6"/>
                 </div>
               </div>
-              <Ico d="M9 18l6-6-6-6" s={18} c="#7A8FA6"/>
-            </div>
-          </Card>)}
+            </Card>;
+          })}
         </div>
         {showAdd&&<Modal title="Nowy wózek" onClose={()=>setShowAdd(false)}>
           <Inp label="Imię i nazwisko *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
@@ -1331,14 +1392,17 @@
       </div>;
     }
 
+
     // ── APP ───────────────────────────────────────────────────────────────────
-    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"NFZ"}];
+    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"}];
 
     function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,dark,setDark}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
+      const [wozkiSel,setWozkiSel]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
       const goToRental=id=>{setDlRental(id);setTab("rentals");};
+      const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
       const dk=dark;
 
       // Long-press on Pulpit to toggle dark mode
@@ -1349,11 +1413,11 @@
       return <>
         <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
-            {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental}/>}
+            {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki}/>}
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits}/>}
-            {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
+            {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)}/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
             {TABS.map(t=>{
