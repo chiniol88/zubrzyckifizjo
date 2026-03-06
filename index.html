@@ -10,9 +10,9 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
-    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
     input,select,textarea,button{font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent}
     ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
     .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;background:#F2F5F7}
@@ -593,7 +593,7 @@
               </Card>}
 
               {r.status==="aktywne"&&<>
-                {r.renewable&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{const e=new Date(r.endDate||r.startDate);e.setMonth(e.getMonth()+1);setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:e.toISOString().split("T")[0]}:x));}}>🔄 Odnów o miesiąc</Btn>}
+                {r.renewable&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{const e=new Date((r.endDate||r.startDate)+"T12:00:00");e.setMonth(e.getMonth()+1);const nd=e.getFullYear()+"-"+String(e.getMonth()+1).padStart(2,"0")+"-"+String(e.getDate()).padStart(2,"0");setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:nd}:x));}}>🔄 Odnów o miesiąc</Btn>}
                 <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone"}:x));close();}}><Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ</Btn>
               </>}
               {r.status==="zakończone"&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne"}:x))}>↩️ Cofnij zakończenie</Btn>}
@@ -684,12 +684,12 @@
     function Finances({finances,setFinances}) {
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
-      const [month,setMonth]=useState(()=>new Date().toISOString().slice(0,7));
+      const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
       const ef=()=>({date:todayLocal(),type:"przychód",category:"Wizyta",amount:"",description:""});
       const [form,setForm]=useState(ef);
       const cats={przychód:["Wizyta","Wypożyczalnia","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
 
-      const months=useMemo(()=>{const c=new Date().toISOString().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
+      const months=useMemo(()=>{const c=todayLocal().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
       const mly=finances.filter(f=>f.date&&f.date.startsWith(month));
       const inc=mly.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
       const cst=mly.filter(f=>f.type==="koszt").reduce((s,f)=>s+f.amount,0);
