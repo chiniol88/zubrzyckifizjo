@@ -501,6 +501,61 @@
       </div>;
     }
 
+    function HistoryFill({r,setRentals,setFinances}) {
+      const cm=todayLocal().slice(0,7);
+      // Generate all months from startDate month to current month
+      const months=[];
+      const [sy,sm]=r.startDate.split("-").map(Number);
+      const [cy,cmn]=cm.split("-").map(Number);
+      const startDay=r.startDate.split("-")[2]; // e.g. "08"
+      let y=sy,m=sm;
+      while(y<cy||(y===cy&&m<=cmn)){
+        const mStr=y+"-"+String(m).padStart(2,"0");
+        // paidDate = same day as startDate but capped to last day of that month
+        const lastDay=new Date(y,m,0).getDate();
+        const day=Math.min(+startDay,lastDay);
+        const paidDate=mStr+"-"+String(day).padStart(2,"0");
+        months.push({month:mStr,paidDate});
+        m++;if(m>12){m=1;y++;}
+      }
+      const [checked,setChecked]=useState(()=>Object.fromEntries(months.map(x=>[x.month,true])));
+      const [amounts,setAmounts]=useState(()=>Object.fromEntries(months.map(x=>[x.month,String(r.amount||"")])));
+      const [bulkAmt,setBulkAmt]=useState(String(r.amount||""));
+      const allChecked=months.every(x=>checked[x.month]);
+      return <div>
+        <div style={{background:"#FFF8E6",border:"1.5px solid #F4A26140",borderRadius:14,padding:14,marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>📋 Uzupełnij historię płatności</div>
+          <div style={{fontSize:13,color:"#7A8FA6",lineHeight:1.5}}>To wypożyczenie trwa od {r.startDate}. Zaznacz które miesiące zostały opłacone i podaj kwoty, następnie zatwierdź.</div>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+          <input type="number" value={bulkAmt} onChange={e=>{setBulkAmt(e.target.value);setAmounts(a=>Object.fromEntries(Object.keys(a).map(k=>[k,e.target.value])));}} placeholder="Kwota dla wszystkich..." style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
+          <button onClick={()=>setChecked(c=>Object.fromEntries(Object.keys(c).map(k=>[k,!allChecked])))} style={{padding:"10px 14px",borderRadius:12,border:"1.5px solid #E4EAF0",background:allChecked?"#0A7C7C":"#fff",color:allChecked?"#fff":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>{allChecked?"✓ Wszystkie":"Zaznacz wszystkie"}</button>
+        </div>
+        <div style={{borderRadius:12,border:"1.5px solid #E4EAF0",overflow:"hidden",marginBottom:14}}>
+          {months.map((x,i)=>{
+            const label=new Date(x.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
+            return <div key={x.month} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderBottom:i<months.length-1?"1px solid #F2F5F7":"none",background:checked[x.month]?"#F6FFF9":"#FAFCFD"}}>
+              <button onClick={()=>setChecked(c=>({...c,[x.month]:!c[x.month]}))} style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked[x.month]?"#3DAA72":"#E4EAF0"}`,background:checked[x.month]?"#3DAA72":"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:0}}>
+                {checked[x.month]&&<span style={{color:"#fff",fontSize:13,lineHeight:1}}>✓</span>}
+              </button>
+              <div style={{flex:1,fontSize:14,fontWeight:checked[x.month]?600:400,color:checked[x.month]?"#1C2B3A":"#7A8FA6",textTransform:"capitalize"}}>{label}<div style={{fontSize:11,color:"#7A8FA6",fontWeight:400}}>{x.paidDate}</div></div>
+              <input type="number" value={amounts[x.month]||""} onChange={e=>setAmounts(a=>({...a,[x.month]:e.target.value}))} disabled={!checked[x.month]} style={{width:80,padding:"7px 10px",border:"1.5px solid #E4EAF0",borderRadius:10,fontSize:13,outline:"none",background:checked[x.month]?"#FAFCFD":"#F2F5F7",fontFamily:"inherit",textAlign:"right",color:checked[x.month]?"#1C2B3A":"#7A8FA6"}}/>
+              <span style={{fontSize:13,color:"#7A8FA6"}}>zł</span>
+            </div>;
+          })}
+        </div>
+        <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+          const newCycles=months.map(x=>({month:x.month,amount:+(amounts[x.month]||0),paid:!!checked[x.month],paidDate:checked[x.month]?x.paidDate:null}));
+          setRentals(rs=>rs.map(rr=>rr.id===r.id?{...rr,cycles:newCycles}:rr));
+          const newFinances=months.filter(x=>checked[x.month]&&+(amounts[x.month]||0)>0).map(x=>{
+            const label=new Date(x.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
+            return {id:Date.now()+Math.random(),sourceId:"cycle-"+r.id+"-"+x.month,date:x.paidDate,type:"przychód",category:"Wypożyczalnia",amount:+(amounts[x.month]||0),description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label};
+          });
+          if(newFinances.length)setFinances(fs=>[...newFinances,...fs]);
+        }}>✓ Zatwierdź historię ({months.filter(x=>checked[x.month]).length} mies.)</Btn>
+      </div>;
+    }
+
     function CycleRow({r,cycle,setRentals,setFinances}) {
       const [amt,setAmt]=useState(String(cycle.amount||""));
       const label=new Date(cycle.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
@@ -597,8 +652,13 @@
                 <div style={{borderTop:"1px solid #E4EAF0",paddingTop:12}}>
                   {r.renewable ? <>
                     <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Cykle miesięczne</div>
-                    {(r.cycles||[]).length===0&&<div style={{fontSize:14,color:"#7A8FA6",textAlign:"center",padding:"12px 0"}}>Brak cykli — pojawią się automatycznie</div>}
-                    {[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month)).map(c=><CycleRow key={c.month} r={r} cycle={c} setRentals={setRentals} setFinances={setFinances}/>)}
+                    {(r.cycles||[]).length===0&&r.startDate<todayLocal().slice(0,7)
+                      ? <HistoryFill r={r} setRentals={setRentals} setFinances={setFinances}/>
+                      : <>
+                          {(r.cycles||[]).length===0&&<div style={{fontSize:14,color:"#7A8FA6",textAlign:"center",padding:"12px 0"}}>Brak cykli — pojawią się automatycznie</div>}
+                          {[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month)).map(c=><CycleRow key={c.month} r={r} cycle={c} setRentals={setRentals} setFinances={setFinances}/>)}
+                        </>
+                    }
                   </> : <>
                     <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Płatność</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
