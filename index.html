@@ -148,18 +148,47 @@
       return <span>{t}</span>;
     }
 
-    function MiniCalendar({visits,today,onEditVisit,onAddVisit}) {
+    function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental}) {
       const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
       const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
       const [openDay,setOpenDay]=useState(null);
 
       const daysInMonth=new Date(calYear,calMonth,0).getDate();
-      const firstDow=new Date(calYear,calMonth-1,1).getDay(); // 0=Sun
-      const startOffset=(firstDow+6)%7; // Mon=0
+      const firstDow=new Date(calYear,calMonth-1,1).getDay();
+      const startOffset=(firstDow+6)%7;
       const monthStr=calYear+"-"+String(calMonth).padStart(2,"0");
 
       const prevMonth=()=>{if(calMonth===1){setCalYear(y=>y-1);setCalMonth(12);}else setCalMonth(m=>m-1);setOpenDay(null);};
       const nextMonth=()=>{if(calMonth===12){setCalYear(y=>y+1);setCalMonth(1);}else setCalMonth(m=>m+1);setOpenDay(null);};
+
+      // Build rental events for this month
+      const rentalEventsByDay=useMemo(()=>{
+        const m={};
+        const add=(day,ev)=>{const d=+day;if(!m[d])m[d]=[];m[d].push(ev);};
+        rentals.forEach(r=>{
+          if(r.status==="zakończone"&&!r.startDate.startsWith(monthStr)&&!(r.endDate||"").startsWith(monthStr))return;
+          if(!r.renewable){
+            // start day
+            if((r.startDate||"").startsWith(monthStr))add(r.startDate.slice(8),{type:"start",r});
+            // end day
+            if((r.endDate||"").startsWith(monthStr))add(r.endDate.slice(8),{type:"end",r});
+          } else {
+            // cycles this month
+            (r.cycles||[]).forEach(c=>{
+              if(c.month===monthStr){
+                // day = same as startDate day
+                const startDay=r.startDate.slice(8);
+                add(startDay,{type:"cycle",c,r});
+              }
+            });
+            // also mark startDate if rental started this month and no cycle yet
+            if(r.startDate.startsWith(monthStr)&&!(r.cycles||[]).some(c=>c.month===monthStr)){
+              add(r.startDate.slice(8),{type:"start",r});
+            }
+          }
+        });
+        return m;
+      },[rentals,monthStr]);
 
       const visitsByDay=useMemo(()=>{
         const m={};
@@ -173,13 +202,13 @@
 
       const DOW=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
       const todayDay=today.startsWith(monthStr)?+today.slice(8):null;
-
       const cells=[];
       for(let i=0;i<startOffset;i++)cells.push(null);
       for(let d=1;d<=daysInMonth;d++)cells.push(d);
 
-      const dayVisits=openDay?((visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||""))):[];
       const openDateStr=openDay?monthStr+"-"+String(openDay).padStart(2,"0"):null;
+      const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
+      const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
 
       return <div style={{marginTop:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -190,6 +219,7 @@
             <button onClick={nextMonth} style={{background:"#E4EAF0",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
           </div>
         </div>
+
         <div style={{background:"#fff",borderRadius:16,padding:"12px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
             {DOW.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
@@ -197,31 +227,54 @@
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
             {cells.map((d,i)=>{
               if(!d)return<div key={"e"+i}/>;
-              const cnt=(visitsByDay[d]||[]).length;
+              const vc=(visitsByDay[d]||[]).length;
+              const rc=(rentalEventsByDay[d]||[]).length;
               const isToday=d===todayDay;
               const isOpen=d===openDay;
-              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?"#E6F4F4":"transparent",transition:"background .15s"}}>
+              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?"#E6F4F4":"transparent"}}>
                 <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":"#1C2B3A"}}>{d}</span>
-                {cnt>0&&<div style={{display:"flex",gap:2,marginTop:2}}>
-                  {[...Array(Math.min(cnt,3))].map((_,j)=><div key={j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
-                </div>}
+                <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
+                  {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
+                  {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
+                </div>
               </div>;
             })}
+          </div>
+          <div style={{display:"flex",gap:12,marginTop:10,paddingTop:8,borderTop:"1px solid #F2F5F7",justifyContent:"center"}}>
+            <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#0A7C7C",display:"inline-block"}}/>Wizyty</span>
+            <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#7C6AF4",display:"inline-block"}}/>Wypożyczenia</span>
           </div>
         </div>
 
         {openDay&&<div style={{marginTop:8,background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <div style={{fontWeight:700,fontSize:14}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
             <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
           </div>
-          {dayVisits.length===0
-            ?<div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak wizyt tego dnia</div>
-            :dayVisits.map(v=><div key={v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid #F2F5F7",cursor:"pointer"}}>
-                <div><div style={{fontWeight:600,fontSize:14}}>{v.time} · {v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
-                <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
-              </div>)
-          }
+
+          {dayVisits.length===0&&dayRentals.length===0&&
+            <div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak zdarzeń tego dnia</div>}
+
+          {dayVisits.map(v=><div key={v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid #F2F5F7",cursor:"pointer"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:"#0A7C7C",flexShrink:0}}/>
+              <div><div style={{fontWeight:600,fontSize:14}}>{v.time} · {v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
+            </div>
+            <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
+          </div>)}
+
+          {dayRentals.map((ev,i)=>{
+            const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
+            const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
+            const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.r.amount+" zł";
+            return <div key={i} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid #F2F5F7",cursor:"pointer"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
+                <div><div style={{fontWeight:600,fontSize:14}}>{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+              </div>
+              <Badge color={color}>{sub}</Badge>
+            </div>;
+          })}
         </div>}
       </div>;
     }
@@ -297,9 +350,10 @@
                 </div>
               </Card>
             )}
-            <MiniCalendar visits={visits} today={today}
+            <MiniCalendar visits={visits} rentals={rentals} today={today}
               onEditVisit={v=>setEditV({...v,price:String(v.price)})}
               onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
+              onGoToRental={goToRental}
             />
             {tomorrowV.length>0&&<>
               <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Jutro ({tomorrowV.length})</div>
