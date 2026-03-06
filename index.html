@@ -787,6 +787,64 @@
       );
     }
 
+    function StockPanel({rentals,stock,setStock}) {
+      const dk=useContext(DarkCtx);
+      const [showEdit,setShowEdit]=useState(false);
+      const [draft,setDraft]=useState({});
+
+      // Count active rentals per equipment model
+      const activeCount=useMemo(()=>{
+        const m={};
+        rentals.filter(r=>r.status==="aktywne").forEach(r=>{m[r.equipment]=(m[r.equipment]||0)+1;});
+        return m;
+      },[rentals]);
+
+      // Total stock per model: stock[eq] or 1 if not set
+      const total=eq=>stock[eq]||1;
+
+      // Show all equipment always so user can always edit stock
+      const relevant=EQUIPMENT;
+
+      return <>
+        <div style={{padding:"0 20px 12px"}}>
+          <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Stan magazynu</div>
+              <button onClick={()=>{setDraft(Object.fromEntries(EQUIPMENT.map(eq=>[eq,String(stock[eq]||1)])));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:0}}>Edytuj stany</button>
+            </div>
+            {relevant.map(eq=>{
+              const active=activeCount[eq]||0;
+              const tot=total(eq);
+              const free=tot-active;
+              const pct=tot>0?Math.round((active/tot)*100):0;
+              const color=free===0?"#E05C5C":free===1&&tot>2?"#F4A261":"#3DAA72";
+              return <div key={eq} style={{marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</span>
+                  <span style={{fontSize:12,fontWeight:700,color}}>{free===0?"brak wolnych":free===1?"1 wolna":""+free+" wolne"} · {active}/{tot}</span>
+                </div>
+                <div style={{height:6,borderRadius:4,background:dk?"#2A4040":"#E4EAF0",overflow:"hidden"}}>
+                  <div style={{height:"100%",width:pct+"%",background:color,borderRadius:4,transition:"width .3s"}}/>
+                </div>
+              </div>;
+            })}
+          </div>
+        </div>
+        {showEdit&&<Modal title="Edytuj stany magazynowe" onClose={()=>setShowEdit(false)}>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Podaj ile sztuk każdego sprzętu posiadasz łącznie.</div>
+          {EQUIPMENT.map(eq=><div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>−</button>
+              <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
+              <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>+</button>
+            </div>
+          </div>)}
+          <Btn style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{setStock(Object.fromEntries(Object.entries(draft).map(([k,v])=>[k,+v])));setShowEdit(false);}}>Zapisz stany</Btn>
+        </Modal>}
+      </>;
+    }
+
     function RCard({r,onClick}) {
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
       const unpaid=(r.cycles||[]).filter(c=>!c.paid).length;
@@ -803,7 +861,7 @@
       </Card>;
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,rentalsView,setRentalsView}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,rentalsView,setRentalsView,stock,setStock}) {
       const view=rentalsView||"aktywne",setView=setRentalsView;
       const [showAdd,setShowAdd]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
@@ -973,6 +1031,7 @@
             <button key={x.k} onClick={()=>setView(x.k)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:view===x.k?"#0A7C7C":"#E4EAF0",color:view===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>
           )}
         </div>
+        <StockPanel rentals={rentals} stock={stock} setStock={setStock}/>
         <div style={{padding:"0 20px"}}>
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
@@ -1139,7 +1198,7 @@
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"marketing",i:I.mkt,l:"Marketing"}];
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,dark,setDark}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,dark,setDark}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
@@ -1156,7 +1215,7 @@
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
             {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental}/>}
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
-            {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView}/>}
+            {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances}/>}
             {tab==="marketing"&&<Marketing/>}
           </div>
@@ -1177,7 +1236,7 @@
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,dark,setDark}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,dark,setDark}) {
       // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
       // or are new (startDate is in current month)
       useEffect(()=>{
@@ -1218,7 +1277,7 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} dark={dark} setDark={setDark}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} dark={dark} setDark={setDark}/>;
     }
 
     function AppWrapper() {
@@ -1226,9 +1285,10 @@
       const [patients,setPatients,v2]=usePersistedState("fizjo-patients",[]);
       const [rentals,setRentals,v3]=usePersistedState("fizjo-rentals",[]);
       const [finances,setFinances,v4]=usePersistedState("fizjo-finances",[]);
+      const [stock,setStock,v5]=usePersistedState("fizjo-stock",{});
       const [dark,setDark]=useState(false);
-      if(!v1||!v2||!v3||!v4)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
-      return <DarkCtx.Provider value={dark}><AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} dark={dark} setDark={setDark}/></DarkCtx.Provider>;
+      if(!v1||!v2||!v3||!v4||!v5)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
+      return <DarkCtx.Provider value={dark}><AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} dark={dark} setDark={setDark}/></DarkCtx.Provider>;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
