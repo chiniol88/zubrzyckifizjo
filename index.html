@@ -189,6 +189,15 @@ function visitStatus(v) {
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
+function ClockDisplay() {
+  const [time, setTime] = useState(() => new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}));
+  useEffect(() => {
+    const t = setInterval(()=>setTime(new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"})),1000);
+    return ()=>clearInterval(t);
+  },[]);
+  return <span>{time}</span>;
+}
+
 const VISIT_TYPES = ["Rehabilitacja domowa","Konsultacja","Wizyta kontrolna","Terapia manualna"];
 const makeEmptyVisitForm = () => ({patientId:null,patientName:"",date:(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(),time:"10:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana"});
 
@@ -249,7 +258,7 @@ function Dashboard({visits, setVisits, rentals, setRentals, finances, setFinance
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:700}}>
               Dzisiaj — {new Date(today+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}
             </div>
-            <div style={{fontSize:13,color:"#7A8FA6"}}>{todayVisits.length} wizyt</div>
+            <div style={{fontSize:13,color:"#7A8FA6"}}>{todayVisits.length} wizyt · <ClockDisplay/></div>
           </div>
           <Btn small onClick={()=>{setVForm(makeEmptyVisitForm());setShowAddVisit(true);}}>
             <Ico d={I.plus} s={15} c="#fff"/> Wizyta
@@ -437,20 +446,48 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
             </Card>
           )}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <span style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Wizyty ({patVisits.length})</span>
-            <Btn small onClick={()=>setShowVisit(true)}><Ico d={I.plus} s={15} c="#fff"/> Dodaj</Btn>
+            <span style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Historia</span>
+            <Btn small onClick={()=>setShowVisit(true)}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
           </div>
-          {patVisits.length===0?<Empty text="Brak wizyt"/>:[...patVisits].sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time)).map(v=>(
-            <Card key={v.id} onClick={()=>setEditVisitP({...v,price:String(v.price)})} style={{cursor:"pointer"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontWeight:600}}>{v.date} · {v.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{v.type}</div></div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontWeight:600,marginBottom:4}}>{v.price} zł</div>
-                  <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
-                </div>
-              </div>
-            </Card>
-          ))}
+          {(()=>{
+            const patRentals = rentals.filter(r=>livePatient.id ? r.patientId===livePatient.id : r.patientName===livePatient.name);
+            const visitItems = patVisits.map(v=>({...v,_type:"visit",_date:v.date,_time:v.time||"00:00"}));
+            const rentalItems = patRentals.map(r=>({...r,_type:"rental",_date:r.startDate,_time:"00:00"}));
+            const allItems = [...visitItems,...rentalItems].sort((a,b)=>b._date.localeCompare(a._date)||b._time.localeCompare(a._time));
+            if(allItems.length===0) return <Empty text="Brak historii"/>;
+            return allItems.map(item=>{
+              if(item._type==="visit") return (
+                <Card key={"v"+item.id} onClick={()=>setEditVisitP({...item,price:String(item.price)})} style={{cursor:"pointer"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div>
+                      <div style={{fontWeight:600}}>{item.date} · {item.time}</div>
+                      <div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontWeight:600,marginBottom:4}}>{item.price} zł</div>
+                      <Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(item)}</Badge>
+                    </div>
+                  </div>
+                </Card>
+              );
+              return (
+                <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wypożyczenie</div>
+                      <div style={{fontWeight:600}}>{item.equipment}</div>
+                      <div style={{fontSize:13,color:"#7A8FA6"}}>{item.startDate}{item.endDate?" → "+item.endDate:""}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontWeight:600,marginBottom:4}}>{item.amount} zł</div>
+                      <Badge color={item.status==="zakończone"?"#7A8FA6":"#7C6AF4"}>{item.status}</Badge>
+                    </div>
+                  </div>
+                </Card>
+              );
+            });
+          })()}
         </div>
       </div>
 
@@ -484,18 +521,22 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
           <Txa label="Diagnoza" value={editPatientForm.diagnosis||""} onChange={v=>setEditPatientForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={editPatientForm.notes||""} onChange={v=>setEditPatientForm(f=>({...f,notes:v}))} rows={2}/>
           <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-            setPatients(ps=>ps.map(p=>p.id===selected.id?{...p,...editPatientForm}:p));
+            setPatients(ps=>ps.map(p=>p.id===livePatient.id?{...p,...editPatientForm}:p));
             setSelected(s=>({...s,...editPatientForm}));
             // Propaguj zmiany do wizyt (imię)
             if(editPatientForm.name !== livePatient.name) {
               setVisits(vs=>vs.map(v=>v.patientId===livePatient.id?{...v,patientName:editPatientForm.name}:v));
+              // Aktualizuj opisy w finansach
+              setFinances(fs=>fs.map(f=>f.description&&f.description.includes(livePatient.name)
+                ?{...f,description:f.description.replace(livePatient.name,editPatientForm.name)}:f));
             }
             // Propaguj zmiany do wypożyczeń (imię, telefon, adres)
             setRentals(rs=>rs.map(r=>(livePatient.id ? r.patientId===livePatient.id : r.patientName===livePatient.name)?{
               ...r,
               patientName:editPatientForm.name||r.patientName,
               phone:editPatientForm.phone||r.phone,
-              address:editPatientForm.address||r.address
+              address:editPatientForm.address||r.address,
+              patientId:livePatient.id
             }:r));
             setShowEditPatient(false);
           }}>Zapisz zmiany</Btn>
@@ -549,7 +590,13 @@ function Patients({patients, setPatients, visits, setVisits, finances, setFinanc
     );
   }
 
-  const searchNorm = search.replace(/\s/g,""); const filtered=patients.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())||(p.phone||"").replace(/\s/g,"").includes(searchNorm));
+  const searchNorm = search.replace(/\s/g,""); const searchLow = search.toLowerCase(); const filtered=patients.filter(p=>
+  p.name.toLowerCase().includes(searchLow)||
+  (p.phone||"").replace(/\s/g,"").includes(searchNorm)||
+  (p.address||"").toLowerCase().includes(searchLow)||
+  (p.diagnosis||"").toLowerCase().includes(searchLow)||
+  (p.notes||"").toLowerCase().includes(searchLow)
+);
   return (
     <div>
       <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -595,19 +642,23 @@ const MOCK_RENTALS = [];
 
 const makeEmptyRentalForm = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(),endDate:"",renewable:false,amount:"",amountPaid:"",notes:""});
 
-function PaymentForm({rentalId, rentalAmount, patientName, equipment, setRentals, setFinances}) {
+function PaymentForm({rentalId, rentalAmount, amountPaid, patientName, equipment, setRentals, setFinances}) {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");});
-  const add = () => {
+  const add = (currentPaid) => {
     const val = +amount;
     if(!val) return;
+    const remaining = rentalAmount - (currentPaid||0);
+    if(val > remaining) {
+      alert("Wpłata ("+val+" zł) przekracza pozostałą kwotę do zapłaty ("+remaining+" zł)");
+      return;
+    }
     const newPayment = {id:Date.now(), amount:val, date};
     setRentals(rs=>rs.map(x=>x.id===rentalId?{
       ...x,
       payments:[...(x.payments||[]),newPayment],
       amountPaid:Math.min((x.amountPaid||0)+val, rentalAmount)
     }:x));
-    // Natychmiast dodaj do finansów
     setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+newPayment.id,date,type:"przychód",category:"Wypożyczalnia",amount:val,description:"Wypożyczenie – "+patientName+" ("+equipment+")"},...fs]);
     setAmount("");
   };
@@ -759,6 +810,7 @@ function Rentals({rentals, setRentals, finances, setFinances, patients, initialD
               <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
               <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
               <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
+              {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{r.transport} zł</div></div>}
             </div>
             {/* Płatność */}
             <div style={{borderTop:"1px solid #E4EAF0",paddingTop:12}}>
@@ -776,7 +828,7 @@ function Rentals({rentals, setRentals, finances, setFinances, patients, initialD
                 ))}
               </div>
               {/* Dodaj wpłatę */}
-              <PaymentForm rentalId={r.id} rentalAmount={r.amount} patientName={r.patientName} equipment={r.equipment} setRentals={setRentals} setFinances={setFinances}/>
+              <PaymentForm rentalId={r.id} rentalAmount={r.amount} amountPaid={r.amountPaid||0} patientName={r.patientName} equipment={r.equipment} setRentals={setRentals} setFinances={setFinances}/>
               {/* Historia wpłat */}
               {(r.payments||[]).length>0&&(
                 <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
@@ -890,6 +942,7 @@ function Rentals({rentals, setRentals, finances, setFinances, patients, initialD
           {!editForm.renewable&&<Inp label="Data do" value={editForm.endDate||""} onChange={v=>setEditForm(f=>({...f,endDate:v}))} type="date"/>}
           <Inp label="Kwota (zł)" value={editForm.amount} onChange={v=>setEditForm(f=>({...f,amount:v}))} type="number"/>
           <Inp label="Zapłacono (zł)" value={editForm.amountPaid} onChange={v=>setEditForm(f=>({...f,amountPaid:v}))} type="number"/>
+          <Inp label="Transport (zł)" value={editForm.transport||""} onChange={v=>setEditForm(f=>({...f,transport:v}))} type="number" placeholder="0"/>
           <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
           <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             const rawAmount = +editForm.amount;
@@ -898,6 +951,7 @@ function Rentals({rentals, setRentals, finances, setFinances, patients, initialD
               patientId:matchedEditPat?.id||editForm.patientId||null};
             setRentals(rs=>rs.map(x=>x.id===detail?{...x,...updated}:x));
             // Aktualizuj opis w finansach jeśli zmienił się pacjent lub sprzęt
+            // Aktualizuj opisy istniejących wpisów finansowych
             setFinances(fs=>fs.map(f=>{
               const r = rentals.find(x=>x.id===detail);
               if(!r) return f;
@@ -1000,6 +1054,7 @@ function Rentals({rentals, setRentals, finances, setFinances, patients, initialD
               </div>
             </div>
           </div>
+          <Inp label="Transport (zł)" value={form.transport||""} onChange={v=>setForm(f=>({...f,transport:v}))} type="number" placeholder="0"/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} placeholder="np. max zakres 90°, uwagi..." rows={2}/>
           <Btn onClick={()=>{
             if(!form.patientName) return;
@@ -1031,7 +1086,6 @@ function Finances({finances, setFinances, visits, rentals}) {
   const [month,setMonth]=useState(new Date().toISOString().slice(0,7));
   const [form,setForm]=useState(()=>({date:(()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(),type:"przychód",category:"Wizyta",amount:"",description:""}));
   const [editEntry,setEditEntry]=useState(null);
-  const [confirmDelete,setConfirmDelete]=useState(null);
   const cats={przychód:["Wizyta","Wypożyczalnia","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
   const mly=finances.filter(f=>f.date.startsWith(month) && !f._deleted);
   const inc=mly.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
@@ -1103,27 +1157,10 @@ function Finances({finances, setFinances, visits, rentals}) {
           setFinances(fs=>fs.map(f=>f.id===editEntry.id?{...f,...editEntry,amount:+editEntry.amount}:f));
           setEditEntry(null);
         }}>Zapisz zmiany</Btn>
-        <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{setConfirmDelete(editEntry.id);setEditEntry(null);}}>🗑️ Usuń wpis</Btn>
+
       </Modal>
     )}
-    {confirmDelete&&(
-      <Modal title="Usuń wpis" onClose={()=>setConfirmDelete(null)}>
-        <div style={{fontSize:15,marginBottom:20,color:"#1C2B3A"}}>Na pewno trwale usunąć ten wpis?</div>
-        <div style={{display:"flex",gap:10}}>
-          <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDelete(null)}>Anuluj</Btn>
-          <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{
-            const entry = finances.find(f=>f.id===confirmDelete);
-            if(entry?.sourceId) {
-              // Oznacz jako usunięty żeby auto-sync go nie przywrócił
-              setFinances(fs=>fs.map(f=>f.id===confirmDelete?{...f,_deleted:true,amount:0}:f));
-            } else {
-              setFinances(fs=>fs.filter(f=>f.id!==confirmDelete));
-            }
-            setConfirmDelete(null);
-          }}>Usuń</Btn>
-        </div>
-      </Modal>
-    )}
+
     </>
   );
 }
@@ -1263,7 +1300,7 @@ function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,
         const toAdd = [];
         visits.forEach(v => {
           const sourceId = "visit-" + v.id;
-          if(existingIds.has(sourceId)) return;
+          if(isSkipped(sourceId)) return;
           const visitDT = new Date(v.date + "T" + (v.time || "00:00") + ":00");
           const isDone = v.status === "zakończona" || visitDT <= now;
           if(isDone) {
@@ -1273,10 +1310,9 @@ function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,
         rentals.forEach(r => {
           (r.payments||[]).forEach(p => {
             const sourceId = "payment-" + p.id;
-            if(existingIds.has(sourceId)) return;
-            if(p.date <= todayStr) {
-              toAdd.push({id:Date.now()+Math.random(),sourceId,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+")"});
-            }
+            if(isSkipped(sourceId)) return;
+            // Wszystkie wpłaty trafiają do finansów niezależnie od daty
+            toAdd.push({id:Date.now()+Math.random(),sourceId,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+")"});
           });
         });
         if(toAdd.length === 0) return;
