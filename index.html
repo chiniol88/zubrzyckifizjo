@@ -828,32 +828,18 @@
         <div style={{padding:"0 20px 12px"}}>
           <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
             <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",cursor:"pointer"}}>
-              <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Stan magazynu</span>
-                <div style={{display:"flex",gap:6}}>
-                  {summary.free>0&&<span style={{fontSize:12,fontWeight:700,color:"#3DAA72"}}>🟢 {summary.free}</span>}
-                  {summary.warn>0&&<span style={{fontSize:12,fontWeight:700,color:"#F4A261"}}>🟡 {summary.warn}</span>}
-                  {summary.occupied>0&&<span style={{fontSize:12,fontWeight:700,color:"#E05C5C"}}>🔴 {summary.occupied}</span>}
-                </div>
-              </div>
+              <span style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Stan magazynu</span>
               <span style={{fontSize:11,color:"#7A8FA6"}}>{open?"▲":"▼"}</span>
             </div>
             {open&&<div style={{borderTop:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,padding:"12px 16px 14px"}}>
               {EQUIPMENT.map(eq=>{
                 const active=activeCount[eq]||0,tot=total(eq),fr=tot-active;
-                const pct=tot>0?Math.round((active/tot)*100):0;
-                const color=fr===0?"#E05C5C":fr===1&&tot>1?"#F4A261":"#3DAA72";
-                return <div key={eq} style={{marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</span>
-                    <span style={{fontSize:12,fontWeight:700,color}}>{fr===0?"brak wolnych":fr===1?"1 wolna":fr+" wolne"} · {active}/{tot}</span>
-                  </div>
-                  <div style={{height:5,borderRadius:4,background:dk?"#2A4040":"#E4EAF0",overflow:"hidden"}}>
-                    <div style={{height:"100%",width:pct+"%",background:color,borderRadius:4}}/>
-                  </div>
+                return <div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+                  <span style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{fr}/{tot}</span>
                 </div>;
               })}
-              <button onClick={e=>{e.stopPropagation();setDraft(Object.fromEntries(EQUIPMENT.map(eq=>[eq,String(stock[eq]||1)])));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"4px 0",marginTop:2}}>Edytuj stany magazynowe</button>
+              <button onClick={e=>{e.stopPropagation();setDraft(Object.fromEntries(EQUIPMENT.map(eq=>[eq,String(stock[eq]||1)])));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Edytuj stany magazynowe</button>
             </div>}
           </div>
         </div>
