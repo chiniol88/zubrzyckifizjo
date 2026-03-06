@@ -348,18 +348,6 @@
             </div>
           </div>
           <div style={{padding:"0 20px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Wizyty dziś ({todayV.length})</div>
-              <Btn small onClick={()=>{setVf(emptyVisit());setShowAdd(true);}}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
-            </div>
-            {todayV.length===0?<Empty text="Brak wizyt na dziś"/>:todayV.map(v=>
-              <Card key={v.id} onClick={()=>setEditV({...v,price:String(v.price)})}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><div style={{fontWeight:600}}>{v.time} · {v.patientName}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{v.type}</div></div>
-                  <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
-                </div>
-              </Card>
-            )}
             <MiniCalendar visits={visits} rentals={rentals} today={today}
               onEditVisit={v=>setEditV({...v,price:String(v.price)})}
               onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
@@ -1239,7 +1227,7 @@
         return <>
           <div>
             <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
-              <Ico d={I.back} s={18} c="#0A7C7C"/> Wózki NFZ
+              <Ico d={I.back} s={18} c="#0A7C7C"/> Wózki
             </button>
             <div style={{padding:"16px 20px 0"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -1305,7 +1293,7 @@
 
       return <div>
         <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wózki NFZ</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wózki</div>
           <Btn small onClick={()=>{setForm(emptyNFZ());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
         </div>
         <div style={{padding:"0 20px"}}>
@@ -1324,7 +1312,7 @@
             </div>
           </Card>)}
         </div>
-        {showAdd&&<Modal title="Nowy wózek NFZ" onClose={()=>setShowAdd(false)}>
+        {showAdd&&<Modal title="Nowy wózek" onClose={()=>setShowAdd(false)}>
           <Inp label="Imię i nazwisko *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
