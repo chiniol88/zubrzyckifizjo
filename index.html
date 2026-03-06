@@ -442,6 +442,7 @@
       const [search,setSearch]=useState("");
       const [sort,setSort]=useState("alpha");
       const [histFilter,setHistFilter]=useState("all");
+      const [showArchived,setShowArchived]=useState(false);
       const [toast,setToast]=useState(null);
       const [showQuickV,setShowQuickV]=useState(false);
       const [quickV,setQuickV]=useState(null);
@@ -637,7 +638,6 @@
       }
 
       // Lista pacjentów
-      const [showArchived,setShowArchived]=useState(false);
       const sl=search.toLowerCase(),sn=search.replace(/\s/g,"");
       const filtered=patients.filter(p=>(!!p.archived)===showArchived&&(p.name.toLowerCase().includes(sl)||(p.phone||"").replace(/\s/g,"").includes(sn)||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl)));
       const lastVisitDate=p=>visits.filter(v=>v.patientId===p.id).map(v=>v.date).sort((a,b)=>b.localeCompare(a))[0]||"";
