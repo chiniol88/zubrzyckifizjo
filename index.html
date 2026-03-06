@@ -88,6 +88,11 @@
     const Empty = ({text}) => <div style={{textAlign:"center",padding:"40px 20px",color:"#7A8FA6",fontSize:14}}>{text}</div>;
     const Av = ({name}) => { const i=(name||"?").split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(); return <div style={{width:40,height:40,borderRadius:12,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:"#0A7C7C",flexShrink:0}}>{i}</div>; };
 
+    function Toast({msg,onDone}) {
+      useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+      return <div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1C2B3A",color:"#fff",borderRadius:14,padding:"12px 20px",fontSize:14,fontWeight:600,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.25)",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:8}}><span style={{color:"#3DAA72",fontSize:16}}>✓</span>{msg}</div>;
+    }
+
     function Modal({title,onClose,children}) {
       return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
         <div style={{background:"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
@@ -150,8 +155,11 @@
       const [vf,setVf]=useState(emptyVisit);
       const [editV,setEditV]=useState(null);
       const [confirmDel,setConfirmDel]=useState(null);
+      const [toast,setToast]=useState(null);
 
+      const tomorrowDate=(()=>{const d=new Date(today+"T12:00:00");d.setDate(d.getDate()+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
       const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+      const tomorrowV = visits.filter(v=>v.date===tomorrowDate).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
       const upcoming = rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
       const unpaidCycles = rentals.filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid));
 
@@ -174,14 +182,14 @@
         const nv={id:Date.now(),...vf,price:+vf.price,patientId:pat?.id||null};
         setVisits(vs=>[...vs,nv]);
         syncFinance(nv,true);
-        setShowAdd(false); setVf(emptyVisit());
+        setShowAdd(false); setVf(emptyVisit()); setToast("Wizyta zapisana");
       };
       const saveEdit = () => {
         if(!editV) return;
         const u={...editV,price:+editV.price};
         setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));
         syncFinance(u,false);
-        setEditV(null);
+        setEditV(null); setToast("Zmiany zapisane");
       };
       const delVisit = id => {
         setVisits(vs=>vs.filter(v=>v.id!==id));
@@ -233,6 +241,17 @@
                 </Card>
               );})}
             </>}
+            {tomorrowV.length>0&&<>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Jutro ({tomorrowV.length})</div>
+              {tomorrowV.map(v=>
+                <Card key={v.id} style={{opacity:.85}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div><div style={{fontWeight:600}}>{v.time} · {v.patientName}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{v.type}</div></div>
+                    <div style={{fontWeight:600}}>{v.price} zł</div>
+                  </div>
+                </Card>
+              )}
+            </>}
           </div>
         </div>
 
@@ -267,6 +286,7 @@
             <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>delVisit(confirmDel)}>Usuń</Btn>
           </div>
         </Modal>}
+        {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </>;
     }
 
@@ -283,6 +303,7 @@
       const [editV,setEditV]=useState(null);
       const [confirmDelV,setConfirmDelV]=useState(null);
       const [search,setSearch]=useState("");
+      const [toast,setToast]=useState(null);
 
       const pat = selId ? patients.find(p=>p.id===selId) : null;
       if(selId && !pat) { setSelId(null); return null; }
@@ -290,6 +311,10 @@
       const patVisits = pat ? visits.filter(v=>v.patientId===pat.id) : [];
       const patRentals = pat ? rentals.filter(r=>r.patientId===pat.id||r.patientName===pat.name) : [];
       const history = [...patVisits.map(v=>({...v,_t:"v",_d:v.date,_time:v.time||"00:00"})),...patRentals.map(r=>({...r,_t:"r",_d:r.startDate,_time:"00:00"}))].sort((a,b)=>b._d.localeCompare(a._d)||b._time.localeCompare(a._time));
+
+      const patTotalVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona").reduce((s,v)=>s+(+v.price||0),0) : 0;
+      const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+(r.renewable?(r.cycles||[]).filter(c=>c.paid).reduce((ss,c)=>ss+c.amount,0):(r.amountPaid||0)),0) : 0;
+      const patTotal = patTotalVisits + patTotalRentals;
 
       const syncFinance = (v,isNew) => {
         const done = v.status==="zakończona"||new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
@@ -340,6 +365,18 @@
                 <div style={{fontSize:14,lineHeight:1.6}}>{pat.notes}</div>
               </Card>}
 
+              {patTotal>0&&<Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Łącznie zapłacono</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                  {[{l:"Wizyty",v:patTotalVisits,c:"#0A7C7C"},{l:"Wypożyczenia",v:patTotalRentals,c:"#7C6AF4"},{l:"Razem",v:patTotal,c:"#1C2B3A"}].map((x,i)=>(
+                    <div key={i} style={{background:"#fff",borderRadius:12,padding:"10px 8px",textAlign:"center",border:"1.5px solid #E4EAF0"}}>
+                      <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v} zł</div>
+                      <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+                    </div>
+                  ))}
+                </div>
+              </Card>}
+
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                 <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Historia ({history.length})</div>
                 <Btn small onClick={()=>{setVf({...emptyVisit(),patientName:pat.name,patientId:pat.id});setShowAddV(true);}}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
@@ -386,6 +423,7 @@
                     }));
                     setShowEdit(false);
                     setEditForm(null);
+                    setToast("Zapisano zmiany");
                   }}>Zapisz zmiany</Btn>
                   <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>setConfirmDelPat(true)}>🗑️ Usuń pacjenta</Btn>
                 </>
@@ -421,7 +459,7 @@
             <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
             <Sel label="Status" value={vf.status} onChange={v=>setVf(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
-            <Btn onClick={()=>{const nv={id:Date.now(),patientId:pat.id,patientName:pat.name,...vf,price:+vf.price};setVisits(vs=>[...vs,nv]);syncFinance(nv,true);setShowAddV(false);}} style={{width:"100%",justifyContent:"center"}}>Zapisz wizytę</Btn>
+            <Btn onClick={()=>{const nv={id:Date.now(),patientId:pat.id,patientName:pat.name,...vf,price:+vf.price};setVisits(vs=>[...vs,nv]);syncFinance(nv,true);setShowAddV(false);setToast("Wizyta dodana");}} style={{width:"100%",justifyContent:"center"}}>Zapisz wizytę</Btn>
           </Modal>}
 
           {editV&&<Modal title="Edytuj wizytę" onClose={()=>setEditV(null)}>
@@ -432,7 +470,7 @@
             <Sel label="Typ" value={editV.type} onChange={v=>setEditV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
             <Sel label="Status" value={editV.status||"zaplanowana"} onChange={v=>setEditV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
-            <Btn onClick={()=>{const u={...editV,price:+editV.price};setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));syncFinance(u,false);setEditV(null);}} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
+            <Btn onClick={()=>{const u={...editV,price:+editV.price};setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));syncFinance(u,false);setEditV(null);setToast("Zmiany zapisane");}} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
             <Btn variant="danger" onClick={()=>setConfirmDelV(editV.id)} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
           </Modal>}
 
@@ -443,6 +481,7 @@
               <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setVisits(vs=>vs.filter(v=>v.id!==confirmDelV));setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDelV));setConfirmDelV(null);setEditV(null);}}>Usuń</Btn>
             </div>
           </Modal>}
+          {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
         </>;
       }
 
@@ -604,6 +643,7 @@
       const [form,setForm]=useState(emptyRental);
       const [ef,setEf]=useState(null);
       const [confirmDel,setConfirmDel]=useState(false);
+      const [toast,setToast]=useState(null);
 
       useEffect(()=>{if(initialDetail!=null)setDetail(initialDetail);},[initialDetail]);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
@@ -691,6 +731,23 @@
                 </div>
               </Card>
 
+              {r.renewable&&(r.cycles||[]).length>0&&(()=>{
+                const paid=(r.cycles||[]).filter(c=>c.paid);
+                const total=paid.reduce((s,c)=>s+c.amount,0);
+                const unpaidN=(r.cycles||[]).filter(c=>!c.paid).length;
+                return <Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Podsumowanie wypożyczenia</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                    {[{l:"Mies. łącznie",v:paid.length,c:"#0A7C7C",suf:""},{l:"Łącznie wpłacono",v:total,c:"#3DAA72",suf:" zł"},{l:"Do opłacenia",v:unpaidN,c:unpaidN>0?"#E05C5C":"#3DAA72",suf:" mies."}].map((x,i)=>(
+                      <div key={i} style={{background:"#fff",borderRadius:12,padding:"10px 8px",textAlign:"center",border:"1.5px solid #E4EAF0"}}>
+                        <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v}{x.suf}</div>
+                        <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>;
+              })()}
+
               {r.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
                 <div style={{fontSize:14,lineHeight:1.6}}>{r.notes}</div>
@@ -724,7 +781,7 @@
               const u={...ef,amount:raw,amountPaid:Math.min(+(ef.amountPaid||0),raw),patientId:pat?.id||ef.patientId||null};
               setRentals(rs=>rs.map(x=>x.id===detail?{...x,...u}:x));
               setFinances(fs=>fs.map(f=>{const cur=rentals.find(x=>x.id===detail);if(!cur)return f;if(!(cur.payments||[]).some(p=>f.sourceId==="payment-"+p.id))return f;return{...f,description:"Wypożyczenie – "+u.patientName+" ("+u.equipment+")"};}));
-              setShowEdit(false);
+              setShowEdit(false);setToast("Zmiany zapisane");
             }}>Zapisz zmiany</Btn>
           </Modal>}
 
@@ -777,9 +834,10 @@
             const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:[],status:"aktywne"};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
-            setShowAdd(false);
+            setShowAdd(false);setToast("Wypożyczenie dodane");
           }}>Zapisz wypożyczenie</Btn>
         </Modal>}
+        {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </div>;
     }
 
@@ -787,15 +845,27 @@
     function Finances({finances,setFinances}) {
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
+      const [viewMode,setViewMode]=useState("month"); // "month" | "year"
       const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
+      const [year,setYear]=useState(()=>todayLocal().slice(0,4));
+      const [toast,setToast]=useState(null);
       const ef=()=>({date:todayLocal(),type:"przychód",category:"Wizyta",amount:"",description:""});
       const [form,setForm]=useState(ef);
       const cats={przychód:["Wizyta","Wypożyczalnia","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
 
       const months=useMemo(()=>{const c=todayLocal().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
-      const mly=finances.filter(f=>f.date&&f.date.startsWith(month));
+      const years=useMemo(()=>{const c=todayLocal().slice(0,4),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,4));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
+
+      const mly=viewMode==="month"?finances.filter(f=>f.date&&f.date.startsWith(month)):finances.filter(f=>f.date&&f.date.startsWith(year));
       const inc=mly.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
       const cst=mly.filter(f=>f.type==="koszt").reduce((s,f)=>s+f.amount,0);
+
+      // For year view - monthly breakdown
+      const yearMonths=useMemo(()=>{
+        if(viewMode!=="year")return[];
+        const ms=new Set(finances.filter(f=>f.date&&f.date.startsWith(year)).map(f=>f.date.slice(0,7)));
+        return Array.from(ms).sort((a,b)=>b.localeCompare(a));
+      },[finances,year,viewMode]);
 
       return <>
         <div>
@@ -804,9 +874,15 @@
             <Btn small onClick={()=>{setForm(ef());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Dodaj</Btn>
           </div>
           <div style={{padding:"0 20px"}}>
-            <div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-              {months.map(m=><button key={m} onClick={()=>setMonth(m)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:month===m?"#0A7C7C":"#E4EAF0",color:month===m?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</button>)}
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              {[{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"}].map(x=><button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:viewMode===x.k?"#0A7C7C":"#E4EAF0",color:viewMode===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
             </div>
+            {viewMode==="month"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+              {months.map(m=><button key={m} onClick={()=>setMonth(m)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:month===m?"#0A7C7C":"#E4EAF0",color:month===m?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</button>)}
+            </div>}
+            {viewMode==="year"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+              {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":"#E4EAF0",color:year===y?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{y}</button>)}
+            </div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
               {[{l:"Przychód",v:inc,c:"#3DAA72"},{l:"Koszty",v:cst,c:"#E05C5C"},{l:"Wynik",v:inc-cst,c:inc-cst>=0?"#0A7C7C":"#E05C5C"}].map((x,i)=>(
                 <div key={i} style={{background:x.c+"14",borderRadius:14,padding:"12px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
@@ -815,7 +891,24 @@
                 </div>
               ))}
             </div>
-            {mly.length===0&&<Empty text="Brak wpisów w tym miesiącu"/>}
+            {viewMode==="year"&&yearMonths.length>0&&<>
+              {yearMonths.map(m=>{
+                const ml=finances.filter(f=>f.date&&f.date.startsWith(m));
+                const mi=ml.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
+                const mc=ml.filter(f=>f.type==="koszt").reduce((s,f)=>s+f.amount,0);
+                return <div key={m} style={{marginBottom:8,borderRadius:14,border:"1.5px solid #E4EAF0",overflow:"hidden"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#F2F5F7",cursor:"pointer"}} onClick={()=>{setViewMode("month");setMonth(m);}}>
+                    <span style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</span>
+                    <div style={{display:"flex",gap:12,fontSize:13}}>
+                      <span style={{color:"#3DAA72",fontWeight:600}}>+{mi} zł</span>
+                      <span style={{color:"#E05C5C",fontWeight:600}}>−{mc} zł</span>
+                      <span style={{color:mi-mc>=0?"#0A7C7C":"#E05C5C",fontWeight:700}}>{mi-mc>=0?"+":""}{mi-mc} zł</span>
+                    </div>
+                  </div>
+                </div>;
+              })}
+            </>}
+            {viewMode==="month"&&<>{mly.length===0&&<Empty text="Brak wpisów w tym miesiącu"/>}
             {[...mly].sort((a,b)=>b.date.localeCompare(a.date)).map(f=>(
               <Card key={f.id} onClick={()=>setEditE({...f,amount:String(f.amount)})}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -823,7 +916,7 @@
                   <span style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,color:f.type==="przychód"?"#3DAA72":"#E05C5C"}}>{f.type==="przychód"?"+":"−"}{f.amount} zł</span>
                 </div>
               </Card>
-            ))}
+            ))}</>}
           </div>
         </div>
 
@@ -833,7 +926,7 @@
           <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="150"/>
           <Inp label="Opis" value={form.description} onChange={v=>setForm(f=>({...f,description:v}))} placeholder="np. wizyta u Jana Kowalskiego"/>
           <Inp label="Data" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>
-          <Btn disabled={!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.amount)return;setFinances(fs=>[{...form,id:Date.now(),amount:+form.amount},...fs]);setForm(ef());setShowAdd(false);}}>Zapisz</Btn>
+          <Btn disabled={!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.amount)return;setFinances(fs=>[{...form,id:Date.now(),amount:+form.amount},...fs]);setForm(ef());setShowAdd(false);setToast("Wpis dodany");}}>Zapisz</Btn>
         </Modal>}
 
         {editE&&<Modal title="Edytuj wpis" onClose={()=>setEditE(null)}>
@@ -842,9 +935,10 @@
           <Inp label="Kwota (zł)" value={editE.amount} onChange={v=>setEditE(f=>({...f,amount:v}))} type="number"/>
           <Inp label="Opis" value={editE.description||""} onChange={v=>setEditE(f=>({...f,description:v}))}/>
           <Inp label="Data" value={editE.date} onChange={v=>setEditE(f=>({...f,date:v}))} type="date"/>
-          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setFinances(fs=>fs.map(f=>f.id===editE.id?{...f,...editE,amount:+editE.amount}:f));setEditE(null);}}>Zapisz zmiany</Btn>
+          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setFinances(fs=>fs.map(f=>f.id===editE.id?{...f,...editE,amount:+editE.amount}:f));setEditE(null);setToast("Zmiany zapisane");}}>Zapisz zmiany</Btn>
           <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{setFinances(fs=>fs.filter(f=>f.id!==editE.id));setEditE(null);}}>🗑️ Usuń wpis</Btn>
         </Modal>}
+        {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </>;
     }
 
@@ -902,15 +996,23 @@
     }
 
     function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances}) {
-      // Auto-generate current month cycle for active renewable rentals
+      // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
+      // or are new (startDate is in current month)
       useEffect(()=>{
         if(!rentals)return;
         const cm=todayLocal().slice(0,7);
-        const needsUpdate=rentals.some(r=>r.status==="aktywne"&&r.renewable&&!(r.cycles||[]).some(c=>c.month===cm));
+        const needsUpdate=rentals.some(r=>{
+          if(r.status!=="aktywne"||!r.renewable)return false;
+          if((r.cycles||[]).some(c=>c.month===cm))return false;
+          // Skip if cycles empty AND startDate older than current month — needs HistoryFill first
+          if((r.cycles||[]).length===0&&r.startDate.slice(0,7)<cm)return false;
+          return true;
+        });
         if(!needsUpdate)return;
         setRentals(rs=>rs.map(r=>{
           if(r.status!=="aktywne"||!r.renewable)return r;
           if((r.cycles||[]).some(c=>c.month===cm))return r;
+          if((r.cycles||[]).length===0&&r.startDate.slice(0,7)<cm)return r;
           const last=[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month))[0];
           return {...r,cycles:[...(r.cycles||[]),{month:cm,amount:last?last.amount:(r.amount||0),paid:false,paidDate:null}]};
         }));
