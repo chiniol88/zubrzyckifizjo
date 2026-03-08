@@ -55,6 +55,10 @@
     // ── UTILS ─────────────────────────────────────────────────────────────────
     const todayLocal = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
     const dateDiff = (a,b) => { const [ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.ceil((new Date(by,bm-1,bd)-new Date(ay,am-1,ad))/86400000); };
+    // Godzina odbioru: z ostatniego przedłużenia lub z wypożyczenia
+    const rentalPickupTime = r => { const exts=r.extensions||[]; return exts.length>0?(exts[exts.length-1].pickupTime||r.pickupTime||""):(r.pickupTime||""); };
+    // Data końcowa efektywna (po przedłużeniach)
+    const rentalEndDate = r => r.endDate||"";
     const visitStatus = v => {
       if(v.status==="zakończona") return "zakończona";
       if(v.status==="anulowana") return "anulowana";
@@ -62,7 +66,7 @@
       return new Date(v.date+"T"+(v.time||"00:00")+":00") <= new Date() ? "zakończona" : "zaplanowana";
     };
     const emptyVisit = () => ({date:todayLocal(),time:"10:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
-    const emptyRental = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:todayLocal(),endDate:"",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
+    const emptyRental = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:todayLocal(),endDate:"",renewable:false,amount:"",amountPaid:"",transport:"",notes:"",deliveryTime:"",pickupTime:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula"];
@@ -278,10 +282,14 @@
             const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
             const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
             const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.r.amount+" zł";
+            const time=ev.type==="start"?ev.r.deliveryTime:ev.type==="end"?rentalPickupTime(ev.r):"";
             return <div key={i} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+                <div>
+                  <div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{label}{time&&<span style={{fontWeight:700,color:ev.type==="start"?"#0A7C7C":"#E05C5C",marginLeft:6}}>{time}</span>} · {ev.r.patientName}</div>
+                  <div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div>
+                </div>
               </div>
               <Badge color={color}>{sub}</Badge>
             </div>;
@@ -402,10 +410,10 @@
             />
             {(upcoming.length>0||wózkiReminders.length>0||unpaidCycles.length>0)&&<>
               <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Nadchodzące</div>
-              {upcoming.map(r=>{const d=dateDiff(today,r.endDate);return(
+              {upcoming.map(r=>{const d=dateDiff(today,r.endDate);const pt=rentalPickupTime(r);return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div><div style={{fontWeight:600}}>{r.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName} · {r.endDate}</div></div>
+                    <div><div style={{fontWeight:600}}>{r.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName} · {r.endDate}{pt&&<span style={{color:"#E05C5C",fontWeight:600,marginLeft:4}}>· 📦 {pt}</span>}</div></div>
                     <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
                   </div>
                 </Card>
@@ -924,7 +932,7 @@
           {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>)}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
-          <span>📅 {r.startDate}{r.renewable?" → odnawialne":r.endDate?" → "+r.endDate:""}</span>
+          <span>📅 {r.startDate}{r.deliveryTime&&<span style={{fontWeight:600,color:"#0A7C7C"}}> {r.deliveryTime}</span>}{r.renewable?" → odnawialne":r.endDate?" → "+r.endDate+(rentalPickupTime(r)?" · ⏱ "+rentalPickupTime(r):""):""}</span>
           <span>💰 {r.amount} zł{r.renewable?"/mies.":""}</span>
           {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(r.amount-(r.amountPaid||0))>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {r.amount-(r.amountPaid||0)} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
         </div>
@@ -989,10 +997,10 @@
               <Card style={{marginBottom:10}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wypożyczenie</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                  <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
+                  <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div>{r.deliveryTime&&<div style={{fontSize:12,color:"#0A7C7C",fontWeight:600}}>🚚 {r.deliveryTime}</div>}</div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-                    <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
-                    {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",amount:""});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
+                    <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div>{rentalPickupTime(r)&&<div style={{fontSize:12,color:"#E05C5C",fontWeight:600}}>📦 {rentalPickupTime(r)}</div>}</div>
+                    {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",pickupTime:"",amountDue:"",amountPaid:"",notes:"",editId:null});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
                   </div>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{r.transport} zł</div></div>}
@@ -1010,7 +1018,7 @@
                     <div style={{width:3,borderRadius:2,background:"#0A7C7C",alignSelf:"stretch",minHeight:32,marginTop:2,flexShrink:0}}/>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,color:"#0A7C7C",fontWeight:600}}>Przedłużenie {i+1}</div>
-                      <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}</div>
+                      <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}{ext.pickupTime&&<span style={{color:"#E05C5C",fontWeight:600,marginLeft:6}}>📦 {ext.pickupTime}</span>}</div>
                       {(ext.amountDue||ext.amount||0)>0&&<div style={{fontSize:12,marginTop:2}}>
                         <span style={{color:"#7A8FA6"}}>Należne: </span><span style={{fontWeight:600}}>{ext.amountDue||ext.amount} zł</span>
                         {(ext.amountPaid||0)>0
@@ -1021,7 +1029,7 @@
                       {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic"}}>{ext.notes}</div>}
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
-                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
+                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,pickupTime:ext.pickupTime||"",amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
                       <button onClick={()=>{
                         const prevEnd = i===0 ? (r.extensions||[])[0].prevEndDate : (r.extensions||[])[i-1].newEndDate;
                         const newExts = (r.extensions||[]).filter((_,j)=>j!==i);
@@ -1175,8 +1183,14 @@
               <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
               <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"Odnawialne"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,renewable:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${ef.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:ef.renewable===o.v?"#E6F4F4":"#fff",color:ef.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
             </div>
-            <Inp label="Data od" value={ef.startDate} onChange={v=>setEf(f=>({...f,startDate:v}))} type="date"/>
-            {!ef.renewable&&<Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <Inp label="Data od" value={ef.startDate} onChange={v=>setEf(f=>({...f,startDate:v}))} type="date"/>
+              <Inp label="Godz. dostawy" value={ef.deliveryTime||""} onChange={v=>setEf(f=>({...f,deliveryTime:v}))} type="time"/>
+            </div>
+            {!ef.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>
+              <Inp label="Godz. odbioru" value={ef.pickupTime||""} onChange={v=>setEf(f=>({...f,pickupTime:v}))} type="time"/>
+            </div>}
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
             <Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
@@ -1204,7 +1218,10 @@
             {extForm.editId==null&&<div style={{marginBottom:12,padding:"10px 14px",background:"#F2F5F7",borderRadius:10,fontSize:13}}>
               <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
             </div>}
-            <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
+              <Inp label="Godz. odbioru" value={extForm.pickupTime||""} onChange={v=>setExtForm(f=>({...f,pickupTime:v}))} type="time"/>
+            </div>
             <Inp label="Kwota do zapłaty (zł)" value={extForm.amountDue||""} onChange={v=>setExtForm(f=>({...f,amountDue:v}))} type="number" placeholder="zostaw puste jeśli nieznana"/>
             <Inp label="Zapłacono (zł)" value={extForm.amountPaid||""} onChange={v=>setExtForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0 = jeszcze nie zapłacił"/>
             <Txa label="Notatka" value={extForm.notes||""} onChange={v=>setExtForm(f=>({...f,notes:v}))} rows={2} placeholder="np. pacjent prosi o fakturę..."/>
@@ -1220,7 +1237,7 @@
                 setRentals(rs=>rs.map(x=>x.id===r.id?{
                   ...x,
                   endDate: isLast ? extForm.newEndDate : x.endDate,
-                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0&&!e.paidDate?todayLocal():e.paidDate}:e)
+                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,pickupTime:extForm.pickupTime||"",amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0&&!e.paidDate?todayLocal():e.paidDate}:e)
                 }:x));
                 // Sync finansów — wpis dotyczy amountPaid
                 const extSid="extend-"+r.id+"-"+extForm.editId;
@@ -1230,7 +1247,7 @@
                 setToast("Przedłużenie zaktualizowane");
               } else {
                 const extId = Date.now();
-                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?todayLocal():null};
+                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,pickupTime:extForm.pickupTime||"",amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?todayLocal():null};
                 setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
                 if(paid>0){
                   setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
@@ -1274,8 +1291,14 @@
             <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"🔄 Odnawialne miesięcznie"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,renewable:o.v,endDate:o.v?"":f.endDate}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${form.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:form.renewable===o.v?"#E6F4F4":"#fff",color:form.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
-          <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
-          {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
+            <Inp label="Godz. dostawy" value={form.deliveryTime||""} onChange={v=>setForm(f=>({...f,deliveryTime:v}))} type="time"/>
+          </div>
+          {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>
+            <Inp label="Godz. odbioru" value={form.pickupTime||""} onChange={v=>setForm(f=>({...f,pickupTime:v}))} type="time"/>
+          </div>}
           <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
           {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
