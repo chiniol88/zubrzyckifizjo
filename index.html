@@ -925,6 +925,8 @@
       const [showAdd,setShowAdd]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
       const [detail,setDetail]=useState(null);
+      const [showExtend,setShowExtend]=useState(false);
+      const [extForm,setExtForm]=useState({newEndDate:"",amount:""});
       const [form,setForm]=useState(emptyRental);
       const [ef,setEf]=useState(null);
       const [confirmDel,setConfirmDel]=useState(false);
@@ -970,10 +972,30 @@
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wypożyczenie</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
-                  <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+                    <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
+                    {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",amount:""});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
+                  </div>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{r.transport} zł</div></div>}
                 </div>
+                {(r.extensions||[]).length>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #E4EAF0"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia przedłużeń</div>
+                  <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #F2F5F7"}}>
+                    <div style={{width:3,borderRadius:2,background:"#E4EAF0",alignSelf:"stretch",minHeight:32,marginTop:2,flexShrink:0}}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,color:"#7A8FA6"}}>Okres oryginalny</div>
+                      <div style={{fontSize:13,fontWeight:600}}>{r.startDate} → {(r.extensions||[])[0]?.prevEndDate||r.endDate} · <span style={{color:"#1C2B3A"}}>{r.amount} zł</span></div>
+                    </div>
+                  </div>
+                  {(r.extensions||[]).map((ext,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #F2F5F7"}}>
+                    <div style={{width:3,borderRadius:2,background:"#0A7C7C",alignSelf:"stretch",minHeight:32,marginTop:2,flexShrink:0}}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,color:"#0A7C7C",fontWeight:600}}>Przedłużenie {i+1}</div>
+                      <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}{ext.amount>0?<span style={{color:"#3DAA72",fontWeight:600}}> · {ext.amount} zł ✓</span>:<span style={{color:"#7A8FA6"}}> · do rozliczenia</span>}</div>
+                    </div>
+                  </div>)}
+                </div>}
                 <div style={{borderTop:"1px solid #E4EAF0",paddingTop:12}}>
                   {r.renewable ? <>
                     <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Cykle miesięczne</div>
@@ -1068,6 +1090,24 @@
               setFinances(fs=>fs.map(f=>{const cur=rentals.find(x=>x.id===detail);if(!cur)return f;if(!(cur.payments||[]).some(p=>f.sourceId==="payment-"+p.id))return f;return{...f,description:"Wypożyczenie – "+u.patientName+" ("+u.equipment+")"};}));
               setShowEdit(false);setToast("Zmiany zapisane");
             }}>Zapisz zmiany</Btn>
+          </Modal>}
+
+          {showExtend&&<Modal title="Przedłuż wypożyczenie" onClose={()=>setShowExtend(false)}>
+            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{r.patientName} · {r.equipment}</div>
+            <div style={{marginBottom:12,padding:"10px 14px",background:"#F2F5F7",borderRadius:10,fontSize:13}}>
+              <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
+            </div>
+            <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
+            <Inp label="Kwota za przedłużenie (zł) — opcjonalnie" value={extForm.amount} onChange={v=>setExtForm(f=>({...f,amount:v}))} type="number" placeholder="zostaw puste = rozliczenie na końcu"/>
+            <Btn disabled={!extForm.newEndDate||extForm.newEndDate<=r.endDate} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+              const ext={prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amount:+extForm.amount||0,date:todayLocal()};
+              setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
+              if(ext.amount>0){
+                const sid="extend-"+r.id+"-"+Date.now();
+                setFinances(fs=>[{id:Date.now(),sourceId:sid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:ext.amount,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+              }
+              setShowExtend(false);setToast("Przedłużono do "+extForm.newEndDate);
+            }}>Potwierdź przedłużenie</Btn>
           </Modal>}
 
           {confirmDel&&<Modal title="Usuń wypożyczenie" onClose={()=>setConfirmDel(false)}>
