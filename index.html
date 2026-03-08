@@ -988,11 +988,31 @@
                       <div style={{fontSize:13,fontWeight:600}}>{r.startDate} → {(r.extensions||[])[0]?.prevEndDate||r.endDate} · <span style={{color:"#1C2B3A"}}>{r.amount} zł</span></div>
                     </div>
                   </div>
-                  {(r.extensions||[]).map((ext,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #F2F5F7"}}>
+                  {(r.extensions||[]).map((ext,i)=><div key={ext.id||i} style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #F2F5F7"}}>
                     <div style={{width:3,borderRadius:2,background:"#0A7C7C",alignSelf:"stretch",minHeight:32,marginTop:2,flexShrink:0}}/>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,color:"#0A7C7C",fontWeight:600}}>Przedłużenie {i+1}</div>
                       <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}{ext.amount>0?<span style={{color:"#3DAA72",fontWeight:600}}> · {ext.amount} zł ✓</span>:<span style={{color:"#7A8FA6"}}> · do rozliczenia</span>}</div>
+                    </div>
+                    <div style={{display:"flex",gap:6,flexShrink:0}}>
+                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,amount:String(ext.amount||""),editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
+                      <button onClick={()=>{
+                        const prevEnd = i===0 ? (r.extensions||[])[0].prevEndDate : (r.extensions||[])[i-1].newEndDate;
+                        const newExts = (r.extensions||[]).filter((_,j)=>j!==i);
+                        const newEndDate = newExts.length>0 ? newExts[newExts.length-1].newEndDate : prevEnd;
+                        setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:newEndDate,extensions:newExts}:x));
+                        if(ext.amount>0){
+                          if(ext.id){
+                            setFinances(fs=>fs.filter(f=>f.sourceId!=="extend-"+r.id+"-"+ext.id));
+                          } else {
+                            // Stare przedłużenie bez id — szukamy po opisie i kwocie
+                            setFinances(fs=>{
+                              const toRemove=fs.findIndex(f=>f.sourceId&&f.sourceId.startsWith("extend-"+r.id+"-")&&f.amount===ext.amount&&!newExts.some(e=>e.id&&f.sourceId==="extend-"+r.id+"-"+e.id));
+                              return toRemove>=0?fs.filter((_,j)=>j!==toRemove):fs;
+                            });
+                          }
+                        }
+                      }} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                     </div>
                   </div>)}
                 </div>}
@@ -1006,35 +1026,73 @@
                           {[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month)).map(c=><CycleRow key={c.month} r={r} cycle={c} setRentals={setRentals} setFinances={setFinances}/>)}
                         </>
                     }
-                  </> : <>
-                    <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Płatność</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                      {[{l:"Kwota",v:r.amount+" zł",c:"#1C2B3A"},{l:"Zapłacono",v:(r.amountPaid||0)+" zł",c:"#3DAA72"},{l:"Pozostało",v:(r.amount-(r.amountPaid||0))+" zł",c:(r.amount-(r.amountPaid||0))>0?"#E05C5C":"#3DAA72"}].map((x,i)=>(
-                        <div key={i} style={{background:x.c==="#1C2B3A"?"#F2F5F7":x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c==="#1C2B3A"?"#E4EAF0":x.c+"30"}`}}>
-                          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v}</div>
-                          <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <PaymentForm rentalId={r.id} rentalAmount={r.amount} amountPaid={r.amountPaid||0} patientName={r.patientName} equipment={r.equipment} setRentals={setRentals} setFinances={setFinances}/>
-                    {(r.payments||[]).length>0&&<div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
-                      <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia wpłat</div>
-                      {[...(r.payments||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>(
-                        <div key={p.id} style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                            <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                              <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72"}}/>
-                              <div><div style={{fontWeight:600,fontSize:14}}>{p.amount} zł</div><div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}</div></div>
+                  </> : (()=>{
+                    // Łączna kwota = oryginał + kwoty z przedłużeń które mają amount>0 (opłacone przy przedłużeniu lub do rozliczenia)
+                    const extTotal = (r.extensions||[]).reduce((s,e)=>s+(e.amount||0),0);
+                    const totalAmount = r.amount + extTotal;
+                    // Zapłacono = wpłaty z payments + kwoty za przedłużenia oznaczone jako paid
+                    const paymentsPaid = (r.payments||[]).reduce((s,p)=>s+p.amount,0);
+                    const extPaid = (r.extensions||[]).filter(e=>e.paid).reduce((s,e)=>s+(e.amount||0),0);
+                    const totalPaid = paymentsPaid + extPaid;
+                    const remaining = totalAmount - totalPaid;
+
+                    // Wszystkie wpisy w historii wpłat: normalne + przedłużenia z kwotą
+                    const allPayments = [
+                      ...(r.payments||[]).map(p=>({...p,_type:"payment"})),
+                      ...(r.extensions||[]).filter(e=>e.amount>0).map(e=>({id:"ext-"+e.id,amount:e.amount,date:e.date||r.startDate,doc:e.doc,_type:"extension",_extId:e.id,_label:"Przedłużenie → "+e.newEndDate}))
+                    ].sort((a,b)=>b.date.localeCompare(a.date));
+
+                    return <>
+                      <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Płatność</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+                        {[{l:"Łącznie",v:totalAmount+" zł",c:"#1C2B3A"},{l:"Zapłacono",v:totalPaid+" zł",c:"#3DAA72"},{l:"Pozostało",v:remaining+" zł",c:remaining>0?"#E05C5C":"#3DAA72"}].map((x,i)=>(
+                          <div key={i} style={{background:x.c==="#1C2B3A"?"#F2F5F7":x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c==="#1C2B3A"?"#E4EAF0":x.c+"30"}`}}>
+                            <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v}</div>
+                            <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <PaymentForm rentalId={r.id} rentalAmount={totalAmount} amountPaid={totalPaid} patientName={r.patientName} equipment={r.equipment} setRentals={setRentals} setFinances={setFinances}/>
+                      {allPayments.length>0&&<div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia wpłat</div>
+                        {allPayments.map(p=>(
+                          <div key={p.id} style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                                <div style={{width:8,height:8,borderRadius:"50%",background:p._type==="extension"?"#7C6AF4":"#3DAA72",flexShrink:0}}/>
+                                <div>
+                                  <div style={{fontWeight:600,fontSize:14}}>{p.amount} zł{p._label&&<span style={{fontSize:12,color:"#7C6AF4",fontWeight:400,marginLeft:6}}>{p._label}</span>}</div>
+                                  <div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}</div>
+                                </div>
+                              </div>
+                              <button onClick={()=>{
+                                if(p._type==="payment"){
+                                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id),amountPaid:Math.max(0,(x.amountPaid||0)-p.amount)}:x));
+                                  setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id));
+                                } else {
+                                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,extensions:(x.extensions||[]).map(e=>e.id===p._extId?{...e,amount:0,paid:false}:e)}:x));
+                                  setFinances(fs=>fs.filter(f=>f.sourceId!=="extend-"+r.id+"-"+p._extId));
+                                }
+                              }} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Usuń</button>
                             </div>
-                            <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id),amountPaid:Math.max(0,(x.amountPaid||0)-p.amount)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Usuń</button>
+                            <div style={{display:"flex",gap:8}}>
+                              {[{k:"receipt",l:"🧾 Paragon"},{k:"invoice",l:"📄 Faktura"}].map(opt=>{
+                                const ac=p.doc===opt.k;
+                                const toggle=()=>{
+                                  if(p._type==="payment"){
+                                    setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).map(q=>q.id===p.id?{...q,doc:ac?null:opt.k}:q)}:x));
+                                  } else {
+                                    setRentals(rs=>rs.map(x=>x.id===r.id?{...x,extensions:(x.extensions||[]).map(e=>e.id===p._extId?{...e,doc:ac?null:opt.k}:e)}:x));
+                                  }
+                                };
+                                return <button key={opt.k} onClick={toggle} style={{flex:1,padding:"7px 8px",borderRadius:10,fontFamily:"inherit",fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${ac?"#0A7C7C":"#E4EAF0"}`,background:ac?"#E6F4F4":"#fff",color:ac?"#0A7C7C":"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{ac&&<span style={{fontSize:10}}>✓</span>}{opt.l}</button>;
+                              })}
+                            </div>
                           </div>
-                          <div style={{display:"flex",gap:8}}>
-                            {[{k:"receipt",l:"🧾 Paragon"},{k:"invoice",l:"📄 Faktura"}].map(opt=>{const ac=p.doc===opt.k;return <button key={opt.k} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).map(q=>q.id===p.id?{...q,doc:ac?null:opt.k}:q)}:x))} style={{flex:1,padding:"7px 8px",borderRadius:10,fontFamily:"inherit",fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${ac?"#0A7C7C":"#E4EAF0"}`,background:ac?"#E6F4F4":"#fff",color:ac?"#0A7C7C":"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{ac&&<span style={{fontSize:10}}>✓</span>}{opt.l}</button>;})}
-                          </div>
-                        </div>
-                      ))}
-                    </div>}
-                  </>}
+                        ))}
+                      </div>}
+                    </>;
+                  })()}
                 </div>
               </Card>
 
@@ -1061,7 +1119,15 @@
               </Card>}
 
               {r.status==="aktywne"&&<>
-                <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone"}:x));close();}}><Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ</Btn>
+                <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{
+                  const extTotal=(r.extensions||[]).reduce((s,e)=>s+(e.amount||0),0);
+                  const totalAmount=r.amount+extTotal;
+                  const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+p.amount,0);
+                  const extPaid=(r.extensions||[]).filter(e=>e.paid).reduce((s,e)=>s+(e.amount||0),0);
+                  const remaining=totalAmount-(paymentsPaid+extPaid);
+                  if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
+                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone"}:x));close();
+                }}><Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ</Btn>
               </>}
               {r.status==="zakończone"&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne"}:x))}>↩️ Cofnij zakończenie</Btn>}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń wypożyczenie</Btn>
@@ -1087,27 +1153,57 @@
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
               const u={...ef,amount:raw,amountPaid:Math.min(+(ef.amountPaid||0),raw),patientId:pat?.id||ef.patientId||null};
               setRentals(rs=>rs.map(x=>x.id===detail?{...x,...u}:x));
-              setFinances(fs=>fs.map(f=>{const cur=rentals.find(x=>x.id===detail);if(!cur)return f;if(!(cur.payments||[]).some(p=>f.sourceId==="payment-"+p.id))return f;return{...f,description:"Wypożyczenie – "+u.patientName+" ("+u.equipment+")"};}));
+              // Sync opisy finansów: normalne wpłaty + przedłużenia
+              setFinances(fs=>fs.map(f=>{
+                const cur=rentals.find(x=>x.id===detail);
+                if(!cur)return f;
+                const isPayment=(cur.payments||[]).some(p=>f.sourceId==="payment-"+p.id);
+                const isExtension=f.sourceId&&f.sourceId.startsWith("extend-"+detail+"-");
+                if(isPayment) return{...f,description:"Wypożyczenie – "+u.patientName+" ("+u.equipment+")"};
+                if(isExtension) return{...f,description:"Przedłużenie – "+u.patientName+" ("+u.equipment+")"};
+                return f;
+              }));
               setShowEdit(false);setToast("Zmiany zapisane");
             }}>Zapisz zmiany</Btn>
           </Modal>}
 
-          {showExtend&&<Modal title="Przedłuż wypożyczenie" onClose={()=>setShowExtend(false)}>
+          {showExtend&&<Modal title={extForm.editId!=null?"Edytuj przedłużenie":"Przedłuż wypożyczenie"} onClose={()=>setShowExtend(false)}>
             <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{r.patientName} · {r.equipment}</div>
-            <div style={{marginBottom:12,padding:"10px 14px",background:"#F2F5F7",borderRadius:10,fontSize:13}}>
+            {extForm.editId==null&&<div style={{marginBottom:12,padding:"10px 14px",background:"#F2F5F7",borderRadius:10,fontSize:13}}>
               <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
-            </div>
+            </div>}
             <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
             <Inp label="Kwota za przedłużenie (zł) — opcjonalnie" value={extForm.amount} onChange={v=>setExtForm(f=>({...f,amount:v}))} type="number" placeholder="zostaw puste = rozliczenie na końcu"/>
-            <Btn disabled={!extForm.newEndDate||extForm.newEndDate<=r.endDate} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-              const ext={prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amount:+extForm.amount||0,date:todayLocal()};
-              setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
-              if(ext.amount>0){
-                const sid="extend-"+r.id+"-"+Date.now();
-                setFinances(fs=>[{id:Date.now(),sourceId:sid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:ext.amount,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+            <Btn disabled={!extForm.newEndDate} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+              const amt = +extForm.amount||0;
+              if(extForm.editId!=null){
+                // Edycja istniejącego przedłużenia
+                const oldExt = (r.extensions||[]).find(e=>e.id===extForm.editId);
+                const oldAmt = oldExt?.amount||0;
+                setRentals(rs=>rs.map(x=>x.id===r.id?{
+                  ...x,
+                  endDate: (r.extensions||[]).at(-1)?.id===extForm.editId ? extForm.newEndDate : x.endDate,
+                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,amount:amt,paid:amt>0}:e)
+                }:x));
+                // Aktualizuj finanse jeśli była i jest kwota
+                const sid="extend-"+r.id+"-"+extForm.editId;
+                if(oldAmt>0&&amt>0) setFinances(fs=>fs.map(f=>f.sourceId===sid?{...f,amount:amt,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"}:f));
+                else if(oldAmt>0&&amt===0) setFinances(fs=>fs.filter(f=>f.sourceId!==sid));
+                else if(oldAmt===0&&amt>0) setFinances(fs=>[{id:Date.now(),sourceId:sid,date:oldExt?.date||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:amt,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                setToast("Przedłużenie zaktualizowane");
+              } else {
+                // Nowe przedłużenie
+                const extId = Date.now();
+                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amount:amt,paid:amt>0,date:todayLocal()};
+                setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
+                if(amt>0){
+                  const sid="extend-"+r.id+"-"+extId;
+                  setFinances(fs=>[{id:Date.now()+1,sourceId:sid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:amt,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                }
+                setToast("Przedłużono do "+extForm.newEndDate);
               }
-              setShowExtend(false);setToast("Przedłużono do "+extForm.newEndDate);
-            }}>Potwierdź przedłużenie</Btn>
+              setShowExtend(false);
+            }}>Zatwierdź</Btn>
           </Modal>}
 
           {confirmDel&&<Modal title="Usuń wypożyczenie" onClose={()=>setConfirmDel(false)}>
