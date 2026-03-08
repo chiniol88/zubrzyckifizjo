@@ -1370,7 +1370,6 @@
       // Usuwa wpis z finansów ORAZ cofa efekt w źródle
       const deleteWithSource = (entry) => {
         const sid = entry.sourceId;
-        console.log('[deleteWithSource] sid:', sid, 'entry:', entry);
         if(!sid){ setFinances(fs=>fs.filter(f=>f.id!==entry.id)); return; }
 
         if(sid.startsWith("visit-")){
@@ -1378,17 +1377,14 @@
           setVisits(vs=>vs.filter(v=>+v.id!==vid));
         } else if(sid.startsWith("payment-")){
           const pid = +sid.replace("payment-","");
-          console.log('[deleteWithSource] payment pid:', pid);
           setRentals(rs=>{
             const updated = rs.map(r=>{
               const found=(r.payments||[]).find(p=>+p.id===pid);
               if(!found){ return r; }
-              console.log('[deleteWithSource] found rental:', r.id, 'payment:', found, 'old amountPaid:', r.amountPaid);
               const result = {...r,
                 payments:(r.payments||[]).filter(p=>+p.id!==pid),
                 amountPaid:Math.max(0,(r.amountPaid||0)-found.amount)
               };
-              console.log('[deleteWithSource] new rental amount:', result.amount, 'amountPaid:', result.amountPaid, 'payments:', result.payments);
               return result;
             });
             return updated;
