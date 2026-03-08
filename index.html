@@ -907,6 +907,17 @@
     function RCard({r,onClick}) {
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
       const unpaid=(r.cycles||[]).filter(c=>!c.paid).length;
+      const isZakończone=r.status==="zakończone";
+
+      // Zbierz wszystkie dokumenty (z payments + extensions)
+      const allDocs=new Set([
+        ...(r.payments||[]).map(p=>p.doc).filter(Boolean),
+        ...(r.extensions||[]).map(e=>e.doc).filter(Boolean),
+        ...(r.cycles||[]).map(c=>c.doc).filter(Boolean)
+      ]);
+      const hasReceipt=allDocs.has("receipt");
+      const hasInvoice=allDocs.has("invoice");
+
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
           <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}</div><div style={{fontSize:14}}>{r.patientName}</div></div>
@@ -917,6 +928,13 @@
           <span>💰 {r.amount} zł{r.renewable?"/mies.":""}</span>
           {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(r.amount-(r.amountPaid||0))>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {r.amount-(r.amountPaid||0)} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
         </div>
+        {isZakończone&&(r.notes||(hasReceipt||hasInvoice))&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
+          {(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
+            {hasReceipt&&<span style={{fontSize:11,fontWeight:600,color:"#0A7C7C",background:"#E6F4F4",borderRadius:6,padding:"2px 8px"}}>🧾 Paragon</span>}
+            {hasInvoice&&<span style={{fontSize:11,fontWeight:600,color:"#7C6AF4",background:"#F0EEFF",borderRadius:6,padding:"2px 8px"}}>📄 Faktura</span>}
+          </div>}
+          {r.notes&&<div style={{fontSize:12,color:"#7A8FA6",lineHeight:1.4,whiteSpace:"pre-wrap"}}>{r.notes}</div>}
+        </div>}
       </Card>;
     }
 
@@ -992,22 +1010,30 @@
                     <div style={{width:3,borderRadius:2,background:"#0A7C7C",alignSelf:"stretch",minHeight:32,marginTop:2,flexShrink:0}}/>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,color:"#0A7C7C",fontWeight:600}}>Przedłużenie {i+1}</div>
-                      <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}{ext.amount>0?<span style={{color:"#3DAA72",fontWeight:600}}> · {ext.amount} zł ✓</span>:<span style={{color:"#7A8FA6"}}> · do rozliczenia</span>}</div>
+                      <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}</div>
+                      {(ext.amountDue||ext.amount||0)>0&&<div style={{fontSize:12,marginTop:2}}>
+                        <span style={{color:"#7A8FA6"}}>Należne: </span><span style={{fontWeight:600}}>{ext.amountDue||ext.amount} zł</span>
+                        {(ext.amountPaid||0)>0
+                          ? <><span style={{color:"#3DAA72",marginLeft:8}}>✓ Zapłacono: {ext.amountPaid} zł</span>{(ext.amountPaid)<(ext.amountDue||ext.amount||0)&&<span style={{color:"#E05C5C",marginLeft:8}}>Pozostało: {(ext.amountDue||ext.amount||0)-ext.amountPaid} zł</span>}</>
+                          : <span style={{color:"#F4A261",marginLeft:8}}>· do zapłaty</span>
+                        }
+                      </div>}
+                      {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic"}}>{ext.notes}</div>}
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
-                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,amount:String(ext.amount||""),editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
+                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
                       <button onClick={()=>{
                         const prevEnd = i===0 ? (r.extensions||[])[0].prevEndDate : (r.extensions||[])[i-1].newEndDate;
                         const newExts = (r.extensions||[]).filter((_,j)=>j!==i);
                         const newEndDate = newExts.length>0 ? newExts[newExts.length-1].newEndDate : prevEnd;
                         setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:newEndDate,extensions:newExts}:x));
-                        if(ext.amount>0){
+                        if(ext.amount>0||(ext.amountPaid||0)>0){
                           if(ext.id){
                             setFinances(fs=>fs.filter(f=>f.sourceId!=="extend-"+r.id+"-"+ext.id));
                           } else {
                             // Stare przedłużenie bez id — szukamy po opisie i kwocie
                             setFinances(fs=>{
-                              const toRemove=fs.findIndex(f=>f.sourceId&&f.sourceId.startsWith("extend-"+r.id+"-")&&f.amount===ext.amount&&!newExts.some(e=>e.id&&f.sourceId==="extend-"+r.id+"-"+e.id));
+                              const toRemove=fs.findIndex(f=>f.sourceId&&f.sourceId.startsWith("extend-"+r.id+"-")&&f.amount===(ext.amountPaid||ext.amount)&&!newExts.some(e=>e.id&&f.sourceId==="extend-"+r.id+"-"+e.id));
                               return toRemove>=0?fs.filter((_,j)=>j!==toRemove):fs;
                             });
                           }
@@ -1027,19 +1053,24 @@
                         </>
                     }
                   </> : (()=>{
-                    // Łączna kwota = oryginał + kwoty z przedłużeń które mają amount>0 (opłacone przy przedłużeniu lub do rozliczenia)
-                    const extTotal = (r.extensions||[]).reduce((s,e)=>s+(e.amount||0),0);
-                    const totalAmount = r.amount + extTotal;
-                    // Zapłacono = wpłaty z payments + kwoty za przedłużenia oznaczone jako paid
+                    // Łączna należność = oryginał + amountDue ze wszystkich przedłużeń
+                    const extDue = (r.extensions||[]).reduce((s,e)=>s+(e.amountDue||e.amount||0),0);
+                    const totalAmount = r.amount + extDue;
+                    // Zapłacono = wpłaty z payments + amountPaid z przedłużeń
                     const paymentsPaid = (r.payments||[]).reduce((s,p)=>s+p.amount,0);
-                    const extPaid = (r.extensions||[]).filter(e=>e.paid).reduce((s,e)=>s+(e.amount||0),0);
+                    const extPaid = (r.extensions||[]).reduce((s,e)=>s+(e.amountPaid||0),0);
                     const totalPaid = paymentsPaid + extPaid;
                     const remaining = totalAmount - totalPaid;
 
-                    // Wszystkie wpisy w historii wpłat: normalne + przedłużenia z kwotą
+                    // Historia wpłat: normalne wpłaty + przedłużenia które mają amountPaid>0
                     const allPayments = [
                       ...(r.payments||[]).map(p=>({...p,_type:"payment"})),
-                      ...(r.extensions||[]).filter(e=>e.amount>0).map(e=>({id:"ext-"+e.id,amount:e.amount,date:e.date||r.startDate,doc:e.doc,_type:"extension",_extId:e.id,_label:"Przedłużenie → "+e.newEndDate}))
+                      ...(r.extensions||[]).filter(e=>(e.amountPaid||0)>0).map(e=>({
+                        id:"ext-"+e.id, amount:e.amountPaid, date:e.paidDate||e.date||r.startDate,
+                        doc:e.doc, _type:"extension", _extId:e.id,
+                        _label:"Przedłużenie → "+e.newEndDate,
+                        _due:e.amountDue||e.amount||0
+                      }))
                     ].sort((a,b)=>b.date.localeCompare(a.date));
 
                     return <>
@@ -1062,7 +1093,7 @@
                                 <div style={{width:8,height:8,borderRadius:"50%",background:p._type==="extension"?"#7C6AF4":"#3DAA72",flexShrink:0}}/>
                                 <div>
                                   <div style={{fontWeight:600,fontSize:14}}>{p.amount} zł{p._label&&<span style={{fontSize:12,color:"#7C6AF4",fontWeight:400,marginLeft:6}}>{p._label}</span>}</div>
-                                  <div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}</div>
+                                  <div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}{p._due>0&&p._due!==p.amount&&<span style={{marginLeft:6,color:"#F4A261"}}>należne: {p._due} zł</span>}</div>
                                 </div>
                               </div>
                               <button onClick={()=>{
@@ -1070,7 +1101,8 @@
                                   setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id),amountPaid:Math.max(0,(x.amountPaid||0)-p.amount)}:x));
                                   setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id));
                                 } else {
-                                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,extensions:(x.extensions||[]).map(e=>e.id===p._extId?{...e,amount:0,paid:false}:e)}:x));
+                                  // Usuń wpłatę za przedłużenie — zeruj amountPaid, zachowaj amountDue
+                                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,extensions:(x.extensions||[]).map(e=>e.id===p._extId?{...e,amountPaid:0,paidDate:null,doc:null}:e)}:x));
                                   setFinances(fs=>fs.filter(f=>f.sourceId!=="extend-"+r.id+"-"+p._extId));
                                 }
                               }} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Usuń</button>
@@ -1173,32 +1205,35 @@
               <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
             </div>}
             <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
-            <Inp label="Kwota za przedłużenie (zł) — opcjonalnie" value={extForm.amount} onChange={v=>setExtForm(f=>({...f,amount:v}))} type="number" placeholder="zostaw puste = rozliczenie na końcu"/>
+            <Inp label="Kwota do zapłaty (zł)" value={extForm.amountDue||""} onChange={v=>setExtForm(f=>({...f,amountDue:v}))} type="number" placeholder="zostaw puste jeśli nieznana"/>
+            <Inp label="Zapłacono (zł)" value={extForm.amountPaid||""} onChange={v=>setExtForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0 = jeszcze nie zapłacił"/>
+            <Txa label="Notatka" value={extForm.notes||""} onChange={v=>setExtForm(f=>({...f,notes:v}))} rows={2} placeholder="np. pacjent prosi o fakturę..."/>
             <Btn disabled={!extForm.newEndDate} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-              const amt = +extForm.amount||0;
+              const due = +extForm.amountDue||0;
+              const paid = Math.min(+extForm.amountPaid||0, due||Infinity);
+              const sid = extForm.editId!=null ? "extend-"+r.id+"-"+extForm.editId : "extend-"+r.id+"-"+Date.now();
+
               if(extForm.editId!=null){
-                // Edycja istniejącego przedłużenia
-                const oldExt = (r.extensions||[]).find(e=>e.id===extForm.editId);
-                const oldAmt = oldExt?.amount||0;
+                const oldExt = (r.extensions||[]).find(e=>(e.id||e._fallbackId)===extForm.editId)||{};
+                const oldPaid = oldExt.amountPaid||0;
+                const isLast = (r.extensions||[]).at(-1)?.id===extForm.editId;
                 setRentals(rs=>rs.map(x=>x.id===r.id?{
                   ...x,
-                  endDate: (r.extensions||[]).at(-1)?.id===extForm.editId ? extForm.newEndDate : x.endDate,
-                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,amount:amt,paid:amt>0}:e)
+                  endDate: isLast ? extForm.newEndDate : x.endDate,
+                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0&&!e.paidDate?todayLocal():e.paidDate}:e)
                 }:x));
-                // Aktualizuj finanse jeśli była i jest kwota
-                const sid="extend-"+r.id+"-"+extForm.editId;
-                if(oldAmt>0&&amt>0) setFinances(fs=>fs.map(f=>f.sourceId===sid?{...f,amount:amt,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"}:f));
-                else if(oldAmt>0&&amt===0) setFinances(fs=>fs.filter(f=>f.sourceId!==sid));
-                else if(oldAmt===0&&amt>0) setFinances(fs=>[{id:Date.now(),sourceId:sid,date:oldExt?.date||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:amt,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                // Sync finansów — wpis dotyczy amountPaid
+                const extSid="extend-"+r.id+"-"+extForm.editId;
+                if(oldPaid>0&&paid>0) setFinances(fs=>fs.map(f=>f.sourceId===extSid?{...f,amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"}:f));
+                else if(oldPaid>0&&paid===0) setFinances(fs=>fs.filter(f=>f.sourceId!==extSid));
+                else if(oldPaid===0&&paid>0) setFinances(fs=>[{id:Date.now(),sourceId:extSid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
                 setToast("Przedłużenie zaktualizowane");
               } else {
-                // Nowe przedłużenie
                 const extId = Date.now();
-                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amount:amt,paid:amt>0,date:todayLocal()};
+                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?todayLocal():null};
                 setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
-                if(amt>0){
-                  const sid="extend-"+r.id+"-"+extId;
-                  setFinances(fs=>[{id:Date.now()+1,sourceId:sid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:amt,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                if(paid>0){
+                  setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
                 }
                 setToast("Przedłużono do "+extForm.newEndDate);
               }
