@@ -952,7 +952,7 @@
       const [showEdit,setShowEdit]=useState(false);
       const [detail,setDetail]=useState(null);
       const [showExtend,setShowExtend]=useState(false);
-      const [extForm,setExtForm]=useState({newEndDate:"",amount:""});
+      const [extForm,setExtForm]=useState({newEndDate:"",pickupTime:"",amountDue:"",amountPaid:"",notes:"",editId:null});
       const [form,setForm]=useState(emptyRental);
       const [ef,setEf]=useState(null);
       const [confirmDel,setConfirmDel]=useState(false);
@@ -1799,7 +1799,17 @@
       return <DarkCtx.Provider value={dark}><AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark}/></DarkCtx.Provider>;
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
+    class ErrBoundary extends React.Component {
+      constructor(p){super(p);this.state={err:null};}
+      static getDerivedStateFromError(e){return{err:e};}
+      render(){
+        if(this.state.err)return<div style={{padding:20,fontFamily:"monospace",color:"red",whiteSpace:"pre-wrap"}}>
+          <b>BŁĄD APLIKACJI:</b>{"\n"}{this.state.err?.message}{"\n"}{this.state.err?.stack}
+        </div>;
+        return this.props.children;
+      }
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<ErrBoundary><AppWrapper/></ErrBoundary>);
   </script>
 </body>
 </html>
