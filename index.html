@@ -1334,7 +1334,7 @@
     }
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
-    function Finances({finances,setFinances,visits}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases}) {
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
       const [viewMode,setViewMode]=useState("month"); // "month" | "year" | "stats"
@@ -1343,6 +1343,50 @@
       const [toast,setToast]=useState(null);
       const ef=()=>({date:todayLocal(),type:"przychód",category:"Wizyta",amount:"",description:""});
       const [form,setForm]=useState(ef);
+
+      // Usuwa wpis z finansów ORAZ cofa efekt w źródle
+      const deleteWithSource = (entry) => {
+        const sid = entry.sourceId;
+        if(!sid){ setFinances(fs=>fs.filter(f=>f.id!==entry.id)); return; }
+
+        if(sid.startsWith("visit-")){
+          const vid = +sid.replace("visit-","");
+          setVisits(vs=>vs.filter(v=>+v.id!==vid));
+        } else if(sid.startsWith("payment-")){
+          const pid = +sid.replace("payment-","");
+          setRentals(rs=>rs.map(r=>{
+            const found=(r.payments||[]).find(p=>+p.id===pid);
+            if(!found)return r;
+            return {...r,
+              payments:(r.payments||[]).filter(p=>+p.id!==pid),
+              amountPaid:Math.max(0,(r.amountPaid||0)-found.amount)
+            };
+          }));
+        } else if(sid.startsWith("extend-")){
+          // extend-{rentalId}-{extId}
+          const rest=sid.slice("extend-".length); // "12345-67890"
+          const dashIdx=rest.indexOf("-");
+          const rentalId=+rest.slice(0,dashIdx);
+          const extId=+rest.slice(dashIdx+1);
+          setRentals(rs=>rs.map(r=>+r.id!==rentalId?r:{...r,
+            extensions:(r.extensions||[]).map(e=>+e.id===extId?{...e,amountPaid:0,paidDate:null,doc:null}:e)
+          }));
+        } else if(sid.startsWith("cycle-")){
+          // cycle-{rentalId}-{YYYY-MM}
+          const rest=sid.slice("cycle-".length);
+          const dashIdx=rest.indexOf("-");
+          const rentalId=+rest.slice(0,dashIdx);
+          const month=rest.slice(dashIdx+1);
+          setRentals(rs=>rs.map(r=>+r.id!==rentalId?r:{...r,
+            cycles:(r.cycles||[]).map(c=>c.month===month?{...c,paid:false,paidDate:null}:c)
+          }));
+        } else if(sid.startsWith("wozek-")){
+          const casId=+sid.replace("wozek-","");
+          setNfzCases(cs=>(cs||[]).map(c=>+c.id===casId?{...c,realized:false}:c));
+        }
+
+        setFinances(fs=>fs.filter(f=>f.id!==entry.id));
+      };
       const cats={przychód:["Wizyta","Wypożyczalnia","Wózek","Konsultacja","Inne"],koszt:["Paliwo","Sprzęt","Marketing","ZUS","Podatki","Inne"]};
 
       const months=useMemo(()=>{const c=todayLocal().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
@@ -1429,7 +1473,7 @@
           <Inp label="Opis" value={editE.description||""} onChange={v=>setEditE(f=>({...f,description:v}))}/>
           <Inp label="Data" value={editE.date} onChange={v=>setEditE(f=>({...f,date:v}))} type="date"/>
           <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setFinances(fs=>fs.map(f=>f.id===editE.id?{...f,...editE,amount:+editE.amount}:f));setEditE(null);setToast("Zmiany zapisane");}}>Zapisz zmiany</Btn>
-          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{setFinances(fs=>fs.filter(f=>f.id!==editE.id));setEditE(null);}}>🗑️ Usuń wpis</Btn>
+          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{deleteWithSource(editE);setEditE(null);}}>🗑️ Usuń wpis</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </>;
@@ -1651,7 +1695,7 @@
             {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos}/>}
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
-            {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits}/>}
+            {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
             {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
