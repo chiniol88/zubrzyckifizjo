@@ -1772,8 +1772,55 @@
       const [nfzCases,setNfzCases,v6]=usePersistedState("fizjo-nfz",[]);
       const [todos,setTodos,v7]=usePersistedState("fizjo-todos",[]);
       const [dark,setDark]=useState(false);
+      const [showBackup,setShowBackup]=useState(false);
+      const exportData=()=>{
+        const data={visits,patients,rentals,finances,stock,nfzCases,todos,exportedAt:new Date().toISOString()};
+        const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;
+        a.download="fizjo-backup-"+new Date().toISOString().slice(0,10)+".json";
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      const importData=(e)=>{
+        const file=e.target.files[0];
+        if(!file)return;
+        const reader=new FileReader();
+        reader.onload=(ev)=>{
+          try{
+            const d=JSON.parse(ev.target.result);
+            if(d.visits)setVisits(d.visits);
+            if(d.patients)setPatients(d.patients);
+            if(d.rentals)setRentals(d.rentals);
+            if(d.finances)setFinances(d.finances);
+            if(d.stock)setStock(d.stock);
+            if(d.nfzCases)setNfzCases(d.nfzCases);
+            if(d.todos)setTodos(d.todos);
+            setShowBackup(false);
+            alert("Import zakończony pomyślnie!");
+          }catch(err){alert("Błąd importu: "+err.message);}
+        };
+        reader.readAsText(file);
+      };
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
-      return <DarkCtx.Provider value={dark}><AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark}/></DarkCtx.Provider>;
+      return <DarkCtx.Provider value={dark}>
+        <div style={{position:"relative"}}>
+          <div style={{position:"fixed",top:8,right:8,zIndex:9999}}>
+            <button onClick={()=>setShowBackup(b=>!b)} style={{background:"#0A7C7C",border:"none",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer",opacity:0.85}}>💾</button>
+          </div>
+          {showBackup&&<div style={{position:"fixed",top:36,right:8,zIndex:9999,background:"#fff",border:"1px solid #D0DCE8",borderRadius:12,padding:16,width:220,boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:12,color:"#1C2B3A"}}>Backup danych</div>
+            <button onClick={exportData} style={{width:"100%",background:"#0A7C7C",border:"none",borderRadius:8,padding:"9px 0",fontSize:13,fontWeight:700,color:"#fff",cursor:"pointer",marginBottom:8}}>⬇️ Eksportuj JSON</button>
+            <div style={{fontSize:11,color:"#7A8FA6",marginBottom:8,textAlign:"center"}}>lub przywróć z backupu:</div>
+            <label style={{width:"100%",display:"block",background:"#E6F4F4",border:"none",borderRadius:8,padding:"9px 0",fontSize:13,fontWeight:700,color:"#0A7C7C",cursor:"pointer",textAlign:"center"}}>
+              ⬆️ Importuj JSON
+              <input type="file" accept=".json" onChange={importData} style={{display:"none"}}/>
+            </label>
+          </div>}
+          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark}/>
+        </div>
+      </DarkCtx.Provider>;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
