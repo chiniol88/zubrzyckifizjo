@@ -168,12 +168,14 @@
       return <span>{t}</span>;
     }
 
-    function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental}) {
+    function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
       const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
       const [openDay,setOpenDay]=useState(null);
+      const [showEvtModal,setShowEvtModal]=useState(false);
+      const [evtForm,setEvtForm]=useState({title:"",date:"",allDay:false,time:"10:00",notes:"",editId:null});
 
       const daysInMonth=new Date(calYear,calMonth,0).getDate();
       const firstDow=new Date(calYear,calMonth-1,1).getDay();
@@ -183,27 +185,21 @@
       const prevMonth=()=>{if(calMonth===1){setCalYear(y=>y-1);setCalMonth(12);}else setCalMonth(m=>m-1);setOpenDay(null);};
       const nextMonth=()=>{if(calMonth===12){setCalYear(y=>y+1);setCalMonth(1);}else setCalMonth(m=>m+1);setOpenDay(null);};
 
-      // Build rental events for this month
       const rentalEventsByDay=useMemo(()=>{
         const m={};
         const add=(day,ev)=>{const d=+day;if(!m[d])m[d]=[];m[d].push(ev);};
         rentals.forEach(r=>{
           if(r.status==="zakończone"&&!r.startDate.startsWith(monthStr)&&!(r.endDate||"").startsWith(monthStr))return;
           if(!r.renewable){
-            // start day
             if((r.startDate||"").startsWith(monthStr))add(r.startDate.slice(8),{type:"start",r});
-            // end day
             if((r.endDate||"").startsWith(monthStr))add(r.endDate.slice(8),{type:"end",r});
           } else {
-            // cycles this month
             (r.cycles||[]).forEach(c=>{
               if(c.month===monthStr){
-                // day = same as startDate day
                 const startDay=r.startDate.slice(8);
                 add(startDay,{type:"cycle",c,r});
               }
             });
-            // also mark startDate if rental started this month and no cycle yet
             if(r.startDate.startsWith(monthStr)&&!(r.cycles||[]).some(c=>c.month===monthStr)){
               add(r.startDate.slice(8),{type:"start",r});
             }
@@ -222,6 +218,26 @@
         return m;
       },[visits,monthStr]);
 
+      const eventsByDay=useMemo(()=>{
+        const m={};
+        (events||[]).filter(e=>e.date&&e.date.startsWith(monthStr)).forEach(e=>{
+          const d=+e.date.slice(8);
+          if(!m[d])m[d]=[];
+          m[d].push(e);
+        });
+        return m;
+      },[events,monthStr]);
+
+      const saveEvt=()=>{
+        if(!evtForm.title.trim()||!evtForm.date)return;
+        if(evtForm.editId){
+          setEvents(es=>(es||[]).map(e=>e.id===evtForm.editId?{...e,title:evtForm.title.trim(),date:evtForm.date,allDay:evtForm.allDay,time:evtForm.allDay?"":evtForm.time,notes:evtForm.notes}:e));
+        } else {
+          setEvents(es=>[...(es||[]),{id:Date.now(),title:evtForm.title.trim(),date:evtForm.date,allDay:evtForm.allDay,time:evtForm.allDay?"":evtForm.time,notes:evtForm.notes}]);
+        }
+        setShowEvtModal(false);
+      };
+
       const DOW=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
       const todayDay=today.startsWith(monthStr)?+today.slice(8):null;
       const cells=[];
@@ -231,6 +247,9 @@
       const openDateStr=openDay?monthStr+"-"+String(openDay).padStart(2,"0"):null;
       const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
       const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
+      const dayEvents=openDay?(eventsByDay[openDay]||[]):[];
+      const dayAllDay=dayEvents.filter(e=>e.allDay).sort((a,b)=>a.title.localeCompare(b.title));
+      const dayTimed=dayEvents.filter(e=>!e.allDay).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
 
       return <div style={{marginTop:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -251,6 +270,7 @@
               if(!d)return<div key={"e"+i}/>;
               const vc=(visitsByDay[d]||[]).length;
               const rc=(rentalEventsByDay[d]||[]).length;
+              const ec=(eventsByDay[d]||[]).length;
               const isToday=d===todayDay;
               const isOpen=d===openDay;
               return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):"transparent"}}>
@@ -258,6 +278,7 @@
                 <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
                   {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
                   {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
+                  {ec>0&&[...Array(Math.min(ec,2))].map((_,j)=><div key={"e"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#F4A261"}}/>)}
                 </div>
               </div>;
             })}
@@ -265,17 +286,32 @@
           <div style={{display:"flex",gap:12,marginTop:10,paddingTop:8,borderTop:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,justifyContent:"center"}}>
             <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#0A7C7C",display:"inline-block"}}/>Wizyty</span>
             <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#7C6AF4",display:"inline-block"}}/>Wypożyczenia</span>
+            <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#F4A261",display:"inline-block"}}/>Wydarzenia</span>
           </div>
         </div>
 
         {openDay&&<div style={{marginTop:8,background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
-            <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>{setEvtForm({title:"",date:openDateStr,allDay:false,time:"10:00",notes:"",editId:null});setShowEvtModal(true);}} style={{background:"#FFF4E8",color:"#F4A261",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wydarzenie</button>
+              <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
+            </div>
           </div>
 
-          {dayVisits.length===0&&dayRentals.length===0&&
+          {dayVisits.length===0&&dayRentals.length===0&&dayEvents.length===0&&
             <div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak zdarzeń tego dnia</div>}
+
+          {dayAllDay.map(ev=><div key={ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:6,height:6,borderRadius:2,background:"#F4A261",flexShrink:0}}/>
+              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
+              <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
+            </div>
+          </div>)}
 
           {dayVisits.map(v=><div key={v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -283,6 +319,17 @@
               <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
             </div>
             <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
+          </div>)}
+
+          {dayTimed.map(ev=><div key={ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:"#F4A261",flexShrink:0}}/>
+              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
+            </div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
+              <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
+            </div>
           </div>)}
 
           {dayRentals.map((ev,i)=>{
@@ -298,11 +345,25 @@
             </div>;
           })}
         </div>}
+
+        {showEvtModal&&<Modal title={evtForm.editId?"Edytuj wydarzenie":"Nowe wydarzenie"} onClose={()=>setShowEvtModal(false)}>
+          <Inp label="Tytuł *" value={evtForm.title} onChange={v=>setEvtForm(f=>({...f,title:v}))} placeholder="np. Konferencja, Urlop..."/>
+          <Inp label="Data *" value={evtForm.date} onChange={v=>setEvtForm(f=>({...f,date:v}))} type="date"/>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
+            <div style={{display:"flex",gap:8}}>
+              {[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEvtForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${evtForm.allDay===o.v?"#F4A261":"#E4EAF0"}`,background:evtForm.allDay===o.v?"#FFF4E8":"#fff",color:evtForm.allDay===o.v?"#F4A261":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}
+            </div>
+          </div>
+          {!evtForm.allDay&&<Inp label="Godzina" value={evtForm.time||"10:00"} onChange={v=>setEvtForm(f=>({...f,time:v}))} type="time"/>}
+          <Txa label="Notatka" value={evtForm.notes||""} onChange={v=>setEvtForm(f=>({...f,notes:v}))} rows={2} placeholder="Opcjonalnie..."/>
+          <Btn disabled={!evtForm.title.trim()||!evtForm.date} style={{width:"100%",justifyContent:"center"}} onClick={saveEvt}>{evtForm.editId?"Zapisz zmiany":"Dodaj wydarzenie"}</Btn>
+        </Modal>}
       </div>;
     }
 
     // ── DASHBOARD ─────────────────────────────────────────────────────────────
-    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental,nfzCases,goToWozki,todos,setTodos}) {
+    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental,nfzCases,goToWozki,todos,setTodos,events,setEvents}) {
       const demo=useDemo();
       const today = todayLocal();
       const dk=useContext(DarkCtx);
@@ -415,7 +476,7 @@
             </div>
           </div>
           <div style={{padding:"0 20px"}}>
-            <MiniCalendar visits={visits} rentals={rentals} today={today}
+            <MiniCalendar visits={visits} rentals={rentals} today={today} events={events} setEvents={setEvents}
               onEditVisit={v=>setEditV({...v,price:String(v.price)})}
               onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
               onGoToRental={goToRental}
@@ -1724,7 +1785,7 @@
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
@@ -1736,7 +1797,7 @@
       return <>
         <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
-            {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos}/>}
+            {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
             {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
@@ -1757,7 +1818,7 @@
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
       // or are new (startDate is in current month)
       useEffect(()=>{
@@ -1798,7 +1859,7 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>;
     }
 
     function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
@@ -1844,13 +1905,14 @@
       const [stock,setStock,v5]=usePersistedState("fizjo-stock",{});
       const [nfzCases,setNfzCases,v6]=usePersistedState("fizjo-nfz",[]);
       const [todos,setTodos,v7]=usePersistedState("fizjo-todos",[]);
+      const [events,setEvents,v9]=usePersistedState("fizjo-events",[]);
       const [settings,setSettings,v8]=usePersistedState("fizjo-settings",{backupReminder:true});
       const [dark,setDark]=useState(false);
       const [demo,setDemo]=useState(false);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
 
       const exportData=()=>{
-        const data={visits,patients,rentals,finances,stock,nfzCases,todos,exportedAt:new Date().toISOString()};
+        const data={visits,patients,rentals,finances,stock,nfzCases,todos,events,exportedAt:new Date().toISOString()};
         const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
         const url=URL.createObjectURL(blob);
         const a=document.createElement("a");
@@ -1875,6 +1937,7 @@
             if(d.stock)setStock(d.stock);
             if(d.nfzCases)setNfzCases(d.nfzCases);
             if(d.todos)setTodos(d.todos);
+            if(d.events)setEvents(d.events);
             alert("Import zakończony pomyślnie!");
           }catch(err){alert("Błąd importu: "+err.message);}
         };
@@ -1906,7 +1969,7 @@
               <button onClick={()=>setShowBackupBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#1C2B3A"}}>×</button>
             </div>
           </div>}
-          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>
+          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>
         </div>
       </DemoCtx.Provider></DarkCtx.Provider>;
     }
