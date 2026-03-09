@@ -738,7 +738,7 @@
                 <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
               </div>
             </div>
-            {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #E4EAF0"}}>{p.diagnosis}</div>}
+            {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #E4EAF0",whiteSpace:"pre-wrap"}}>{p.diagnosis}</div>}
           </Card>);})}
         </div>
         {showAdd&&<Modal title="Nowy pacjent" onClose={()=>setShowAdd(false)}>
