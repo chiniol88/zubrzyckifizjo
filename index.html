@@ -71,7 +71,7 @@
       if(!v.date) return "zaplanowana";
       return new Date(v.date+"T"+(v.time||"00:00")+":00") <= new Date() ? "zakończona" : "zaplanowana";
     };
-    const emptyVisit = () => ({date:todayLocal(),time:"10:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
+    const emptyVisit = () => ({date:todayLocal(),time:"15:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
     const emptyRental = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:todayLocal(),endDate:"",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
@@ -170,6 +170,7 @@
 
     function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental}) {
       const dk=useContext(DarkCtx);
+      const demo=useDemo();
       const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
       const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
       const [openDay,setOpenDay]=useState(null);
