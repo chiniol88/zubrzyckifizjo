@@ -363,6 +363,8 @@
 
       const [todoOpen,setTodoOpen]=useState(false);
       const [todoInput,setTodoInput]=useState("");
+      const [editTodoId,setEditTodoId]=useState(null);
+      const [editTodoText,setEditTodoText]=useState("");
 
       return <>
         <div>
@@ -397,7 +399,13 @@
                     style={{width:20,height:20,borderRadius:6,border:`2px solid ${t.done?"#3DAA72":"#E4EAF0"}`,background:t.done?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer"}}>
                     {t.done&&<span style={{color:"#fff",fontSize:12}}>✓</span>}
                   </div>
-                  <span style={{flex:1,fontSize:14,color:t.done?"#7A8FA6":(dk?"#E8F5F5":"#1C2B3A"),textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
+                  {editTodoId===t.id
+                    ? <input autoFocus value={editTodoText} onChange={e=>setEditTodoText(e.target.value)}
+                        onKeyDown={e=>{if(e.key==="Enter"&&editTodoText.trim()){setTodos(ts=>(ts||[]).map(x=>x.id===t.id?{...x,text:editTodoText.trim()}:x));setEditTodoId(null);}if(e.key==="Escape")setEditTodoId(null);}}
+                        onBlur={()=>{if(editTodoText.trim())setTodos(ts=>(ts||[]).map(x=>x.id===t.id?{...x,text:editTodoText.trim()}:x));setEditTodoId(null);}}
+                        style={{flex:1,padding:"4px 8px",border:`1.5px solid #0A7C7C`,borderRadius:8,fontSize:14,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+                    : <span onDoubleClick={()=>{setEditTodoId(t.id);setEditTodoText(t.text);}} style={{flex:1,fontSize:14,color:t.done?"#7A8FA6":(dk?"#E8F5F5":"#1C2B3A"),textDecoration:t.done?"line-through":"none",cursor:"text"}}>{t.text}</span>
+                  }
                   <button onClick={()=>setTodos(ts=>(ts||[]).filter(x=>x.id!==t.id))}
                     style={{background:"none",border:"none",color:"#7A8FA6",fontSize:16,cursor:"pointer",padding:"0 2px",lineHeight:1}}>×</button>
                 </div>)}
@@ -593,7 +601,7 @@
                       <div><div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div><div style={{fontWeight:600}}>{item.date} · {item.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div></div>
                       <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{item.price} zł</div><Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(item)}</Badge></div>
                     </div>
-                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",fontStyle:"italic"}}>📝 {item.notes}</div>}
+                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
                   </Card>
                 : <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -840,6 +848,7 @@
 
     function CycleRow({r,cycle,setRentals,setFinances}) {
       const [amt,setAmt]=useState(String(cycle.amount||""));
+      const [payDate,setPayDate]=useState(todayLocal);
       const label=new Date(cycle.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
       const sid="cycle-"+r.id+"-"+cycle.month;
       if(cycle.paid) return (
@@ -854,10 +863,11 @@
       return (
         <div style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
           <div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",marginBottom:8,color:"#E05C5C"}}>⚠️ {label}</div>
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,marginBottom:6}}>
             <input type="number" value={amt} onChange={e=>setAmt(e.target.value)} placeholder="Kwota..." style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
-            <button onClick={()=>{const v=+amt;if(!v)return;setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:todayLocal()}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label},...fs]);}} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Opłać</button>
+            <input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
           </div>
+          <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label},...fs]);}} style={{width:"100%",background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
         </div>
       );
     }
@@ -958,7 +968,7 @@
       const [showEdit,setShowEdit]=useState(false);
       const [detail,setDetail]=useState(null);
       const [showExtend,setShowExtend]=useState(false);
-      const [extForm,setExtForm]=useState({newEndDate:"",amountDue:"",amountPaid:"",notes:"",editId:null});
+      const [extForm,setExtForm]=useState({newEndDate:"",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});
       const [form,setForm]=useState(emptyRental);
       const [ef,setEf]=useState(null);
       const [confirmDel,setConfirmDel]=useState(false);
@@ -1006,7 +1016,7 @@
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
                     <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
-                    {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",amountDue:"",amountPaid:"",notes:"",editId:null});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
+                    {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
                   </div>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{r.transport} zł</div></div>}
@@ -1032,10 +1042,10 @@
                           : <span style={{color:"#F4A261",marginLeft:8}}>· do zapłaty</span>
                         }
                       </div>}
-                      {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic"}}>{ext.notes}</div>}
+                      {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic",whiteSpace:"pre-wrap"}}>{ext.notes}</div>}
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
-                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
+                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),payDate:ext.paidDate||"",notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
                       <button onClick={()=>{
                         const prevEnd = i===0 ? (r.extensions||[])[0].prevEndDate : (r.extensions||[])[i-1].newEndDate;
                         const newExts = (r.extensions||[]).filter((_,j)=>j!==i);
@@ -1221,6 +1231,7 @@
             <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
             <Inp label="Kwota do zapłaty (zł)" value={extForm.amountDue||""} onChange={v=>setExtForm(f=>({...f,amountDue:v}))} type="number" placeholder="zostaw puste jeśli nieznana"/>
             <Inp label="Zapłacono (zł)" value={extForm.amountPaid||""} onChange={v=>setExtForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0 = jeszcze nie zapłacił"/>
+            <Inp label="Data zapłaty" value={extForm.payDate||""} onChange={v=>setExtForm(f=>({...f,payDate:v}))} type="date" placeholder=""/>
             <Txa label="Notatka" value={extForm.notes||""} onChange={v=>setExtForm(f=>({...f,notes:v}))} rows={2} placeholder="np. pacjent prosi o fakturę..."/>
             <Btn disabled={!extForm.newEndDate} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const due = +extForm.amountDue||0;
@@ -1234,20 +1245,20 @@
                 setRentals(rs=>rs.map(x=>x.id===r.id?{
                   ...x,
                   endDate: isLast ? extForm.newEndDate : x.endDate,
-                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0&&!e.paidDate?todayLocal():e.paidDate}:e)
+                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0?(extForm.payDate||todayLocal()):e.paidDate}:e)
                 }:x));
                 // Sync finansów — wpis dotyczy amountPaid
                 const extSid="extend-"+r.id+"-"+extForm.editId;
                 if(oldPaid>0&&paid>0) setFinances(fs=>fs.map(f=>f.sourceId===extSid?{...f,amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"}:f));
                 else if(oldPaid>0&&paid===0) setFinances(fs=>fs.filter(f=>f.sourceId!==extSid));
-                else if(oldPaid===0&&paid>0) setFinances(fs=>[{id:Date.now(),sourceId:extSid,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                else if(oldPaid===0&&paid>0) setFinances(fs=>[{id:Date.now(),sourceId:extSid,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
                 setToast("Przedłużenie zaktualizowane");
               } else {
                 const extId = Date.now();
-                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?todayLocal():null};
+                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?(extForm.payDate||todayLocal()):null};
                 setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
                 if(paid>0){
-                  setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                  setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
                 }
                 setToast("Przedłużono do "+extForm.newEndDate);
               }
