@@ -1677,9 +1677,9 @@
 
 
     // ── APP ───────────────────────────────────────────────────────────────────
-    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"}];
+    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
@@ -1687,11 +1687,6 @@
       const goToRental=id=>{setDlRental(id);setTab("rentals");};
       const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
       const dk=dark;
-
-      // Long-press on Pulpit to toggle dark mode
-      const lpTimer=React.useRef(null);
-      const lpStart=()=>{lpTimer.current=setTimeout(()=>{setDark(d=>!d);},700);};
-      const lpEnd=()=>{if(lpTimer.current)clearTimeout(lpTimer.current);};
 
       return <>
         <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
@@ -1701,14 +1696,12 @@
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
             {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
+            {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData}/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
             {TABS.map(t=>{
-              const isDash=t.id==="dashboard";
               return <button key={t.id}
                 onClick={()=>setTab(t.id)}
-                onMouseDown={isDash?lpStart:undefined} onMouseUp={isDash?lpEnd:undefined} onMouseLeave={isDash?lpEnd:undefined}
-                onTouchStart={isDash?lpStart:undefined} onTouchEnd={isDash?lpEnd:undefined}
                 style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit",userSelect:"none",WebkitUserSelect:"none"}}>
                 <div style={{width:36,height:36,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={18} c={tab===t.id?"#fff":dk?"#5A8A8A":"#7A8FA6"}/></div>
                 <span style={{fontSize:10,fontWeight:600,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#7A8FA6"}}>{t.l}</span>
@@ -1719,7 +1712,7 @@
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData}) {
       // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
       // or are new (startDate is in current month)
       useEffect(()=>{
@@ -1760,7 +1753,41 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData}/>;
+    }
+
+    function Settings({dark,setDark,settings,setSettings,exportData,importData}) {
+      const dk=dark;
+      const bg=dk?"#0F1F1F":"#fff";
+      const sec=dk?"#0A1A1A":"#F2F5F7";
+      const txt=dk?"#E8F5F5":"#1C2B3A";
+      const sub="#7A8FA6";
+      const Row=({label,children})=><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}><span style={{fontSize:14,color:txt}}>{label}</span>{children}</div>;
+      const Toggle=({val,onToggle})=><div onClick={onToggle} style={{width:44,height:24,borderRadius:12,background:val?"#0A7C7C":"#D0DCE8",cursor:"pointer",position:"relative",transition:"background 0.2s"}}><div style={{position:"absolute",top:3,left:val?23:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/></div>;
+      const Sec=({title,children})=><div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>{title}</div>{children}</div>;
+      return <div style={{padding:"16px 12px 20px",background:sec,minHeight:"100vh"}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:txt,marginBottom:16}}>Ustawienia</div>
+        <Sec title="WYGLĄD">
+          <Row label="Tryb ciemny"><Toggle val={dark} onToggle={()=>setDark(d=>!d)}/></Row>
+        </Sec>
+        <Sec title="DANE">
+          <Row label="Eksport kopii zapasowej">
+            <button onClick={exportData} style={{background:"#0A7C7C",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>⬇️ Pobierz JSON</button>
+          </Row>
+          <Row label="Importuj kopię zapasową">
+            <label style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#0A7C7C",cursor:"pointer"}}>
+              ⬆️ Wgraj JSON
+              <input type="file" accept=".json" onChange={importData} style={{display:"none"}}/>
+            </label>
+          </Row>
+          <Row label="Auto-przypomnienie o backupie o 20:00">
+            <Toggle val={settings.backupReminder!==false} onToggle={()=>setSettings(s=>({...s,backupReminder:s.backupReminder===false?true:false}))}/>
+          </Row>
+        </Sec>
+        <Sec title="INFORMACJE">
+          <Row label="Wersja aplikacji"><span style={{fontSize:13,color:sub}}>ZubrzyckiFizjo 1.0</span></Row>
+        </Sec>
+      </div>;
     }
 
     function AppWrapper() {
@@ -1771,8 +1798,10 @@
       const [stock,setStock,v5]=usePersistedState("fizjo-stock",{});
       const [nfzCases,setNfzCases,v6]=usePersistedState("fizjo-nfz",[]);
       const [todos,setTodos,v7]=usePersistedState("fizjo-todos",[]);
+      const [settings,setSettings,v8]=usePersistedState("fizjo-settings",{backupReminder:true});
       const [dark,setDark]=useState(false);
-      const [showBackup,setShowBackup]=useState(false);
+      const [showBackupBanner,setShowBackupBanner]=useState(false);
+
       const exportData=()=>{
         const data={visits,patients,rentals,finances,stock,nfzCases,todos,exportedAt:new Date().toISOString()};
         const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
@@ -1782,7 +1811,9 @@
         a.download="fizjo-backup-"+new Date().toISOString().slice(0,10)+".json";
         a.click();
         URL.revokeObjectURL(url);
+        setShowBackupBanner(false);
       };
+
       const importData=(e)=>{
         const file=e.target.files[0];
         if(!file)return;
@@ -1797,28 +1828,38 @@
             if(d.stock)setStock(d.stock);
             if(d.nfzCases)setNfzCases(d.nfzCases);
             if(d.todos)setTodos(d.todos);
-            setShowBackup(false);
             alert("Import zakończony pomyślnie!");
           }catch(err){alert("Błąd importu: "+err.message);}
         };
         reader.readAsText(file);
       };
+
+      // Backup reminder at 20:00 Warsaw time
+      React.useEffect(()=>{
+        if(settings&&settings.backupReminder===false)return;
+        const check=()=>{
+          const now=new Date();
+          const warsaw=new Date(now.toLocaleString("en-US",{timeZone:"Europe/Warsaw"}));
+          const h=warsaw.getHours();
+          const m=warsaw.getMinutes();
+          if(h===20&&m<5)setShowBackupBanner(true);
+        };
+        check();
+        const id=setInterval(check,60000);
+        return()=>clearInterval(id);
+      },[settings]);
+
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
       return <DarkCtx.Provider value={dark}>
-        <div style={{position:"relative"}}>
-          <div style={{position:"fixed",top:8,right:8,zIndex:9999}}>
-            <button onClick={()=>setShowBackup(b=>!b)} style={{background:"#0A7C7C",border:"none",borderRadius:8,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#fff",cursor:"pointer",opacity:0.85}}>💾</button>
-          </div>
-          {showBackup&&<div style={{position:"fixed",top:36,right:8,zIndex:9999,background:"#fff",border:"1px solid #D0DCE8",borderRadius:12,padding:16,width:220,boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
-            <div style={{fontWeight:700,fontSize:14,marginBottom:12,color:"#1C2B3A"}}>Backup danych</div>
-            <button onClick={exportData} style={{width:"100%",background:"#0A7C7C",border:"none",borderRadius:8,padding:"9px 0",fontSize:13,fontWeight:700,color:"#fff",cursor:"pointer",marginBottom:8}}>⬇️ Eksportuj JSON</button>
-            <div style={{fontSize:11,color:"#7A8FA6",marginBottom:8,textAlign:"center"}}>lub przywróć z backupu:</div>
-            <label style={{width:"100%",display:"block",background:"#E6F4F4",border:"none",borderRadius:8,padding:"9px 0",fontSize:13,fontWeight:700,color:"#0A7C7C",cursor:"pointer",textAlign:"center"}}>
-              ⬆️ Importuj JSON
-              <input type="file" accept=".json" onChange={importData} style={{display:"none"}}/>
-            </label>
+        <div>
+          {showBackupBanner&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#F4A261",zIndex:9999,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,fontSize:13,color:"#1C2B3A"}}>💾 Czas na backup!</span>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={exportData} style={{background:"#1C2B3A",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Pobierz</button>
+              <button onClick={()=>setShowBackupBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#1C2B3A"}}>×</button>
+            </div>
           </div>}
-          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark}/>
+          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData}/>
         </div>
       </DarkCtx.Provider>;
     }
