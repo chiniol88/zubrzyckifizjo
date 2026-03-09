@@ -932,6 +932,10 @@
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
       const unpaid=(r.cycles||[]).filter(c=>!c.paid).length;
       const isZakończone=r.status==="zakończone";
+      const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+      const totalAmount=(+r.amount||0)+extDue;
+      const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
+      const totalPaid=(r.amountPaid||0)+extPaid;
 
       // Zbierz wszystkie dokumenty (z payments + extensions)
       const allDocs=new Set([
@@ -949,8 +953,8 @@
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
           <span>📅 {r.startDate}{r.renewable?" → odnawialne":r.endDate?" → "+r.endDate:""}</span>
-          <span>💰 {maskAmt(demo,r.amount)} zł{r.renewable?"/mies.":""}</span>
-          {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(r.amount-(r.amountPaid||0))>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {demo?"****":r.amount-(r.amountPaid||0)} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
+          <span>💰 {maskAmt(demo,totalAmount)} zł{r.renewable?"/mies.":""}</span>
+          {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(totalAmount-totalPaid)>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {demo?"****":totalAmount-totalPaid} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
         </div>
         {isZakończone&&(r.notes||(hasReceipt||hasInvoice))&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
           {(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
@@ -1176,10 +1180,10 @@
 
               {r.status==="aktywne"&&<>
                 <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{
-                  const extTotal=(r.extensions||[]).reduce((s,e)=>s+(e.amount||0),0);
-                  const totalAmount=r.amount+extTotal;
+                  const extTotal=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+                  const totalAmount=(+r.amount||0)+extTotal;
                   const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+p.amount,0);
-                  const extPaid=(r.extensions||[]).filter(e=>e.paid).reduce((s,e)=>s+(e.amount||0),0);
+                  const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
                   const remaining=totalAmount-(paymentsPaid+extPaid);
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
                   setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone"}:x));close();
