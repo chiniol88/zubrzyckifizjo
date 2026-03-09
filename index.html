@@ -126,7 +126,7 @@
       const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       return <div style={{marginBottom:14}}>
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
-        <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s} {...(type==="time"?{step:300}:{})}/>
+        <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
       </div>;
     }
     function Txa({label,value,onChange,rows=3,placeholder=""}) {
@@ -144,6 +144,18 @@
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <select value={value} onChange={e=>onChange(e.target.value)} style={s}>
           {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </div>;
+    }
+    function TimeSel({label,value,onChange}) {
+      const dk=useContext(DarkCtx);
+      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      const opts=[];
+      for(let h=0;h<24;h++)for(let m=0;m<60;m+=5){const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");opts.push(hh+":"+mm);}
+      return <div style={{marginBottom:14}}>
+        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+        <select value={value||"10:00"} onChange={e=>onChange(e.target.value)} style={s}>
+          {opts.map(o=><option key={o} value={o}>{o}</option>)}
         </select>
       </div>;
     }
@@ -249,7 +261,12 @@
       const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
       const dayEvents=openDay?(eventsByDay[openDay]||[]):[];
       const dayAllDay=dayEvents.filter(e=>e.allDay).sort((a,b)=>a.title.localeCompare(b.title));
-      const dayTimed=dayEvents.filter(e=>!e.allDay).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
+      // Merge timed: visits + timed events + rentals (with startTime/endTime), sort by time
+      const dayTimedAll=openDay?[
+        ...dayVisits.map(v=>({_kind:"visit",_time:v.time||"00:00",v})),
+        ...dayEvents.filter(e=>!e.allDay).map(e=>({_kind:"event",_time:e.time||"00:00",e})),
+        ...dayRentals.map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):"00:00",ev}))
+      ].sort((a,b)=>a._time.localeCompare(b._time)):[];
 
       return <div style={{marginTop:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -299,7 +316,7 @@
             </div>
           </div>
 
-          {dayVisits.length===0&&dayRentals.length===0&&dayEvents.length===0&&
+          {dayAllDay.length===0&&dayTimedAll.length===0&&
             <div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak zdarzeń tego dnia</div>}
 
           {dayAllDay.map(ev=><div key={ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
@@ -313,36 +330,38 @@
             </div>
           </div>)}
 
-          {dayVisits.map(v=><div key={v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:"#0A7C7C",flexShrink:0}}/>
-              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
-            </div>
-            <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
-          </div>)}
-
-          {dayTimed.map(ev=><div key={ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:"#F4A261",flexShrink:0}}/>
-              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
-            </div>
-            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-              <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
-              <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
-            </div>
-          </div>)}
-
-          {dayRentals.map((ev,i)=>{
-            const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
-            const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
-            const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.r.amount+" zł";
-            return <div key={i} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
+          {dayTimedAll.map((item,idx)=>{
+            if(item._kind==="visit"){const v=item.v;return <div key={"v"+v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#0A7C7C",flexShrink:0}}/>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
               </div>
-              <Badge color={color}>{sub}</Badge>
-            </div>;
+              <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
+            </div>;}
+            if(item._kind==="event"){const ev=item.e;return <div key={"e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:"#F4A261",flexShrink:0}}/>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
+                <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
+              </div>
+            </div>;}
+            if(item._kind==="rental"){const ev=item.ev;
+              const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
+              const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
+              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.r.amount+" zł";
+              const timeLabel=ev.type==="start"?(ev.r.startTime||""):(ev.type==="end"?(ev.r.endTime||""):"");
+              return <div key={"r"+idx} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
+                  <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+                </div>
+                <Badge color={color}>{sub}</Badge>
+              </div>;
+            }
+            return null;
           })}
         </div>}
 
@@ -355,7 +374,7 @@
               {[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEvtForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${evtForm.allDay===o.v?"#F4A261":"#E4EAF0"}`,background:evtForm.allDay===o.v?"#FFF4E8":"#fff",color:evtForm.allDay===o.v?"#F4A261":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}
             </div>
           </div>
-          {!evtForm.allDay&&<Inp label="Godzina" value={evtForm.time||"10:00"} onChange={v=>setEvtForm(f=>({...f,time:v}))} type="time"/>}
+          {!evtForm.allDay&&<TimeSel label="Godzina" value={evtForm.time||"10:00"} onChange={v=>setEvtForm(f=>({...f,time:v}))}/>}
           <Txa label="Notatka" value={evtForm.notes||""} onChange={v=>setEvtForm(f=>({...f,notes:v}))} rows={2} placeholder="Opcjonalnie..."/>
           <Btn disabled={!evtForm.title.trim()||!evtForm.date} style={{width:"100%",justifyContent:"center"}} onClick={saveEvt}>{evtForm.editId?"Zapisz zmiany":"Dodaj wydarzenie"}</Btn>
         </Modal>}
@@ -520,7 +539,7 @@
           <PatientPicker label="Pacjent *" value={vf.patientName} onChange={v=>setVf(f=>({...f,patientName:v}))} onSelect={p=>setVf(f=>({...f,patientName:p.name,patientId:p.id}))} patients={patients}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
-            <Inp label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))} type="time"/>
+            <TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>
           </div>
           <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
@@ -532,7 +551,7 @@
         {editV&&<Modal title="Edytuj wizytę" onClose={()=>setEditV(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={editV.date} onChange={v=>setEditV(f=>({...f,date:v}))} type="date"/>
-            <Inp label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))} type="time"/>
+            <TimeSel label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))}/>
           </div>
           <Sel label="Typ" value={editV.type} onChange={v=>setEditV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
@@ -730,7 +749,7 @@
           {showAddV&&<Modal title="Nowa wizyta" onClose={()=>setShowAddV(false)}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
-              <Inp label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))} type="time"/>
+              <TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>
             </div>
             <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
@@ -742,7 +761,7 @@
           {editV&&<Modal title="Edytuj wizytę" onClose={()=>setEditV(null)}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <Inp label="Data" value={editV.date} onChange={v=>setEditV(f=>({...f,date:v}))} type="date"/>
-              <Inp label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))} type="time"/>
+              <TimeSel label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))}/>
             </div>
             <Sel label="Typ" value={editV.type} onChange={v=>setEditV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
@@ -813,7 +832,7 @@
         {showQuickV&&quickV&&<Modal title={"Wizyta – "+quickV.patientName} onClose={()=>setShowQuickV(false)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={quickV.date} onChange={v=>setQuickV(f=>({...f,date:v}))} type="date"/>
-            <Inp label="Godzina" value={quickV.time} onChange={v=>setQuickV(f=>({...f,time:v}))} type="time"/>
+            <TimeSel label="Godzina" value={quickV.time} onChange={v=>setQuickV(f=>({...f,time:v}))}/>
           </div>
           <Sel label="Typ" value={quickV.type} onChange={v=>setQuickV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={quickV.price} onChange={v=>setQuickV(f=>({...f,price:v}))} type="number"/>
@@ -1259,7 +1278,7 @@
                 const dtEnd=endDate+"T"+endTime+":00";
                 const toICS=(dt)=>dt.replace(/[-:]/g,"").replace("T","T")+"00";
                 const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ZubrzyckiFizjo//PL","BEGIN:VEVENT","DTSTART:"+toICS(dtStart),"DTEND:"+toICS(dtEnd),"SUMMARY:Wypożyczenie – "+r.patientName+" ("+r.equipment+")","DESCRIPTION:Tel: "+(r.phone||"brak")+"\\nAdres: "+(r.address||"brak")+(r.notes?"\\nNotatki: "+r.notes:""),"END:VEVENT","END:VCALENDAR"].join("\r\n");
-                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{const b=new Blob([ics],{type:"text/calendar"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="wypozyczenie-"+r.patientName.replace(/\s+/g,"-")+".ics";a.click();}}>📅 Dodaj do kalendarza (.ics)</Btn>;
+                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{window.open("data:text/calendar;charset=utf8,"+encodeURIComponent(ics));}}>📅 Dodaj do kalendarza (.ics)</Btn>;
               })()}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń wypożyczenie</Btn>
             </div>
@@ -1275,9 +1294,9 @@
               <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"Odnawialne"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,renewable:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${ef.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:ef.renewable===o.v?"#E6F4F4":"#fff",color:ef.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
             </div>
             <Inp label="Data od" value={ef.startDate} onChange={v=>setEf(f=>({...f,startDate:v}))} type="date"/>
-            <Inp label="Godzina rozpoczęcia" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))} type="time"/>
+            <TimeSel label="Godzina rozpoczęcia" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))}/>
             {!ef.renewable&&<Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>}
-            {!ef.renewable&&<Inp label="Godzina zakończenia" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))} type="time"/>}
+            {!ef.renewable&&<TimeSel label="Godzina zakończenia" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
             <Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
@@ -1306,7 +1325,7 @@
               <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
             </div>}
             <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
-            <Inp label="Godzina zakończenia" value={extForm.endTime||"10:00"} onChange={v=>setExtForm(f=>({...f,endTime:v}))} type="time"/>
+            <TimeSel label="Godzina zakończenia" value={extForm.endTime||"10:00"} onChange={v=>setExtForm(f=>({...f,endTime:v}))}/>
             <Inp label="Kwota do zapłaty (zł)" value={extForm.amountDue||""} onChange={v=>setExtForm(f=>({...f,amountDue:v}))} type="number" placeholder="zostaw puste jeśli nieznana"/>
             <Inp label="Zapłacono (zł)" value={extForm.amountPaid||""} onChange={v=>setExtForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0 = jeszcze nie zapłacił"/>
             <Inp label="Data zapłaty" value={extForm.payDate||""} onChange={v=>setExtForm(f=>({...f,payDate:v}))} type="date" placeholder=""/>
@@ -1378,9 +1397,9 @@
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"🔄 Odnawialne miesięcznie"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,renewable:o.v,endDate:o.v?"":f.endDate}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${form.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:form.renewable===o.v?"#E6F4F4":"#fff",color:form.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
-          <Inp label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))} type="time"/>
+          <TimeSel label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>
           {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
-          {!form.renewable&&<Inp label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))} type="time"/>}
+          {!form.renewable&&<TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}
           <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
           {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
