@@ -1278,7 +1278,7 @@
                 const dtEnd=endDate+"T"+endTime+":00";
                 const toICS=(dt)=>dt.replace(/[-:]/g,"").replace("T","T")+"00";
                 const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ZubrzyckiFizjo//PL","BEGIN:VEVENT","DTSTART:"+toICS(dtStart),"DTEND:"+toICS(dtEnd),"SUMMARY:Wypożyczenie – "+r.patientName+" ("+r.equipment+")","DESCRIPTION:Tel: "+(r.phone||"brak")+"\\nAdres: "+(r.address||"brak")+(r.notes?"\\nNotatki: "+r.notes:""),"END:VEVENT","END:VCALENDAR"].join("\r\n");
-                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{window.open("data:text/calendar;charset=utf8,"+encodeURIComponent(ics));}}>📅 Dodaj do kalendarza (.ics)</Btn>;
+                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{window.location.href="data:text/calendar;charset=utf8,"+encodeURIComponent(ics);}}>📅 Dodaj do kalendarza (.ics)</Btn>;
               })()}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń wypożyczenie</Btn>
             </div>
