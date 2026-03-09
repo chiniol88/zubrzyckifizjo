@@ -25,6 +25,16 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useContext, createContext } = React;
     const DarkCtx = createContext(false);
+    const DemoCtx = createContext(false);
+    const demoName=(name,idx)=>name?`Pacjent ${idx+1}`:"—";
+    const demoPhone=()=>"***-***-***";
+    const demoAddr=()=>"*** **";
+    const demoAmt=()=>"****";
+    const useDemo=()=>useContext(DemoCtx);
+    const maskName=(demo,name,idx)=>demo?demoName(name,idx||0):name;
+    const maskPhone=(demo,phone)=>demo?demoPhone():phone;
+    const maskAddr=(demo,addr)=>demo?demoAddr():addr;
+    const maskAmt=(demo,amt)=>demo?demoAmt():amt;
 
     const SUPA_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co";
     const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxanJsenNkZnlqZWFqZmthdGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjUzMzgsImV4cCI6MjA4ODE0MTMzOH0.sFWfnIV0tpNnwB65du9dNYTMSelrlEpMXxWf4Mcww4g";
@@ -269,7 +279,7 @@
           {dayVisits.map(v=><div key={v.id} onClick={()=>onEditVisit(v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <div style={{width:6,height:6,borderRadius:"50%",background:"#0A7C7C",flexShrink:0}}/>
-              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
+              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
             </div>
             <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
           </div>)}
@@ -292,6 +302,7 @@
 
     // ── DASHBOARD ─────────────────────────────────────────────────────────────
     function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental,nfzCases,goToWozki,todos,setTodos}) {
+      const demo=useDemo();
       const today = todayLocal();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -474,6 +485,7 @@
 
     // ── PATIENTS ──────────────────────────────────────────────────────────────
     function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals}) {
+      const demo=useDemo();
       const [selId,setSelId]=useState(null);
       const [showAdd,setShowAdd]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
@@ -702,13 +714,13 @@
             <button onClick={()=>setShowArchived(a=>!a)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#E4EAF0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit",marginLeft:"auto"}}>📦 {showArchived?"Aktywni":"Archiwum"}</button>
           </div>
           {search&&sorted.length===0&&<Empty text="Nie znaleziono pacjenta"/>}
-          {sorted.map(p=>{const lv=lastVisitDate(p);return(<Card key={p.id} onClick={()=>setSelId(p.id)}>
+          {sorted.map((p,pi)=>{const lv=lastVisitDate(p);return(<Card key={p.id} onClick={()=>setSelId(p.id)}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <div style={{display:"flex",gap:12,alignItems:"center"}}>
                 <Av name={p.name}/>
                 <div>
-                  <div style={{fontWeight:600}}>{p.name}</div>
-                  <div style={{fontSize:13,color:"#7A8FA6"}}>{p.phone}</div>
+                  <div style={{fontWeight:600}}>{maskName(demo,p.name,pi)}</div>
+                  <div style={{fontSize:13,color:"#7A8FA6"}}>{maskPhone(demo,p.phone)}</div>
                   {sort==="recent"&&lv&&<div style={{fontSize:11,color:"#0A7C7C",marginTop:2}}>ostatnia wizyta: {lv}</div>}
                 </div>
               </div>
@@ -905,6 +917,7 @@
 
 
     function RCard({r,onClick}) {
+      const demo=useDemo();
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
       const unpaid=(r.cycles||[]).filter(c=>!c.paid).length;
       const isZakończone=r.status==="zakończone";
@@ -920,13 +933,13 @@
 
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}</div><div style={{fontSize:14}}>{r.patientName}</div></div>
+          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
           {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>)}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
           <span>📅 {r.startDate}{r.renewable?" → odnawialne":r.endDate?" → "+r.endDate:""}</span>
-          <span>💰 {r.amount} zł{r.renewable?"/mies.":""}</span>
-          {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(r.amount-(r.amountPaid||0))>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {r.amount-(r.amountPaid||0)} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
+          <span>💰 {maskAmt(demo,r.amount)} zł{r.renewable?"/mies.":""}</span>
+          {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(r.amount-(r.amountPaid||0))>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {demo?"****":r.amount-(r.amountPaid||0)} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
         </div>
         {isZakończone&&(r.notes||(hasReceipt||hasInvoice))&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
           {(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
@@ -1335,6 +1348,7 @@
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
     function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases}) {
+      const demo=useDemo();
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
       const [viewMode,setViewMode]=useState("month"); // "month" | "year" | "stats"
@@ -1426,7 +1440,7 @@
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
               {[{l:"Przychód",v:inc,c:"#3DAA72"},{l:"Koszty",v:cst,c:"#E05C5C"},{l:"Wynik",v:inc-cst,c:inc-cst>=0?"#0A7C7C":"#E05C5C"}].map((x,i)=>(
                 <div key={i} style={{background:x.c+"14",borderRadius:14,padding:"12px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
-                  <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:x.c}}>{x.v} zł</div>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:x.c}}>{demo?"****":x.v} zł</div>
                   <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
                 </div>
               ))}
@@ -1440,9 +1454,9 @@
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#F2F5F7",cursor:"pointer"}} onClick={()=>{setViewMode("month");setMonth(m);}}>
                     <span style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</span>
                     <div style={{display:"flex",gap:12,fontSize:13}}>
-                      <span style={{color:"#3DAA72",fontWeight:600}}>+{mi} zł</span>
-                      <span style={{color:"#E05C5C",fontWeight:600}}>−{mc} zł</span>
-                      <span style={{color:mi-mc>=0?"#0A7C7C":"#E05C5C",fontWeight:700}}>{mi-mc>=0?"+":""}{mi-mc} zł</span>
+                      <span style={{color:"#3DAA72",fontWeight:600}}>+{demo?"****":mi} zł</span>
+                      <span style={{color:"#E05C5C",fontWeight:600}}>−{demo?"****":mc} zł</span>
+                      <span style={{color:mi-mc>=0?"#0A7C7C":"#E05C5C",fontWeight:700}}>{demo?"****":(mi-mc>=0?"+":"")+(mi-mc)} zł</span>
                     </div>
                   </div>
                 </div>;
@@ -1452,8 +1466,8 @@
             {[...mly].sort((a,b)=>b.date.localeCompare(a.date)).map(f=>(
               <Card key={f.id} onClick={()=>setEditE({...f,amount:String(f.amount)})}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><div style={{fontWeight:600}}>{f.description||f.category}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{f.date} · {f.category}</div></div>
-                  <span style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,color:f.type==="przychód"?"#3DAA72":"#E05C5C"}}>{f.type==="przychód"?"+":"−"}{f.amount} zł</span>
+                  <div><div style={{fontWeight:600}}>{demo?f.category:f.description||f.category}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{f.date} · {f.category}</div></div>
+                  <span style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,color:f.type==="przychód"?"#3DAA72":"#E05C5C"}}>{f.type==="przychód"?"+":"−"}{demo?"****":f.amount} zł</span>
                 </div>
               </Card>
             ))}</>}
@@ -1679,7 +1693,7 @@
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
@@ -1696,7 +1710,7 @@
             {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
             {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
             {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
-            {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData}/>}
+            {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
             {TABS.map(t=>{
@@ -1712,7 +1726,7 @@
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
       // or are new (startDate is in current month)
       useEffect(()=>{
@@ -1753,10 +1767,10 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>;
     }
 
-    function Settings({dark,setDark,settings,setSettings,exportData,importData}) {
+    function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       const dk=dark;
       const bg=dk?"#0F1F1F":"#fff";
       const sec=dk?"#0A1A1A":"#F2F5F7";
@@ -1769,6 +1783,7 @@
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:txt,marginBottom:16}}>Ustawienia</div>
         <Sec title="WYGLĄD">
           <Row label="Tryb ciemny"><Toggle val={dark} onToggle={()=>setDark(d=>!d)}/></Row>
+          <Row label="Tryb demo (ukryj dane)"><Toggle val={demo} onToggle={()=>setDemo(d=>!d)}/></Row>
         </Sec>
         <Sec title="DANE">
           <Row label="Eksport kopii zapasowej">
@@ -1800,6 +1815,7 @@
       const [todos,setTodos,v7]=usePersistedState("fizjo-todos",[]);
       const [settings,setSettings,v8]=usePersistedState("fizjo-settings",{backupReminder:true});
       const [dark,setDark]=useState(false);
+      const [demo,setDemo]=useState(false);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
 
       const exportData=()=>{
@@ -1850,7 +1866,7 @@
       },[settings]);
 
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
-      return <DarkCtx.Provider value={dark}>
+      return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
         <div>
           {showBackupBanner&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#F4A261",zIndex:9999,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontWeight:700,fontSize:13,color:"#1C2B3A"}}>💾 Czas na backup!</span>
@@ -1859,9 +1875,9 @@
               <button onClick={()=>setShowBackupBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#1C2B3A"}}>×</button>
             </div>
           </div>}
-          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData}/>
+          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>
         </div>
-      </DarkCtx.Provider>;
+      </DemoCtx.Provider></DarkCtx.Provider>;
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
