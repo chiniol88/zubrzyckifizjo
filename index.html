@@ -72,7 +72,7 @@
       return new Date(v.date+"T"+(v.time||"00:00")+":00") <= new Date() ? "zakończona" : "zaplanowana";
     };
     const emptyVisit = () => ({date:todayLocal(),time:"15:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
-    const emptyRental = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:todayLocal(),endDate:"",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
+    const emptyRental = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",endDate:"",endTime:"10:00",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula"];
@@ -126,7 +126,7 @@
       const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       return <div style={{marginBottom:14}}>
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
-        <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
+        <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s} {...(type==="time"?{step:300}:{})}/>
       </div>;
     }
     function Txa({label,value,onChange,rows=3,placeholder=""}) {
@@ -972,7 +972,7 @@
       const [showEdit,setShowEdit]=useState(false);
       const [detail,setDetail]=useState(null);
       const [showExtend,setShowExtend]=useState(false);
-      const [extForm,setExtForm]=useState({newEndDate:"",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});
+      const [extForm,setExtForm]=useState({newEndDate:"",endTime:"10:00",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});
       const [form,setForm]=useState(emptyRental);
       const [ef,setEf]=useState(null);
       const [confirmDel,setConfirmDel]=useState(false);
@@ -1020,7 +1020,7 @@
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
                     <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
-                    {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
+                    {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",endTime:"10:00",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
                   </div>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{r.transport} zł</div></div>}
@@ -1049,7 +1049,7 @@
                       {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic",whiteSpace:"pre-wrap"}}>{ext.notes}</div>}
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
-                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),payDate:ext.paidDate||"",notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
+                      <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,endTime:ext.endTime||"10:00",amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),payDate:ext.paidDate||"",notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
                       <button onClick={()=>{
                         const prevEnd = i===0 ? (r.extensions||[])[0].prevEndDate : (r.extensions||[])[i-1].newEndDate;
                         const newExts = (r.extensions||[]).filter((_,j)=>j!==i);
@@ -1190,6 +1190,16 @@
                 }}><Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ</Btn>
               </>}
               {r.status==="zakończone"&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne"}:x))}>↩️ Cofnij zakończenie</Btn>}
+              {!r.renewable&&(()=>{
+                const lastExt=(r.extensions||[]).at(-1);
+                const dtStart=r.startDate+"T"+(r.startTime||"10:00")+":00";
+                const endDate=lastExt?lastExt.newEndDate:r.endDate;
+                const endTime=lastExt?(lastExt.endTime||"10:00"):(r.endTime||"10:00");
+                const dtEnd=endDate+"T"+endTime+":00";
+                const toICS=(dt)=>dt.replace(/[-:]/g,"").replace("T","T")+"00";
+                const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ZubrzyckiFizjo//PL","BEGIN:VEVENT","DTSTART:"+toICS(dtStart),"DTEND:"+toICS(dtEnd),"SUMMARY:Wypożyczenie – "+r.patientName+" ("+r.equipment+")","DESCRIPTION:Tel: "+(r.phone||"brak")+"\\nAdres: "+(r.address||"brak")+(r.notes?"\\nNotatki: "+r.notes:""),"END:VEVENT","END:VCALENDAR"].join("\r\n");
+                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{const b=new Blob([ics],{type:"text/calendar"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="wypozyczenie-"+r.patientName.replace(/\s+/g,"-")+".ics";a.click();}}>📅 Dodaj do kalendarza (.ics)</Btn>;
+              })()}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń wypożyczenie</Btn>
             </div>
           </div>
@@ -1204,7 +1214,9 @@
               <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"Odnawialne"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,renewable:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${ef.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:ef.renewable===o.v?"#E6F4F4":"#fff",color:ef.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
             </div>
             <Inp label="Data od" value={ef.startDate} onChange={v=>setEf(f=>({...f,startDate:v}))} type="date"/>
+            <Inp label="Godzina rozpoczęcia" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))} type="time"/>
             {!ef.renewable&&<Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>}
+            {!ef.renewable&&<Inp label="Godzina zakończenia" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))} type="time"/>}
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
             <Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
@@ -1233,6 +1245,7 @@
               <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
             </div>}
             <Inp label="Nowa data końca *" value={extForm.newEndDate} onChange={v=>setExtForm(f=>({...f,newEndDate:v}))} type="date"/>
+            <Inp label="Godzina zakończenia" value={extForm.endTime||"10:00"} onChange={v=>setExtForm(f=>({...f,endTime:v}))} type="time"/>
             <Inp label="Kwota do zapłaty (zł)" value={extForm.amountDue||""} onChange={v=>setExtForm(f=>({...f,amountDue:v}))} type="number" placeholder="zostaw puste jeśli nieznana"/>
             <Inp label="Zapłacono (zł)" value={extForm.amountPaid||""} onChange={v=>setExtForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0 = jeszcze nie zapłacił"/>
             <Inp label="Data zapłaty" value={extForm.payDate||""} onChange={v=>setExtForm(f=>({...f,payDate:v}))} type="date" placeholder=""/>
@@ -1249,7 +1262,7 @@
                 setRentals(rs=>rs.map(x=>x.id===r.id?{
                   ...x,
                   endDate: isLast ? extForm.newEndDate : x.endDate,
-                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0?(extForm.payDate||todayLocal()):e.paidDate}:e)
+                  extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,endTime:extForm.endTime||"10:00",amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0?(extForm.payDate||todayLocal()):e.paidDate}:e)
                 }:x));
                 // Sync finansów — wpis dotyczy amountPaid
                 const extSid="extend-"+r.id+"-"+extForm.editId;
@@ -1259,7 +1272,7 @@
                 setToast("Przedłużenie zaktualizowane");
               } else {
                 const extId = Date.now();
-                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?(extForm.payDate||todayLocal()):null};
+                const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,endTime:extForm.endTime||"10:00",amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?(extForm.payDate||todayLocal()):null};
                 setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
                 if(paid>0){
                   setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
@@ -1304,7 +1317,9 @@
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"🔄 Odnawialne miesięcznie"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,renewable:o.v,endDate:o.v?"":f.endDate}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${form.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:form.renewable===o.v?"#E6F4F4":"#fff",color:form.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
+          <Inp label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))} type="time"/>
           {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
+          {!form.renewable&&<Inp label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))} type="time"/>}
           <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
           {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
