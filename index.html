@@ -212,12 +212,12 @@
       return lines;
     }
 
-    function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents}) {
+    function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents,patients}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
       const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
-      const [openDay,setOpenDay]=useState(null);
+      const [openDay,setOpenDay]=useState(()=>+today.slice(8));
       const [showEvtModal,setShowEvtModal]=useState(false);
       const [evtForm,setEvtForm]=useState({title:"",date:"",allDay:false,time:"10:00",notes:"",editId:null});
 
@@ -292,12 +292,19 @@
       const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
       const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
       const dayEvents=openDay?(eventsByDay[openDay]||[]):[];
-      const dayAllDay=dayEvents.filter(e=>e.allDay).sort((a,b)=>a.title.localeCompare(b.title));
-      // Merge timed: visits + timed events + rentals (with startTime/endTime), sort by time
+      const dayAllDay=[
+        ...dayEvents.filter(e=>e.allDay).map(x=>({_kind:"event",e:x})),
+        ...dayVisits.filter(v=>v.allDay).map(v=>({_kind:"visit",v})),
+        ...dayRentals.filter(ev=>ev.r.allDay).map(ev=>({_kind:"rental",ev}))
+      ].sort((a,b)=>{
+        const ta=a._kind==="event"?a.e.title:a._kind==="visit"?a.v.patientName:a.ev.r.patientName;
+        const tb=b._kind==="event"?b.e.title:b._kind==="visit"?b.v.patientName:b.ev.r.patientName;
+        return ta.localeCompare(tb);
+      });
       const dayTimedAll=openDay?[
-        ...dayVisits.map(v=>({_kind:"visit",_time:v.time||"00:00",v})),
+        ...dayVisits.filter(v=>!v.allDay).map(v=>({_kind:"visit",_time:v.time||"00:00",v})),
         ...dayEvents.filter(e=>!e.allDay).map(e=>({_kind:"event",_time:e.time||"00:00",e})),
-        ...dayRentals.map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):"00:00",ev}))
+        ...dayRentals.filter(ev=>!ev.r.allDay).map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):"00:00",ev}))
       ].sort((a,b)=>a._time.localeCompare(b._time)):[];
 
       return <div style={{marginTop:16}}>
@@ -351,27 +358,46 @@
           {dayAllDay.length===0&&dayTimedAll.length===0&&
             <div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak zdarzeń tego dnia</div>}
 
-          {dayAllDay.map(ev=><div key={ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
-              <div style={{width:6,height:6,borderRadius:2,background:"#F4A261",flexShrink:0}}/>
-              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
-            </div>
-            <div style={{display:"flex",gap:4,alignItems:"center"}}>
-              <button onClick={()=>openICS(makeICS(ev.title, ev.date, ev.date, ev.notes||"", true))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
-              <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
-              <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
-            </div>
-          </div>)}
+          {dayAllDay.map((item,idx)=>{
+            if(item._kind==="event"){const ev=item.e;return <div key={"ad-e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
+                <div style={{width:6,height:6,borderRadius:2,background:"#F4A261",flexShrink:0}}/>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
+              </div>
+              <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                <button onClick={()=>openICS(makeICS(ev.title, ev.date, ev.date, ev.notes||"", true))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+                <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
+                <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
+              </div>
+            </div>;}
+            if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"ad-v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+              <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
+                <div style={{width:6,height:6,borderRadius:2,background:"#0A7C7C",flexShrink:0}}/>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Pacjent":v.patientName} · {v.type}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
+                <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date, v.date, addr, true))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+              </div>
+            </div>;}
+            if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";return <div key={"ad-r"+idx} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
+                <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+              </div>
+            </div>;}
+            return null;
+          })}
 
           {dayTimedAll.map((item,idx)=>{
-            if(item._kind==="visit"){const v=item.v;return <div key={"v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+            if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
               <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:"#0A7C7C",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}</div></div>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}{addr?" · 📍"+addr:""}</div></div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
-                <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date+"T"+v.time, v.date+"T"+(()=>{const[h,m]=v.time.split(":").map(Number);const e=h*60+m+60;return String(Math.floor(e/60)%24).padStart(2,"0")+":"+String(e%60).padStart(2,"0");})(), "Cena: "+v.price+" zł"+(v.notes?"\\nNotatki: "+v.notes:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px",color:"#7A8FA6"}}>📅</button>
+                <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date+"T"+v.time, v.date+"T"+(()=>{const[h,m]=v.time.split(":").map(Number);const e=h*60+m+60;return String(Math.floor(e/60)%24).padStart(2,"0")+":"+String(e%60).padStart(2,"0");})(), "Cena: "+v.price+" zł"+(addr?"\\nAdres: "+addr:"")+(v.notes?"\\nNotatki: "+v.notes:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px",color:"#7A8FA6"}}>📅</button>
               </div>
             </div>;}
             if(item._kind==="event"){const ev=item.e;return <div key={"e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
@@ -395,11 +421,11 @@
               return <div key={"r"+idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
                 <div onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
                   <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
-                  <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+                  <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <Badge color={color}>{sub}</Badge>
-                  <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+ev.r.equipment+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+"\\nAdres: "+(ev.r.address||"brak"), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+                  <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+ev.r.equipment+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
                 </div>
               </div>;
             }
@@ -537,7 +563,7 @@
             </div>
           </div>
           <div style={{padding:"0 20px"}}>
-            <MiniCalendar visits={visits} rentals={rentals} today={today} events={events} setEvents={setEvents}
+            <MiniCalendar visits={visits} rentals={rentals} today={today} events={events} setEvents={setEvents} patients={patients}
               onEditVisit={v=>setEditV({...v,price:String(v.price)})}
               onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
               onGoToRental={goToRental}
@@ -581,7 +607,10 @@
           <PatientPicker label="Pacjent *" value={vf.patientName} onChange={v=>setVf(f=>({...f,patientName:v}))} onSelect={p=>setVf(f=>({...f,patientName:p.name,patientId:p.id}))} patients={patients}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
-            <TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>
+            {!vf.allDay&&<TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>}
+          </div>
+          <div style={{marginBottom:14}}>
+            <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setVf(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(vf.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(vf.allDay||false)===o.v?"#E6F4F4":"#fff",color:(vf.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
           <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
@@ -593,7 +622,10 @@
         {editV&&<Modal title="Edytuj wizytę" onClose={()=>setEditV(null)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={editV.date} onChange={v=>setEditV(f=>({...f,date:v}))} type="date"/>
-            <TimeSel label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))}/>
+            {!editV.allDay&&<TimeSel label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))}/>}
+          </div>
+          <div style={{marginBottom:14}}>
+            <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEditV(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(editV.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(editV.allDay||false)===o.v?"#E6F4F4":"#fff",color:(editV.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
           <Sel label="Typ" value={editV.type} onChange={v=>setEditV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
@@ -1336,9 +1368,12 @@
               <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"Odnawialne"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,renewable:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${ef.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:ef.renewable===o.v?"#E6F4F4":"#fff",color:ef.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
             </div>
             <Inp label="Data od" value={ef.startDate} onChange={v=>setEf(f=>({...f,startDate:v}))} type="date"/>
-            <TimeSel label="Godzina rozpoczęcia" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))}/>
+            {!ef.allDay&&<TimeSel label="Godzina rozpoczęcia" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))}/>}
             {!ef.renewable&&<Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>}
-            {!ef.renewable&&<TimeSel label="Godzina zakończenia" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}
+            {!ef.renewable&&!ef.allDay&&<TimeSel label="Godzina zakończenia" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}
+            <div style={{marginBottom:14}}>
+              <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(ef.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(ef.allDay||false)===o.v?"#E6F4F4":"#fff",color:(ef.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
+            </div>
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
             <Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
@@ -1439,9 +1474,12 @@
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"🔄 Odnawialne miesięcznie"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,renewable:o.v,endDate:o.v?"":f.endDate}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${form.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:form.renewable===o.v?"#E6F4F4":"#fff",color:form.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
-          <TimeSel label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>
+          {!form.allDay&&<TimeSel label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>}
           {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
-          {!form.renewable&&<TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}
+          {!form.renewable&&!form.allDay&&<TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}
+          <div style={{marginBottom:14}}>
+            <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(form.allDay||false)===o.v?"#E6F4F4":"#fff",color:(form.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
+          </div>
           <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
           {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
