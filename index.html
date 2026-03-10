@@ -414,7 +414,9 @@
             if(item._kind==="rental"){const ev=item.ev;
               const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
               const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
-              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.r.amount+" zł";
+              const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+              const totalAmt=(+ev.r.amount||0)+extDue;
+              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):totalAmt+" zł";
               const timeLabel=ev.type==="start"?(ev.r.startTime||""):( ev.type==="end"?(ev.r.endTime||""):"");
               const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
@@ -1103,12 +1105,13 @@
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
           <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
-          {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>)}
+          {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:dl!==null?<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>:<Badge color="#7A8FA6">brak terminu</Badge>)}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
           <span>📅 {r.startDate}{r.renewable?" → odnawialne":r.endDate?" → "+r.endDate:""}</span>
           <span>💰 {maskAmt(demo,totalAmount)} zł{r.renewable?"/mies.":""}</span>
           {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(totalAmount-totalPaid)>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {demo?"****":totalAmount-totalPaid} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
+          {!demo&&r.address&&<span>📍 {r.address}</span>}
         </div>
         {isZakończone&&(r.notes||(hasReceipt||hasInvoice))&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
           {(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
@@ -1489,7 +1492,7 @@
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             if(!form.patientName)return;
-            if(!form.renewable&&!form.endDate){alert("Podaj datę końca wypożyczenia");return;}
+            if(!form.patientName)return;
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
             const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:[],status:"aktywne"};
