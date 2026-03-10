@@ -1023,7 +1023,10 @@
             <input type="number" value={amt} onChange={e=>setAmt(e.target.value)} placeholder="Kwota..." style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
             <input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
           </div>
-          <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label},...fs]);}} style={{width:"100%",background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
+            <button onClick={()=>{if(!window.confirm("Usunąć cykl "+label+"?"))return;setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).filter(c=>c.month!==cycle.month)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+          </div>
         </div>
       );
     }
