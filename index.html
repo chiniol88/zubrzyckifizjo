@@ -180,42 +180,41 @@
       return <span>{t}</span>;
     }
 
-    function openICS(lines) {
-      const content = lines.join("\r\n");
-      const blob = new Blob([content], {type:"text/calendar;charset=utf-8"});
-      const url = URL.createObjectURL(blob);
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if(isIOS) {
-        // iOS Safari: navigate directly to blob URL — triggers Calendar, no download attr
-        window.location.href = url;
-      } else {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "wydarzenie.ics";
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);}, 1000);
-      }
-    }
-    function icsDateTime(date, time) {
-      return (date+"T"+(time||"00:00")+":00").replace(/[-:]/g,"");
-    }
-    function icsDate(date) {
-      return date.replace(/-/g,"");
-    }
-    function makeICS(summary, dtStart, dtEnd, description, allDay) {
-      const lines = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ZubrzyckiFizjo//PL","BEGIN:VEVENT","UID:"+Date.now()+"@fizjo"];
+    function openGCal(summary, dtStart, dtEnd, description, allDay) {
+      const pad=(n)=>String(n).padStart(2,"0");
+      const fmtDT=(s)=>s.replace(/[-:]/g,"").replace("T","T")+"00";
+      const fmtD=(s)=>s.replace(/-/g,"");
+      let dates;
       if(allDay) {
-        lines.push("DTSTART;VALUE=DATE:"+icsDate(dtStart));
-        lines.push("DTEND;VALUE=DATE:"+icsDate(dtEnd));
+        // GCal all-day: YYYYMMDD/YYYYMMDD
+        const d2=fmtD(dtEnd||dtStart);
+        // end date for GCal all-day must be day+1
+        const ed=new Date(dtEnd||dtStart); ed.setDate(ed.getDate()+1);
+        const d2next=ed.getFullYear()+""+pad(ed.getMonth()+1)+""+pad(ed.getDate());
+        dates=fmtD(dtStart)+"/"+d2next;
       } else {
-        lines.push("DTSTART:"+icsDateTime(dtStart, dtStart.includes("T")?dtStart.split("T")[1]:null));
-        lines.push("DTEND:"+icsDateTime(dtEnd, dtEnd.includes("T")?dtEnd.split("T")[1]:null));
+        dates=fmtDT(dtStart)+"/"+fmtDT(dtEnd||dtStart);
       }
-      lines.push("SUMMARY:"+summary);
-      if(description) lines.push("DESCRIPTION:"+description.replace(/\n/g,"\\n"));
-      lines.push("END:VEVENT","END:VCALENDAR");
-      return lines;
+      const p=new URLSearchParams({action:"TEMPLATE",text:summary,dates,details:description||""});
+      window.open("https://calendar.google.com/calendar/render?"+p.toString(),"_blank");
+    }
+    // Legacy alias so existing call sites work
+    function makeICS(summary, dtStart, dtEnd, description, allDay) {
+      return {summary, dtStart, dtEnd, description, allDay};
+    }
+    function openICS(arg, meta) {
+      // arg is either {summary,dtStart,dtEnd,description,allDay} from makeICS, or legacy lines array
+      if(Array.isArray(arg)) {
+        // parse legacy ICS lines
+        const get=(k)=>{const l=arg.find(x=>x.startsWith(k+":"));return l?l.slice(k.length+1):"";}
+        const summary=get("SUMMARY");
+        const dtStart=get("DTSTART");
+        const dtEnd=get("DTEND");
+        const allDay=arg.some(x=>x.startsWith("DTSTART;VALUE=DATE"));
+        openGCal(summary, dtStart.replace(/T/,"T"), dtEnd.replace(/T/,"T"), get("DESCRIPTION").replace(/\\n/g,"\n"), allDay);
+      } else {
+        openGCal(arg.summary, arg.dtStart, arg.dtEnd, arg.description, arg.allDay);
+      }
     }
 
     function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents,patients}) {
@@ -1375,9 +1374,8 @@
                 const endDate=lastExt?lastExt.newEndDate:r.endDate;
                 const endTime=lastExt?(lastExt.endTime||"10:00"):(r.endTime||"10:00");
                 const dtEnd=endDate?""+endDate+"T"+endTime+":00":dtStart;
-                const toICS=(dt)=>dt.replace(/[-:]/g,"")+"00";
-                const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ZubrzyckiFizjo//PL","BEGIN:VEVENT","UID:"+r.id+"@fizjo","DTSTART:"+toICS(dtStart),"DTEND:"+toICS(dtEnd),"SUMMARY:Wypożyczenie – "+r.patientName+" ("+r.equipment+")","DESCRIPTION:Tel: "+(r.phone||"brak")+(r.address?"\\nAdres: "+r.address:"")+(r.notes?"\\nNotatki: "+r.notes:""),"END:VEVENT","END:VCALENDAR"];
-                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>openICS(ics)}>📅 Dodaj do kalendarza</Btn>;
+                const desc="Tel: "+(r.phone||"brak")+(r.address?"\nAdres: "+r.address:"")+(r.notes?"\nNotatki: "+r.notes:"");
+                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>openGCal("Wypożyczenie \u2013 "+r.patientName+" ("+r.equipment+")", dtStart, dtEnd, desc, false)}>📅 Dodaj do kalendarza</Btn>;
               })()}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń wypożyczenie</Btn>
             </div>
