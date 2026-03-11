@@ -182,14 +182,19 @@
 
     function openICS(lines) {
       const content = lines.join("\r\n");
-      const blob = new Blob([content], {type:"text/calendar"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "wydarzenie.ics";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);}, 1000);
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if(isIOS) {
+        window.open("data:text/calendar;charset=utf-8," + encodeURIComponent(content), "_blank");
+      } else {
+        const blob = new Blob([content], {type:"text/calendar;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "wydarzenie.ics";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);}, 1000);
+      }
     }
     function icsDateTime(date, time) {
       return (date+"T"+(time||"00:00")+":00").replace(/[-:]/g,"");
