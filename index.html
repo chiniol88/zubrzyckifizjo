@@ -1898,19 +1898,21 @@
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
     function CalModal({meta,dk,onClose}) {
-      const [cpd,setCpd]=useState(false);
-      const txt=[meta.title,meta.dateStr,meta.timeStr].filter(Boolean).join("\n");
+      const [cpd,setCpd]=useState(null);
+      const copy=(val,key)=>{navigator.clipboard.writeText(val).catch(()=>{});setCpd(key);setTimeout(()=>setCpd(null),1500);};
+      const row=(label,val,key)=>val?<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+        <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:2}}>{label}</div><div style={{fontWeight:600,fontSize:15}}>{val}</div></div>
+        <button onClick={()=>copy(val,key)} style={{background:cpd===key?"#3DAA72":"#E6F4F4",color:cpd===key?"#fff":"#0A7C7C",border:"none",borderRadius:10,padding:"7px 14px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",minWidth:80,transition:"background .2s"}}>{cpd===key?"✓ OK":"Kopiuj"}</button>
+      </div>:null;
       return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
         <div onClick={e=>e.stopPropagation()} style={{background:dk?"#1A2A2A":"#fff",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:480,boxSizing:"border-box"}}>
           <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:17,marginBottom:4}}>📅 Dodaj do kalendarza</div>
-          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:20}}>Skopiuj dane i wpisz ręcznie w Kalendarzu iOS</div>
-          <div style={{background:dk?"#0A1A1A":"#F2F5F7",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
-            {meta.title&&<div style={{fontWeight:700,fontSize:15,marginBottom:4}}>{meta.title}</div>}
-            {meta.dateStr&&<div style={{fontSize:14,color:dk?"#A0C4C4":"#4A6A7A"}}>📆 {meta.dateStr}</div>}
-            {meta.timeStr&&<div style={{fontSize:14,color:dk?"#A0C4C4":"#4A6A7A"}}>🕐 {meta.timeStr}</div>}
-          </div>
-          <button onClick={()=>{navigator.clipboard.writeText(txt).catch(()=>{});setCpd(true);setTimeout(()=>setCpd(false),2000);}} style={{width:"100%",background:cpd?"#3DAA72":"#0A7C7C",color:"#fff",border:"none",borderRadius:14,padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10,transition:"background .2s"}}>{cpd?"✓ Skopiowano!":"Kopiuj dane"}</button>
-          <button onClick={onClose} style={{width:"100%",background:"none",border:"1.5px solid #E4EAF0",borderRadius:14,padding:"12px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",color:dk?"#A0C4C4":"#7A8FA6"}}>Zamknij</button>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Kopiuj każde pole osobno i wklej w Kalendarzu iOS</div>
+          {row("Tytuł",meta.title,"title")}
+          {row("Data",meta.dateStr,"date")}
+          {meta.timeStr&&meta.timeStr!=="Całodniowe"&&row("Godzina",meta.timeStr,"time")}
+          {meta.timeStr==="Całodniowe"&&<div style={{padding:"10px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,fontSize:13,color:"#7A8FA6"}}>🗓 Całodniowe</div>}
+          <button onClick={onClose} style={{width:"100%",background:"none",border:"1.5px solid #E4EAF0",borderRadius:14,padding:"12px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",color:dk?"#A0C4C4":"#7A8FA6",marginTop:16}}>Zamknij</button>
         </div>
       </div>;
     }
