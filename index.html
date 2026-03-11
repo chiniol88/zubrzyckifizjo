@@ -180,21 +180,9 @@
       return <span>{t}</span>;
     }
 
-    function openICS(lines) {
-      const content = lines.join("\r\n");
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-      if(isIOS) {
-        window.open("data:text/calendar;charset=utf-8," + encodeURIComponent(content), "_blank");
-      } else {
-        const blob = new Blob([content], {type:"text/calendar;charset=utf-8"});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "wydarzenie.ics";
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);}, 1000);
-      }
+    function openICS(lines, meta) {
+      // meta = {title, dateStr, timeStr} for the modal display
+      window.dispatchEvent(new CustomEvent("showCalModal", {detail:{lines, meta:meta||{}}}));
     }
     function icsDateTime(date, time) {
       return (date+"T"+(time||"00:00")+":00").replace(/[-:]/g,"");
@@ -370,7 +358,7 @@
                 <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
               </div>
               <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                <button onClick={()=>openICS(makeICS(ev.title, ev.date, ev.date, ev.notes||"", true))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+                <button onClick={()=>openICS(makeICS(ev.title, ev.date, ev.date, ev.notes||"", true),{title:ev.title,dateStr:ev.date,timeStr:"Całodniowe"})} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
                 <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
                 <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
               </div>
@@ -382,7 +370,7 @@
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
-                <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date, v.date, addr, true))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+                <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date, v.date, addr, true),{title:v.patientName,dateStr:v.date,timeStr:"Całodniowe"})} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
               </div>
             </div>;}
             if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";return <div key={"ad-r"+idx} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
@@ -402,7 +390,7 @@
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
-                <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date+"T"+v.time, v.date+"T"+(()=>{const[h,m]=v.time.split(":").map(Number);const e=h*60+m+60;return String(Math.floor(e/60)%24).padStart(2,"0")+":"+String(e%60).padStart(2,"0");})(), "Cena: "+v.price+" zł"+(addr?"\\nAdres: "+addr:"")+(v.notes?"\\nNotatki: "+v.notes:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px",color:"#7A8FA6"}}>📅</button>
+                <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date+"T"+v.time, v.date+"T"+(()=>{const[h,m]=v.time.split(":").map(Number);const e=h*60+m+60;return String(Math.floor(e/60)%24).padStart(2,"0")+":"+String(e%60).padStart(2,"0");})(), "Cena: "+v.price+" zł"+(addr?"\\nAdres: "+addr:"")+(v.notes?"\\nNotatki: "+v.notes:""), false),{title:v.patientName,dateStr:v.date,timeStr:v.time})} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px",color:"#7A8FA6"}}>📅</button>
               </div>
             </div>;}
             if(item._kind==="event"){const ev=item.e;return <div key={"e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
@@ -411,7 +399,7 @@
                 <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
               </div>
               <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                <button onClick={()=>openICS(makeICS(ev.title, ev.date+"T"+ev.time, ev.date+"T"+ev.time, ev.notes||"", false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+                <button onClick={()=>openICS(makeICS(ev.title, ev.date+"T"+ev.time, ev.date+"T"+ev.time, ev.notes||"", false),{title:ev.title,dateStr:ev.date,timeStr:ev.time})} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
                 <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
                 <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
               </div>
@@ -432,7 +420,7 @@
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <Badge color={color}>{sub}</Badge>
-                  <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+ev.r.equipment+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+                  <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+ev.r.equipment+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false),{title:label+" · "+ev.r.patientName,dateStr:ev.type==="start"?ev.r.startDate:ev.r.endDate,timeStr:timeLabel||""})} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
                 </div>
               </div>;
             }
@@ -1377,7 +1365,7 @@
                 const dtEnd=endDate+"T"+endTime+":00";
                 const toICS=(dt)=>dt.replace(/[-:]/g,"")+"00";
                 const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//ZubrzyckiFizjo//PL","BEGIN:VEVENT","DTSTART:"+toICS(dtStart),"DTEND:"+toICS(dtEnd),"SUMMARY:Wypożyczenie – "+r.patientName+" ("+r.equipment+")","DESCRIPTION:Tel: "+(r.phone||"brak")+"\\nAdres: "+(r.address||"brak")+(r.notes?"\\nNotatki: "+r.notes:""),"END:VEVENT","END:VCALENDAR"];
-                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>openICS(ics)}>📅 Dodaj do kalendarza (.ics)</Btn>;
+                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>openICS(ics,{title:"Wypożyczenie · "+r.patientName,dateStr:r.startDate,timeStr:(r.startTime||"")+(endDate?" → "+endDate:"")})}>📅 Dodaj do kalendarza</Btn>;
               })()}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń wypożyczenie</Btn>
             </div>
@@ -1909,6 +1897,24 @@
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
+    function CalModal({meta,dk,onClose}) {
+      const [cpd,setCpd]=useState(false);
+      const txt=[meta.title,meta.dateStr,meta.timeStr].filter(Boolean).join("\n");
+      return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={onClose}>
+        <div onClick={e=>e.stopPropagation()} style={{background:dk?"#1A2A2A":"#fff",borderRadius:"20px 20px 0 0",padding:"24px 20px 36px",width:"100%",maxWidth:480,boxSizing:"border-box"}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:17,marginBottom:4}}>📅 Dodaj do kalendarza</div>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:20}}>Skopiuj dane i wpisz ręcznie w Kalendarzu iOS</div>
+          <div style={{background:dk?"#0A1A1A":"#F2F5F7",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+            {meta.title&&<div style={{fontWeight:700,fontSize:15,marginBottom:4}}>{meta.title}</div>}
+            {meta.dateStr&&<div style={{fontSize:14,color:dk?"#A0C4C4":"#4A6A7A"}}>📆 {meta.dateStr}</div>}
+            {meta.timeStr&&<div style={{fontSize:14,color:dk?"#A0C4C4":"#4A6A7A"}}>🕐 {meta.timeStr}</div>}
+          </div>
+          <button onClick={()=>{navigator.clipboard.writeText(txt).catch(()=>{});setCpd(true);setTimeout(()=>setCpd(false),2000);}} style={{width:"100%",background:cpd?"#3DAA72":"#0A7C7C",color:"#fff",border:"none",borderRadius:14,padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10,transition:"background .2s"}}>{cpd?"✓ Skopiowano!":"Kopiuj dane"}</button>
+          <button onClick={onClose} style={{width:"100%",background:"none",border:"1.5px solid #E4EAF0",borderRadius:14,padding:"12px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit",color:dk?"#A0C4C4":"#7A8FA6"}}>Zamknij</button>
+        </div>
+      </div>;
+    }
+
     function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
@@ -1917,6 +1923,12 @@
       const goToRental=id=>{setDlRental(id);setTab("rentals");};
       const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
       const dk=dark;
+      const [calModal,setCalModal]=useState(null);
+      useEffect(()=>{
+        const h=e=>setCalModal(e.detail);
+        window.addEventListener("showCalModal",h);
+        return()=>window.removeEventListener("showCalModal",h);
+      },[]);
 
       return <>
         <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
@@ -1939,6 +1951,7 @@
             })}
           </div>
         </div>
+        {calModal&&<CalModal meta={calModal.meta} dk={dk} onClose={()=>setCalModal(null)}/>}
       </>;
     }
 
