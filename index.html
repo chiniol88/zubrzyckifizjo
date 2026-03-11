@@ -373,7 +373,7 @@
             if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"ad-v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
               <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
                 <div style={{width:6,height:6,borderRadius:2,background:"#0A7C7C",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Pacjent":v.patientName} · {v.type}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
@@ -393,7 +393,7 @@
             if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
               <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:"#0A7C7C",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{v.type}{addr?" · 📍"+addr:""}</div></div>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
               </div>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge></div>
