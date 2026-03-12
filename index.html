@@ -501,11 +501,10 @@
         setEditV(null); setToast("Zmiany zapisane");
       };
       const delVisit = id => {
-        if(id!==undefined && id!==null) {
+        if(id && id!=="__DEL__") {
           setVisits(vs=>vs.filter(v=>v.id!==id));
           setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+id));
         } else if(editV) {
-          // fallback for old visits without id — match by date+time+patientName
           const {date,time,patientName}=editV;
           setVisits(vs=>vs.filter(v=>!(v.date===date&&v.time===time&&v.patientName===patientName)));
         }
@@ -635,7 +634,7 @@
           <Sel label="Status" value={editV.status||"zaplanowana"} onChange={v=>setEditV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
           <Txa label="Notatka" value={editV.notes||""} onChange={v=>setEditV(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>          <Btn onClick={saveEdit} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
           <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setVf({...editV,id:undefined,date:todayLocal(),status:"zaplanowana",price:String(editV.price)});setEditV(null);setShowAdd(true);}}>📋 Powiel wizytę</Btn>
-          <Btn variant="danger" onClick={()=>setConfirmDel(editV.id)} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
+          <Btn variant="danger" onClick={()=>setConfirmDel(editV.id||"__DEL__")} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
         </Modal>}
 
         {confirmDel&&<Modal title="Usuń wizytę" onClose={()=>setConfirmDel(null)}>
@@ -846,7 +845,7 @@
             <Txa label="Notatka" value={editV.notes||""} onChange={v=>setEditV(f=>({...f,notes:v}))} rows={2} placeholder="Przebieg wizyty, zalecenia..."/>
             <Btn onClick={()=>{const u={...editV,price:+editV.price};setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));syncFinance(u,false);setEditV(null);setToast("Zmiany zapisane");}} style={{width:"100%",justifyContent:"center",marginBottom:8}}>Zapisz zmiany</Btn>
             <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setVf({...editV,date:todayLocal(),status:"zaplanowana",price:String(editV.price)});setEditV(null);setShowAddV(true);}}>📋 Powiel wizytę</Btn>
-            <Btn variant="danger" onClick={()=>setConfirmDelV(editV.id)} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
+            <Btn variant="danger" onClick={()=>setConfirmDelV(editV.id||"__DEL__")} style={{width:"100%",justifyContent:"center"}}>🗑️ Usuń wizytę</Btn>
           </Modal>}
 
           {confirmDelV&&<Modal title="Usuń wizytę" onClose={()=>setConfirmDelV(null)}>
@@ -854,7 +853,7 @@
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDelV(null)}>Anuluj</Btn>
               <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{
-                if(confirmDelV!==undefined&&confirmDelV!==null){
+                if(confirmDelV && confirmDelV!=="__DEL__"){
                   setVisits(vs=>vs.filter(v=>v.id!==confirmDelV));
                   setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDelV));
                 } else if(editV){
