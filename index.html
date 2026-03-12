@@ -2121,6 +2121,12 @@
     // ── APP ───────────────────────────────────────────────────────────────────
     const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
+    function useIsDesktop(){
+      const [desk,setDesk]=React.useState(()=>window.innerWidth>=900);
+      React.useEffect(()=>{const h=()=>setDesk(window.innerWidth>=900);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+      return desk;
+    }
+
     function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
@@ -2129,16 +2135,82 @@
       const goToRental=id=>{setDlRental(id);setTab("rentals");};
       const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
       const dk=dark;
+      const desk=useIsDesktop();
 
+      const activeRentals=(rentals||[]).filter(r=>r.status==="aktywne").length;
+      const todayVisits=(visits||[]).filter(v=>v.date===todayLocal()).length;
+      const unpaidCount=(rentals||[]).filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid)).length;
+
+      const content = <>
+        {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
+        {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
+        {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
+        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
+        {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
+        {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
+      </>;
+
+      if(desk) {
+        const sb=dk?"#0A1818":"#0F2A2A";
+        const sbHov=dk?"#1A3030":"#163333";
+        const sbAct="#0A7C7C";
+        return <div style={{display:"flex",minHeight:"100vh",background:dk?"#0A1A1A":"#EAEFF4",color:dk?"#E8F5F5":"#1C2B3A"}}>
+          {/* Sidebar */}
+          <div style={{width:230,flexShrink:0,background:sb,display:"flex",flexDirection:"column",position:"fixed",top:0,left:0,height:"100vh",zIndex:100,boxShadow:"4px 0 24px rgba(0,0,0,.18)"}}>
+            {/* Logo */}
+            <div style={{padding:"28px 20px 24px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                <div style={{width:36,height:36,borderRadius:10,background:"#0A7C7C",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </div>
+                <div>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#E8F5F5",letterSpacing:.3}}>ZubrzyckiFizjo</div>
+                  <div style={{fontSize:11,color:"#5A9A9A",fontWeight:500}}>Panel fizjoterapeuty</div>
+                </div>
+              </div>
+            </div>
+            {/* Quick stats */}
+            <div style={{margin:"0 14px 20px",background:"rgba(10,124,124,.18)",borderRadius:12,padding:"10px 14px",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4}}>
+              {[{v:todayVisits,l:"dziś",c:"#5DD9C1"},{v:activeRentals,l:"aktywne",c:"#A78BFA"},{v:unpaidCount,l:"do opłat",c:unpaidCount>0?"#F59E0B":"#5A9A9A"}].map((x,i)=>(
+                <div key={i} style={{textAlign:"center"}}>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:x.c,lineHeight:1}}>{x.v}</div>
+                  <div style={{fontSize:10,color:"#5A9A9A",marginTop:2}}>{x.l}</div>
+                </div>
+              ))}
+            </div>
+            {/* Nav */}
+            <nav style={{flex:1,padding:"0 10px",display:"flex",flexDirection:"column",gap:2}}>
+              {TABS.map(t=>{
+                const active=tab===t.id;
+                return <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderRadius:12,border:"none",cursor:"pointer",background:active?sbAct:sbHov+"00",fontFamily:"inherit",fontWeight:600,fontSize:14,color:active?"#fff":"#7ABABA",textAlign:"left",width:"100%",transition:"background .15s",WebkitUserSelect:"none"}}
+                  onMouseEnter={e=>{if(!active)e.currentTarget.style.background=sbHov;}}
+                  onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}>
+                  <div style={{width:32,height:32,borderRadius:9,background:active?"rgba(255,255,255,.18)":"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <Ico d={t.i} s={17} c={active?"#fff":"#5A9A9A"}/>
+                  </div>
+                  {t.l}
+                </button>;
+              })}
+            </nav>
+            {/* Bottom bar in sidebar */}
+            <div style={{padding:"16px 14px 24px",borderTop:"1px solid rgba(255,255,255,.06)"}}>
+              <div style={{fontSize:11,color:"#3A6060",textAlign:"center"}}>© {new Date().getFullYear()} Patryk Zubrzycki</div>
+            </div>
+          </div>
+          {/* Main content */}
+          <div style={{marginLeft:230,flex:1,minWidth:0,minHeight:"100vh",background:dk?"#0A1A1A":"#EAEFF4"}}>
+            <div style={{maxWidth:860,margin:"0 auto",minHeight:"100vh",background:dk?"#0F1F1F":"#F2F5F7",boxShadow:"0 0 40px rgba(0,0,0,.08)"}}>
+              {content}
+            </div>
+          </div>
+        </div>;
+      }
+
+      // Mobile layout
       return <>
         <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
-            {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
-            {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
-            {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
-            {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
-            {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
-            {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
+            {content}
           </div>
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
             {TABS.map(t=>{
@@ -2327,7 +2399,22 @@
       </DemoCtx.Provider></DarkCtx.Provider>;
     }
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<AppWrapper/>);
+    class ErrorBoundary extends React.Component {
+      constructor(props){super(props);this.state={err:null};}
+      static getDerivedStateFromError(e){return {err:e};}
+      render(){
+        if(this.state.err){
+          return React.createElement('div',{style:{padding:24,fontFamily:"monospace",fontSize:13,background:"#FEE2E2",minHeight:"100vh",color:"#1C2B3A"}},
+            React.createElement('div',{style:{fontWeight:700,fontSize:16,marginBottom:12,color:"#E05C5C"}},"Blad aplikacji"),
+            React.createElement('div',{style:{marginBottom:8,wordBreak:"break-all"}},String(this.state.err)),
+            React.createElement('div',{style:{fontSize:11,color:"#7A8FA6",wordBreak:"break-all",whiteSpace:"pre-wrap"}},this.state.err&&this.state.err.stack),
+            React.createElement('button',{onClick:()=>this.setState({err:null}),style:{marginTop:16,padding:"8px 16px",background:"#0A7C7C",color:"#fff",border:"none",borderRadius:8,cursor:"pointer"}},"Sprobuj ponownie")
+          );
+        }
+        return this.props.children;
+      }
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(AppWrapper)));
   </script>
 </body>
 </html>
