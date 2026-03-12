@@ -180,41 +180,28 @@
       return <span>{t}</span>;
     }
 
-    function openGCal(summary, dtStart, dtEnd, description, allDay) {
-      const pad=(n)=>String(n).padStart(2,"0");
-      const fmtDT=(s)=>s.replace(/[-:]/g,"").replace("T","T")+"00";
-      const fmtD=(s)=>s.replace(/-/g,"");
-      let dates;
-      if(allDay) {
-        // GCal all-day: YYYYMMDD/YYYYMMDD
-        const d2=fmtD(dtEnd||dtStart);
-        // end date for GCal all-day must be day+1
-        const ed=new Date(dtEnd||dtStart); ed.setDate(ed.getDate()+1);
-        const d2next=ed.getFullYear()+""+pad(ed.getMonth()+1)+""+pad(ed.getDate());
-        dates=fmtD(dtStart)+"/"+d2next;
+    const ICS_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co/functions/v1/ics";
+    function openICS(arg) {
+      // arg from makeICS: {summary, dtStart, dtEnd, description, allDay}
+      const p = new URLSearchParams();
+      p.set("title", arg.summary||"");
+      // dtStart is either "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"
+      const hasTime = (arg.dtStart||"").includes("T");
+      if(hasTime) {
+        const [d,t] = arg.dtStart.split("T");
+        p.set("date", d); p.set("time", t.slice(0,5));
+        if(arg.dtEnd&&arg.dtEnd.includes("T")){const[d2,t2]=arg.dtEnd.split("T");p.set("endDate",d2);p.set("endTime",t2.slice(0,5));}
       } else {
-        dates=fmtDT(dtStart)+"/"+fmtDT(dtEnd||dtStart);
+        p.set("date", arg.dtStart||""); p.set("allDay","1");
       }
-      const p=new URLSearchParams({action:"TEMPLATE",text:summary,dates,details:description||""});
-      window.open("https://calendar.google.com/calendar/render?"+p.toString(),"_blank");
+      if(arg.description) p.set("desc", arg.description);
+      window.open(ICS_URL+"?"+p.toString(), "_blank");
     }
-    // Legacy alias so existing call sites work
     function makeICS(summary, dtStart, dtEnd, description, allDay) {
       return {summary, dtStart, dtEnd, description, allDay};
     }
-    function openICS(arg, meta) {
-      // arg is either {summary,dtStart,dtEnd,description,allDay} from makeICS, or legacy lines array
-      if(Array.isArray(arg)) {
-        // parse legacy ICS lines
-        const get=(k)=>{const l=arg.find(x=>x.startsWith(k+":"));return l?l.slice(k.length+1):"";}
-        const summary=get("SUMMARY");
-        const dtStart=get("DTSTART");
-        const dtEnd=get("DTEND");
-        const allDay=arg.some(x=>x.startsWith("DTSTART;VALUE=DATE"));
-        openGCal(summary, dtStart.replace(/T/,"T"), dtEnd.replace(/T/,"T"), get("DESCRIPTION").replace(/\\n/g,"\n"), allDay);
-      } else {
-        openGCal(arg.summary, arg.dtStart, arg.dtEnd, arg.description, arg.allDay);
-      }
+    function openGCal(summary, dtStart, dtEnd, description, allDay) {
+      openICS({summary, dtStart, dtEnd, description, allDay});
     }
 
     function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents,patients}) {
