@@ -472,6 +472,23 @@
         }).sort((a,b)=>nextOrderDate(a).localeCompare(nextOrderDate(b)));
       },[nfzCases, today]);
 
+      const birthdayReminders = useMemo(()=>{
+        return (patients||[]).filter(p=>{
+          if(!p.birthday||p.archived) return false;
+          const b=new Date(todayLocal().slice(0,4)+"-"+p.birthday.slice(5)+"T12:00:00");
+          const t=new Date(todayLocal()+"T12:00:00");
+          if(b<t) b.setFullYear(b.getFullYear()+1);
+          return Math.round((b-t)/86400000)<=7;
+        }).map(p=>{
+          const b=new Date(todayLocal().slice(0,4)+"-"+p.birthday.slice(5)+"T12:00:00");
+          const t=new Date(todayLocal()+"T12:00:00");
+          if(b<t) b.setFullYear(b.getFullYear()+1);
+          const days=Math.round((b-t)/86400000);
+          const age=todayLocal().slice(0,4)-p.birthday.slice(0,4)-(p.birthday.slice(5)<todayLocal().slice(5)?0:p.birthday.slice(5)===todayLocal().slice(5)?0:1);
+          return {...p,_days:days,_age:age};
+        }).sort((a,b)=>a._days-b._days);
+      },[patients,today]);
+
       const syncFinance = (v, isNew=false) => {
         const done = v.status==="zakończona" || new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
         if(!done) return;
@@ -496,7 +513,12 @@
       const saveEdit = () => {
         if(!editV) return;
         const u={...editV,price:+editV.price};
-        setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));
+        if(u.id) {
+          setVisits(vs=>vs.map(v=>v.id===u.id?{...v,...u}:v));
+        } else {
+          // stara wizyta bez id — dopasuj po date+time+patientName
+          setVisits(vs=>vs.map(v=>(!v.id&&v.date===u.date&&v.time===u.time&&v.patientName===u.patientName)?{...v,...u}:v));
+        }
         syncFinance(u,false);
         setEditV(null); setToast("Zmiany zapisane");
       };
@@ -511,8 +533,30 @@
         setConfirmDel(null); setEditV(null);
       };
 
-      const [todoOpen,setTodoOpen]=useState(false);
+      const [searchQ,setSearchQ]=useState("");
+      const searchResults=useMemo(()=>{
+        const q=(searchQ||"").trim().toLowerCase();
+        if(q.length<2) return null;
+        const res=[];
+        const patByName=Object.fromEntries((patients||[]).map(p=>[p.name,p]));
+        // wizyty
+        visits.filter(v=>{
+          const pat=patByName[v.patientName]||{};
+          return (v.patientName||"").toLowerCase().includes(q)||(v.notes||"").toLowerCase().includes(q)||(v.type||"").toLowerCase().includes(q)||((pat.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")));
+        }).slice(0,5).forEach(v=>{
+          const pat=patByName[v.patientName]||{};
+          res.push({kind:"visit",label:"Wizyta",title:(v.allDay?"🗓 ":"⏰ ")+(v.time?v.time+" · ":"")+v.patientName,sub:v.date+" · "+v.type+(v.price?" · "+v.price+" zł":"")+(pat.phone?" · 📞 "+pat.phone:""),item:v});
+        });
+        // wypożyczenia
+        rentals.filter(r=>(r.patientName||"").toLowerCase().includes(q)||(r.equipment||"").toLowerCase().includes(q)||(r.address||"").toLowerCase().includes(q)||((r.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")))).slice(0,5).forEach(r=>res.push({kind:"rental",label:"Sprzęt",title:"📦 "+r.patientName+" – "+r.equipment,sub:r.startDate+(r.endDate?" → "+r.endDate:"")+" · "+(r.status||"")+(r.phone?" · 📞 "+r.phone:""),item:r}));
+        // pacjenci
+        patients.filter(p=>(p.name||"").toLowerCase().includes(q)||(p.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""))||(p.address||"").toLowerCase().includes(q)).slice(0,3).forEach(p=>res.push({kind:"patient",label:"Pacjent",title:"👤 "+p.name,sub:(p.phone?"📞 "+p.phone:"")+(p.address?" · "+p.address:""),item:p}));
+        // wydarzenia
+        events.filter(e=>(e.title||"").toLowerCase().includes(q)||(e.notes||"").toLowerCase().includes(q)).slice(0,3).forEach(e=>res.push({kind:"event",label:"Wydarzenie",title:"📌 "+e.title,sub:e.date+(e.time?" · "+e.time:""),item:e}));
+        return res;
+      },[searchQ,visits,rentals,patients,events]);
       const [todoInput,setTodoInput]=useState("");
+      const [todoOpen,setTodoOpen]=useState(false);
       const [editTodoId,setEditTodoId]=useState(null);
       const [editTodoText,setEditTodoText]=useState("");
 
@@ -524,6 +568,26 @@
               <span>{new Date(today+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</span>
               <span style={{fontWeight:600,color:"#0A7C7C"}}><ClockDisplay/></span>
             </div>
+          </div>
+          <div style={{padding:"0 20px 12px"}}>
+            <div style={{position:"relative"}}>
+              <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="🔍 Szukaj wizyt, sprzętu, pacjentów..." style={{width:"100%",boxSizing:"border-box",padding:"10px 14px",borderRadius:12,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#1A2A2A":"#F7FAFA",fontSize:14,color:dk?"#E0F0F0":"#1A2E35",fontFamily:"inherit",outline:"none"}}/>
+              {searchQ&&<button onClick={()=>setSearchQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",fontSize:16,cursor:"pointer",color:"#7A8FA6"}}>✕</button>}
+            </div>
+            {searchResults&&searchResults.length===0&&<div style={{padding:"10px 4px",fontSize:13,color:"#7A8FA6"}}>Brak wyników</div>}
+            {searchResults&&searchResults.length>0&&<div style={{background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 2px 12px rgba(0,0,0,.08)",marginTop:6,overflow:"hidden"}}>
+              {searchResults.map((r,i)=><div key={i} onClick={()=>{
+                if(r.kind==="rental") goToRental(r.item);
+                else if(r.kind==="visit") setEditV(r.item);
+                setSearchQ("");
+              }} style={{padding:"10px 14px",borderBottom:i<searchResults.length-1?"1px solid "+(dk?"#2A4040":"#F0F4F8"):"none",cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:10,fontWeight:700,color:"#0A7C7C",background:"#E6F4F4",padding:"2px 6px",borderRadius:6}}>{r.label}</span>
+                  <span style={{fontSize:13,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>{r.title}</span>
+                </div>
+                <div style={{fontSize:12,color:"#7A8FA6",marginTop:2}}>{r.sub}</div>
+              </div>)}
+            </div>}
           </div>
           <div style={{padding:"0 20px 4px"}}>
             <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden",marginBottom:10}}>
@@ -570,8 +634,17 @@
               onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
               onGoToRental={goToRental}
             />
-            {(upcoming.length>0||wózkiReminders.length>0||unpaidCycles.length>0)&&<>
+            {(upcoming.length>0||wózkiReminders.length>0||unpaidCycles.length>0||birthdayReminders.length>0)&&<>
               <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Nadchodzące</div>
+              {birthdayReminders.map(p=><Card key={"bd-"+p.id} style={{background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontWeight:600}}>🎂 {demo?"Pacjent":p.name}</div>
+                    <div style={{fontSize:13,color:"#7A8FA6"}}>{p._age} lat · {p.birthday.slice(5).split("-").reverse().join(".")}</div>
+                  </div>
+                  <Badge color={p._days===0?"#F4A261":p._days<=3?"#F4A261":"#3DAA72"}>{p._days===0?"Dziś!":p._days===1?"Jutro":"Za "+p._days+" dni"}</Badge>
+                </div>
+              </Card>)}
               {upcoming.map(r=>{const d=dateDiff(today,r.endDate);return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -606,7 +679,7 @@
         </div>
 
         {showAdd&&<Modal title="Nowa wizyta" onClose={()=>setShowAdd(false)}>
-          <PatientPicker label="Pacjent *" value={vf.patientName} onChange={v=>setVf(f=>({...f,patientName:v}))} onSelect={p=>setVf(f=>({...f,patientName:p.name,patientId:p.id}))} patients={patients}/>
+          <PatientPicker label="Pacjent *" value={vf.patientName} onChange={v=>setVf(f=>({...f,patientName:v}))} onSelect={p=>setVf(f=>({...f,patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):f.price}))} patients={patients}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
             {!vf.allDay&&<TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>}
@@ -656,7 +729,7 @@
       const [showEdit,setShowEdit]=useState(false);
       const [confirmDelPat,setConfirmDelPat]=useState(false);
       const [editForm,setEditForm]=useState(null);
-      const [newForm,setNewForm]=useState({name:"",phone:"",address:"",diagnosis:"",notes:""});
+      const [newForm,setNewForm]=useState({name:"",phone:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});
       const [showAddV,setShowAddV]=useState(false);
       const [vf,setVf]=useState(emptyVisit);
       const [editV,setEditV]=useState(null);
@@ -679,6 +752,10 @@
       const patTotalVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona").reduce((s,v)=>s+(+v.price||0),0) : 0;
       const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+(r.renewable?(r.cycles||[]).filter(c=>c.paid).reduce((ss,c)=>ss+c.amount,0):(r.amountPaid||0)),0) : 0;
       const patTotal = patTotalVisits + patTotalRentals;
+      const patDoneVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona") : [];
+      const patAvgPrice = patDoneVisits.length ? Math.round(patDoneVisits.reduce((s,v)=>s+(+v.price||0),0)/patDoneVisits.length) : 0;
+      const patFirstVisit = patDoneVisits.length ? patDoneVisits.map(v=>v.date).sort()[0] : null;
+      const patSinceMonths = patFirstVisit ? Math.round((new Date(todayLocal())-new Date(patFirstVisit))/2592000000) : 0;
 
       const syncFinance = (v,isNew) => {
         const done = v.status==="zakończona"||new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
@@ -728,7 +805,35 @@
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
                 <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{pat.notes}</div>
               </Card>}
+              {pat.defaultPrice&&<Card style={{marginBottom:10,background:"#F0FFF8",border:"1.5px solid #3DAA7230"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Domyślna cena wizyty</div>
+                <div style={{fontSize:18,fontWeight:800,color:"#3DAA72"}}>{pat.defaultPrice} zł</div>
+              </Card>}
+              {pat.birthday&&(()=>{
+                const bd=pat.birthday.slice(5); // MM-DD
+                const td=todayLocal().slice(5);
+                const age=todayLocal().slice(0,4)-pat.birthday.slice(0,4)-(bd<td?0:bd===td?0:1);
+                const daysTo=(()=>{const t=new Date(todayLocal());const b=new Date(todayLocal().slice(0,4)+"-"+pat.birthday.slice(5));if(b<t)b.setFullYear(b.getFullYear()+1);return Math.round((b-t)/86400000);})();
+                return <Card style={{marginBottom:10,background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Urodziny</div>
+                  <div style={{fontSize:14,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>{new Date(pat.birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})} · {age} lat</div>
+                  {daysTo<=7&&<div style={{fontSize:12,color:"#F4A261",fontWeight:700,marginTop:4}}>{daysTo===0?"🎂 Dzisiaj!":daysTo===1?"🎂 Jutro!":"🎂 Za "+daysTo+" dni"}</div>}
+                </Card>;
+              })()}
 
+              {patDoneVisits.length>0&&<Card style={{marginBottom:10,background:dk?"#1A2A2A":"#F7FAFA",border:"1.5px solid #E4EAF0"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Statystyki</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                  {[
+                    {l:"Wizyty",v:patDoneVisits.length,c:"#0A7C7C"},
+                    {l:"Śr. cena",v:patAvgPrice+" zł",c:"#7C6AF4"},
+                    {l:"Pacjent od",v:patSinceMonths<1?"<1 mies.":patSinceMonths<12?patSinceMonths+" mies.":(patSinceMonths/12).toFixed(1).replace(".0","")+" lat",c:"#F4A261"},
+                  ].map((x,i)=><div key={i} style={{background:x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:x.c}}>{x.v}</div>
+                    <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
+                  </div>)}
+                </div>
+              </Card>}
               {patTotal>0&&<Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Łącznie zapłacono</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
@@ -743,7 +848,7 @@
 
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Historia ({history.length})</div>
-                <Btn small onClick={()=>{setVf({...emptyVisit(),patientName:pat.name,patientId:pat.id});setShowAddV(true);}}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
+                <Btn small onClick={()=>{setVf({...emptyVisit(),patientName:pat.name,patientId:pat.id,price:pat.defaultPrice?String(pat.defaultPrice):"150"});setShowAddV(true);}}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
               </div>
               <div style={{display:"flex",gap:6,marginBottom:10}}>
                 {[{k:"all",l:"Wszystko"},{k:"v",l:"Wizyty"},{k:"r",l:"Wypożyczenia"}].map(x=><button key={x.k} onClick={()=>setHistFilter(x.k)} style={{padding:"6px 12px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:histFilter===x.k?"#0A7C7C":"#E4EAF0",color:histFilter===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
@@ -776,6 +881,8 @@
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Txa label="Diagnoza" value={editForm.diagnosis||""} onChange={v=>setEditForm(f=>({...f,diagnosis:v}))} rows={2}/>
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
+            <Inp label="Domyślna cena wizyty (zł)" value={editForm.defaultPrice||""} onChange={v=>setEditForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>
+            <Inp label="Data urodzin" value={editForm.birthday||""} onChange={v=>setEditForm(f=>({...f,birthday:v}))} type="date"/>
             {!confirmDelPat
               ? <>
                   <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{
@@ -898,7 +1005,7 @@
                 </div>
               </div>
               <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <button onClick={e=>{e.stopPropagation();setQuickV({...emptyVisit(),patientName:p.name,patientId:p.id});setShowQuickV(true);}} style={{width:30,height:30,borderRadius:10,background:"#0A7C7C",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>
+                <button onClick={e=>{e.stopPropagation();setQuickV({...emptyVisit(),patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):"150"});setShowQuickV(true);}} style={{width:30,height:30,borderRadius:10,background:"#0A7C7C",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>
                 <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
               </div>
             </div>
@@ -911,7 +1018,9 @@
           <Inp label="Adres" value={newForm.address} onChange={v=>setNewForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Txa label="Diagnoza" value={newForm.diagnosis} onChange={v=>setNewForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={newForm.notes} onChange={v=>setNewForm(f=>({...f,notes:v}))} rows={2}/>
-          <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;setPatients(ps=>[...ps,{...newForm,id:Date.now()}]);setNewForm({name:"",phone:"",address:"",diagnosis:"",notes:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
+          <Inp label="Domyślna cena wizyty (zł)" value={newForm.defaultPrice||""} onChange={v=>setNewForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>
+          <Inp label="Data urodzin" value={newForm.birthday||""} onChange={v=>setNewForm(f=>({...f,birthday:v}))} type="date"/>
+          <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;setPatients(ps=>[...ps,{...newForm,id:Date.now()}]);setNewForm({name:"",phone:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
         </Modal>}
         {showQuickV&&quickV&&<Modal title={"Wizyta – "+quickV.patientName} onClose={()=>setShowQuickV(false)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -1629,8 +1738,8 @@
       const years=useMemo(()=>{const c=todayLocal().slice(0,4),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,4));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
 
       const mly=viewMode==="month"?finances.filter(f=>f.date&&f.date.startsWith(month)):finances.filter(f=>f.date&&f.date.startsWith(year));
-      const inc=mly.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
-      const cst=mly.filter(f=>f.type==="koszt").reduce((s,f)=>s+f.amount,0);
+      const inc=mly.filter(f=>f.type==="przychód").reduce((s,f)=>s+(+f.amount||0),0);
+      const cst=mly.filter(f=>f.type==="koszt").reduce((s,f)=>s+(+f.amount||0),0);
 
       // For year view - monthly breakdown
       const yearMonths=useMemo(()=>{
@@ -1666,8 +1775,8 @@
             {viewMode==="year"&&yearMonths.length>0&&<>
               {yearMonths.map(m=>{
                 const ml=finances.filter(f=>f.date&&f.date.startsWith(m));
-                const mi=ml.filter(f=>f.type==="przychód").reduce((s,f)=>s+f.amount,0);
-                const mc=ml.filter(f=>f.type==="koszt").reduce((s,f)=>s+f.amount,0);
+                const mi=ml.filter(f=>f.type==="przychód").reduce((s,f)=>s+(+f.amount||0),0);
+                const mc=ml.filter(f=>f.type==="koszt").reduce((s,f)=>s+(+f.amount||0),0);
                 return <div key={m} style={{marginBottom:8,borderRadius:14,border:"1.5px solid #E4EAF0",overflow:"hidden"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#F2F5F7",cursor:"pointer"}} onClick={()=>{setViewMode("month");setMonth(m);}}>
                     <span style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</span>
@@ -1712,10 +1821,105 @@
           <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{deleteWithSource(editE);setEditE(null);}}>🗑️ Usuń wpis</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
+        <RevenueReport finances={finances} rentals={rentals} nfzCases={nfzCases}/>
       </>;
     }
 
-    // ── NFZ ───────────────────────────────────────────────────────────────────
+    function RevenueReport({finances, rentals, nfzCases}) {
+      const dk=useContext(DarkCtx);
+      const today=todayLocal();
+      const [mode,setMode]=useState("month"); // month | range | year
+      const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
+      const [year,setYear]=useState(()=>todayLocal().slice(0,4));
+      const [from,setFrom]=useState(()=>todayLocal().slice(0,7)+"-01");
+      const [to,setTo]=useState(()=>todayLocal());
+
+      const inRange=(date)=>{
+        if(!date) return false;
+        if(mode==="month") return date.slice(0,7)===month;
+        if(mode==="year") return date.slice(0,4)===year;
+        return date>=from && date<=to;
+      };
+
+      // Kategorie
+      const cats=[
+        {key:"visit",   label:"Wizyty",                    color:"#0A7C7C"},
+        {key:"rent1",   label:"Wypożyczenia jednorazowe",  color:"#2E86AB"},
+        {key:"rentcyc", label:"Wypożyczenia cykliczne",    color:"#F18F01"},
+        {key:"nfz",     label:"Wózki / NFZ",               color:"#7B4FBF"},
+      ];
+
+      const rentMap=useMemo(()=>{
+        const m={};
+        (rentals||[]).forEach(r=>m[r.id]=r);
+        return m;
+      },[rentals]);
+
+      const data=useMemo(()=>{
+        const res={visit:{sum:0,count:0},rent1:{sum:0,count:0},rentcyc:{sum:0,count:0},nfz:{sum:0,count:0}};
+        (finances||[]).filter(f=>f.type==="przychód"&&inRange(f.date)).forEach(f=>{
+          const cat=(f.category||"").toLowerCase();
+          const srcId=f.sourceId||"";
+          if(cat==="wizyta"||srcId.startsWith("visit-")) {
+            res.visit.sum+=+f.amount||0; res.visit.count++;
+          } else if(cat==="wózek"||cat==="wózki"||cat==="nfz"||srcId.startsWith("nfz-")) {
+            res.nfz.sum+=+f.amount||0; res.nfz.count++;
+          } else if(srcId.startsWith("rental-")||srcId.startsWith("ext-")||srcId.startsWith("cycle-")) {
+            const rid=srcId.startsWith("rental-")?srcId.slice(7):srcId.startsWith("ext-")?srcId.split("-")[1]:srcId.startsWith("cycle-")?srcId.split("-")[1]:null;
+            const r=rid?rentMap[rid]:null;
+            if(r&&r.renewable){res.rentcyc.sum+=+f.amount||0;res.rentcyc.count++;}
+            else {res.rent1.sum+=+f.amount||0;res.rent1.count++;}
+          } else {
+            // unknown — classify as visit
+            res.visit.sum+=+f.amount||0; res.visit.count++;
+          }
+        });
+        return res;
+      },[finances,rentals,mode,month,year,from,to,rentMap]);
+
+      const total=cats.reduce((s,c)=>s+data[c.key].sum,0);
+      const maxVal=Math.max(...cats.map(c=>data[c.key].sum),1);
+
+      const btnStyle=(active)=>({padding:"6px 14px",borderRadius:20,border:"none",background:active?"#0A7C7C":"transparent",color:active?"#fff":dk?"#7A8FA6":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"});
+
+      return <div style={{padding:"0 20px 32px",marginTop:8}}>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,boxShadow:"0 1px 4px rgba(0,0,0,.06)",padding:"16px 16px 20px"}}>
+          <div style={{fontWeight:700,fontSize:15,marginBottom:12,color:dk?"#E0F0F0":"#1A2E35"}}>📊 Raport przychodów</div>
+          {/* Period selector */}
+          <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
+            <button style={btnStyle(mode==="month")} onClick={()=>setMode("month")}>Miesiąc</button>
+            <button style={btnStyle(mode==="year")} onClick={()=>setMode("year")}>Rok</button>
+            <button style={btnStyle(mode==="range")} onClick={()=>setMode("range")}>Zakres</button>
+          </div>
+          {mode==="month"&&<input type="month" value={month} onChange={e=>setMonth(e.target.value)} style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit",marginBottom:12,display:"block"}}/>}
+          {mode==="year"&&<input type="number" value={year} onChange={e=>setYear(e.target.value)} min="2020" max="2099" style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit",marginBottom:12,display:"block",width:100}}/>}
+          {mode==="range"&&<div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+            <input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit"}}/>
+            <span style={{color:"#7A8FA6",fontSize:13}}>–</span>
+            <input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit"}}/>
+          </div>}
+          {/* Total */}
+          <div style={{textAlign:"center",marginBottom:16}}>
+            <div style={{fontSize:26,fontWeight:800,color:"#0A7C7C"}}>{total.toFixed(2)} zł</div>
+            <div style={{fontSize:12,color:"#7A8FA6"}}>łącznie</div>
+          </div>
+          {/* Bars */}
+          {cats.map(c=>{
+            const d=data[c.key];
+            const pct=maxVal>0?(d.sum/maxVal)*100:0;
+            return <div key={c.key} style={{marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontSize:12,fontWeight:600,color:dk?"#B0C8C8":"#3A5568"}}>{c.label}</span>
+                <span style={{fontSize:12,color:"#7A8FA6"}}>{d.count} szt. · <b style={{color:dk?"#E0F0F0":"#1A2E35"}}>{d.sum.toFixed(2)} zł</b></span>
+              </div>
+              <div style={{height:10,borderRadius:8,background:dk?"#2A4040":"#F0F4F8",overflow:"hidden"}}>
+                <div style={{height:"100%",width:pct+"%",background:c.color,borderRadius:8,transition:"width .4s"}}/>
+              </div>
+            </div>;
+          })}
+        </div>
+      </div>;
+    }
     const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:""});
 
     const nextOrderDate = (cas) => {
@@ -2026,6 +2230,15 @@
     function AppWrapper() {
       const [visits,setVisits,v1]=usePersistedState("fizjo-visits",[]);
       const [patients,setPatients,v2]=usePersistedState("fizjo-patients",[]);
+      // Migracja: nadaj id wizytom które go nie mają — uruchamia się po załadowaniu z Supabase
+      React.useEffect(()=>{
+        if(!v1) return; // czekaj na załadowanie
+        setVisits(vs=>{
+          const needsMigration=vs.some(v=>!v.id);
+          if(!needsMigration) return vs;
+          return vs.map(v=>v.id?v:{...v,id:Date.now()+Math.random()});
+        });
+      },[v1]);
       const [rentals,setRentals,v3]=usePersistedState("fizjo-rentals",[]);
       const [finances,setFinances,v4]=usePersistedState("fizjo-finances",[]);
       const [stock,setStock,v5]=usePersistedState("fizjo-stock",{});
