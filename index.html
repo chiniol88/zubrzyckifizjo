@@ -760,9 +760,9 @@
       const pat = selId ? patients.find(p=>p.id===selId) : null;
       if(selId && !pat) { setSelId(null); return null; }
 
-      const patVisits = pat ? visits.filter(v=>v.patientId===pat.id) : [];
+      const patVisits = pat ? visits.filter(v=>v.patientId===pat.id||(v.patientName===pat.name&&!v.patientId)) : [];
       const patRentals = pat ? rentals.filter(r=>r.patientId===pat.id||r.patientName===pat.name) : [];
-      const history = [...patVisits.map(v=>({...v,_t:"v",_d:v.date,_time:v.time||"00:00"})),...patRentals.map(r=>({...r,_t:"r",_d:r.startDate,_time:"00:00"}))].sort((a,b)=>b._d.localeCompare(a._d)||b._time.localeCompare(a._time));
+      const history = [...patVisits.map(v=>({...v,_t:"v",_d:v.date||"",_time:v.time||"00:00"})),...patRentals.map(r=>({...r,_t:"r",_d:r.startDate||"",_time:"00:00"}))].sort((a,b)=>(b._d||"").localeCompare(a._d||"")||(b._time||"").localeCompare(a._time||""));
 
       const patTotalVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona").reduce((s,v)=>s+(+v.price||0),0) : 0;
       const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+(r.renewable?(r.cycles||[]).filter(c=>c.paid).reduce((ss,c)=>ss+c.amount,0):(r.amountPaid||0)),0) : 0;
