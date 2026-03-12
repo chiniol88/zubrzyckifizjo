@@ -501,8 +501,14 @@
         setEditV(null); setToast("Zmiany zapisane");
       };
       const delVisit = id => {
-        setVisits(vs=>vs.filter(v=>v.id!==id));
-        setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+id));
+        if(id!==undefined && id!==null) {
+          setVisits(vs=>vs.filter(v=>v.id!==id));
+          setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+id));
+        } else if(editV) {
+          // fallback for old visits without id — match by date+time+patientName
+          const {date,time,patientName}=editV;
+          setVisits(vs=>vs.filter(v=>!(v.date===date&&v.time===time&&v.patientName===patientName)));
+        }
         setConfirmDel(null); setEditV(null);
       };
 
@@ -847,7 +853,15 @@
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć tę wizytę?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDelV(null)}>Anuluj</Btn>
-              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setVisits(vs=>vs.filter(v=>v.id!==confirmDelV));setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDelV));setConfirmDelV(null);setEditV(null);}}>Usuń</Btn>
+              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{
+                if(confirmDelV!==undefined&&confirmDelV!==null){
+                  setVisits(vs=>vs.filter(v=>v.id!==confirmDelV));
+                  setFinances(fs=>fs.filter(f=>f.sourceId!=="visit-"+confirmDelV));
+                } else if(editV){
+                  const {date,time,patientName}=editV;
+                  setVisits(vs=>vs.filter(v=>!(v.date===date&&v.time===time&&v.patientName===patientName)));
+                }
+                setConfirmDelV(null);setEditV(null);}}>Usuń</Btn>
             </div>
           </Modal>}
           {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
