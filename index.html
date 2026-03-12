@@ -182,10 +182,8 @@
 
     const ICS_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co/functions/v1/ics";
     function openICS(arg) {
-      // arg from makeICS: {summary, dtStart, dtEnd, description, allDay}
       const p = new URLSearchParams();
       p.set("title", arg.summary||"");
-      // dtStart is either "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"
       const hasTime = (arg.dtStart||"").includes("T");
       if(hasTime) {
         const [d,t] = arg.dtStart.split("T");
@@ -195,7 +193,13 @@
         p.set("date", arg.dtStart||""); p.set("allDay","1");
       }
       if(arg.description) p.set("desc", arg.description);
-      window.open(ICS_URL+"?"+p.toString(), "_blank");
+      // Use <a> click — Safari handles text/calendar from real URL correctly
+      const a = document.createElement("a");
+      a.href = ICS_URL+"?"+p.toString();
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>document.body.removeChild(a), 1000);
     }
     function makeICS(summary, dtStart, dtEnd, description, allDay) {
       return {summary, dtStart, dtEnd, description, allDay};
