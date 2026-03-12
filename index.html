@@ -2244,6 +2244,14 @@
           return vs.map(v=>v.id?v:{...v,id:Date.now()+Math.random()});
         });
       },[v1]);
+      React.useEffect(()=>{
+        if(!v2) return;
+        setPatients(ps=>{
+          const needsMigration=ps.some(p=>!p.id);
+          if(!needsMigration) return ps;
+          return ps.map(p=>p.id?p:{...p,id:Date.now()+Math.random()});
+        });
+      },[v2]);
       const [rentals,setRentals,v3]=usePersistedState("fizjo-rentals",[]);
       const [finances,setFinances,v4]=usePersistedState("fizjo-finances",[]);
       const [stock,setStock,v5]=usePersistedState("fizjo-stock",{});
