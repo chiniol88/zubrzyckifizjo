@@ -739,6 +739,7 @@
 
     function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals}) {
       const demo=useDemo();
+      const dk=useContext(DarkCtx);
       const [selId,setSelId]=useState(null);
       const [showAdd,setShowAdd]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
