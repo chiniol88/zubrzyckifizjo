@@ -722,6 +722,21 @@
     }
 
     // ── PATIENTS ──────────────────────────────────────────────────────────────
+    function BirthdayCard({birthday, dk}) {
+      const today = todayLocal();
+      const age = +today.slice(0,4) - +birthday.slice(0,4) - (birthday.slice(5) > today.slice(5) ? 1 : 0);
+      const thisYearBd = today.slice(0,4) + "-" + birthday.slice(5);
+      const bdDate = new Date(thisYearBd + "T12:00:00");
+      const todayDate = new Date(today + "T12:00:00");
+      if(bdDate < todayDate) bdDate.setFullYear(bdDate.getFullYear() + 1);
+      const daysTo = Math.round((bdDate - todayDate) / 86400000);
+      return <Card style={{marginBottom:10,background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Urodziny</div>
+        <div style={{fontSize:14,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>{new Date(birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})} · {age} lat</div>
+        {daysTo<=7&&<div style={{fontSize:12,color:"#F4A261",fontWeight:700,marginTop:4}}>{daysTo===0?"🎂 Dzisiaj!":daysTo===1?"🎂 Jutro!":"🎂 Za "+daysTo+" dni"}</div>}
+      </Card>;
+    }
+
     function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals}) {
       const demo=useDemo();
       const [selId,setSelId]=useState(null);
@@ -809,17 +824,7 @@
                 <div style={{fontSize:11,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Domyślna cena wizyty</div>
                 <div style={{fontSize:18,fontWeight:800,color:"#3DAA72"}}>{pat.defaultPrice} zł</div>
               </Card>}
-              {pat.birthday&&(()=>{
-                const bd=pat.birthday.slice(5); // MM-DD
-                const td=todayLocal().slice(5);
-                const age=todayLocal().slice(0,4)-pat.birthday.slice(0,4)-(bd<td?0:bd===td?0:1);
-                const daysTo=(()=>{const t=new Date(todayLocal());const b=new Date(todayLocal().slice(0,4)+"-"+pat.birthday.slice(5));if(b<t)b.setFullYear(b.getFullYear()+1);return Math.round((b-t)/86400000);})();
-                return <Card style={{marginBottom:10,background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Urodziny</div>
-                  <div style={{fontSize:14,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>{new Date(pat.birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})} · {age} lat</div>
-                  {daysTo<=7&&<div style={{fontSize:12,color:"#F4A261",fontWeight:700,marginTop:4}}>{daysTo===0?"🎂 Dzisiaj!":daysTo===1?"🎂 Jutro!":"🎂 Za "+daysTo+" dni"}</div>}
-                </Card>;
-              })()}
+              {pat.birthday&&<BirthdayCard birthday={pat.birthday} dk={dk}/>}
 
               {patDoneVisits.length>0&&<Card style={{marginBottom:10,background:dk?"#1A2A2A":"#F7FAFA",border:"1.5px solid #E4EAF0"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Statystyki</div>
