@@ -12,8 +12,8 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
-    input,select,textarea,button{font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent}
+    body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased;overscroll-behavior:none;font-size:16px}
+    input,select,textarea,button{font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;font-size:16px}
     ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
     .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;background:#F2F5F7}
     .spinner{width:40px;height:40px;border:3px solid #E4EAF0;border-top-color:#0A7C7C;border-radius:50%;animation:spin 0.8s linear infinite}
@@ -93,28 +93,28 @@
     const Btn = ({children,onClick,variant="primary",small,disabled,style={}}) => {
       const dk=useContext(DarkCtx);
       const v={primary:{background:"#0A7C7C",color:"#fff"},secondary:{background:dk?"#1E3A3A":"#E6F4F4",color:"#0A7C7C"},orange:{background:"#F4A261",color:"#fff"},danger:{background:dk?"#3A1C1C":"#FEE2E2",color:"#E05C5C"}};
-      return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"8px 14px":"13px 18px",fontSize:small?13:15,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,opacity:disabled?.5:1,fontFamily:"inherit",...style}}>{children}</button>;
+      return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"9px 16px":"14px 20px",fontSize:small?14:16,fontWeight:700,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:7,opacity:disabled?.5:1,fontFamily:"inherit",...style}}>{children}</button>;
     };
     const Card = ({children,onClick,style={}}) => {
       const dk=useContext(DarkCtx);
-      return <div onClick={onClick} style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
+      return <div onClick={onClick} style={{background:dk?"#1A2A2A":"#fff",borderRadius:18,padding:"16px 18px",marginBottom:12,boxShadow:"0 2px 8px rgba(0,0,0,.09)",border:,cursor:onClick?"pointer":"default",...style}}>{children}</div>;
     };
-    const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"28",color,borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700}}>{children}</span>;
-    const Empty = ({text}) => <div style={{textAlign:"center",padding:"40px 20px",color:"#7A8FA6",fontSize:14}}>{text}</div>;
-    const Av = ({name}) => { const i=(name||"?").split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(); return <div style={{width:40,height:40,borderRadius:12,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:"#0A7C7C",flexShrink:0}}>{i}</div>; };
+    const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"22",color,borderRadius:8,padding:"4px 10px",fontSize:12,fontWeight:700,letterSpacing:.2}}>{children}</span>;
+    const Empty = ({text}) => <div style={{textAlign:"center",padding:"48px 20px",color:"#7A8FA6",fontSize:16}}>{text}</div>;
+    const Av = ({name}) => { const i=(name||"?").split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(); return <div style={{width:46,height:46,borderRadius:14,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:16,color:"#0A7C7C",flexShrink:0}}>{i}</div>; };
 
     function Toast({msg,onDone}) {
       useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
-      return <div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1C2B3A",color:"#fff",borderRadius:14,padding:"12px 20px",fontSize:14,fontWeight:600,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.25)",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:8}}><span style={{color:"#3DAA72",fontSize:16}}>✓</span>{msg}</div>;
+      return <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",background:"#1C2B3A",color:"#fff",borderRadius:16,padding:"14px 24px",fontSize:15,fontWeight:600,zIndex:999,boxShadow:"0 6px 24px rgba(0,0,0,.3)",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:10}}><span style={{color:"#3DAA72",fontSize:18}}>✓</span>{msg}</div>;
     }
 
     function Modal({title,onClose,children}) {
       const dk=useContext(DarkCtx);
       return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:dk?"#0F1F1F":"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
+        <div style={{background:dk?"#0F1F1F":"#fff",borderRadius:"28px 28px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"24px 22px 52px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-            <div style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{title}</div>
-            <button onClick={onClose} style={{background:dk?"#1A2A2A":"#F2F5F7",border:"none",borderRadius:10,width:32,height:32,cursor:"pointer",fontSize:18,color:"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+            <div style={{fontFamily:"'Syne',sans-serif",fontSize:21,fontWeight:800,color:dk?"#E8F5F5":"#1C2B3A"}}>{title}</div>
+            <button onClick={onClose} style={{background:dk?"#1A2A2A":"#F2F5F7",border:"none",borderRadius:12,width:38,height:38,cursor:"pointer",fontSize:22,color:"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>
           </div>
           {children}
         </div>
@@ -123,25 +123,25 @@
 
     function Inp({label,value,onChange,type="text",placeholder=""}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
-      return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#D4DCE8"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      return <div style={{marginBottom:16}}>
+        {label&&<div style={{fontSize:13,fontWeight:700,color:dk?"#5A9A9A":"#4A6080",marginBottom:6,letterSpacing:.3}}>{label}</div>}
         <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
       </div>;
     }
     function Txa({label,value,onChange,rows=3,placeholder=""}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",resize:"vertical"};
-      return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#D4DCE8"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",resize:"vertical"};
+      return <div style={{marginBottom:16}}>
+        {label&&<div style={{fontSize:13,fontWeight:700,color:dk?"#5A9A9A":"#4A6080",marginBottom:6,letterSpacing:.3}}>{label}</div>}
         <textarea value={value||""} rows={rows} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
       </div>;
     }
     function Sel({label,value,onChange,options}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
-      return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#D4DCE8"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      return <div style={{marginBottom:16}}>
+        {label&&<div style={{fontSize:13,fontWeight:700,color:dk?"#5A9A9A":"#4A6080",marginBottom:6,letterSpacing:.3}}>{label}</div>}
         <select value={value} onChange={e=>onChange(e.target.value)} style={s}>
           {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -149,11 +149,11 @@
     }
     function TimeSel({label,value,onChange}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#D4DCE8"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       const opts=[];
       for(let h=0;h<24;h++)for(let m=0;m<60;m+=5){const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");opts.push(hh+":"+mm);}
       return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+        {label&&<div style={{fontSize:13,fontWeight:700,color:dk?"#5A9A9A":"#4A6080",marginBottom:6,letterSpacing:.3}}>{label}</div>}
         <select value={value||"10:00"} onChange={e=>onChange(e.target.value)} style={s}>
           {opts.map(o=><option key={o} value={o}>{o}</option>)}
         </select>
@@ -166,7 +166,7 @@
       return <div style={{marginBottom:14,position:"relative"}}>
         {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <input value={value||""} placeholder="Wpisz imię pacjenta..." onChange={e=>{onChange(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
-          style={{width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#D4DCE8"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
         {open&&matches.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden"}}>
           {matches.map(p=><div key={p.id} onPointerDown={e=>{e.preventDefault();onChange(p.name);if(onSelect)onSelect(p);setOpen(false);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>
             {p.name} <span style={{color:"#7A8FA6",fontSize:12}}>{p.phone}</span>
@@ -2209,16 +2209,16 @@
       // Mobile layout
       return <>
         <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
-          <div style={{paddingBottom:80,minHeight:"100vh"}}>
+          <div style={{paddingBottom:90,minHeight:"100vh"}}>
             {content}
           </div>
-          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
+          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1.5px solid ${dk?"#1A3030":"#DCE4EE"}`,display:"flex",padding:"10px 0 16px",zIndex:50,boxShadow:"0 -6px 24px rgba(0,0,0,.10)"}}>
             {TABS.map(t=>{
               return <button key={t.id}
                 onClick={()=>setTab(t.id)}
-                style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit",userSelect:"none",WebkitUserSelect:"none"}}>
-                <div style={{width:36,height:36,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={18} c={tab===t.id?"#fff":dk?"#5A8A8A":"#7A8FA6"}/></div>
-                <span style={{fontSize:10,fontWeight:600,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#7A8FA6"}}>{t.l}</span>
+                style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0",fontFamily:"inherit",userSelect:"none",WebkitUserSelect:"none"}}>
+                <div style={{width:42,height:42,borderRadius:14,background:tab===t.id?"#0A7C7C":dk?"#1A2A2A":"#F0F4F8",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:tab===t.id?"0 2px 8px rgba(10,124,124,.35)":"none"}}><Ico d={t.i} s={21} c={tab===t.id?"#fff":dk?"#5A8A8A":"#6A7E96"}/></div>
+                <span style={{fontSize:11,fontWeight:700,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#6A7E96"}}>{t.l}</span>
               </button>;
             })}
           </div>
