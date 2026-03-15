@@ -1683,7 +1683,7 @@
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -1819,7 +1819,7 @@
           </div>
           <div style={{padding:"0 20px"}}>
             <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
-              {[{k:"week",l:"Tydzień"},{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"range",l:"Zakres"}].map(x=>
+              {[{k:"week",l:"Tydzień"},{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"range",l:"Zakres"},{k:"budget",l:"🏠 Dom"}].map(x=>
                 <button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:viewMode===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:viewMode===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{x.l}</button>
               )}
             </div>
@@ -1835,13 +1835,14 @@
             {viewMode==="year"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:year===y?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{y}</button>)}
             </div>}
+            {viewMode==="budget"&&<Budget practiceIncome={incTotal} budget={budget} setBudget={setBudget} month={month}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
               <input type="date" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
             </div>}
 
-            <>
+            {viewMode!=="budget"&&<>
               <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                   <div>
@@ -1902,7 +1903,7 @@
                   </div>
                 </Card>
               ))}
-            </>
+            </>}
 
           </div>
         </div>
@@ -1927,7 +1928,113 @@
       </>;
     }
 
-        const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:""});
+    
+    // ── BUDGET ────────────────────────────────────────────────────────────────
+    function Budget({practiceIncome,budget,setBudget,month}) {
+      const dk=useContext(DarkCtx);
+      const demo=useDemo();
+      const bg2=dk?"#1A2A2A":"#fff";
+      const border=dk?"#2A4040":"#E4EAF0";
+      const sub="#7A8FA6";
+
+      const monthData=useMemo(()=>budget[month]||{income:[],expenses:[]},[budget,month]);
+      const setMonthData=useCallback((fn)=>{
+        setBudget(b=>({...b,[month]:typeof fn==="function"?fn(b[month]||{income:[],expenses:[]}):fn}));
+      },[setBudget,month]);
+
+      const [showAdd,setShowAdd]=useState(null); // "income"|"expense"
+      const [editItem,setEditItem]=useState(null); // {type,item}
+      const [form,setForm]=useState({name:"",category:"",amount:""});
+
+      const INC_CATS=["Wynagrodzenie","Praktyka","Wynajem","Inne"];
+      const EXP_CATS=["Mieszkanie","Kredyt/Rata","Jedzenie","Transport","Zdrowie","Ubezpieczenie","Subskrypcje","Dzieci","Rozrywka","Inne"];
+
+      const totalIncome=useMemo(()=>{
+        const manual=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
+        return manual+practiceIncome;
+      },[monthData,practiceIncome]);
+
+      const totalExpenses=useMemo(()=>(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0),[monthData]);
+
+      const openAdd=(type)=>{setForm({name:"",category:type==="income"?INC_CATS[0]:EXP_CATS[0],amount:""});setShowAdd(type);};
+      const saveAdd=()=>{
+        if(!form.name||!form.amount)return;
+        const item={id:Date.now(),name:form.name,category:form.category,amount:+form.amount};
+        setMonthData(d=>showAdd==="income"?{...d,income:[...(d.income||[]),item]}:{...d,expenses:[...(d.expenses||[]),item]});
+        setShowAdd(null);
+      };
+      const saveEdit=()=>{
+        if(!editItem||!form.name||!form.amount)return;
+        const updated={...editItem.item,name:form.name,category:form.category,amount:+form.amount};
+        setMonthData(d=>editItem.type==="income"
+          ?{...d,income:(d.income||[]).map(i=>i.id===updated.id?updated:i)}
+          :{...d,expenses:(d.expenses||[]).map(i=>i.id===updated.id?updated:i)});
+        setEditItem(null);
+      };
+      const deleteItem=(type,id)=>{
+        setMonthData(d=>type==="income"
+          ?{...d,income:(d.income||[]).filter(i=>i.id!==id)}
+          :{...d,expenses:(d.expenses||[]).filter(i=>i.id!==id)});
+        setEditItem(null);
+      };
+
+      const SectionCard=({title,items,type,total,color,practiceRow})=>{
+        // group by category
+        const cats={};
+        (items||[]).forEach(i=>{const c=i.category||"Inne";if(!cats[c])cats[c]=[];cats[c].push(i);});
+        return <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+          <div style={{padding:"14px 16px 10px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>{title}</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color,marginTop:2}}>{demo?"****":total.toFixed(2)} zł</div>
+            </div>
+            <Btn small onClick={()=>openAdd(type)} style={{flexShrink:0}}>+ Dodaj</Btn>
+          </div>
+          {practiceRow&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${border}`,background:dk?"#0F1F1F":"#F7FBFB"}}>
+            <div>
+              <div style={{fontWeight:600,fontSize:13,color:dk?"#C8E8E8":"#1C2B3A"}}>Praktyka fizjoterapeutyczna</div>
+              <div style={{fontSize:11,color:sub}}>Auto z Finansów · {month}</div>
+            </div>
+            <span style={{fontWeight:700,fontSize:14,color:"#3DAA72"}}>{demo?"****":practiceIncome.toFixed(2)} zł</span>
+          </div>}
+          {Object.entries(cats).map(([cat,catItems])=>(
+            <div key={cat}>
+              <div style={{padding:"6px 16px",background:dk?"#111E1E":"#F2F7F7",fontSize:10,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>{cat}</div>
+              {catItems.map(item=>(
+                <div key={item.id} onClick={()=>{setForm({name:item.name,category:item.category,amount:String(item.amount)});setEditItem({type,item});}}
+                  style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                  <span style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"••••••":item.name}</span>
+                  <span style={{fontWeight:700,fontSize:14,color}}>{demo?"****":item.amount.toFixed?item.amount.toFixed(2):(+item.amount).toFixed(2)} zł</span>
+                </div>
+              ))}
+            </div>
+          ))}
+          {(!items||items.length===0)&&!practiceRow&&<div style={{padding:"16px",textAlign:"center",color:sub,fontSize:13}}>Brak pozycji</div>}
+        </div>;
+      };
+
+      return <div style={{padding:"0 20px 32px"}}>
+        <SectionCard title="Przychody" items={monthData.income} type="income" total={totalIncome} color="#3DAA72" practiceRow={true}/>
+        <SectionCard title="Wydatki" items={monthData.expenses} type="expense" total={totalExpenses} color="#E05C5C" practiceRow={false}/>
+
+        {showAdd&&<Modal title={showAdd==="income"?"Nowy przychód":"Nowy wydatek"} onClose={()=>setShowAdd(null)}>
+          <Inp label="Nazwa *" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder={showAdd==="income"?"np. Wynagrodzenie Ani":"np. Czynsz"}/>
+          <Sel label="Kategoria" value={form.category} onChange={v=>setForm(f=>({...f,category:v}))} options={(showAdd==="income"?INC_CATS:EXP_CATS).map(c=>({value:c,label:c}))}/>
+          <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+          <Btn disabled={!form.name||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={saveAdd}>Zapisz</Btn>
+        </Modal>}
+
+        {editItem&&<Modal title="Edytuj pozycję" onClose={()=>setEditItem(null)}>
+          <Inp label="Nazwa" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))}/>
+          <Sel label="Kategoria" value={form.category} onChange={v=>setForm(f=>({...f,category:v}))} options={(editItem.type==="income"?INC_CATS:EXP_CATS).map(c=>({value:c,label:c}))}/>
+          <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
+          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={saveEdit}>Zapisz zmiany</Btn>
+          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>deleteItem(editItem.type,editItem.item.id)}>🗑️ Usuń</Btn>
+        </Modal>}
+      </div>;
+    }
+
+    const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:""});
 
     const nextOrderDate = (cas) => {
       if(!cas.orderDate) return null;
@@ -2128,7 +2235,7 @@
       return desk;
     }
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget}) {
       const [tab,setTab]=useState("dashboard");
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
@@ -2146,7 +2253,7 @@
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
         {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
-        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases}/>}
+        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
       </>;
@@ -2259,7 +2366,7 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget}/>;
     }
 
     function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
@@ -2324,6 +2431,7 @@
       const [todos,setTodos,v7]=usePersistedState("fizjo-todos",[]);
       const [events,setEvents,v9]=usePersistedState("fizjo-events",[]);
       const [settings,setSettings,v8]=usePersistedState("fizjo-settings",{backupReminder:true});
+      const [budget,setBudget,v10]=usePersistedState("fizjo-budget",{});
       const [dark,setDark]=useState(false);
       const [demo,setDemo]=useState(false);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
