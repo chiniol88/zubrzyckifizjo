@@ -1835,7 +1835,7 @@
             {viewMode==="year"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:year===y?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{y}</button>)}
             </div>}
-            {viewMode==="budget"&&<Budget practiceCats={catBreakdown} budget={budget} setBudget={setBudget}/>}
+            {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
@@ -1930,7 +1930,7 @@
 
     
     // ── BUDGET ────────────────────────────────────────────────────────────────
-    function Budget({practiceCats,budget,setBudget}) {
+    function Budget({finances,visits,rentals,budget,setBudget}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const bg2=dk?"#1A2A2A":"#fff";
@@ -1938,6 +1938,28 @@
       const sub="#7A8FA6";
 
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
+
+      // Przychody z praktyki dla wybranego miesiąca
+      const practiceCats=useMemo(()=>{
+        const visitMap={};
+        (visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
+        const payMap={};
+        (rentals||[]).forEach(r=>(r.payments||[]).forEach(p=>{payMap[String(p.id)]=r;}));
+        const map={Wizyta:0,Wypożyczalnia:0,Wózek:0};
+        (finances||[]).filter(f=>{
+          if(f.type!=="przychód")return false;
+          const sid=f.sourceId||"";
+          const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;
+          return d&&d.startsWith(selMonth);
+        }).forEach(f=>{
+          const sid=f.sourceId||"";
+          const cat=(f.category||"").toLowerCase();
+          if(cat==="wizyta"||sid.startsWith("visit-"))map["Wizyta"]+=+f.amount||0;
+          else if(cat==="wózek"||sid.startsWith("wozek-"))map["Wózek"]+=+f.amount||0;
+          else map["Wypożyczalnia"]+=+f.amount||0;
+        });
+        return Object.entries(map).filter(([,v])=>v>0).map(([label,v])=>({label,v}));
+      },[finances,visits,rentals,selMonth]);
       const [showCatMgr,setShowCatMgr]=useState(false);
       const [showAdd,setShowAdd]=useState(null); // "income"|"expense"
       const [editItem,setEditItem]=useState(null);
