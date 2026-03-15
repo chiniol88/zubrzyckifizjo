@@ -1938,9 +1938,9 @@
       const sub="#7A8FA6";
 
       const monthData=useMemo(()=>budget[month]||{income:[],expenses:[]},[budget,month]);
-      const setMonthData=useCallback((fn)=>{
+      const setMonthData=(fn)=>{
         setBudget(b=>({...b,[month]:typeof fn==="function"?fn(b[month]||{income:[],expenses:[]}):fn}));
-      },[setBudget,month]);
+      };
 
       const [showAdd,setShowAdd]=useState(null); // "income"|"expense"
       const [editItem,setEditItem]=useState(null); // {type,item}
