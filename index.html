@@ -1692,6 +1692,8 @@
       const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
       const [year,setYear]=useState(()=>todayLocal().slice(0,4));
       const [weekStart,setWeekStart]=useState(()=>{const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day+1);return d.toISOString().slice(0,10);});
+      const [rangeFrom,setRangeFrom]=useState(()=>todayLocal().slice(0,7)+"-01");
+      const [rangeTo,setRangeTo]=useState(()=>todayLocal());
       const [toast,setToast]=useState(null);
       const cats=["Wizyta","Wypożyczalnia","Wózek","Inne"];
       const ef=()=>({date:todayLocal(),category:"Wizyta",amount:"",description:""});
@@ -1703,12 +1705,14 @@
         if(!date)return false;
         if(viewMode==="month")return date.startsWith(month);
         if(viewMode==="week")return date>=weekStart&&date<=weekEnd;
+        if(viewMode==="range")return date>=rangeFrom&&date<=rangeTo;
         return date.startsWith(year);
       };
       const inPrevPeriod=(date)=>{
         if(!date)return false;
         if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()-1);return date.startsWith(d.toISOString().slice(0,7));}
         if(viewMode==="week"){const ps=new Date(weekStart);ps.setDate(ps.getDate()-7);const pe=new Date(weekEnd);pe.setDate(pe.getDate()-7);return date>=ps.toISOString().slice(0,10)&&date<=pe.toISOString().slice(0,10);}
+        if(viewMode==="range")return false;
         return date.startsWith(String(+year-1));
       };
 
@@ -1765,7 +1769,7 @@
           </div>
           <div style={{padding:"0 20px"}}>
             <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
-              {[{k:"week",l:"Tydzień"},{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"stats",l:"📊 Raport"}].map(x=>
+              {[{k:"week",l:"Tydzień"},{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"range",l:"Zakres"}].map(x=>
                 <button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:viewMode===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:viewMode===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{x.l}</button>
               )}
             </div>
@@ -1781,8 +1785,13 @@
             {viewMode==="year"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:year===y?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{y}</button>)}
             </div>}
+            {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+              <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+              <span style={{color:sub,fontWeight:600}}>—</span>
+              <input type="date" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+            </div>}
 
-            {viewMode!=="stats"&&<>
+            <>
               <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                   <div>
@@ -1839,9 +1848,8 @@
                   </div>
                 </Card>
               ))}
-            </>}
+            </>
 
-            {viewMode==="stats"&&<RevenueReport finances={finances} rentals={rentals} nfzCases={nfzCases}/>}
           </div>
         </div>
 
@@ -1865,116 +1873,7 @@
       </>;
     }
 
-    function RevenueReport({finances, rentals, nfzCases}) {
-      const dk=useContext(DarkCtx);
-      const today=todayLocal();
-      const [mode,setMode]=useState("month"); // month | range | year
-      const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
-      const [year,setYear]=useState(()=>todayLocal().slice(0,4));
-      const [from,setFrom]=useState(()=>todayLocal().slice(0,7)+"-01");
-      const [to,setTo]=useState(()=>todayLocal());
-
-      const inRange=(date)=>{
-        if(!date) return false;
-        if(mode==="month") return date.slice(0,7)===month;
-        if(mode==="year") return date.slice(0,4)===year;
-        return date>=from && date<=to;
-      };
-
-      // Kategorie
-      const cats=[
-        {key:"visit",   label:"Wizyty",                    color:"#0A7C7C"},
-        {key:"rent1",   label:"Wypożyczenia jednorazowe",  color:"#2E86AB"},
-        {key:"rentcyc", label:"Wypożyczenia cykliczne",    color:"#F18F01"},
-        {key:"nfz",     label:"Wózki / NFZ",               color:"#7B4FBF"},
-      ];
-
-      const rentMap=useMemo(()=>{
-        const m={};
-        (rentals||[]).forEach(r=>m[r.id]=r);
-        return m;
-      },[rentals]);
-
-      const paymentRentMap=useMemo(()=>{
-        const m={};
-        (rentals||[]).forEach(r=>(r.payments||[]).forEach(p=>{ m[String(p.id)]=r; }));
-        return m;
-      },[rentals]);
-
-      const data=useMemo(()=>{
-        const res={visit:{sum:0,count:0},rent1:{sum:0,count:0},rentcyc:{sum:0,count:0},nfz:{sum:0,count:0}};
-        (finances||[]).filter(f=>f.type==="przychód"&&inRange(f.date)).forEach(f=>{
-          const cat=(f.category||"").toLowerCase();
-          const srcId=f.sourceId||"";
-          if(cat==="wizyta"||srcId.startsWith("visit-")) {
-            res.visit.sum+=+f.amount||0; res.visit.count++;
-          } else if(cat==="wózek"||cat==="wózki"||cat==="nfz"||srcId.startsWith("nfz-")) {
-            res.nfz.sum+=+f.amount||0; res.nfz.count++;
-          } else if(srcId.startsWith("cycle-")) {
-            res.rentcyc.sum+=+f.amount||0; res.rentcyc.count++;
-          } else if(srcId.startsWith("payment-")) {
-            const pid=srcId.slice(8);
-            const r=paymentRentMap[pid];
-            if(r&&r.renewable){res.rentcyc.sum+=+f.amount||0;res.rentcyc.count++;}
-            else {res.rent1.sum+=+f.amount||0;res.rent1.count++;}
-          } else if(srcId.startsWith("rental-")||srcId.startsWith("ext-")) {
-            const rid=srcId.startsWith("rental-")?srcId.slice(7):srcId.split("-")[1];
-            const r=rid?rentMap[rid]:null;
-            if(r&&r.renewable){res.rentcyc.sum+=+f.amount||0;res.rentcyc.count++;}
-            else {res.rent1.sum+=+f.amount||0;res.rent1.count++;}
-          } else if(cat==="wypożyczalnia") {
-            res.rent1.sum+=+f.amount||0; res.rent1.count++;
-          } else {
-            res.visit.sum+=+f.amount||0; res.visit.count++;
-          }
-        });
-        return res;
-      },[finances,rentals,mode,month,year,from,to,rentMap,paymentRentMap]);
-
-      const total=cats.reduce((s,c)=>s+data[c.key].sum,0);
-      const maxVal=Math.max(...cats.map(c=>data[c.key].sum),1);
-
-      const btnStyle=(active)=>({padding:"6px 14px",borderRadius:20,border:"none",background:active?"#0A7C7C":"transparent",color:active?"#fff":dk?"#7A8FA6":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"});
-
-      return <div style={{padding:"0 20px 32px",marginTop:8}}>
-        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,boxShadow:"0 1px 4px rgba(0,0,0,.06)",padding:"16px 16px 20px"}}>
-          <div style={{fontWeight:700,fontSize:15,marginBottom:12,color:dk?"#E0F0F0":"#1A2E35"}}>📊 Raport przychodów</div>
-          {/* Period selector */}
-          <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
-            <button style={btnStyle(mode==="month")} onClick={()=>setMode("month")}>Miesiąc</button>
-            <button style={btnStyle(mode==="year")} onClick={()=>setMode("year")}>Rok</button>
-            <button style={btnStyle(mode==="range")} onClick={()=>setMode("range")}>Zakres</button>
-          </div>
-          {mode==="month"&&<input type="month" value={month} onChange={e=>setMonth(e.target.value)} style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit",marginBottom:12,display:"block"}}/>}
-          {mode==="year"&&<input type="number" value={year} onChange={e=>setYear(e.target.value)} min="2020" max="2099" style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit",marginBottom:12,display:"block",width:100}}/>}
-          {mode==="range"&&<div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
-            <input type="date" value={from} onChange={e=>setFrom(e.target.value)} style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit"}}/>
-            <span style={{color:"#7A8FA6",fontSize:13}}>–</span>
-            <input type="date" value={to} onChange={e=>setTo(e.target.value)} style={{padding:"6px 10px",borderRadius:10,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#0F1E1E":"#F7FAFA",color:dk?"#E0F0F0":"#1A2E35",fontSize:13,fontFamily:"inherit"}}/>
-          </div>}
-          {/* Total */}
-          <div style={{textAlign:"center",marginBottom:16}}>
-            <div style={{fontSize:26,fontWeight:800,color:"#0A7C7C"}}>{total.toFixed(2)} zł</div>
-            <div style={{fontSize:12,color:"#7A8FA6"}}>łącznie</div>
-          </div>
-          {/* Bars */}
-          {cats.map(c=>{
-            const d=data[c.key];
-            const pct=maxVal>0?(d.sum/maxVal)*100:0;
-            return <div key={c.key} style={{marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                <span style={{fontSize:12,fontWeight:600,color:dk?"#B0C8C8":"#3A5568"}}>{c.label}</span>
-                <span style={{fontSize:12,color:"#7A8FA6"}}>{d.count} szt. · <b style={{color:dk?"#E0F0F0":"#1A2E35"}}>{d.sum.toFixed(2)} zł</b></span>
-              </div>
-              <div style={{height:10,borderRadius:8,background:dk?"#2A4040":"#F0F4F8",overflow:"hidden"}}>
-                <div style={{height:"100%",width:pct+"%",background:c.color,borderRadius:8,transition:"width .4s"}}/>
-              </div>
-            </div>;
-          })}
-        </div>
-      </div>;
-    }
-    const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:""});
+        const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:""});
 
     const nextOrderDate = (cas) => {
       if(!cas.orderDate) return null;
