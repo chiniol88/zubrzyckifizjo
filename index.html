@@ -1719,7 +1719,14 @@
       const inc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const prevInc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPrevPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const diff=prevInc>0?Math.round((inc-prevInc)/prevInc*100):null;
-      const visitEntries=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)&&(f.sourceId||"").startsWith("visit-")),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const visitEntries=useMemo(()=>{
+        const seen=new Set();
+        return finances.filter(f=>{
+          if(f.type!=="przychód"||!inPeriod(f.date)||!(f.sourceId||"").startsWith("visit-"))return false;
+          if(seen.has(f.sourceId))return false;
+          seen.add(f.sourceId);return true;
+        });
+      },[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const visitCount=visitEntries.length;
       const visitAvg=visitCount>0?visitEntries.reduce((s,f)=>s+(+f.amount||0),0)/visitCount:0;
 
@@ -1734,14 +1741,20 @@
       },[finances,viewMode,month,year,weekStart,weekEnd]);
 
       const topPats=useMemo(()=>{
+        const seen=new Set();
         const map={};
+        const cnt={};
         finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)&&(f.sourceId||"").startsWith("visit-")).forEach(f=>{
+          if(seen.has(f.sourceId))return;
+          seen.add(f.sourceId);
           const desc=f.description||"";
           const name=desc.includes(" – ")?desc.split(" – ")[1].split(" (")[0].trim():"Nieznany";
-          if(name!=="Nieznany")map[name]=(map[name]||0)+(+f.amount||0);
+          if(name==="Nieznany")return;
+          map[name]=(map[name]||0)+(+f.amount||0);
+          cnt[name]=(cnt[name]||0)+1;
         });
-        return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5);
-      },[finances,viewMode,month,year,weekStart,weekEnd]);
+        return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,v])=>([n,v,cnt[n]||0]));
+      },[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
 
       const listEntries=useMemo(()=>[...finances].filter(f=>f.type==="przychód"&&inPeriod(f.date)).sort((a,b)=>b.date.localeCompare(a.date)),[finances,viewMode,month,year,weekStart,weekEnd]);
 
@@ -1828,11 +1841,14 @@
 
               {topPats.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
                 <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5,marginBottom:12}}>Pacjenci</div>
-                {topPats.map(([name,v],i)=>(
+                {topPats.map(([name,v,c],i)=>(
                   <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<topPats.length-1?`1px solid ${border}`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <div style={{width:22,height:22,borderRadius:7,background:"#0A7C7C20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#0A7C7C"}}>{i+1}</div>
-                      <span style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"Pacjent "+String.fromCharCode(65+i):name}</span>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"Pacjent "+String.fromCharCode(65+i):name}</div>
+                        <div style={{fontSize:11,color:sub}}>{c} {c===1?"wizyta":c<5?"wizyty":"wizyt"}</div>
+                      </div>
                     </div>
                     <span style={{fontSize:13,fontWeight:700,color:"#3DAA72"}}>{demo?"****":v.toFixed(2)} zł</span>
                   </div>
