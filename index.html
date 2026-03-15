@@ -1682,19 +1682,34 @@
     }
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
-    function FinanceChart({bars,dk}) {
-      if(!bars||bars.length===0) return null;
-      const max=Math.max(...bars.map(b=>b.v),1);
-      const bw=Math.floor((280-(bars.length-1)*4)/bars.length);
-      return <svg viewBox={`0 0 280 130`} width="100%" style={{display:"block",margin:"8px 0 4px"}}>
-        {bars.map((b,i)=>{
-          const h=Math.max(2,Math.round((b.v/max)*90));
-          const x=i*(bw+4),y=90-h;
-          const col=b.color||(b.v>0?"#0A7C7C":(dk?"#2A4040":"#E4EAF0"));
-          return <g key={i}>
-            <rect x={x} y={y} width={bw} height={h} rx={3} fill={col} opacity={b.v>0?1:0.3}/>
-            <text x={x+bw/2} y={108} textAnchor="middle" fontSize={8} fill={dk?"#5A8A8A":"#7A8FA6"}>{b.label}</text>
-            {b.v>0&&<text x={x+bw/2} y={y-3} textAnchor="middle" fontSize={8} fill={dk?"#C0E0E0":"#3A5568"}>{b.v>=1000?(b.v/1000).toFixed(1)+"k":Math.round(b.v)}</text>}
+    function FinanceChart({groups,dk}) {
+      if(!groups||groups.length===0) return null;
+      // 4 categories per group
+      const CATS=[
+        {key:"wizyta",  color:"#0A7C7C"},
+        {key:"rent1",   color:"#2E86AB"},
+        {key:"rentcyc", color:"#F18F01"},
+        {key:"nfz",     color:"#7B4FBF"},
+      ];
+      const W=280,H=110,PAD_B=18,CHART_H=H-PAD_B;
+      const n=groups.length;
+      const groupW=Math.floor((W-(n-1)*3)/n);
+      const subW=Math.max(1,Math.floor((groupW-(CATS.length-1)*1)/CATS.length));
+      const max=Math.max(...groups.flatMap(g=>CATS.map(c=>g[c.key]||0)),1);
+      const fmtV=v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v);
+      return <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:"block",margin:"8px 0 4px"}}>
+        {groups.map((g,gi)=>{
+          const gx=gi*(groupW+3);
+          const total=CATS.reduce((s,c)=>s+(g[c.key]||0),0);
+          return <g key={gi}>
+            {CATS.map((c,ci)=>{
+              const v=g[c.key]||0;
+              const h=Math.max(v>0?2:0,Math.round((v/max)*CHART_H*0.9));
+              const x=gx+ci*(subW+1),y=CHART_H-h;
+              return <rect key={ci} x={x} y={y} width={subW} height={h} rx={1} fill={c.color} opacity={v>0?0.9:0.15}/>;
+            })}
+            <text x={gx+groupW/2} y={H-2} textAnchor="middle" fontSize={7.5} fill={dk?"#5A8A8A":"#7A8FA6"}>{g.label}</text>
+            {total>0&&<text x={gx+groupW/2} y={CHART_H-Math.max(2,Math.round((total/max)*CHART_H*0.9))-3} textAnchor="middle" fontSize={7} fill={dk?"#C0E0E0":"#3A5568"}>{fmtV(total)}</text>}
           </g>;
         })}
       </svg>;
@@ -1733,30 +1748,44 @@
       const prevInc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPrevPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd]);
       const diff=prevInc>0?Math.round((inc-prevInc)/prevInc*100):null;
 
-      const chartBars=useMemo(()=>{
+      // mapa paymentId->rental dla klasyfikacji w wykresie
+      const pmRentMap=useMemo(()=>{const m={};(rentals||[]).forEach(r=>(r.payments||[]).forEach(p=>{m[String(p.id)]=r;}));return m;},[rentals]);
+      const classifyF=(f)=>{
+        const cat=(f.category||"").toLowerCase();
+        const sid=f.sourceId||"";
+        if(cat==="wizyta"||sid.startsWith("visit-"))return "wizyta";
+        if(cat==="wózek"||cat==="wózki"||cat==="nfz"||sid.startsWith("nfz-")||sid.startsWith("wozek-"))return "nfz";
+        if(sid.startsWith("cycle-"))return "rentcyc";
+        if(sid.startsWith("payment-")){const r=pmRentMap[sid.slice(8)];return r&&r.renewable?"rentcyc":"rent1";}
+        if(sid.startsWith("rental-")||sid.startsWith("ext-")||sid.startsWith("extend-"))return "rent1";
+        if(cat==="wypożyczalnia")return "rent1";
+        return "wizyta";
+      };
+      const sumByPeriod=(flist)=>{const r={wizyta:0,rent1:0,rentcyc:0,nfz:0};flist.forEach(f=>{const k=classifyF(f);r[k]+=(+f.amount||0);});return r;};
+      const chartGroups=useMemo(()=>{
         if(viewMode==="week"){
           const days=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
           return Array.from({length:7},(_,i)=>{
             const d=new Date(weekStart);d.setDate(d.getDate()+i);
             const ds=d.toISOString().slice(0,10);
-            const v=finances.filter(f=>f.type==="przychód"&&f.date===ds).reduce((s,f)=>s+(+f.amount||0),0);
-            return {label:days[i],v};
+            const flist=finances.filter(f=>f.type==="przychód"&&f.date===ds);
+            return {label:days[i],...sumByPeriod(flist)};
           });
         }
         if(viewMode==="month"){
           return Array.from({length:6},(_,i)=>{
             const d=new Date(month+"-15");d.setMonth(d.getMonth()-(5-i));
             const m=d.toISOString().slice(0,7);
-            const v=finances.filter(f=>f.type==="przychód"&&f.date&&f.date.startsWith(m)).reduce((s,f)=>s+(+f.amount||0),0);
-            return {label:d.toLocaleDateString("pl-PL",{month:"short"}),v,color:m===month?"#0A7C7C":"#5DD9C1"};
+            const flist=finances.filter(f=>f.type==="przychód"&&f.date&&f.date.startsWith(m));
+            return {label:d.toLocaleDateString("pl-PL",{month:"short"}),...sumByPeriod(flist)};
           });
         }
         return Array.from({length:12},(_,i)=>{
           const m=year+"-"+String(i+1).padStart(2,"0");
-          const v=finances.filter(f=>f.type==="przychód"&&f.date&&f.date.startsWith(m)).reduce((s,f)=>s+(+f.amount||0),0);
-          return {label:new Date(m+"-15").toLocaleDateString("pl-PL",{month:"short"}),v};
+          const flist=finances.filter(f=>f.type==="przychód"&&f.date&&f.date.startsWith(m));
+          return {label:new Date(m+"-15").toLocaleDateString("pl-PL",{month:"short"}),...sumByPeriod(flist)};
         });
-      },[finances,viewMode,month,year,weekStart,weekEnd]);
+      },[finances,rentals,viewMode,month,year,weekStart,weekEnd,pmRentMap]);
 
       const catBreakdown=useMemo(()=>{
         const items=finances.filter(f=>f.type==="przychód"&&inPeriod(f.date));
@@ -1768,10 +1797,10 @@
 
       const topPats=useMemo(()=>{
         const map={};
-        finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)).forEach(f=>{
+        finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)&&(f.sourceId||"").startsWith("visit-")).forEach(f=>{
           const desc=f.description||"";
-          const name=desc.includes(" – ")?desc.split(" – ")[1].split(" (")[0].trim():"Inne";
-          map[name]=(map[name]||0)+(+f.amount||0);
+          const name=desc.includes(" – ")?desc.split(" – ")[1].split(" (")[0].trim():"Nieznany";
+          if(name!=="Nieznany")map[name]=(map[name]||0)+(+f.amount||0);
         });
         return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5);
       },[finances,viewMode,month,year,weekStart,weekEnd]);
@@ -1834,7 +1863,12 @@
                     <div style={{fontSize:10,color:sub}}>vs poprz.</div>
                   </div>}
                 </div>
-                <FinanceChart bars={chartBars} dk={dk}/>
+                <FinanceChart groups={chartGroups} dk={dk}/>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:4}}>
+                  {[{c:"#0A7C7C",l:"Wizyty"},{c:"#2E86AB",l:"Jedn."},{c:"#F18F01",l:"Cykl."},{c:"#7B4FBF",l:"Wózki"}].map(x=>(
+                    <div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:dk?"#5A8A8A":"#7A8FA6"}}>{x.l}</span></div>
+                  ))}
+                </div>
               </div>
 
               {catBreakdown.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
@@ -1854,7 +1888,7 @@
               </div>}
 
               {topPats.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-                <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5,marginBottom:12}}>Top pacjenci</div>
+                <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5,marginBottom:12}}>Pacjenci</div>
                 {topPats.map(([name,v],i)=>(
                   <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<topPats.length-1?`1px solid ${border}`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
