@@ -922,9 +922,10 @@
                       const _vids=visits.filter(v=>v.patientId===_pid).map(v=>v.id);
                       const _pids=_pr.flatMap(r=>(r.payments||[]).map(p=>p.id));
                       const _cids=_pr.flatMap(r=>(r.cycles||[]).map(c=>"cycle-"+r.id+"-"+c.month));
+                      const _extPrefixes=_pr.map(r=>"extend-"+r.id+"-");
                       setVisits(vs=>vs.filter(v=>v.patientId!==_pid));
                       setRentals(rs=>rs.filter(r=>r.patientId!==_pid&&r.patientName!==_pn));
-                      setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)&&!_cids.some(cid=>f.sourceId===cid)));
+                      setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)&&!_cids.some(cid=>f.sourceId===cid)&&!_extPrefixes.some(pfx=>f.sourceId&&f.sourceId.startsWith(pfx))));
                       setPatients(ps=>ps.filter(p=>p.id!==_pid));
                       setShowEdit(false);
                       setEditForm(null);
@@ -1587,7 +1588,7 @@
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć to wypożyczenie?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
-              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===detail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+c.month));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)));}setRentals(rs=>rs.filter(x=>x.id!==detail));setConfirmDel(false);close();}}>Usuń</Btn>
+              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===detail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+c.month));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==detail));setConfirmDel(false);close();}}>Usuń</Btn>
             </div>
           </Modal>}
         </>;
@@ -1862,6 +1863,12 @@
         return m;
       },[rentals]);
 
+      const paymentRentMap=useMemo(()=>{
+        const m={};
+        (rentals||[]).forEach(r=>(r.payments||[]).forEach(p=>{ m[String(p.id)]=r; }));
+        return m;
+      },[rentals]);
+
       const data=useMemo(()=>{
         const res={visit:{sum:0,count:0},rent1:{sum:0,count:0},rentcyc:{sum:0,count:0},nfz:{sum:0,count:0}};
         (finances||[]).filter(f=>f.type==="przychód"&&inRange(f.date)).forEach(f=>{
@@ -1871,18 +1878,26 @@
             res.visit.sum+=+f.amount||0; res.visit.count++;
           } else if(cat==="wózek"||cat==="wózki"||cat==="nfz"||srcId.startsWith("nfz-")) {
             res.nfz.sum+=+f.amount||0; res.nfz.count++;
-          } else if(srcId.startsWith("rental-")||srcId.startsWith("ext-")||srcId.startsWith("cycle-")) {
-            const rid=srcId.startsWith("rental-")?srcId.slice(7):srcId.startsWith("ext-")?srcId.split("-")[1]:srcId.startsWith("cycle-")?srcId.split("-")[1]:null;
+          } else if(srcId.startsWith("cycle-")) {
+            res.rentcyc.sum+=+f.amount||0; res.rentcyc.count++;
+          } else if(srcId.startsWith("payment-")) {
+            const pid=srcId.slice(8);
+            const r=paymentRentMap[pid];
+            if(r&&r.renewable){res.rentcyc.sum+=+f.amount||0;res.rentcyc.count++;}
+            else {res.rent1.sum+=+f.amount||0;res.rent1.count++;}
+          } else if(srcId.startsWith("rental-")||srcId.startsWith("ext-")) {
+            const rid=srcId.startsWith("rental-")?srcId.slice(7):srcId.split("-")[1];
             const r=rid?rentMap[rid]:null;
             if(r&&r.renewable){res.rentcyc.sum+=+f.amount||0;res.rentcyc.count++;}
             else {res.rent1.sum+=+f.amount||0;res.rent1.count++;}
+          } else if(cat==="wypożyczalnia") {
+            res.rent1.sum+=+f.amount||0; res.rent1.count++;
           } else {
-            // unknown — classify as visit
             res.visit.sum+=+f.amount||0; res.visit.count++;
           }
         });
         return res;
-      },[finances,rentals,mode,month,year,from,to,rentMap]);
+      },[finances,rentals,mode,month,year,from,to,rentMap,paymentRentMap]);
 
       const total=cats.reduce((s,c)=>s+data[c.key].sum,0);
       const maxVal=Math.max(...cats.map(c=>data[c.key].sum),1);
@@ -2042,7 +2057,7 @@
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć tę pozycję?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
-              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setNfzCases(cs=>cs.filter(x=>x.id!==selId));setConfirmDel(false);setSelId(null);}}>Usuń</Btn>
+              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setFinances(fs=>fs.filter(f=>f.sourceId!=="wozek-"+selId));setNfzCases(cs=>cs.filter(x=>x.id!==selId));setConfirmDel(false);setSelId(null);}}>Usuń</Btn>
             </div>
           </Modal>}
           {payModal&&<Modal title="Kwota przychodu" onClose={()=>setPayModal(null)}>
