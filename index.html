@@ -1684,32 +1684,35 @@
     // ── FINANCES ──────────────────────────────────────────────────────────────
     function FinanceChart({groups,dk}) {
       if(!groups||groups.length===0) return null;
-      // 4 categories per group
       const CATS=[
         {key:"wizyta",  color:"#0A7C7C"},
         {key:"rent1",   color:"#2E86AB"},
         {key:"rentcyc", color:"#F18F01"},
         {key:"nfz",     color:"#7B4FBF"},
       ];
-      const W=280,H=110,PAD_B=18,CHART_H=H-PAD_B;
+      const W=280,H=115,PAD_B=16,CHART_H=H-PAD_B;
       const n=groups.length;
-      const groupW=Math.floor((W-(n-1)*3)/n);
-      const subW=Math.max(1,Math.floor((groupW-(CATS.length-1)*1)/CATS.length));
-      const max=Math.max(...groups.flatMap(g=>CATS.map(c=>g[c.key]||0)),1);
+      const bw=Math.floor((W-(n-1)*5)/n);
+      const maxTotal=Math.max(...groups.map(g=>CATS.reduce((s,c)=>s+(g[c.key]||0),0)),1);
       const fmtV=v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v);
       return <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:"block",margin:"8px 0 4px"}}>
         {groups.map((g,gi)=>{
-          const gx=gi*(groupW+3);
+          const x=gi*(bw+5);
           const total=CATS.reduce((s,c)=>s+(g[c.key]||0),0);
+          const totalH=Math.round((total/maxTotal)*(CHART_H-6));
+          let curY=CHART_H;
           return <g key={gi}>
-            {CATS.map((c,ci)=>{
+            {CATS.map((c)=>{
               const v=g[c.key]||0;
-              const h=Math.max(v>0?2:0,Math.round((v/max)*CHART_H*0.9));
-              const x=gx+ci*(subW+1),y=CHART_H-h;
-              return <rect key={ci} x={x} y={y} width={subW} height={h} rx={1} fill={c.color} opacity={v>0?0.9:0.15}/>;
+              if(!v) return null;
+              const h=Math.max(2,Math.round((v/total)*totalH));
+              curY-=h;
+              return <rect key={c.key} x={x} y={curY} width={bw} height={h} fill={c.color}
+                rx={c===CATS.find(ct=>CATS.filter(ct2=>(g[ct2.key]||0)>0).at(-1)===ct)?3:0}/>;
             })}
-            <text x={gx+groupW/2} y={H-2} textAnchor="middle" fontSize={7.5} fill={dk?"#5A8A8A":"#7A8FA6"}>{g.label}</text>
-            {total>0&&<text x={gx+groupW/2} y={CHART_H-Math.max(2,Math.round((total/max)*CHART_H*0.9))-3} textAnchor="middle" fontSize={7} fill={dk?"#C0E0E0":"#3A5568"}>{fmtV(total)}</text>}
+            {total===0&&<rect x={x} y={CHART_H-2} width={bw} height={2} rx={1} fill={dk?"#2A4040":"#E4EAF0"}/>}
+            <text x={x+bw/2} y={H-2} textAnchor="middle" fontSize={7.5} fill={dk?"#5A8A8A":"#7A8FA6"}>{g.label}</text>
+            {total>0&&<text x={x+bw/2} y={CHART_H-totalH-4} textAnchor="middle" fontSize={7} fill={dk?"#C0E0E0":"#3A5568"}>{fmtV(total)}</text>}
           </g>;
         })}
       </svg>;
