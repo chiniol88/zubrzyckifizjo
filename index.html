@@ -1250,6 +1250,7 @@
     }
 
     function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,rentalsView,setRentalsView,stock,setStock}) {
+      const dk=useContext(DarkCtx);
       const view=rentalsView||"aktywne",setView=setRentalsView;
       const [showAdd,setShowAdd]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
