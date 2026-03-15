@@ -1716,24 +1716,45 @@
         return date.startsWith(String(+year-1));
       };
 
-      const inc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
-      const prevInc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPrevPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const inc=useMemo(()=>finances.filter(f=>{
+        if(f.type!=="przychód")return false;
+        const d=(f.sourceId||"").startsWith("visit-")?(visitMap[f.sourceId]||f.date):f.date;
+        return inPeriod(d);
+      }).reduce((s,f)=>s+(+f.amount||0),0),[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const prevInc=useMemo(()=>finances.filter(f=>{
+        if(f.type!=="przychód")return false;
+        const d=(f.sourceId||"").startsWith("visit-")?(visitMap[f.sourceId]||f.date):f.date;
+        return inPrevPeriod(d);
+      }).reduce((s,f)=>s+(+f.amount||0),0),[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const diff=prevInc>0?Math.round((inc-prevInc)/prevInc*100):null;
+      // visitMap: sourceId -> actual visit date (visits may have been edited after finance entry created)
+      const visitMap=useMemo(()=>{
+        const m={};
+        (visits||[]).forEach(v=>{if(v.id)m["visit-"+v.id]=v.date;});
+        return m;
+      },[visits]);
       const visitEntries=useMemo(()=>{
         const seen=new Set();
         return finances.filter(f=>{
-          if(f.type!=="przychód"||!inPeriod(f.date)||!(f.sourceId||"").startsWith("visit-"))return false;
+          if(f.type!=="przychód"||!(f.sourceId||"").startsWith("visit-"))return false;
           if(seen.has(f.sourceId))return false;
+          // use actual visit date if available, fallback to finance date
+          const actualDate=visitMap[f.sourceId]||f.date;
+          if(!inPeriod(actualDate))return false;
           seen.add(f.sourceId);return true;
         });
-      },[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      },[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const visitCount=visitEntries.length;
       const visitAvg=visitCount>0?visitEntries.reduce((s,f)=>s+(+f.amount||0),0)/visitCount:0;
 
 
 
       const catBreakdown=useMemo(()=>{
-        const items=finances.filter(f=>f.type==="przychód"&&inPeriod(f.date));
+        const items=finances.filter(f=>{
+          if(f.type!=="przychód")return false;
+          const d=(f.sourceId||"").startsWith("visit-")?(visitMap[f.sourceId]||f.date):f.date;
+          return inPeriod(d);
+        });
         const map={Wizyta:0,Wypożyczalnia:0,Wózek:0,Inne:0};
         items.forEach(f=>{const c=f.category||"Inne";if(map[c]!==undefined)map[c]+=+f.amount||0;else map["Inne"]+=+f.amount||0;});
         const colors={Wizyta:"#0A7C7C",Wypożyczalnia:"#2E86AB",Wózek:"#7B4FBF",Inne:"#7A8FA6"};
@@ -1744,8 +1765,10 @@
         const seen=new Set();
         const map={};
         const cnt={};
-        finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)&&(f.sourceId||"").startsWith("visit-")).forEach(f=>{
+        finances.filter(f=>f.type==="przychód"&&(f.sourceId||"").startsWith("visit-")).forEach(f=>{
           if(seen.has(f.sourceId))return;
+          const actualDate=visitMap[f.sourceId]||f.date;
+          if(!inPeriod(actualDate))return;
           seen.add(f.sourceId);
           const desc=f.description||"";
           const name=desc.includes(" – ")?desc.split(" – ")[1].split(" (")[0].trim():"Nieznany";
@@ -1754,9 +1777,9 @@
           cnt[name]=(cnt[name]||0)+1;
         });
         return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,v])=>([n,v,cnt[n]||0]));
-      },[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      },[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
 
-      const listEntries=useMemo(()=>[...finances].filter(f=>f.type==="przychód"&&inPeriod(f.date)).sort((a,b)=>b.date.localeCompare(a.date)),[finances,viewMode,month,year,weekStart,weekEnd]);
+      const listEntries=useMemo(()=>[...finances].filter(f=>{if(f.type!=="przychód")return false;const d=(f.sourceId||"").startsWith("visit-")?(visitMap[f.sourceId]||f.date):f.date;return inPeriod(d);}).sort((a,b)=>b.date.localeCompare(a.date)),[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
 
       const months=useMemo(()=>{const c=todayLocal().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
       const years=useMemo(()=>{const c=todayLocal().slice(0,4),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,4));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
