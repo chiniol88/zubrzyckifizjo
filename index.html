@@ -1682,41 +1682,6 @@
     }
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
-    function FinanceChart({groups,dk}) {
-      if(!groups||groups.length===0) return null;
-      const CATS=[
-        {key:"wizyta",  color:"#0A7C7C"},
-        {key:"rent1",   color:"#2E86AB"},
-        {key:"rentcyc", color:"#F18F01"},
-        {key:"nfz",     color:"#7B4FBF"},
-      ];
-      const W=280,H=115,PAD_B=16,CHART_H=H-PAD_B;
-      const n=groups.length;
-      const bw=Math.floor((W-(n-1)*5)/n);
-      const maxTotal=Math.max(...groups.map(g=>CATS.reduce((s,c)=>s+(g[c.key]||0),0)),1);
-      const fmtV=v=>v>=1000?(v/1000).toFixed(1)+"k":Math.round(v);
-      return <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:"block",margin:"8px 0 4px"}}>
-        {groups.map((g,gi)=>{
-          const x=gi*(bw+5);
-          const total=CATS.reduce((s,c)=>s+(g[c.key]||0),0);
-          const totalH=Math.round((total/maxTotal)*(CHART_H-6));
-          let curY=CHART_H;
-          return <g key={gi}>
-            {CATS.map((c)=>{
-              const v=g[c.key]||0;
-              if(!v) return null;
-              const h=Math.max(2,Math.round((v/total)*totalH));
-              curY-=h;
-              return <rect key={c.key} x={x} y={curY} width={bw} height={h} fill={c.color}
-                rx={c===CATS.find(ct=>CATS.filter(ct2=>(g[ct2.key]||0)>0).at(-1)===ct)?3:0}/>;
-            })}
-            {total===0&&<rect x={x} y={CHART_H-2} width={bw} height={2} rx={1} fill={dk?"#2A4040":"#E4EAF0"}/>}
-            <text x={x+bw/2} y={H-2} textAnchor="middle" fontSize={7.5} fill={dk?"#5A8A8A":"#7A8FA6"}>{g.label}</text>
-            {total>0&&<text x={x+bw/2} y={CHART_H-totalH-4} textAnchor="middle" fontSize={7} fill={dk?"#C0E0E0":"#3A5568"}>{fmtV(total)}</text>}
-          </g>;
-        })}
-      </svg>;
-    }
 
     function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases}) {
       const demo=useDemo();
@@ -1751,44 +1716,7 @@
       const prevInc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPrevPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd]);
       const diff=prevInc>0?Math.round((inc-prevInc)/prevInc*100):null;
 
-      // mapa paymentId->rental dla klasyfikacji w wykresie
-      const pmRentMap=useMemo(()=>{const m={};(rentals||[]).forEach(r=>(r.payments||[]).forEach(p=>{m[String(p.id)]=r;}));return m;},[rentals]);
-      const classifyF=(f)=>{
-        const cat=(f.category||"").toLowerCase();
-        const sid=f.sourceId||"";
-        if(cat==="wizyta"||sid.startsWith("visit-"))return "wizyta";
-        if(cat==="wózek"||cat==="wózki"||cat==="nfz"||sid.startsWith("nfz-")||sid.startsWith("wozek-"))return "nfz";
-        if(sid.startsWith("cycle-"))return "rentcyc";
-        if(sid.startsWith("payment-")){const r=pmRentMap[sid.slice(8)];return r&&r.renewable?"rentcyc":"rent1";}
-        if(sid.startsWith("rental-")||sid.startsWith("ext-")||sid.startsWith("extend-"))return "rent1";
-        if(cat==="wypożyczalnia")return "rent1";
-        return "wizyta";
-      };
-      const sumByPeriod=(flist)=>{const r={wizyta:0,rent1:0,rentcyc:0,nfz:0};flist.forEach(f=>{const k=classifyF(f);r[k]+=(+f.amount||0);});return r;};
-      const chartGroups=useMemo(()=>{
-        if(viewMode==="week"){
-          const days=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
-          return Array.from({length:7},(_,i)=>{
-            const d=new Date(weekStart);d.setDate(d.getDate()+i);
-            const ds=d.toISOString().slice(0,10);
-            const flist=finances.filter(f=>f.type==="przychód"&&f.date===ds);
-            return {label:days[i],...sumByPeriod(flist)};
-          });
-        }
-        if(viewMode==="month"){
-          return Array.from({length:6},(_,i)=>{
-            const d=new Date(month+"-15");d.setMonth(d.getMonth()-(5-i));
-            const m=d.toISOString().slice(0,7);
-            const flist=finances.filter(f=>f.type==="przychód"&&f.date&&f.date.startsWith(m));
-            return {label:d.toLocaleDateString("pl-PL",{month:"short"}),...sumByPeriod(flist)};
-          });
-        }
-        return Array.from({length:12},(_,i)=>{
-          const m=year+"-"+String(i+1).padStart(2,"0");
-          const flist=finances.filter(f=>f.type==="przychód"&&f.date&&f.date.startsWith(m));
-          return {label:new Date(m+"-15").toLocaleDateString("pl-PL",{month:"short"}),...sumByPeriod(flist)};
-        });
-      },[finances,rentals,viewMode,month,year,weekStart,weekEnd,pmRentMap]);
+
 
       const catBreakdown=useMemo(()=>{
         const items=finances.filter(f=>f.type==="przychód"&&inPeriod(f.date));
@@ -1866,12 +1794,7 @@
                     <div style={{fontSize:10,color:sub}}>vs poprz.</div>
                   </div>}
                 </div>
-                <FinanceChart groups={chartGroups} dk={dk}/>
-                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:4}}>
-                  {[{c:"#0A7C7C",l:"Wizyty"},{c:"#2E86AB",l:"Jedn."},{c:"#F18F01",l:"Cykl."},{c:"#7B4FBF",l:"Wózki"}].map(x=>(
-                    <div key={x.l} style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:x.c}}/><span style={{fontSize:10,color:dk?"#5A8A8A":"#7A8FA6"}}>{x.l}</span></div>
-                  ))}
-                </div>
+
               </div>
 
               {catBreakdown.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
