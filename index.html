@@ -1701,6 +1701,13 @@
 
       const weekEnd=useMemo(()=>{const d=new Date(weekStart);d.setDate(d.getDate()+6);return d.toISOString().slice(0,10);},[weekStart]);
 
+      // visitMap: sourceId -> actual visit date
+      const visitMap=useMemo(()=>{
+        const m={};
+        (visits||[]).forEach(v=>{if(v.id)m["visit-"+v.id]=v.date;});
+        return m;
+      },[visits]);
+
       const inPeriod=(date)=>{
         if(!date)return false;
         if(viewMode==="month")return date.startsWith(month);
@@ -1727,12 +1734,6 @@
         return inPrevPeriod(d);
       }).reduce((s,f)=>s+(+f.amount||0),0),[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const diff=prevInc>0?Math.round((inc-prevInc)/prevInc*100):null;
-      // visitMap: sourceId -> actual visit date (visits may have been edited after finance entry created)
-      const visitMap=useMemo(()=>{
-        const m={};
-        (visits||[]).forEach(v=>{if(v.id)m["visit-"+v.id]=v.date;});
-        return m;
-      },[visits]);
       const visitEntries=useMemo(()=>{
         const seen=new Set();
         return finances.filter(f=>{
