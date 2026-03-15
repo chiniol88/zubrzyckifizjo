@@ -1930,6 +1930,13 @@
 
     
     // ── BUDGET ────────────────────────────────────────────────────────────────
+    // Struktura kategorii: [{name: "Wynagrodzenie", subs: ["Patryk", "Ania"]}, ...]
+    // Migracja: stare string[] -> [{name, subs:[]}]
+    function normCats(arr) {
+      if(!arr||!arr.length) return [];
+      return arr.map(c=>typeof c==="string"?{name:c,subs:[]}:c);
+    }
+
     function Budget({finances,visits,rentals,budget,setBudget}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
@@ -1938,13 +1945,34 @@
       const sub="#7A8FA6";
 
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
+      const [showCatMgr,setShowCatMgr]=useState(false);
+      const [showAdd,setShowAdd]=useState(null); // "income"|"expense"
+      const [editItem,setEditItem]=useState(null);
+      const [form,setForm]=useState({cat:"",subcat:"",desc:"",amount:""});
+      // cat manager state
+      const [editCat,setEditCat]=useState(null); // {type, catIdx, field:"name"|"sub", subIdx, value}
+      const [newCatName,setNewCatName]=useState({income:"",expense:""});
+      const [newSubName,setNewSubName]=useState({}); // {`${type}-${catIdx}`: ""}
+      const [newCatType,setNewCatType]=useState("expense");
 
-      // Przychody z praktyki dla wybranego miesiąca
+      // Normalize cats on read
+      const incCats=useMemo(()=>normCats(budget.incomeCategories||[{name:"Wynagrodzenie",subs:[]},{name:"Inne",subs:[]}]),[budget]);
+      const expCats=useMemo(()=>normCats(budget.expenseCategories||[{name:"Mieszkanie",subs:[]},{name:"Jedzenie",subs:[]},{name:"Transport",subs:[]},{name:"Inne",subs:[]}]),[budget]);
+
+      const monthData=useMemo(()=>(budget.months||{})[selMonth]||{income:[],expenses:[]},[budget,selMonth]);
+
+      const setMonthData=(fn)=>{
+        setBudget(b=>{
+          const prev=b.months||{};
+          const cur=prev[selMonth]||{income:[],expenses:[]};
+          return {...b,months:{...prev,[selMonth]:typeof fn==="function"?fn(cur):fn}};
+        });
+      };
+
+      // Practice income for selMonth
       const practiceCats=useMemo(()=>{
         const visitMap={};
         (visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
-        const payMap={};
-        (rentals||[]).forEach(r=>(r.payments||[]).forEach(p=>{payMap[String(p.id)]=r;}));
         const map={Wizyta:0,Wypożyczalnia:0,Wózek:0};
         (finances||[]).filter(f=>{
           if(f.type!=="przychód")return false;
@@ -1959,85 +1987,99 @@
           else map["Wypożyczalnia"]+=+f.amount||0;
         });
         return Object.entries(map).filter(([,v])=>v>0).map(([label,v])=>({label,v}));
-      },[finances,visits,rentals,selMonth]);
-      const [showCatMgr,setShowCatMgr]=useState(false);
-      const [showAdd,setShowAdd]=useState(null); // "income"|"expense"
-      const [editItem,setEditItem]=useState(null);
-      const [form,setForm]=useState({cat:"",desc:"",amount:""});
-      const [newCatName,setNewCatName]=useState("");
-      const [newCatType,setNewCatType]=useState("expense");
-      const [editCat,setEditCat]=useState(null); // {type, index, name}
+      },[finances,visits,selMonth]);
 
-      const incCats=useMemo(()=>budget.incomeCategories||["Wynagrodzenie","Inne"],[budget]);
-      const expCats=useMemo(()=>budget.expenseCategories||["Mieszkanie","Jedzenie","Transport","Inne"],[budget]);
-
-      const monthData=useMemo(()=>(budget.months||{})[selMonth]||{income:[],expenses:[]},[budget,selMonth]);
-
-      const setMonthData=(fn)=>{
-        setBudget(b=>{
-          const prev=b.months||{};
-          const cur=prev[selMonth]||{income:[],expenses:[]};
-          const next=typeof fn==="function"?fn(cur):fn;
-          return {...b,months:{...prev,[selMonth]:next}};
-        });
+      // Cat helpers
+      const setCats=(type,fn)=>{
+        const key=type==="income"?"incomeCategories":"expenseCategories";
+        setBudget(b=>{const cur=normCats(b[key]||[]);return {...b,[key]:fn(cur)};});
       };
 
-      const addCat=(type,name)=>{
+      const addCat=(type)=>{
+        const name=newCatName[type]||"";
         if(!name.trim())return;
-        const key=type==="income"?"incomeCategories":"expenseCategories";
-        const cur=budget[key]||[];
-        if(cur.includes(name.trim()))return;
-        setBudget(b=>({...b,[key]:[...(b[key]||[]),name.trim()]}));
-        setNewCatName("");
+        setCats(type,cats=>[...cats,{name:name.trim(),subs:[]}]);
+        setNewCatName(n=>({...n,[type]:""}));
       };
-
-      const delCat=(type,name)=>{
-        const key=type==="income"?"incomeCategories":"expenseCategories";
-        setBudget(b=>({...b,[key]:(b[key]||[]).filter(c=>c!==name)}));
+      const delCat=(type,catIdx)=>{
+        setCats(type,cats=>cats.filter((_,i)=>i!==catIdx));
       };
       const moveCat=(type,idx,dir)=>{
-        const key=type==="income"?"incomeCategories":"expenseCategories";
-        setBudget(b=>{
-          const arr=[...(b[key]||[])];
-          const ni=idx+dir;
-          if(ni<0||ni>=arr.length)return b;
-          [arr[idx],arr[ni]]=[arr[ni],arr[idx]];
-          return {...b,[key]:arr};
+        setCats(type,cats=>{
+          const a=[...cats];const ni=idx+dir;
+          if(ni<0||ni>=a.length)return a;
+          [a[idx],a[ni]]=[a[ni],a[idx]];return a;
         });
       };
-      const renameCat=(type,oldName,newName)=>{
-        if(!newName.trim()||newName===oldName)return;
+      const renameCat=(type,catIdx,newName)=>{
+        if(!newName.trim())return;
         const key=type==="income"?"incomeCategories":"expenseCategories";
         const mkey=type==="income"?"income":"expenses";
         setBudget(b=>{
-          const cats=(b[key]||[]).map(c=>c===oldName?newName.trim():c);
+          const cats=normCats(b[key]||[]);
+          const oldName=cats[catIdx].name;
+          const newCats=cats.map((c,i)=>i===catIdx?{...c,name:newName.trim()}:c);
           const months={};
           Object.entries(b.months||{}).forEach(([m,md])=>{
             months[m]={...md,[mkey]:(md[mkey]||[]).map(i=>i.cat===oldName?{...i,cat:newName.trim()}:i)};
           });
-          return {...b,[key]:cats,months};
+          return {...b,[key]:newCats,months};
+        });
+        setEditCat(null);
+      };
+      const addSub=(type,catIdx)=>{
+        const key=`${type}-${catIdx}`;
+        const name=(newSubName[key]||"").trim();
+        if(!name)return;
+        setCats(type,cats=>cats.map((c,i)=>i===catIdx?{...c,subs:[...(c.subs||[]),name]}:c));
+        setNewSubName(n=>({...n,[key]:""}));
+      };
+      const delSub=(type,catIdx,subIdx)=>{
+        setCats(type,cats=>cats.map((c,i)=>i===catIdx?{...c,subs:(c.subs||[]).filter((_,j)=>j!==subIdx)}:c));
+      };
+      const moveSub=(type,catIdx,subIdx,dir)=>{
+        setCats(type,cats=>cats.map((c,i)=>{
+          if(i!==catIdx)return c;
+          const a=[...(c.subs||[])];const ni=subIdx+dir;
+          if(ni<0||ni>=a.length)return c;
+          [a[subIdx],a[ni]]=[a[ni],a[subIdx]];
+          return {...c,subs:a};
+        }));
+      };
+      const renameSub=(type,catIdx,subIdx,newName)=>{
+        if(!newName.trim())return;
+        const key=type==="income"?"incomeCategories":"expenseCategories";
+        const mkey=type==="income"?"income":"expenses";
+        setBudget(b=>{
+          const cats=normCats(b[key]||[]);
+          const oldName=cats[catIdx].subs[subIdx];
+          const newCats=cats.map((c,i)=>i===catIdx?{...c,subs:c.subs.map((s,j)=>j===subIdx?newName.trim():s)}:c);
+          const months={};
+          Object.entries(b.months||{}).forEach(([m,md])=>{
+            months[m]={...md,[mkey]:(md[mkey]||[]).map(it=>it.cat===cats[catIdx].name&&it.subcat===oldName?{...it,subcat:newName.trim()}:it)};
+          });
+          return {...b,[key]:newCats,months};
         });
         setEditCat(null);
       };
 
+      // Item helpers
       const saveAdd=()=>{
         if(!form.cat||!form.amount)return;
-        const item={id:Date.now(),cat:form.cat,desc:form.desc,amount:+form.amount};
+        const item={id:Date.now(),cat:form.cat,subcat:form.subcat||"",desc:form.desc,amount:+form.amount};
         setMonthData(d=>showAdd==="income"
           ?{...d,income:[...(d.income||[]),item]}
           :{...d,expenses:[...(d.expenses||[]),item]});
         setShowAdd(null);
       };
-
       const saveEdit=()=>{
-        if(!editItem||!form.cat||!form.amount)return;
-        const updated={...editItem.item,cat:form.cat,desc:form.desc,amount:+form.amount};
+        if(!editItem)return;
+        const updated={...editItem.item,cat:form.cat,subcat:form.subcat||"",desc:form.desc,amount:+form.amount};
         setMonthData(d=>editItem.type==="income"
           ?{...d,income:(d.income||[]).map(i=>i.id===updated.id?updated:i)}
           :{...d,expenses:(d.expenses||[]).map(i=>i.id===updated.id?updated:i)});
         setEditItem(null);
       };
-
       const delItem=(type,id)=>{
         setMonthData(d=>type==="income"
           ?{...d,income:(d.income||[]).filter(i=>i.id!==id)}
@@ -2045,23 +2087,145 @@
         setEditItem(null);
       };
 
-      const practiceTotal=(practiceCats||[]).reduce((s,c)=>s+(c.v||0),0);
+      const practiceTotal=practiceCats.reduce((s,c)=>s+(c.v||0),0);
       const manualIncTotal=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
       const totalInc=practiceTotal+manualIncTotal;
       const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0);
 
-      // months list for selector
       const monthsList=useMemo(()=>{
         const s=new Set();
-        const cur=todayLocal().slice(0,7);
-        s.add(cur);
+        const cur=todayLocal().slice(0,7);s.add(cur);
         Object.keys(budget.months||{}).forEach(m=>s.add(m));
-        // add prev 5 months
         for(let i=1;i<=5;i++){const d=new Date(cur+"-15");d.setMonth(d.getMonth()-i);s.add(d.toISOString().slice(0,7));}
         return Array.from(s).sort((a,b)=>b.localeCompare(a));
-      },[budget,selMonth]);
+      },[budget]);
 
-      const catColor={income:"#3DAA72",expense:"#E05C5C"};
+      const getCats=(type)=>type==="income"?incCats:expCats;
+      const getColor=(type)=>type==="income"?"#3DAA72":"#E05C5C";
+
+      const CatMgrSection=({type,cats,color})=>(
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{type==="income"?"Przychody":"Koszty"}</div>
+          {cats.map((cat,ci)=>(
+            <div key={ci} style={{marginBottom:8,border:`1px solid ${border}`,borderRadius:10,overflow:"hidden"}}>
+              {/* Category row */}
+              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 10px",background:dk?"#0F1F1F":"#F7F9FB"}}>
+                <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  <button onClick={()=>moveCat(type,ci,-1)} disabled={ci===0} style={{background:"none",border:"none",cursor:ci===0?"default":"pointer",color:ci===0?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▲</button>
+                  <button onClick={()=>moveCat(type,ci,1)} disabled={ci===cats.length-1} style={{background:"none",border:"none",cursor:ci===cats.length-1?"default":"pointer",color:ci===cats.length-1?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▼</button>
+                </div>
+                {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="name"
+                  ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
+                      style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+                    <button onClick={()=>renameCat(type,ci,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+                    <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
+                  :<><span style={{flex:1,fontSize:14,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{cat.name}</span>
+                    <button onClick={()=>setEditCat({type,catIdx:ci,field:"name",value:cat.name})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:13}}>✏️</button>
+                    <button onClick={()=>delCat(type,ci)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,lineHeight:1}}>×</button></>
+                }
+              </div>
+              {/* Subcategories */}
+              {(cat.subs||[]).map((s2,si)=>(
+                <div key={si} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px 6px 28px",borderTop:`1px solid ${border}`}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                    <button onClick={()=>moveSub(type,ci,si,-1)} disabled={si===0} style={{background:"none",border:"none",cursor:si===0?"default":"pointer",color:si===0?border:sub,fontSize:10,lineHeight:1,padding:"1px 2px"}}>▲</button>
+                    <button onClick={()=>moveSub(type,ci,si,1)} disabled={si===(cat.subs.length-1)} style={{background:"none",border:"none",cursor:si===(cat.subs.length-1)?"default":"pointer",color:si===(cat.subs.length-1)?border:sub,fontSize:10,lineHeight:1,padding:"1px 2px"}}>▼</button>
+                  </div>
+                  {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="sub"&&editCat.subIdx===si
+                    ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
+                        style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
+                      <button onClick={()=>renameSub(type,ci,si,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+                      <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
+                    :<><span style={{flex:1,fontSize:13,color:dk?"#A0C8C8":"#4A6070"}}>↳ {s2}</span>
+                      <button onClick={()=>setEditCat({type,catIdx:ci,field:"sub",subIdx:si,value:s2})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:12}}>✏️</button>
+                      <button onClick={()=>delSub(type,ci,si)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:15,lineHeight:1}}>×</button></>
+                  }
+                </div>
+              ))}
+              {/* Add subcategory */}
+              <div style={{display:"flex",gap:6,padding:"6px 10px 6px 28px",borderTop:`1px solid ${border}`,background:dk?"#111E1E":"#FAFCFD"}}>
+                <input value={newSubName[`${type}-${ci}`]||""} onChange={e=>setNewSubName(n=>({...n,[`${type}-${ci}`]:e.target.value}))}
+                  onKeyDown={e=>e.key==="Enter"&&addSub(type,ci)}
+                  placeholder="Dodaj podkategorię..." style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1px solid ${border}`,background:"transparent",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}/>
+                <button onClick={()=>addSub(type,ci)} style={{background:color+"30",color,border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:13}}>+</button>
+              </div>
+            </div>
+          ))}
+          {/* Add category */}
+          <div style={{display:"flex",gap:8,marginTop:8}}>
+            <input value={newCatName[type]||""} onChange={e=>setNewCatName(n=>({...n,[type]:e.target.value}))}
+              onKeyDown={e=>e.key==="Enter"&&addCat(type)}
+              placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+            <button onClick={()=>addCat(type)} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
+          </div>
+        </div>
+      );
+
+      const ItemForm=({type,onSave,onClose,title})=>{
+        const cats=getCats(type);
+        const selCat=cats.find(c=>c.name===form.cat);
+        const hasSubs=selCat&&(selCat.subs||[]).length>0;
+        return <Modal title={title} onClose={onClose}>
+          <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
+          {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
+          <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. Wypłata marzec"/>
+          <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+          <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={onSave}>Zapisz</Btn>
+        </Modal>;
+      };
+
+      const [expandedCats,setExpandedCats]=useState({});
+      const toggleCat=(key)=>setExpandedCats(e=>({...e,[key]:!e[key]}));
+
+      const renderItems=(type,cats,color)=>{
+        const items=type==="income"?monthData.income||[]:monthData.expenses||[];
+        return cats.map(cat=>{
+          const catItems=items.filter(i=>i.cat===cat.name);
+          if(!catItems.length)return null;
+          const hasSubs=(cat.subs||[]).length>0;
+          const catTotal=catItems.reduce((s,i)=>s+(+i.amount||0),0);
+          const expKey=type+"-"+cat.name;
+          const isOpen=!!expandedCats[expKey];
+          return <div key={cat.name}>
+            {/* Category header — clickable, shows only sum */}
+            <div onClick={()=>toggleCat(expKey)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:dk?"#111E1E":type==="income"?"#F0F9F5":"#FDF7F7",cursor:"pointer",borderBottom:`1px solid ${border}`}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,color:isOpen?color:sub,transition:"transform .2s",display:"inline-block",transform:isOpen?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{cat.name}</span>
+                <span style={{fontSize:11,color:sub}}>{catItems.length} {catItems.length===1?"wpis":"wpisów"}</span>
+              </div>
+              <span style={{fontWeight:800,fontSize:14,color}}>{demo?"****":catTotal.toFixed(2)} zł</span>
+            </div>
+            {/* Expanded: individual entries grouped by subcat */}
+            {isOpen&&<div style={{background:dk?"#0D1A1A":type==="income"?"#F7FCF9":"#FDF5F5"}}>
+              {hasSubs
+                ? (cat.subs||[]).map(s=>{
+                    const subItems=catItems.filter(i=>i.subcat===s);
+                    if(!subItems.length)return null;
+                    const subTotal=subItems.reduce((a,i)=>a+(+i.amount||0),0);
+                    return <div key={s}>
+                      <div style={{display:"flex",justifyContent:"space-between",padding:"5px 16px 5px 28px",background:dk?"#0F1B1B":type==="income"?"#EBF7F1":"#FAF0F0",fontSize:10,fontWeight:600,color:sub}}>
+                        <span>↳ {s}</span>
+                        <span style={{color}}>{demo?"****":subTotal.toFixed(2)} zł</span>
+                      </div>
+                      {subItems.map(item=><div key={item.id} onClick={()=>{setForm({cat:item.cat,subcat:item.subcat||"",desc:item.desc||"",amount:String(item.amount)});setEditItem({type,item});}}
+                        style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 36px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                        <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.subcat||item.cat}</span>
+                        <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
+                      </div>)}
+                    </div>;
+                  })
+                : null
+              }
+              {catItems.filter(i=>!i.subcat).map(item=><div key={item.id} onClick={()=>{setForm({cat:item.cat,subcat:"",desc:item.desc||"",amount:String(item.amount)});setEditItem({type,item});}}
+                style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.cat}</span>
+                <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
+              </div>)}
+            </div>}
+          </div>;
+        });
+      };
 
       return <div style={{padding:"0 20px 40px"}}>
         {/* Month selector */}
@@ -2074,7 +2238,6 @@
           </button>)}
         </div>
 
-        {/* Cat manager button */}
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
           <button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️ Kategorie</button>
         </div>
@@ -2086,30 +2249,17 @@
               <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Przychody</div>
               <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#3DAA72",marginTop:2}}>{demo?"****":totalInc.toFixed(2)} zł</div>
             </div>
-            <Btn small onClick={()=>{setForm({cat:incCats[0]||"",desc:"",amount:""});setShowAdd("income");}}>+ Dodaj</Btn>
+            <Btn small onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}}>+ Dodaj</Btn>
           </div>
-          {/* Auto: praktyka */}
-          {(practiceCats||[]).length>0&&<>
+          {practiceCats.length>0&&<>
             <div style={{padding:"6px 16px",background:dk?"#0F1F1F":"#F0F9F5",fontSize:10,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5}}>Praktyka (auto)</div>
-            {(practiceCats||[]).map(c=><div key={c.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:`1px solid ${border}`}}>
+            {practiceCats.map(c=><div key={c.label} style={{display:"flex",justifyContent:"space-between",padding:"9px 16px",borderBottom:`1px solid ${border}`}}>
               <span style={{fontSize:13,color:dk?"#C8E8E8":"#1C2B3A"}}>{c.label}</span>
               <span style={{fontWeight:700,fontSize:13,color:"#3DAA72"}}>{demo?"****":c.v.toFixed(2)} zł</span>
             </div>)}
           </>}
-          {/* Manual income grouped by cat */}
-          {incCats.map(cat=>{
-            const items=(monthData.income||[]).filter(i=>i.cat===cat);
-            if(!items.length)return null;
-            return <div key={cat}>
-              <div style={{padding:"6px 16px",background:dk?"#111E1E":"#F7FAF7",fontSize:10,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>{cat}</div>
-              {items.map(item=><div key={item.id} onClick={()=>{setForm({cat:item.cat,desc:item.desc||"",amount:String(item.amount)});setEditItem({type:"income",item});}}
-                style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
-                <span style={{fontSize:13,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"••••":item.desc||item.cat}</span>
-                <span style={{fontWeight:700,fontSize:13,color:"#3DAA72"}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
-              </div>)}
-            </div>;
-          })}
-          {(monthData.income||[]).length===0&&(practiceCats||[]).length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak przychodów</div>}
+          {renderItems("income",incCats,"#3DAA72")}
+          {(monthData.income||[]).length===0&&practiceCats.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak przychodów</div>}
         </div>
 
         {/* KOSZTY */}
@@ -2119,71 +2269,33 @@
               <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Koszty</div>
               <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#E05C5C",marginTop:2}}>{demo?"****":totalExp.toFixed(2)} zł</div>
             </div>
-            <Btn small onClick={()=>{setForm({cat:expCats[0]||"",desc:"",amount:""});setShowAdd("expense");}}>+ Dodaj</Btn>
+            <Btn small onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}}>+ Dodaj</Btn>
           </div>
-          {expCats.map(cat=>{
-            const items=(monthData.expenses||[]).filter(i=>i.cat===cat);
-            if(!items.length)return null;
-            return <div key={cat}>
-              <div style={{padding:"6px 16px",background:dk?"#111E1E":"#FDF7F7",fontSize:10,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>{cat}</div>
-              {items.map(item=><div key={item.id} onClick={()=>{setForm({cat:item.cat,desc:item.desc||"",amount:String(item.amount)});setEditItem({type:"expense",item});}}
-                style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
-                <span style={{fontSize:13,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"••••":item.desc||item.cat}</span>
-                <span style={{fontWeight:700,fontSize:13,color:"#E05C5C"}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
-              </div>)}
-            </div>;
-          })}
+          {renderItems("expense",expCats,"#E05C5C")}
           {(monthData.expenses||[]).length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak kosztów</div>}
         </div>
 
-        {/* Add modal */}
-        {showAdd&&<Modal title={showAdd==="income"?"Nowy przychód":"Nowy koszt"} onClose={()=>setShowAdd(null)}>
-          <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v}))} options={(showAdd==="income"?incCats:expCats).map(c=>({value:c,label:c}))}/>
-          <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder={showAdd==="income"?"np. Wypłata Ania":"np. Czynsz marzec"}/>
-          <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
-          <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={saveAdd}>Zapisz</Btn>
-        </Modal>}
+        {showAdd&&<ItemForm type={showAdd} title={showAdd==="income"?"Nowy przychód":"Nowy koszt"} onSave={saveAdd} onClose={()=>setShowAdd(null)}/>}
 
-        {/* Edit modal */}
         {editItem&&<Modal title="Edytuj wpis" onClose={()=>setEditItem(null)}>
-          <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v}))} options={(editItem.type==="income"?incCats:expCats).map(c=>({value:c,label:c}))}/>
-          <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
-          <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
-          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={saveEdit}>Zapisz zmiany</Btn>
-          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>delItem(editItem.type,editItem.item.id)}>🗑️ Usuń</Btn>
+          {(()=>{
+            const cats=getCats(editItem.type);
+            const selCat=cats.find(c=>c.name===form.cat);
+            const hasSubs=selCat&&(selCat.subs||[]).length>0;
+            return <>
+              <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
+              {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
+              <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
+              <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
+              <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={saveEdit}>Zapisz zmiany</Btn>
+              <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>delItem(editItem.type,editItem.item.id)}>🗑️ Usuń</Btn>
+            </>;
+          })()}
         </Modal>}
 
-        {/* Category manager modal */}
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
-          {[{type:"income",label:"Przychody",cats:incCats,color:"#3DAA72"},{type:"expense",label:"Koszty",cats:expCats,color:"#E05C5C"}].map(({type,label,cats,color})=>(
-            <div key={type} style={{marginBottom:20}}>
-              <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{label}</div>
-              {cats.map((c,i)=>(
-                editCat&&editCat.type===type&&editCat.index===i
-                ? <div key={c} style={{display:"flex",gap:6,alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${border}`}}>
-                    <input autoFocus value={editCat.name} onChange={e=>setEditCat(ec=>({...ec,name:e.target.value}))}
-                      style={{flex:1,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
-                    <button onClick={()=>renameCat(type,c,editCat.name)} style={{background:color,color:"#fff",border:"none",borderRadius:8,padding:"6px 12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
-                    <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-                  </div>
-                : <div key={c} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 0",borderBottom:`1px solid ${border}`}}>
-                    <div style={{display:"flex",flexDirection:"column",gap:1,marginRight:4}}>
-                      <button onClick={()=>moveCat(type,i,-1)} disabled={i===0} style={{background:"none",border:"none",cursor:i===0?"default":"pointer",color:i===0?border:sub,fontSize:12,lineHeight:1,padding:"1px 4px"}}>▲</button>
-                      <button onClick={()=>moveCat(type,i,1)} disabled={i===cats.length-1} style={{background:"none",border:"none",cursor:i===cats.length-1?"default":"pointer",color:i===cats.length-1?border:sub,fontSize:12,lineHeight:1,padding:"1px 4px"}}>▼</button>
-                    </div>
-                    <span style={{flex:1,fontSize:14,color:dk?"#C8E8E8":"#1C2B3A"}}>{c}</span>
-                    <button onClick={()=>setEditCat({type,index:i,name:c})} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:13,padding:"0 6px"}}>✏️</button>
-                    <button onClick={()=>delCat(type,c)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-                  </div>
-              ))}
-              <div style={{display:"flex",gap:8,marginTop:10}}>
-                <input value={newCatType===type?newCatName:""} onFocus={()=>{setNewCatType(type);}} onChange={e=>setNewCatName(e.target.value)}
-                  onKeyDown={e=>e.key==="Enter"&&addCat(type,newCatName)}
-                  placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
-                <button onClick={()=>addCat(type,newCatName)} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
-              </div>
-            </div>
-          ))}
+          <CatMgrSection type="income" cats={incCats} color="#3DAA72"/>
+          <CatMgrSection type="expense" cats={expCats} color="#E05C5C"/>
         </Modal>}
       </div>;
     }
