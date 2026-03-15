@@ -1594,9 +1594,9 @@
       }
 
       return <div>
-        <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wypożyczalnia</div><div style={{fontSize:13,color:"#7A8FA6"}}>{cnt.aktywne+cnt.odnawialne} aktywnych</div></div>
-          <Btn small onClick={()=>{setForm(emptyRental());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowe</Btn>
+        <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+          <div style={{minWidth:0}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Wypożyczalnia</div><div style={{fontSize:13,color:"#7A8FA6"}}>{cnt.aktywne+cnt.odnawialne} aktywnych</div></div>
+          <Btn small onClick={()=>{setForm(emptyRental());setShowAdd(true);}} style={{flexShrink:0}}><Ico d={I.plus} s={16} c="#fff"/> Nowe</Btn>
         </div>
         <div style={{display:"flex",gap:8,padding:"0 20px 16px",flexWrap:"wrap"}}>
           {[{k:"aktywne",l:`Aktywne (${cnt.aktywne})`},{k:"odnawialne",l:`🔄 Odnawialne (${cnt.odnawialne})`},{k:"zakończone",l:`Zakończone (${cnt.zakończone})`}].map(x=>
@@ -2209,7 +2209,7 @@
 
       // Mobile layout
       return <>
-        <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A"}}>
+        <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A",overflowX:"hidden"}}>
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
             {content}
           </div>
