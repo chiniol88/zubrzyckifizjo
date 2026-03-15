@@ -1716,9 +1716,12 @@
         return date.startsWith(String(+year-1));
       };
 
-      const inc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd]);
-      const prevInc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPrevPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd]);
+      const inc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const prevInc=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPrevPeriod(f.date)).reduce((s,f)=>s+(+f.amount||0),0),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const diff=prevInc>0?Math.round((inc-prevInc)/prevInc*100):null;
+      const visitEntries=useMemo(()=>finances.filter(f=>f.type==="przychód"&&inPeriod(f.date)&&(f.sourceId||"").startsWith("visit-")),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const visitCount=visitEntries.length;
+      const visitAvg=visitCount>0?visitEntries.reduce((s,f)=>s+(+f.amount||0),0)/visitCount:0;
 
 
 
@@ -1797,6 +1800,7 @@
                   <div>
                     <div style={{fontSize:11,color:sub,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Przychód</div>
                     <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:28,color:"#3DAA72",lineHeight:1}}>{demo?"****":inc.toFixed(2)} zł</div>
+                    {visitCount>0&&<div style={{fontSize:12,color:sub,marginTop:6}}>{visitCount} {visitCount===1?"wizyta":visitCount<5?"wizyty":"wizyt"} · śr. <b style={{color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"**":Math.round(visitAvg)} zł</b></div>}
                   </div>
                   {diff!==null&&<div style={{background:diff>=0?"#3DAA7220":"#E05C5C20",borderRadius:10,padding:"6px 10px",textAlign:"center"}}>
                     <div style={{fontWeight:700,fontSize:14,color:diff>=0?"#3DAA72":"#E05C5C"}}>{diff>=0?"+":""}{diff}%</div>
