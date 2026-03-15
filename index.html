@@ -1740,7 +1740,7 @@
       // visitMap już zbudowany wyżej
 
       // Wizyty w okresie (źródło: visits)
-      const periodVisits=useMemo(()=>(visits||[]).filter(v=>inPeriod(v.date)),[visits,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const periodVisits=useMemo(()=>(visits||[]).filter(v=>inPeriod(v.date)&&v.status!=="anulowana"&&visitStatus(v)==="zakończona"),[visits,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const visitCount=periodVisits.length;
       const visitAvg=visitCount>0?periodVisits.reduce((s,v)=>s+(+v.price||0),0)/visitCount:0;
 
