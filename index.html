@@ -1966,6 +1966,7 @@
       const [form,setForm]=useState({cat:"",desc:"",amount:""});
       const [newCatName,setNewCatName]=useState("");
       const [newCatType,setNewCatType]=useState("expense");
+      const [editCat,setEditCat]=useState(null); // {type, index, name}
 
       const incCats=useMemo(()=>budget.incomeCategories||["Wynagrodzenie","Inne"],[budget]);
       const expCats=useMemo(()=>budget.expenseCategories||["Mieszkanie","Jedzenie","Transport","Inne"],[budget]);
@@ -1993,6 +1994,30 @@
       const delCat=(type,name)=>{
         const key=type==="income"?"incomeCategories":"expenseCategories";
         setBudget(b=>({...b,[key]:(b[key]||[]).filter(c=>c!==name)}));
+      };
+      const moveCat=(type,idx,dir)=>{
+        const key=type==="income"?"incomeCategories":"expenseCategories";
+        setBudget(b=>{
+          const arr=[...(b[key]||[])];
+          const ni=idx+dir;
+          if(ni<0||ni>=arr.length)return b;
+          [arr[idx],arr[ni]]=[arr[ni],arr[idx]];
+          return {...b,[key]:arr};
+        });
+      };
+      const renameCat=(type,oldName,newName)=>{
+        if(!newName.trim()||newName===oldName)return;
+        const key=type==="income"?"incomeCategories":"expenseCategories";
+        const mkey=type==="income"?"income":"expenses";
+        setBudget(b=>{
+          const cats=(b[key]||[]).map(c=>c===oldName?newName.trim():c);
+          const months={};
+          Object.entries(b.months||{}).forEach(([m,md])=>{
+            months[m]={...md,[mkey]:(md[mkey]||[]).map(i=>i.cat===oldName?{...i,cat:newName.trim()}:i)};
+          });
+          return {...b,[key]:cats,months};
+        });
+        setEditCat(null);
       };
 
       const saveAdd=()=>{
@@ -2130,28 +2155,35 @@
 
         {/* Category manager modal */}
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
-          <div style={{marginBottom:16}}>
-            <div style={{fontSize:12,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Przychody</div>
-            {incCats.map(c=><div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${border}`}}>
-              <span style={{fontSize:14}}>{c}</span>
-              <button onClick={()=>delCat("income",c)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-            </div>)}
-            <div style={{display:"flex",gap:8,marginTop:10}}>
-              <input value={newCatType==="income"?newCatName:""} onFocus={()=>setNewCatType("income")} onChange={e=>setNewCatName(e.target.value)} placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
-              <button onClick={()=>addCat("income",newCatName)} style={{background:"#3DAA72",color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
+          {[{type:"income",label:"Przychody",cats:incCats,color:"#3DAA72"},{type:"expense",label:"Koszty",cats:expCats,color:"#E05C5C"}].map(({type,label,cats,color})=>(
+            <div key={type} style={{marginBottom:20}}>
+              <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{label}</div>
+              {cats.map((c,i)=>(
+                editCat&&editCat.type===type&&editCat.index===i
+                ? <div key={c} style={{display:"flex",gap:6,alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${border}`}}>
+                    <input autoFocus value={editCat.name} onChange={e=>setEditCat(ec=>({...ec,name:e.target.value}))}
+                      style={{flex:1,padding:"6px 10px",borderRadius:8,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+                    <button onClick={()=>renameCat(type,c,editCat.name)} style={{background:color,color:"#fff",border:"none",borderRadius:8,padding:"6px 12px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+                    <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+                  </div>
+                : <div key={c} style={{display:"flex",alignItems:"center",gap:4,padding:"8px 0",borderBottom:`1px solid ${border}`}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:1,marginRight:4}}>
+                      <button onClick={()=>moveCat(type,i,-1)} disabled={i===0} style={{background:"none",border:"none",cursor:i===0?"default":"pointer",color:i===0?border:sub,fontSize:12,lineHeight:1,padding:"1px 4px"}}>▲</button>
+                      <button onClick={()=>moveCat(type,i,1)} disabled={i===cats.length-1} style={{background:"none",border:"none",cursor:i===cats.length-1?"default":"pointer",color:i===cats.length-1?border:sub,fontSize:12,lineHeight:1,padding:"1px 4px"}}>▼</button>
+                    </div>
+                    <span style={{flex:1,fontSize:14,color:dk?"#C8E8E8":"#1C2B3A"}}>{c}</span>
+                    <button onClick={()=>setEditCat({type,index:i,name:c})} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:13,padding:"0 6px"}}>✏️</button>
+                    <button onClick={()=>delCat(type,c)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+                  </div>
+              ))}
+              <div style={{display:"flex",gap:8,marginTop:10}}>
+                <input value={newCatType===type?newCatName:""} onFocus={()=>{setNewCatType(type);}} onChange={e=>setNewCatName(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&addCat(type,newCatName)}
+                  placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+                <button onClick={()=>addCat(type,newCatName)} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
+              </div>
             </div>
-          </div>
-          <div>
-            <div style={{fontSize:12,fontWeight:700,color:"#E05C5C",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Koszty</div>
-            {expCats.map(c=><div key={c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${border}`}}>
-              <span style={{fontSize:14}}>{c}</span>
-              <button onClick={()=>delCat("expense",c)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-            </div>)}
-            <div style={{display:"flex",gap:8,marginTop:10}}>
-              <input value={newCatType==="expense"?newCatName:""} onFocus={()=>setNewCatType("expense")} onChange={e=>setNewCatName(e.target.value)} placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
-              <button onClick={()=>addCat("expense",newCatName)} style={{background:"#E05C5C",color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
-            </div>
-          </div>
+          ))}
         </Modal>}
       </div>;
     }
