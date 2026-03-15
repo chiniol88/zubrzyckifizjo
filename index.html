@@ -2089,8 +2089,78 @@
 
       const practiceTotal=practiceCats.reduce((s,c)=>s+(c.v||0),0);
       const manualIncTotal=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
-      const totalInc=practiceTotal+manualIncTotal;
-      const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0);
+      // totalInc/Exp including recurring — defined below after recurring state
+      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income").reduce((s,r)=>s+(+r.amount||0),0);
+      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense").reduce((s,r)=>s+(+r.amount||0),0);
+      const totalInc=practiceTotal+manualIncTotal+recurringIncTotalEarly;
+      const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recurringExpTotalEarly;
+
+      const [showYear,setShowYear]=useState(false);
+      const [showRecurring,setShowRecurring]=useState(null); // "income"|"expense"|null - add modal
+      const [editRecurring,setEditRecurring]=useState(null);
+      const [rForm,setRForm]=useState({type:"expense",cat:"",subcat:"",desc:"",amount:"",cycle:"monthly"});
+
+      const recurring=useMemo(()=>budget.recurring||[],[budget]);
+      const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"),[recurring]);
+      const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"),[recurring]);
+      // monthly equivalent: weekly×4, monthly×1
+      const recurringIncTotal=recurringInc.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
+      const recurringExpTotal=recurringExp.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
+
+      const saveRecurring=()=>{
+        if(!rForm.cat||!rForm.amount)return;
+        const item={id:Date.now(),type:rForm.type,cat:rForm.cat,subcat:rForm.subcat||"",desc:rForm.desc,amount:+rForm.amount,cycle:rForm.cycle};
+        setBudget(b=>({...b,recurring:[...(b.recurring||[]),item]}));
+        setShowRecurring(null);
+      };
+      const updateRecurring=()=>{
+        if(!editRecurring)return;
+        setBudget(b=>({...b,recurring:(b.recurring||[]).map(r=>r.id===editRecurring.id?{...editRecurring,...rForm,amount:+rForm.amount}:r)}));
+        setEditRecurring(null);
+      };
+      const deleteRecurring=(id)=>{
+        setBudget(b=>({...b,recurring:(b.recurring||[]).filter(r=>r.id!==id)}));
+        setEditRecurring(null);
+      };
+
+      // Previous month helpers
+      const prevMonth=useMemo(()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);return d.toISOString().slice(0,7);},[selMonth]);
+      const prevMonthData=useMemo(()=>(budget.months||{})[prevMonth]||{income:[],expenses:[]},[budget,prevMonth]);
+      const prevPracticeTotal=useMemo(()=>{
+        const visitMap={};
+        (visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
+        const map={};
+        (finances||[]).filter(f=>{
+          if(f.type!=="przychód")return false;
+          const sid=f.sourceId||"";
+          const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;
+          return d&&d.startsWith(prevMonth);
+        }).forEach(f=>{map._=((map._)||0)+(+f.amount||0);});
+        return map._||0;
+      },[finances,visits,prevMonth]);
+      const prevTotalInc=prevPracticeTotal+(prevMonthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
+      const prevTotalExp=(prevMonthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0);
+      const diffInc=prevTotalInc>0?Math.round((totalInc-prevTotalInc)/prevTotalInc*100):null;
+      const diffExp=prevTotalExp>0?Math.round((totalExp-prevTotalExp)/prevTotalExp*100):null;
+
+      // Copy from prev month (positions without amounts)
+      const copyFromPrev=()=>{
+        const prev=(budget.months||{})[prevMonth]||{income:[],expenses:[]};
+        if(!prev.income.length&&!prev.expenses.length){return;}
+        setMonthData(d=>({
+          income:[...(d.income||[]),...(prev.income||[]).map(i=>({...i,id:Date.now()+Math.random(),amount:0}))],
+          expenses:[...(d.expenses||[]),...(prev.expenses||[]).map(i=>({...i,id:Date.now()+Math.random(),amount:0}))]
+        }));
+      };
+
+      // Year summary
+      const yearMonths=useMemo(()=>{
+        const yr=selMonth.slice(0,4);
+        const all=new Set();
+        for(let m=1;m<=12;m++)all.add(yr+"-"+String(m).padStart(2,"0"));
+        Object.keys(budget.months||{}).filter(m=>m.startsWith(yr)).forEach(m=>all.add(m));
+        return Array.from(all).sort();
+      },[selMonth,budget]);
 
       const monthsList=useMemo(()=>{
         const s=new Set();
@@ -2179,11 +2249,13 @@
 
       const renderItems=(type,cats,color)=>{
         const items=type==="income"?monthData.income||[]:monthData.expenses||[];
+        const recItems=type==="income"?recurringInc:recurringExp;
         return cats.map(cat=>{
           const catItems=items.filter(i=>i.cat===cat.name);
-          if(!catItems.length)return null;
+          const catRec=recItems.filter(r=>r.cat===cat.name);
+          if(!catItems.length&&!catRec.length)return null;
           const hasSubs=(cat.subs||[]).length>0;
-          const catTotal=catItems.reduce((s,i)=>s+(+i.amount||0),0);
+          const catTotal=catItems.reduce((s,i)=>s+(+i.amount||0),0)+catRec.reduce((s,r)=>s+(+r.amount||0),0);
           const expKey=type+"-"+cat.name;
           const isOpen=!!expandedCats[expKey];
           return <div key={cat.name}>
@@ -2213,6 +2285,14 @@
                         <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.subcat||item.cat}</span>
                         <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
                       </div>)}
+                      {catRec.filter(r=>r.subcat===s2).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly"});setEditRecurring(r);}}
+                        style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 36px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <span style={{fontSize:11,color,opacity:.6}}>↻</span>
+                          <span style={{fontSize:12,color:sub}}>{demo?"••••":r.desc||r.subcat||r.cat}</span>
+                        </div>
+                        <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+r.amount).toFixed(2)} zł</span>
+                      </div>)}
                     </div>;
                   })
                 : null
@@ -2221,6 +2301,14 @@
                 style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
                 <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.cat}</span>
                 <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
+              </div>)}
+              {catRec.filter(r=>!r.subcat).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly"});setEditRecurring(r);}}
+                style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:12,color,opacity:.6}}>↻</span>
+                  <span style={{fontSize:12,color:sub}}>{demo?"••••":r.desc||r.cat}</span>
+                </div>
+                <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+r.amount).toFixed(2)} zł</span>
               </div>)}
             </div>}
           </div>;
@@ -2238,18 +2326,46 @@
           </button>)}
         </div>
 
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
-          <button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️ Kategorie</button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setShowYear(v=>!v)} style={{background:showYear?"#0A7C7C":"none",border:`1.5px solid ${showYear?"#0A7C7C":border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:showYear?"#fff":sub,cursor:"pointer",fontFamily:"inherit"}}>📅 Rok {selMonth.slice(0,4)}</button>
+            <button onClick={copyFromPrev} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>📋 Kopiuj z poprzedniego</button>
+          </div>
+          <button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️</button>
         </div>
+
+        {/* ROK */}
+        {showYear&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+          <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Rok {selMonth.slice(0,4)}</div>
+          {yearMonths.map(m=>{
+            const md=(budget.months||{})[m]||{income:[],expenses:[]};
+            const visitMap={};(visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
+            let prac=0;
+            (finances||[]).filter(f=>{if(f.type!=="przychód")return false;const sid=f.sourceId||"";const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;return d&&d.startsWith(m);}).forEach(f=>{prac+=(+f.amount||0);});
+            const inc2=prac+(md.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
+            const exp2=(md.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0);
+            const isSelected=m===selMonth;
+            return <div key={m} onClick={()=>{setSelMonth(m);setShowYear(false);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer",background:isSelected?(dk?"#1A3030":"#F0FAF6"):"transparent"}}>
+              <span style={{fontSize:13,fontWeight:isSelected?700:500,color:dk?"#C8E8E8":"#1C2B3A",textTransform:"capitalize"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long"})}</span>
+              <div style={{display:"flex",gap:16}}>
+                <span style={{fontSize:13,fontWeight:600,color:"#3DAA72"}}>{demo?"**":inc2>0?"+"+inc2.toFixed(0):"—"}</span>
+                <span style={{fontSize:13,fontWeight:600,color:"#E05C5C"}}>{demo?"**":exp2>0?"-"+exp2.toFixed(0):"—"}</span>
+              </div>
+            </div>;
+          })}
+        </div>}
 
         {/* PRZYCHODY */}
         <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
           <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
             <div>
               <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Przychody</div>
-              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#3DAA72",marginTop:2}}>{demo?"****":totalInc.toFixed(2)} zł</div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#3DAA72"}}>{demo?"****":totalInc.toFixed(2)} zł</div>
+                {diffInc!==null&&<div style={{background:diffInc>=0?"#3DAA7220":"#E05C5C20",borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,color:diffInc>=0?"#3DAA72":"#E05C5C"}}>{diffInc>=0?"+":""}{diffInc}%</div>}
+              </div>
             </div>
-            <Btn small onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}}>+ Dodaj</Btn>
+            <div style={{display:"flex",gap:6}}><Btn small onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}}>+ Jednorazowy</Btn><Btn small variant="secondary" onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("income");}}>↻</Btn></div>
           </div>
           {practiceCats.length>0&&<>
             <div style={{padding:"6px 16px",background:dk?"#0F1F1F":"#F0F9F5",fontSize:10,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5}}>Praktyka (auto)</div>
@@ -2259,7 +2375,7 @@
             </div>)}
           </>}
           {renderItems("income",incCats,"#3DAA72")}
-          {(monthData.income||[]).length===0&&practiceCats.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak przychodów</div>}
+          {(monthData.income||[]).length===0&&practiceCats.length===0&&recurringInc.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak przychodów</div>}
         </div>
 
         {/* KOSZTY */}
@@ -2267,12 +2383,15 @@
           <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
             <div>
               <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Koszty</div>
-              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#E05C5C",marginTop:2}}>{demo?"****":totalExp.toFixed(2)} zł</div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#E05C5C"}}>{demo?"****":totalExp.toFixed(2)} zł</div>
+                {diffExp!==null&&<div style={{background:diffExp<=0?"#3DAA7220":"#E05C5C20",borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,color:diffExp<=0?"#3DAA72":"#E05C5C"}}>{diffExp>=0?"+":""}{diffExp}%</div>}
+              </div>
             </div>
-            <Btn small onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}}>+ Dodaj</Btn>
+            <div style={{display:"flex",gap:6}}><Btn small onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}}>+ Jednorazowy</Btn><Btn small variant="secondary" onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("expense");}}>↻</Btn></div>
           </div>
           {renderItems("expense",expCats,"#E05C5C")}
-          {(monthData.expenses||[]).length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak kosztów</div>}
+          {(monthData.expenses||[]).length===0&&recurringExp.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak kosztów</div>}
         </div>
 
         {showAdd&&<ItemForm type={showAdd} title={showAdd==="income"?"Nowy przychód":"Nowy koszt"} onSave={saveAdd} onClose={()=>setShowAdd(null)}/>}
@@ -2291,6 +2410,25 @@
               <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>delItem(editItem.type,editItem.item.id)}>🗑️ Usuń</Btn>
             </>;
           })()}
+        </Modal>}
+
+        {showRecurring&&<Modal title={showRecurring==="income"?"Nowy cykliczny przychód":"Nowy cykliczny koszt"} onClose={()=>setShowRecurring(null)}>
+          
+          <Sel label="Kategoria" value={rForm.cat} onChange={v=>setRForm(f=>({...f,cat:v,subcat:""}))} options={getCats(showRecurring).map(c=>({value:c.name,label:c.name}))}/>
+          {(()=>{const selCat=getCats(showRecurring).find(c=>c.name===rForm.cat);const hasSubs=selCat&&(selCat.subs||[]).length>0;return hasSubs&&<Sel label="Podkategoria" value={rForm.subcat} onChange={v=>setRForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>})()}
+          <Inp label="Opis" value={rForm.desc} onChange={v=>setRForm(f=>({...f,desc:v}))} placeholder="np. Czynsz, Rata kredytu"/>
+          <Inp label="Kwota (zł) *" value={rForm.amount} onChange={v=>setRForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+          <Btn disabled={!rForm.cat||!rForm.amount} style={{width:"100%",justifyContent:"center"}} onClick={saveRecurring}>Zapisz</Btn>
+        </Modal>}
+
+        {editRecurring&&<Modal title="Edytuj cykliczny" onClose={()=>setEditRecurring(null)}>
+          
+          <Sel label="Kategoria" value={rForm.cat} onChange={v=>setRForm(f=>({...f,cat:v,subcat:""}))} options={getCats(editRecurring.type).map(c=>({value:c.name,label:c.name}))}/>
+          {(()=>{const selCat=getCats(editRecurring.type).find(c=>c.name===rForm.cat);const hasSubs=selCat&&(selCat.subs||[]).length>0;return hasSubs&&<Sel label="Podkategoria" value={rForm.subcat} onChange={v=>setRForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>})()}
+          <Inp label="Opis" value={rForm.desc} onChange={v=>setRForm(f=>({...f,desc:v}))}/>
+          <Inp label="Kwota (zł)" value={rForm.amount} onChange={v=>setRForm(f=>({...f,amount:v}))} type="number"/>
+          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={updateRecurring}>Zapisz zmiany</Btn>
+          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>deleteRecurring(editRecurring.id)}>🗑️ Usuń</Btn>
         </Modal>}
 
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
