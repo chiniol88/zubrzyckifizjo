@@ -93,15 +93,15 @@
     const Btn = ({children,onClick,variant="primary",small,disabled,style={}}) => {
       const dk=useContext(DarkCtx);
       const v={primary:{background:"#0A7C7C",color:"#fff"},secondary:{background:dk?"#1E3A3A":"#E6F4F4",color:"#0A7C7C"},orange:{background:"#F4A261",color:"#fff"},danger:{background:dk?"#3A1C1C":"#FEE2E2",color:"#E05C5C"}};
-      return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"8px 14px":"13px 18px",fontSize:small?13:15,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,opacity:disabled?.5:1,fontFamily:"inherit",...style}}>{children}</button>;
+      return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"10px 18px":"14px 22px",fontSize:small?14:16,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,opacity:disabled?.5:1,fontFamily:"inherit",...style}}>{children}</button>;
     };
     const Card = ({children,onClick,style={}}) => {
       const dk=useContext(DarkCtx);
-      return <div onClick={onClick} style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
+      return <div onClick={onClick} style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"16px 18px",marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
     };
-    const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"28",color,borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700}}>{children}</span>;
+    const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"28",color,borderRadius:8,padding:"4px 10px",fontSize:12,fontWeight:700}}>{children}</span>;
     const Empty = ({text}) => <div style={{textAlign:"center",padding:"40px 20px",color:"#7A8FA6",fontSize:14}}>{text}</div>;
-    const Av = ({name}) => { const i=(name||"?").split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(); return <div style={{width:40,height:40,borderRadius:12,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:14,color:"#0A7C7C",flexShrink:0}}>{i}</div>; };
+    const Av = ({name}) => { const i=(name||"?").split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(); return <div style={{width:44,height:44,borderRadius:12,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:15,color:"#0A7C7C",flexShrink:0}}>{i}</div>; };
 
     function Toast({msg,onDone}) {
       useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
@@ -123,25 +123,25 @@
 
     function Inp({label,value,onChange,type="text",placeholder=""}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+        {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
       </div>;
     }
     function Txa({label,value,onChange,rows=3,placeholder=""}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",resize:"vertical"};
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",resize:"vertical"};
       return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+        {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <textarea value={value||""} rows={rows} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
       </div>;
     }
     function Sel({label,value,onChange,options}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+        {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <select value={value} onChange={e=>onChange(e.target.value)} style={s}>
           {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -149,11 +149,11 @@
     }
     function TimeSel({label,value,onChange}) {
       const dk=useContext(DarkCtx);
-      const s={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
       const opts=[];
       for(let h=0;h<24;h++)for(let m=0;m<60;m+=5){const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");opts.push(hh+":"+mm);}
       return <div style={{marginBottom:14}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+        {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <select value={value||"10:00"} onChange={e=>onChange(e.target.value)} style={s}>
           {opts.map(o=><option key={o} value={o}>{o}</option>)}
         </select>
@@ -164,9 +164,9 @@
       const [open,setOpen]=useState(false);
       const matches=(patients||[]).filter(p=>value&&p.name.toLowerCase().includes(value.toLowerCase())).slice(0,6);
       return <div style={{marginBottom:14,position:"relative"}}>
-        {label&&<div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+        {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
         <input value={value||""} placeholder="Wpisz imię pacjenta..." onChange={e=>{onChange(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
-          style={{width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
         {open&&matches.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden"}}>
           {matches.map(p=><div key={p.id} onPointerDown={e=>{e.preventDefault();onChange(p.name);if(onSelect)onSelect(p);setOpen(false);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>
             {p.name} <span style={{color:"#7A8FA6",fontSize:12}}>{p.phone}</span>
@@ -2212,13 +2212,13 @@
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
             {content}
           </div>
-          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"8px 0 12px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
+          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"10px 0 16px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
             {TABS.map(t=>{
               return <button key={t.id}
                 onClick={()=>setTab(t.id)}
-                style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"4px 0",fontFamily:"inherit",userSelect:"none",WebkitUserSelect:"none"}}>
-                <div style={{width:36,height:36,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={18} c={tab===t.id?"#fff":dk?"#5A8A8A":"#7A8FA6"}/></div>
-                <span style={{fontSize:10,fontWeight:600,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#7A8FA6"}}>{t.l}</span>
+                style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0",fontFamily:"inherit",userSelect:"none",WebkitUserSelect:"none"}}>
+                <div style={{width:40,height:40,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={20} c={tab===t.id?"#fff":dk?"#5A8A8A":"#4A6070"}/></div>
+                <span style={{fontSize:12,fontWeight:600,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#4A6070"}}>{t.l}</span>
               </button>;
             })}
           </div>
