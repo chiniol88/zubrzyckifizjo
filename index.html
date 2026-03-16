@@ -110,8 +110,20 @@
 
     function Modal({title,onClose,children}) {
       const dk=useContext(DarkCtx);
+      const scrollRef=useRef(null);
+      const scrollPos=useRef(0);
+      useEffect(()=>{
+        const el=scrollRef.current;
+        if(!el)return;
+        const save=()=>{scrollPos.current=el.scrollTop;};
+        el.addEventListener("scroll",save,{passive:true});
+        return()=>el.removeEventListener("scroll",save);
+      },[]);
+      useEffect(()=>{
+        if(scrollRef.current)scrollRef.current.scrollTop=scrollPos.current;
+      });
       return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-        <div style={{background:dk?"#0F1F1F":"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
+        <div ref={scrollRef} style={{background:dk?"#0F1F1F":"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{title}</div>
             <button onClick={onClose} style={{background:dk?"#1A2A2A":"#F2F5F7",border:"none",borderRadius:10,width:32,height:32,cursor:"pointer",fontSize:18,color:"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
@@ -2740,15 +2752,18 @@ Zasady:
         <div style={{display:desk?"grid":"block",gridTemplateColumns:desk?"1fr 1fr":"unset",gap:desk?16:0,alignItems:"start"}}>
         {/* PRZYCHODY */}
         <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
-          <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Przychody</div>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}>
-                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#3DAA72"}}>{demo?"****":totalInc.toFixed(2)} zł</div>
-                {diffInc!==null&&<div style={{background:diffInc>=0?"#3DAA7220":"#E05C5C20",borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,color:diffInc>=0?"#3DAA72":"#E05C5C"}}>{diffInc>=0?"+":""}{diffInc}%</div>}
+          <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Przychody</span>
+                {diffInc!==null&&<span style={{background:diffInc>=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:700,color:diffInc>=0?"#3DAA72":"#E05C5C"}}>{diffInc>=0?"+":""}{diffInc}%</span>}
               </div>
+              <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:"#3DAA72"}}>{demo?"****":totalInc.toFixed(2)} zł</span>
             </div>
-            <div style={{display:"flex",gap:6}}><Btn small onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}}>+ Jednorazowy</Btn><Btn small variant="secondary" onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("income");}}>↻</Btn></div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}} style={{flex:1,padding:"7px 10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Jednorazowy</button>
+              <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("income");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
+            </div>
           </div>
           {practiceCats.length>0&&<>
             <div style={{padding:"6px 16px",background:dk?"#0F1F1F":"#F0F9F5",fontSize:10,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5}}>Praktyka (auto)</div>
@@ -2763,15 +2778,18 @@ Zasady:
 
         {/* KOSZTY */}
         <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
-          <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Koszty</div>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:2}}>
-                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:"#E05C5C"}}>{demo?"****":totalExp.toFixed(2)} zł</div>
-                {diffExp!==null&&<div style={{background:diffExp<=0?"#3DAA7220":"#E05C5C20",borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,color:diffExp<=0?"#3DAA72":"#E05C5C"}}>{diffExp>=0?"+":""}{diffExp}%</div>}
+          <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Koszty</span>
+                {diffExp!==null&&<span style={{background:diffExp<=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:700,color:diffExp<=0?"#3DAA72":"#E05C5C"}}>{diffExp>=0?"+":""}{diffExp}%</span>}
               </div>
+              <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:"#E05C5C"}}>{demo?"****":totalExp.toFixed(2)} zł</span>
             </div>
-            <div style={{display:"flex",gap:6}}><Btn small onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}}>+ Jednorazowy</Btn><Btn small variant="secondary" onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("expense");}}>↻</Btn></div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}} style={{flex:1,padding:"7px 10px",borderRadius:10,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Jednorazowy</button>
+              <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("expense");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
+            </div>
           </div>
           {renderItems("expense",expCats,"#E05C5C")}
           {(monthData.expenses||[]).length===0&&recurringExp.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak kosztów</div>}
