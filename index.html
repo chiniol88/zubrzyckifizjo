@@ -1683,7 +1683,7 @@
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -1835,7 +1835,7 @@
             {viewMode==="year"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:year===y?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{y}</button>)}
             </div>}
-            {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk}/>}
+            {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
@@ -1931,7 +1931,7 @@
     
 
     // ── RECEIPT SCANNER ───────────────────────────────────────────────────────
-    function ReceiptScanner({onClose,onConfirm,expCats,incCats,memory,setMemory,selMonth,existingExpenses}) {
+    function ReceiptScanner({onClose,onConfirm,expCats,incCats,memory,setMemory,selMonth,existingExpenses,anthropicKey}) {
       const dk=useContext(DarkCtx);
       const bg2=dk?"#1A2A2A":"#fff";
       const border=dk?"#2A4040":"#E4EAF0";
@@ -2005,9 +2005,10 @@ Zasady:
             ...images.map(img=>({type:"image",source:{type:"base64",media_type:img.mime,data:img.b64}}))
           ];
 
+          if(!anthropicKey){setAiError("Brak klucza API — dodaj go w Ustawieniach");setStep("upload");return;}
           const resp=await fetch("https://api.anthropic.com/v1/messages",{
             method:"POST",
-            headers:{"Content-Type":"application/json"},
+            headers:{"Content-Type":"application/json","x-api-key":anthropicKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
             body:JSON.stringify({
               model:"claude-sonnet-4-20250514",
               max_tokens:2000,
@@ -2216,7 +2217,7 @@ Zasady:
       return arr.map(c=>typeof c==="string"?{name:c,subs:[]}:c);
     }
 
-    function Budget({finances,visits,rentals,budget,setBudget,desk}) {
+    function Budget({finances,visits,rentals,budget,setBudget,desk,anthropicKey}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const bg2=dk?"#1A2A2A":"#fff";
@@ -2800,6 +2801,7 @@ Zasady:
           setMemory={setReceiptMemory}
           selMonth={selMonth}
           existingExpenses={(monthData.expenses||[])}
+          anthropicKey={anthropicKey}
         />}
 
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
@@ -3029,7 +3031,7 @@ Zasady:
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
         {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
-        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk}/>}
+        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
       </>;
@@ -3173,6 +3175,20 @@ Zasady:
           <Row label="Auto-przypomnienie o backupie o 20:00">
             <Toggle val={settings.backupReminder!==false} onToggle={()=>setSettings(s=>({...s,backupReminder:s.backupReminder===false?true:false}))}/>
           </Row>
+        </Sec>
+        <Sec title="INTEGRACJE">
+          <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
+            <div style={{fontSize:14,color:txt,marginBottom:8}}>Klucz API Anthropic</div>
+            <div style={{fontSize:12,color:sub,marginBottom:8}}>Wymagany do skanowania paragonów. Wygeneruj na console.anthropic.com</div>
+            <input
+              type="password"
+              value={settings.anthropicKey||""}
+              onChange={e=>setSettings(s=>({...s,anthropicKey:e.target.value}))}
+              placeholder="sk-ant-..."
+              style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
+            />
+            {settings.anthropicKey&&<div style={{fontSize:12,color:"#3DAA72",marginTop:6}}>✓ Klucz zapisany</div>}
+          </div>
         </Sec>
         <Sec title="INFORMACJE">
           <Row label="Wersja aplikacji"><span style={{fontSize:13,color:sub}}>ZubrzyckiFizjo 1.0</span></Row>
