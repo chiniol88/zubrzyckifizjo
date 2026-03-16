@@ -2305,6 +2305,84 @@ Zasady:
       );
     }
 
+    function BudgetEditItemForm({cats,initial,selMonth,monthsList,onSave,onDelete,onMove,onClose,onFormChange}) {
+      const dk=useContext(DarkCtx);
+      const border=dk?"#2A4040":"#E4EAF0";
+      const sub="#7A8FA6";
+      const [form,setFormLocal]=useState(initial);
+      const [targetMonth,setTargetMonth]=useState(selMonth);
+      const setForm=(fn)=>{const next=typeof fn==="function"?fn(form):fn;setFormLocal(next);onFormChange(next);};
+      const selCat=cats.find(c=>c.name===form.cat);
+      const hasSubs=selCat&&(selCat.subs||[]).length>0;
+      return <Modal title="Edytuj wpis" onClose={onClose}>
+        <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
+        {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
+        <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
+        <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
+        <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={onSave}>Zapisz zmiany</Btn>
+        <div style={{marginBottom:8}}>
+          <div style={{fontSize:12,color:sub,fontWeight:600,marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Przenieś do miesiąca</div>
+          <div style={{display:"flex",gap:8}}>
+            <select value={targetMonth} onChange={e=>setTargetMonth(e.target.value)}
+              style={{flex:1,padding:"10px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}>
+              {(monthsList||[]).map(m=><option key={m} value={m}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</option>)}
+            </select>
+            <Btn variant="secondary" onClick={()=>onMove(targetMonth)} disabled={targetMonth===selMonth}>→</Btn>
+          </div>
+        </div>
+        <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={onDelete}>🗑️ Usuń</Btn>
+      </Modal>;
+    }
+
+    function BudgetRecurringForm({type,cats,initial,selMonth,dk,border,onSave,onClose,title}) {
+      const [form,setForm]=useState(initial);
+      const selCat=cats.find(c=>c.name===form.cat);
+      const hasSubs=selCat&&(selCat.subs||[]).length>0;
+      const sub="#7A8FA6";
+      return <Modal title={title} onClose={onClose}>
+        <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
+        {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
+        <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. Czynsz, Rata kredytu"/>
+        <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
+          <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+        </div>
+        <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>onSave(form)}>Zapisz</Btn>
+      </Modal>;
+    }
+
+    function BudgetEditRecurringForm({type,cats,initial,selMonth,dk,border,onSave,onDelete,onClose}) {
+      const [form,setForm]=useState(initial);
+      const selCat=cats.find(c=>c.name===form.cat);
+      const hasSubs=selCat&&(selCat.subs||[]).length>0;
+      const sub="#7A8FA6";
+      return <Modal title="Edytuj cykliczny" onClose={onClose}>
+        <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
+        {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
+        <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
+        <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
+          <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+        </div>
+        <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>onSave(form)}>Zapisz zmiany</Btn>
+        <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={onDelete}>🗑️ Usuń</Btn>
+      </Modal>;
+    }
+
+    function BudgetItemForm({type,cats,form,setForm,onSave,onClose,title}) {
+      const selCat=cats.find(c=>c.name===form.cat);
+      const hasSubs=selCat&&(selCat.subs||[]).length>0;
+      return <Modal title={title} onClose={onClose}>
+        <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
+        {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
+        <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. Wypłata marzec"/>
+        <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+        <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={onSave}>Zapisz</Btn>
+      </Modal>;
+    }
+
     // ── BUDGET ────────────────────────────────────────────────────────────────
     // Struktura kategorii: [{name: "Wynagrodzenie", subs: ["Patryk", "Ania"]}, ...]
     // Migracja: stare string[] -> [{name, subs:[]}]
@@ -2464,8 +2542,8 @@ Zasady:
       const practiceTotal=practiceCats.reduce((s,c)=>s+(c.v||0),0);
       const manualIncTotal=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
       // totalInc/Exp including recurring — defined below after recurring state
-      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income").reduce((s,r)=>s+(+r.amount||0),0);
-      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense").reduce((s,r)=>s+(+r.amount||0),0);
+      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
+      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
       const totalInc=practiceTotal+manualIncTotal+recurringIncTotalEarly;
       const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recurringExpTotalEarly;
 
@@ -2474,24 +2552,24 @@ Zasady:
       const [compareMonth,setCompareMonth]=useState(()=>{const d=new Date(todayLocal().slice(0,7)+"-15");d.setMonth(d.getMonth()-1);return d.toISOString().slice(0,7);});
       const [showRecurring,setShowRecurring]=useState(null); // "income"|"expense"|null - add modal
       const [editRecurring,setEditRecurring]=useState(null);
-      const [rForm,setRForm]=useState({type:"expense",cat:"",subcat:"",desc:"",amount:"",cycle:"monthly"});
+      const [rForm,setRForm]=useState({type:"expense",cat:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});
 
       const recurring=useMemo(()=>budget.recurring||[],[budget]);
-      const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"),[recurring]);
-      const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"),[recurring]);
+      const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)),[recurring,selMonth]);
+      const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)),[recurring,selMonth]);
       // monthly equivalent: weekly×4, monthly×1
       const recurringIncTotal=recurringInc.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
       const recurringExpTotal=recurringExp.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
 
       const saveRecurring=()=>{
         if(!rForm.cat||!rForm.amount)return;
-        const item={id:Date.now(),type:rForm.type,cat:rForm.cat,subcat:rForm.subcat||"",desc:rForm.desc,amount:+rForm.amount,cycle:rForm.cycle};
+        const item={id:Date.now(),type:rForm.type,cat:rForm.cat,subcat:rForm.subcat||"",desc:rForm.desc,amount:+rForm.amount,cycle:rForm.cycle,startMonth:rForm.startMonth||selMonth};
         setBudget(b=>({...b,recurring:[...(b.recurring||[]),item]}));
         setShowRecurring(null);
       };
       const updateRecurring=()=>{
         if(!editRecurring)return;
-        setBudget(b=>({...b,recurring:(b.recurring||[]).map(r=>r.id===editRecurring.id?{...editRecurring,...rForm,amount:+rForm.amount}:r)}));
+        setBudget(b=>({...b,recurring:(b.recurring||[]).map(r=>r.id===editRecurring.id?{...editRecurring,...rForm,amount:+rForm.amount,startMonth:rForm.startMonth||selMonth}:r)}));
         setEditRecurring(null);
       };
       const deleteRecurring=(id)=>{
@@ -2519,40 +2597,12 @@ Zasady:
       const diffInc=prevTotalInc>0?Math.round((totalInc-prevTotalInc)/prevTotalInc*100):null;
       const diffExp=prevTotalExp>0?Math.round((totalExp-prevTotalExp)/prevTotalExp*100):null;
 
-      // Copy from prev month (positions without amounts)
-      const copyFromPrev=()=>{
-        const prev=(budget.months||{})[prevMonth]||{income:[],expenses:[]};
-        if(!prev.income.length&&!prev.expenses.length){return;}
-        setMonthData(d=>({
-          income:[...(d.income||[]),...(prev.income||[]).map(i=>({...i,id:Date.now()+Math.random(),amount:0}))],
-          expenses:[...(d.expenses||[]),...(prev.expenses||[]).map(i=>({...i,id:Date.now()+Math.random(),amount:0}))]
-        }));
-      };
-
       const onScannerConfirm=(items,date)=>{
         setMonthData(d=>({
           ...d,
           expenses:[...(d.expenses||[]),...items.map(i=>({id:Date.now()+Math.random(),cat:i.cat,subcat:i.subcat||"",desc:i.desc,amount:i.amount,date}))]
         }));
         setShowScanner(false);
-      };
-
-      const exportCSV=()=>{
-        const rows=[["Data","Typ","Kategoria","Podkategoria","Opis","Kwota"]];
-        // Praktyka
-        practiceCats.forEach(c=>rows.push([selMonth+"-01","Przychód","Praktyka",c.label,"Auto",c.v.toFixed(2)]));
-        // Cykliczne
-        (budget.recurring||[]).forEach(r=>rows.push([selMonth+"-01",r.type==="income"?"Przychód":"Koszt",r.cat,r.subcat||"",r.desc||"↻ cykliczny",(+r.amount).toFixed(2)]));
-        // Miesięczne
-        (monthData.income||[]).forEach(i=>rows.push([selMonth+"-01","Przychód",i.cat,i.subcat||"",i.desc||"",(+i.amount).toFixed(2)]));
-        (monthData.expenses||[]).forEach(e=>rows.push([selMonth+"-01","Koszt",e.cat,e.subcat||"",e.desc||"",(+e.amount).toFixed(2)]));
-        const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-        const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url;a.download="budzet-"+selMonth+".csv";
-        document.body.appendChild(a);a.click();document.body.removeChild(a);
-        URL.revokeObjectURL(url);
       };
 
       // Year summary
@@ -2577,18 +2627,7 @@ Zasady:
 
       // CatMgrSection is defined outside Budget to prevent remount on keystroke
 
-      const ItemForm=({type,onSave,onClose,title})=>{
-        const cats=getCats(type);
-        const selCat=cats.find(c=>c.name===form.cat);
-        const hasSubs=selCat&&(selCat.subs||[]).length>0;
-        return <Modal title={title} onClose={onClose}>
-          <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
-          {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
-          <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. Wypłata marzec"/>
-          <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
-          <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={onSave}>Zapisz</Btn>
-        </Modal>;
-      };
+      // ItemForm defined outside Budget
 
       const [expandedCats,setExpandedCats]=useState({});
       const toggleCat=(key)=>setExpandedCats(e=>({...e,[key]:!e[key]}));
@@ -2631,7 +2670,7 @@ Zasady:
                         <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.subcat||item.cat}</span>
                         <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
                       </div>)}
-                      {catRec.filter(r=>r.subcat===s2).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly"});setEditRecurring(r);}}
+                      {catRec.filter(r=>r.subcat===s2).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
                         style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 36px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
                           <span style={{fontSize:11,color,opacity:.6}}>↻</span>
@@ -2648,7 +2687,7 @@ Zasady:
                 <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.cat}</span>
                 <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
               </div>)}
-              {catRec.filter(r=>!r.subcat).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly"});setEditRecurring(r);}}
+              {catRec.filter(r=>!r.subcat).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
                 style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <span style={{fontSize:12,color,opacity:.6}}>↻</span>
@@ -2677,11 +2716,9 @@ Zasady:
             <button onClick={()=>setShowScanner(true)} style={{background:"#0A7C7C",border:"none",borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>📷 Skanuj paragon</button>
             <button onClick={()=>setShowCompare(v=>!v)} style={{background:showCompare?"#2E86AB":"none",border:`1.5px solid ${showCompare?"#2E86AB":border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:showCompare?"#fff":sub,cursor:"pointer",fontFamily:"inherit"}}>⚖️ Porównaj</button>
             <button onClick={()=>setShowYear(v=>!v)} style={{background:showYear?"#0A7C7C":"none",border:`1.5px solid ${showYear?"#0A7C7C":border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:showYear?"#fff":sub,cursor:"pointer",fontFamily:"inherit"}}>📅 Rok {selMonth.slice(0,4)}</button>
-            <button onClick={copyFromPrev} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>📋 Kopiuj z poprzedniego</button>
           </div>
           <div style={{display:"flex",gap:6}}>
-            <button onClick={exportCSV} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⬇️ CSV</button>
-            <button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️</button>
+<button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️</button>
           </div>
         </div>
 
@@ -2762,7 +2799,7 @@ Zasady:
             </div>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}} style={{flex:1,padding:"7px 10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Jednorazowy</button>
-              <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("income");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
+              <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("income");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
             </div>
           </div>
           {practiceCats.length>0&&<>
@@ -2788,7 +2825,7 @@ Zasady:
             </div>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}} style={{flex:1,padding:"7px 10px",borderRadius:10,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Jednorazowy</button>
-              <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly"});setShowRecurring("expense");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
+              <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("expense");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
             </div>
           </div>
           {renderItems("expense",expCats,"#E05C5C")}
@@ -2796,42 +2833,55 @@ Zasady:
         </div>
         </div>{/* end side-by-side grid */}
 
-        {showAdd&&<ItemForm type={showAdd} title={showAdd==="income"?"Nowy przychód":"Nowy koszt"} onSave={saveAdd} onClose={()=>setShowAdd(null)}/>}
+        {showAdd&&<BudgetItemForm type={showAdd} cats={showAdd==="income"?incCats:expCats} form={form} setForm={setForm} title={showAdd==="income"?"Nowy przychód":"Nowy koszt"} onSave={saveAdd} onClose={()=>setShowAdd(null)}/>}
 
-        {editItem&&<Modal title="Edytuj wpis" onClose={()=>setEditItem(null)}>
-          {(()=>{
-            const cats=getCats(editItem.type);
-            const selCat=cats.find(c=>c.name===form.cat);
-            const hasSubs=selCat&&(selCat.subs||[]).length>0;
-            return <>
-              <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
-              {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
-              <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
-              <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
-              <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={saveEdit}>Zapisz zmiany</Btn>
-              <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>delItem(editItem.type,editItem.item.id)}>🗑️ Usuń</Btn>
-            </>;
-          })()}
-        </Modal>}
+        {editItem&&<BudgetEditItemForm
+          cats={getCats(editItem.type)}
+          initial={form}
+          selMonth={selMonth}
+          monthsList={monthsList}
+          onSave={saveEdit}
+          onDelete={()=>delItem(editItem.type,editItem.item.id)}
+          onMove={(targetMonth)=>{
+            const mkey=editItem.type==="income"?"income":"expenses";
+            const item=editItem.item;
+            // remove from current month
+            setBudget(b=>{
+              const cur=(b.months||{})[selMonth]||{income:[],expenses:[]};
+              const tgt=(b.months||{})[targetMonth]||{income:[],expenses:[]};
+              const newCur={...cur,[mkey]:(cur[mkey]||[]).filter(i=>i.id!==item.id)};
+              const newTgt={...tgt,[mkey]:[...(tgt[mkey]||[]),item]};
+              return {...b,months:{...(b.months||{}),[selMonth]:newCur,[targetMonth]:newTgt}};
+            });
+            setEditItem(null);
+          }}
+          onClose={()=>setEditItem(null)}
+          onFormChange={setForm}
+        />}
 
-        {showRecurring&&<Modal title={showRecurring==="income"?"Nowy cykliczny przychód":"Nowy cykliczny koszt"} onClose={()=>setShowRecurring(null)}>
-          
-          <Sel label="Kategoria" value={rForm.cat} onChange={v=>setRForm(f=>({...f,cat:v,subcat:""}))} options={getCats(showRecurring).map(c=>({value:c.name,label:c.name}))}/>
-          {(()=>{const selCat=getCats(showRecurring).find(c=>c.name===rForm.cat);const hasSubs=selCat&&(selCat.subs||[]).length>0;return hasSubs&&<Sel label="Podkategoria" value={rForm.subcat} onChange={v=>setRForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>})()}
-          <Inp label="Opis" value={rForm.desc} onChange={v=>setRForm(f=>({...f,desc:v}))} placeholder="np. Czynsz, Rata kredytu"/>
-          <Inp label="Kwota (zł) *" value={rForm.amount} onChange={v=>setRForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
-          <Btn disabled={!rForm.cat||!rForm.amount} style={{width:"100%",justifyContent:"center"}} onClick={saveRecurring}>Zapisz</Btn>
-        </Modal>}
+        {showRecurring&&<BudgetRecurringForm
+          type={showRecurring}
+          cats={getCats(showRecurring)}
+          initial={rForm}
+          selMonth={selMonth}
+          dk={dk}
+          border={border}
+          title={showRecurring==="income"?"Nowy cykliczny przychód":"Nowy cykliczny koszt"}
+          onSave={(f)=>{setBudget(b=>({...b,recurring:[...(b.recurring||[]),{...f,id:Date.now(),amount:+f.amount}]}));setShowRecurring(null);}}
+          onClose={()=>setShowRecurring(null)}
+        />}
 
-        {editRecurring&&<Modal title="Edytuj cykliczny" onClose={()=>setEditRecurring(null)}>
-          
-          <Sel label="Kategoria" value={rForm.cat} onChange={v=>setRForm(f=>({...f,cat:v,subcat:""}))} options={getCats(editRecurring.type).map(c=>({value:c.name,label:c.name}))}/>
-          {(()=>{const selCat=getCats(editRecurring.type).find(c=>c.name===rForm.cat);const hasSubs=selCat&&(selCat.subs||[]).length>0;return hasSubs&&<Sel label="Podkategoria" value={rForm.subcat} onChange={v=>setRForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>})()}
-          <Inp label="Opis" value={rForm.desc} onChange={v=>setRForm(f=>({...f,desc:v}))}/>
-          <Inp label="Kwota (zł)" value={rForm.amount} onChange={v=>setRForm(f=>({...f,amount:v}))} type="number"/>
-          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={updateRecurring}>Zapisz zmiany</Btn>
-          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>deleteRecurring(editRecurring.id)}>🗑️ Usuń</Btn>
-        </Modal>}
+        {editRecurring&&<BudgetEditRecurringForm
+          type={editRecurring.type}
+          cats={getCats(editRecurring.type)}
+          initial={rForm}
+          selMonth={selMonth}
+          dk={dk}
+          border={border}
+          onSave={(f)=>{setBudget(b=>({...b,recurring:(b.recurring||[]).map(r=>r.id===editRecurring.id?{...r,...f,amount:+f.amount}:r)}));setEditRecurring(null);}}
+          onDelete={()=>deleteRecurring(editRecurring.id)}
+          onClose={()=>setEditRecurring(null)}
+        />}
 
         {showScanner&&<ReceiptScanner
           onClose={()=>setShowScanner(false)}
