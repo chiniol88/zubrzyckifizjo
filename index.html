@@ -2011,7 +2011,7 @@ Zasady:
             headers:{"Content-Type":"application/json","x-api-key":anthropicKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
             body:JSON.stringify({
               model:"claude-sonnet-4-20250514",
-              max_tokens:2000,
+              max_tokens:4000,
               messages:[{role:"user",content}]
             })
           });
@@ -2019,7 +2019,14 @@ Zasady:
           const data=await resp.json();
           const text=data.content?.[0]?.text||"";
           const clean=text.replace(/```json|```/g,"").trim();
-          const parsed=JSON.parse(clean);
+          let parsed;
+          try {
+            parsed=JSON.parse(clean);
+          } catch(pe) {
+            setAiError("Błąd parsowania odpowiedzi AI. Spróbuj z lepszym zdjęciem lub poczekaj chwilę i spróbuj ponownie.");
+            setStep("upload");
+            return;
+          }
 
           // Build items list
           const newItems=(parsed.items||[]).filter(i=>!i.isDiscount).map((i,idx)=>({
