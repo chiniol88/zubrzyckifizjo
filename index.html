@@ -1683,7 +1683,7 @@
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -1835,7 +1835,7 @@
             {viewMode==="year"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:year===y?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{y}</button>)}
             </div>}
-            {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget}/>}
+            {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
@@ -1929,6 +1929,285 @@
     }
 
     
+
+    // ── RECEIPT SCANNER ───────────────────────────────────────────────────────
+    function ReceiptScanner({onClose,onConfirm,expCats,incCats,memory,setMemory,selMonth,existingExpenses}) {
+      const dk=useContext(DarkCtx);
+      const bg2=dk?"#1A2A2A":"#fff";
+      const border=dk?"#2A4040":"#E4EAF0";
+      const sub="#7A8FA6";
+
+      const [images,setImages]=useState([]); // base64 strings
+      const [step,setStep]=useState("upload"); // upload | analyzing | review | done
+      const [items,setItems]=useState([]); // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
+      const [receiptDate,setReceiptDate]=useState(selMonth+"-01");
+      const [receiptTotal,setReceiptTotal]=useState("");
+      const [aiError,setAiError]=useState(null);
+      const [dupWarning,setDupWarning]=useState(false);
+
+      const allExpCatNames=expCats.flatMap(c=>[c.name,...(c.subs||[]).map(s=>c.name+"/"+s)]);
+
+      const addImage=(e)=>{
+        const files=Array.from(e.target.files);
+        files.forEach(file=>{
+          const reader=new FileReader();
+          reader.onload=ev=>{
+            const b64=ev.target.result.split(",")[1];
+            setImages(prev=>[...prev,{b64,mime:file.type,preview:ev.target.result}]);
+          };
+          reader.readAsDataURL(file);
+        });
+      };
+
+      const removeImage=(i)=>setImages(prev=>prev.filter((_,j)=>j!==i));
+
+      const analyze=async()=>{
+        if(!images.length)return;
+        setStep("analyzing");
+        setAiError(null);
+
+        const memoryHints=Object.entries(memory||{}).slice(0,40).map(([k,v])=>`"${k}" => "${v}"`).join(", ");
+        const catList=allExpCatNames.join(", ");
+
+        const prompt=`Jesteś asystentem do analizy paragonów. Przeanalizuj paragon(y) na zdjęciach.
+
+Dostępne kategorie kosztów: ${catList}
+${memoryHints?`Zapamiętane przypisania produktów: ${memoryHints}`:""}
+
+Zwróć TYLKO JSON (bez markdown) w formacie:
+{
+  "date": "YYYY-MM-DD lub null jeśli nieczytelna",
+  "total": liczba (suma z paragonu, pole SUMA/RAZEM/DO ZAPŁATY),
+  "items": [
+    {
+      "name": "nazwa z paragonu",
+      "amount": liczba (kwota po rabacie),
+      "cat": "kategoria z listy lub null",
+      "subcat": "podkategoria lub null",
+      "confidence": "high|medium|low",
+      "isDiscount": false,
+      "discountApplied": liczba lub 0
+    }
+  ],
+  "unreadable": ["linia której nie mogłem odczytać"]
+}
+
+Zasady:
+- Jeśli pozycja to rabat/promocja/zniżka: isDiscount=true, amount=wartość rabatu (ujemna liczba), odejmij od poprzedniej pozycji
+- Nie wliczaj linii z VAT, numerem NIP, adresem sklepu, podsumowaniami
+- Dla pozycji ilość×cena: amount = wynik mnożenia
+- Jeśli nie możesz przypisać kategorii: cat=null
+- Data: szukaj formatu DD.MM.YYYY lub DD-MM-YYYY na paragonie`;
+
+        try {
+          const content=[
+            {type:"text",text:prompt},
+            ...images.map(img=>({type:"image",source:{type:"base64",media_type:img.mime,data:img.b64}}))
+          ];
+
+          const resp=await fetch("https://api.anthropic.com/v1/messages",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+              model:"claude-sonnet-4-20250514",
+              max_tokens:2000,
+              messages:[{role:"user",content}]
+            })
+          });
+
+          const data=await resp.json();
+          const text=data.content?.[0]?.text||"";
+          const clean=text.replace(/```json|```/g,"").trim();
+          const parsed=JSON.parse(clean);
+
+          // Build items list
+          const newItems=(parsed.items||[]).filter(i=>!i.isDiscount).map((i,idx)=>({
+            id:idx,
+            name:i.name||"?",
+            amount:Math.max(0,+i.amount||0),
+            cat:i.cat||null,
+            subcat:i.subcat||null,
+            confidence:i.confidence||"low",
+            discountApplied:i.discountApplied||0,
+            unreadable:false
+          }));
+
+          // Add unreadable items
+          (parsed.unreadable||[]).forEach((line,idx)=>{
+            newItems.push({id:1000+idx,name:line,amount:0,cat:null,subcat:null,confidence:"low",unreadable:true});
+          });
+
+          setItems(newItems);
+          if(parsed.date)setReceiptDate(parsed.date);
+          if(parsed.total)setReceiptTotal(String(parsed.total));
+
+          // Check duplicate
+          const day=parsed.date||receiptDate;
+          const sameDayTotal=existingExpenses.filter(e=>e.date===day).reduce((s,e)=>s+(+e.amount||0),0);
+          if(parsed.total&&sameDayTotal>0)setDupWarning(true);
+
+          setStep("review");
+        } catch(err) {
+          setAiError("Błąd analizy: "+err.message);
+          setStep("upload");
+        }
+      };
+
+      const updateItem=(id,field,val)=>{
+        setItems(prev=>prev.map(i=>i.id===id?{...i,[field]:val}:i));
+      };
+      const removeItem=(id)=>setItems(prev=>prev.filter(i=>i.id!==id));
+      const addItem=()=>setItems(prev=>[...prev,{id:Date.now(),name:"",amount:0,cat:null,subcat:null,confidence:"high",unreadable:false,discountApplied:0}]);
+
+      const itemsSum=items.reduce((s,i)=>s+(+i.amount||0),0);
+      const totalNum=+receiptTotal||0;
+      const diff=totalNum>0?Math.abs(itemsSum-totalNum):0;
+      const diffOk=diff<=0.05;
+
+      const confirm=()=>{
+        // Group by cat/subcat
+        const groups={};
+        items.forEach(i=>{
+          if(!i.amount||!i.cat)return;
+          const key=(i.cat+(i.subcat?"/"+i.subcat:""));
+          groups[key]=(groups[key]||{cat:i.cat,subcat:i.subcat||"",total:0});
+          groups[key].total+=(+i.amount||0);
+        });
+
+        // Save memory — only high/medium confidence corrections
+        const newMem={...memory};
+        items.forEach(i=>{
+          if(i.cat&&i.name&&i.name!=="?")newMem[i.name.toUpperCase()]=i.cat+(i.subcat?"/"+i.subcat:"");
+        });
+        setMemory(newMem);
+
+        const store=Object.values(groups)
+          .filter(g=>g.total>0)
+          .map(g=>({
+            id:Date.now()+Math.random(),
+            cat:g.cat,subcat:g.subcat,
+            desc:"Paragon "+receiptDate,
+            amount:Math.round(g.total*100)/100,
+            date:receiptDate
+          }));
+
+        onConfirm(store,receiptDate);
+      };
+
+      const catOptions=(type)=>{
+        const cats=type==="exp"?expCats:incCats;
+        const opts=[{value:"",label:"— wybierz —"}];
+        cats.forEach(c=>{
+          opts.push({value:c.name,label:c.name});
+          (c.subs||[]).forEach(s=>opts.push({value:c.name+"/"+s,label:"  ↳ "+s}));
+        });
+        return opts;
+      };
+
+      const inputStyle={padding:"6px 10px",borderRadius:8,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",width:"100%"};
+
+      return <Modal title="📷 Skanuj paragon" onClose={onClose}>
+        {step==="upload"&&<>
+          <div style={{marginBottom:12}}>
+            <div style={{fontSize:13,color:sub,marginBottom:10}}>Dodaj zdjęcie(a) paragonu. Możesz dodać kilka dla długich paragonów.</div>
+            <label style={{display:"block",border:`2px dashed ${border}`,borderRadius:12,padding:"20px",textAlign:"center",cursor:"pointer",background:dk?"#0F1F1F":"#F7FAFA"}}>
+              <div style={{fontSize:24,marginBottom:4}}>📷</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#0A7C7C"}}>Dodaj zdjęcie</div>
+              <div style={{fontSize:11,color:sub,marginTop:2}}>lub kilka zdjęć naraz</div>
+              <input type="file" accept="image/*" multiple capture="environment" onChange={addImage} style={{display:"none"}}/>
+            </label>
+          </div>
+          {images.length>0&&<>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+              {images.map((img,i)=><div key={i} style={{position:"relative",width:70,height:70}}>
+                <img src={img.preview} style={{width:70,height:70,objectFit:"cover",borderRadius:8,border:`1px solid ${border}`}}/>
+                <button onClick={()=>removeImage(i)} style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:10,background:"#E05C5C",color:"#fff",border:"none",cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>×</button>
+              </div>)}
+            </div>
+            <Btn style={{width:"100%",justifyContent:"center"}} onClick={analyze}>Analizuj paragon{images.length>1?"y":""}</Btn>
+          </>}
+          {aiError&&<div style={{color:"#E05C5C",fontSize:13,marginTop:8,padding:"10px 12px",background:"#FEE2E2",borderRadius:10}}>{aiError}</div>}
+        </>}
+
+        {step==="analyzing"&&<div style={{textAlign:"center",padding:"40px 20px"}}>
+          <div style={{fontSize:32,marginBottom:12}}>🔍</div>
+          <div style={{fontWeight:600,fontSize:15,marginBottom:6}}>Analizuję paragon...</div>
+          <div style={{fontSize:13,color:sub}}>Rozpoznaję pozycje i przypisuję kategorie</div>
+        </div>}
+
+        {step==="review"&&<>
+          {dupWarning&&<div style={{background:"#FEF3C7",borderRadius:10,padding:"10px 14px",marginBottom:12,fontSize:13,color:"#92400E"}}>
+            ⚠️ W tym dniu masz już wpisy kosztów. Możliwy duplikat — sprawdź.
+          </div>}
+
+          <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:sub,fontWeight:600,marginBottom:3}}>DATA PARAGONU</div>
+              <input type="date" value={receiptDate} onChange={e=>setReceiptDate(e.target.value)} style={inputStyle}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:11,color:sub,fontWeight:600,marginBottom:3}}>KWOTA Z PARAGONU</div>
+              <input type="number" value={receiptTotal} onChange={e=>setReceiptTotal(e.target.value)} placeholder="0.00" style={inputStyle}/>
+            </div>
+          </div>
+
+          <div style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:11,color:sub,fontWeight:600}}>POZYCJE ({items.length})</div>
+              <button onClick={addItem} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:8,padding:"4px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+            </div>
+            {items.map(item=>(
+              <div key={item.id} style={{background:item.unreadable?(dk?"#2A1A1A":"#FFF5F5"):(item.cat?( dk?"#0F1F1F":"#F7FAF9"):(dk?"#1A1A2A":"#F5F5FF")),borderRadius:10,padding:"10px 12px",marginBottom:6,border:`1px solid ${item.unreadable?"#E05C5C":item.cat?border:"#A78BFA"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                  <div style={{flex:1}}>
+                    <input value={item.name} onChange={e=>updateItem(item.id,"name",e.target.value)} style={{width:"100%",padding:"4px 8px",borderRadius:7,border:`1px solid ${border}`,background:"transparent",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontWeight:600,fontFamily:"inherit"}}/>
+                    {item.discountApplied>0&&<div style={{fontSize:10,color:"#3DAA72"}}>rabat: -{item.discountApplied.toFixed(2)} zł</div>}
+                    {item.unreadable&&<div style={{fontSize:10,color:"#E05C5C"}}>⚠️ Nieodczytana pozycja — wpisz kwotę ręcznie</div>}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    <input type="number" value={item.amount||""} onChange={e=>updateItem(item.id,"amount",+e.target.value)} placeholder="0.00"
+                      style={{width:75,padding:"4px 8px",borderRadius:7,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",textAlign:"right"}}/>
+                    <button onClick={()=>removeItem(item.id)} style={{width:26,height:26,borderRadius:7,background:"#FEE2E2",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>
+                  </div>
+                </div>
+                <select value={(item.cat&&item.subcat)?item.cat+"/"+item.subcat:(item.cat||"")}
+                  onChange={e=>{const val=e.target.value;if(!val){updateItem(item.id,"cat",null);updateItem(item.id,"subcat",null);}else if(val.includes("/")){const[c,s]=val.split("/");updateItem(item.id,"cat",c);updateItem(item.id,"subcat",s);}else{updateItem(item.id,"cat",val);updateItem(item.id,"subcat",null);}}}
+                  style={{...inputStyle,fontSize:12}}>
+                  {catOptions("exp").map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                {item.confidence==="low"&&item.cat&&<div style={{fontSize:10,color:"#F59E0B",marginTop:3}}>⚡ Niska pewność — sprawdź kategorię</div>}
+              </div>
+            ))}
+          </div>
+
+          <div style={{background:dk?"#1A2A2A":"#F0F9F5",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontSize:13,color:sub}}>Suma pozycji:</span>
+              <span style={{fontWeight:700,fontSize:13,color:dk?"#E8F5F5":"#1C2B3A"}}>{itemsSum.toFixed(2)} zł</span>
+            </div>
+            {totalNum>0&&<div style={{display:"flex",justifyContent:"space-between"}}>
+              <span style={{fontSize:13,color:sub}}>Kwota z paragonu:</span>
+              <span style={{fontWeight:700,fontSize:13,color:dk?"#E8F5F5":"#1C2B3A"}}>{totalNum.toFixed(2)} zł</span>
+            </div>}
+            {totalNum>0&&!diffOk&&<div style={{marginTop:6,padding:"6px 10px",background:"#FEF3C7",borderRadius:8,fontSize:12,color:"#92400E"}}>
+              ⚠️ Różnica: {diff.toFixed(2)} zł — sprawdź pozycje lub skoryguj kwoty
+            </div>}
+            {totalNum>0&&diffOk&&<div style={{marginTop:6,fontSize:12,color:"#3DAA72",fontWeight:600}}>✓ Kwoty się zgadzają</div>}
+          </div>
+
+          {items.some(i=>!i.cat&&i.amount>0)&&<div style={{background:"#FEF3C7",borderRadius:10,padding:"10px 14px",marginBottom:12,fontSize:12,color:"#92400E"}}>
+            ⚠️ {items.filter(i=>!i.cat&&i.amount>0).length} pozycji bez kategorii — nie zostaną dodane do budżetu
+          </div>}
+
+          <div style={{display:"flex",gap:8}}>
+            <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setStep("upload")}>← Wróć</Btn>
+            <Btn style={{flex:1,justifyContent:"center"}} onClick={confirm}>Dodaj do budżetu ✓</Btn>
+          </div>
+        </>}
+      </Modal>;
+    }
+
+
     // ── BUDGET ────────────────────────────────────────────────────────────────
     // Struktura kategorii: [{name: "Wynagrodzenie", subs: ["Patryk", "Ania"]}, ...]
     // Migracja: stare string[] -> [{name, subs:[]}]
@@ -1937,7 +2216,7 @@
       return arr.map(c=>typeof c==="string"?{name:c,subs:[]}:c);
     }
 
-    function Budget({finances,visits,rentals,budget,setBudget}) {
+    function Budget({finances,visits,rentals,budget,setBudget,desk}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const bg2=dk?"#1A2A2A":"#fff";
@@ -1946,6 +2225,9 @@
 
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
       const [showCatMgr,setShowCatMgr]=useState(false);
+      const [showScanner,setShowScanner]=useState(false);
+      const receiptMemory=useMemo(()=>budget.receiptMemory||{},[budget]);
+      const setReceiptMemory=(m)=>setBudget(b=>({...b,receiptMemory:m}));
       const [showAdd,setShowAdd]=useState(null); // "income"|"expense"
       const [editItem,setEditItem]=useState(null);
       const [form,setForm]=useState({cat:"",subcat:"",desc:"",amount:""});
@@ -2096,6 +2378,8 @@
       const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recurringExpTotalEarly;
 
       const [showYear,setShowYear]=useState(false);
+      const [showCompare,setShowCompare]=useState(false);
+      const [compareMonth,setCompareMonth]=useState(()=>{const d=new Date(todayLocal().slice(0,7)+"-15");d.setMonth(d.getMonth()-1);return d.toISOString().slice(0,7);});
       const [showRecurring,setShowRecurring]=useState(null); // "income"|"expense"|null - add modal
       const [editRecurring,setEditRecurring]=useState(null);
       const [rForm,setRForm]=useState({type:"expense",cat:"",subcat:"",desc:"",amount:"",cycle:"monthly"});
@@ -2151,6 +2435,32 @@
           income:[...(d.income||[]),...(prev.income||[]).map(i=>({...i,id:Date.now()+Math.random(),amount:0}))],
           expenses:[...(d.expenses||[]),...(prev.expenses||[]).map(i=>({...i,id:Date.now()+Math.random(),amount:0}))]
         }));
+      };
+
+      const onScannerConfirm=(items,date)=>{
+        setMonthData(d=>({
+          ...d,
+          expenses:[...(d.expenses||[]),...items.map(i=>({id:Date.now()+Math.random(),cat:i.cat,subcat:i.subcat||"",desc:i.desc,amount:i.amount,date}))]
+        }));
+        setShowScanner(false);
+      };
+
+      const exportCSV=()=>{
+        const rows=[["Data","Typ","Kategoria","Podkategoria","Opis","Kwota"]];
+        // Praktyka
+        practiceCats.forEach(c=>rows.push([selMonth+"-01","Przychód","Praktyka",c.label,"Auto",c.v.toFixed(2)]));
+        // Cykliczne
+        (budget.recurring||[]).forEach(r=>rows.push([selMonth+"-01",r.type==="income"?"Przychód":"Koszt",r.cat,r.subcat||"",r.desc||"↻ cykliczny",(+r.amount).toFixed(2)]));
+        // Miesięczne
+        (monthData.income||[]).forEach(i=>rows.push([selMonth+"-01","Przychód",i.cat,i.subcat||"",i.desc||"",(+i.amount).toFixed(2)]));
+        (monthData.expenses||[]).forEach(e=>rows.push([selMonth+"-01","Koszt",e.cat,e.subcat||"",e.desc||"",(+e.amount).toFixed(2)]));
+        const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+        const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;a.download="budzet-"+selMonth+".csv";
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       };
 
       // Year summary
@@ -2328,13 +2638,61 @@
 
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setShowScanner(true)} style={{background:"#0A7C7C",border:"none",borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>📷 Skanuj paragon</button>
+            <button onClick={()=>setShowCompare(v=>!v)} style={{background:showCompare?"#2E86AB":"none",border:`1.5px solid ${showCompare?"#2E86AB":border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:showCompare?"#fff":sub,cursor:"pointer",fontFamily:"inherit"}}>⚖️ Porównaj</button>
             <button onClick={()=>setShowYear(v=>!v)} style={{background:showYear?"#0A7C7C":"none",border:`1.5px solid ${showYear?"#0A7C7C":border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:showYear?"#fff":sub,cursor:"pointer",fontFamily:"inherit"}}>📅 Rok {selMonth.slice(0,4)}</button>
             <button onClick={copyFromPrev} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>📋 Kopiuj z poprzedniego</button>
           </div>
-          <button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️</button>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={exportCSV} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⬇️ CSV</button>
+            <button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️</button>
+          </div>
         </div>
 
         {/* ROK */}
+        {showCompare&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+          <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Porównaj miesiące</div>
+            <select value={compareMonth} onChange={e=>setCompareMonth(e.target.value)}
+              style={{padding:"5px 10px",borderRadius:8,border:`1px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}>
+              {monthsList.filter(m=>m!==selMonth).map(m=><option key={m} value={m}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</option>)}
+            </select>
+          </div>
+          {(()=>{
+            const md2=(budget.months||{})[compareMonth]||{income:[],expenses:[]};
+            const visitMap={};(visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
+            let prac2=0;
+            (finances||[]).filter(f=>{if(f.type!=="przychód")return false;const sid=f.sourceId||"";const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;return d&&d.startsWith(compareMonth);}).forEach(f=>{prac2+=(+f.amount||0);});
+            const recInc2=(budget.recurring||[]).filter(r=>r.type==="income").reduce((s,r)=>s+(+r.amount||0),0);
+            const recExp2=(budget.recurring||[]).filter(r=>r.type==="expense").reduce((s,r)=>s+(+r.amount||0),0);
+            const inc2=prac2+(md2.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc2;
+            const exp2=(md2.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp2;
+            const rows=[
+              {label:"Przychody",a:totalInc,b:inc2,color:"#3DAA72"},
+              {label:"Koszty",a:totalExp,b:exp2,color:"#E05C5C"},
+            ];
+            const fmtDiff=(a,b,invert)=>{const d=a-b;if(d===0)return null;const pct=b>0?Math.round(Math.abs(d)/b*100):null;const better=invert?d<0:d>0;return {val:d,pct,better};};
+            return <div style={{padding:"12px 16px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:8,textAlign:"center"}}>
+                <div style={{fontSize:11,color:sub}}></div>
+                <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C"}}>{new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"short",year:"numeric"})}</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#2E86AB"}}>{new Date(compareMonth+"-15").toLocaleDateString("pl-PL",{month:"short",year:"numeric"})}</div>
+              </div>
+              {rows.map(row=>{
+                const diff=fmtDiff(row.a,row.b,row.label==="Koszty");
+                return <div key={row.label} style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:10,alignItems:"center"}}>
+                  <div style={{fontSize:12,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{row.label}</div>
+                  <div style={{textAlign:"center",fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:14,color:row.color}}>{totalInc&&row.label==="Przychody"?totalInc.toFixed(0):totalExp.toFixed(0)} zł</div>
+                  <div style={{textAlign:"center",fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:14,color:row.color}}>{row.b.toFixed(0)} zł</div>
+                  {diff&&<div style={{gridColumn:"1/-1",textAlign:"right",fontSize:11,color:diff.better?"#3DAA72":"#E05C5C",marginTop:-4}}>
+                    {diff.better?"↑ lepiej":"↓ gorzej"} o {Math.abs(diff.val).toFixed(0)} zł{diff.pct?` (${diff.pct}%)`:""}
+                  </div>}
+                </div>;
+              })}
+            </div>;
+          })()}
+        </div>}
+
         {showYear&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Rok {selMonth.slice(0,4)}</div>
           {yearMonths.map(m=>{
@@ -2355,6 +2713,7 @@
           })}
         </div>}
 
+        <div style={{display:desk?"grid":"block",gridTemplateColumns:desk?"1fr 1fr":"unset",gap:desk?16:0,alignItems:"start"}}>
         {/* PRZYCHODY */}
         <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
           <div style={{padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${border}`}}>
@@ -2393,6 +2752,7 @@
           {renderItems("expense",expCats,"#E05C5C")}
           {(monthData.expenses||[]).length===0&&recurringExp.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak kosztów</div>}
         </div>
+        </div>{/* end side-by-side grid */}
 
         {showAdd&&<ItemForm type={showAdd} title={showAdd==="income"?"Nowy przychód":"Nowy koszt"} onSave={saveAdd} onClose={()=>setShowAdd(null)}/>}
 
@@ -2430,6 +2790,17 @@
           <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={updateRecurring}>Zapisz zmiany</Btn>
           <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>deleteRecurring(editRecurring.id)}>🗑️ Usuń</Btn>
         </Modal>}
+
+        {showScanner&&<ReceiptScanner
+          onClose={()=>setShowScanner(false)}
+          onConfirm={onScannerConfirm}
+          expCats={expCats}
+          incCats={incCats}
+          memory={receiptMemory}
+          setMemory={setReceiptMemory}
+          selMonth={selMonth}
+          existingExpenses={(monthData.expenses||[])}
+        />}
 
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
           <CatMgrSection type="income" cats={incCats} color="#3DAA72"/>
@@ -2658,7 +3029,7 @@
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
         {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
-        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget}/>}
+        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
       </>;
