@@ -2711,15 +2711,24 @@ Zasady:
           </button>)}
         </div>
 
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setShowScanner(true)} style={{background:"#0A7C7C",border:"none",borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>📷 Skanuj paragon</button>
-            <button onClick={()=>setShowCompare(v=>!v)} style={{background:showCompare?"#2E86AB":"none",border:`1.5px solid ${showCompare?"#2E86AB":border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:showCompare?"#fff":sub,cursor:"pointer",fontFamily:"inherit"}}>⚖️ Porównaj</button>
-            <button onClick={()=>setShowYear(v=>!v)} style={{background:showYear?"#0A7C7C":"none",border:`1.5px solid ${showYear?"#0A7C7C":border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:showYear?"#fff":sub,cursor:"pointer",fontFamily:"inherit"}}>📅 Rok {selMonth.slice(0,4)}</button>
-          </div>
-          <div style={{display:"flex",gap:6}}>
-<button onClick={()=>setShowCatMgr(true)} style={{background:"none",border:`1.5px solid ${border}`,borderRadius:10,padding:"6px 14px",fontSize:12,fontWeight:600,color:sub,cursor:"pointer",fontFamily:"inherit"}}>⚙️</button>
-          </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:12}}>
+          {[
+            {icon:"📷",label:"Paragon",onClick:()=>setShowScanner(true),active:false,color:"#0A7C7C"},
+            {icon:"⚖️",label:"Porównaj",onClick:()=>setShowCompare(v=>!v),active:showCompare,color:"#2E86AB"},
+            {icon:"📅",label:"Rok "+selMonth.slice(0,4),onClick:()=>setShowYear(v=>!v),active:showYear,color:"#0A7C7C"},
+            {icon:"⚙️",label:"Kat.",onClick:()=>setShowCatMgr(true),active:false,color:sub},
+          ].map(b=>(
+            <button key={b.label} onClick={b.onClick} style={{
+              display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+              gap:3,padding:"10px 4px",borderRadius:12,cursor:"pointer",fontFamily:"inherit",
+              background:b.active?b.color:(dk?"#1A2A2A":"#fff"),
+              border:`1.5px solid ${b.active?b.color:border}`,
+              boxShadow:"0 1px 3px rgba(0,0,0,.06)"
+            }}>
+              <span style={{fontSize:18,lineHeight:1}}>{b.icon}</span>
+              <span style={{fontSize:10,fontWeight:600,color:b.active?"#fff":(dk?"#7ABABA":"#4A6070"),whiteSpace:"nowrap"}}>{b.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* ROK */}
@@ -2791,15 +2800,15 @@ Zasady:
         <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div>
                 <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Przychody</span>
-                {diffInc!==null&&<span style={{background:diffInc>=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:700,color:diffInc>=0?"#3DAA72":"#E05C5C"}}>{diffInc>=0?"+":""}{diffInc}%</span>}
+                {diffInc!==null&&<span style={{marginLeft:6,background:diffInc>=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 6px",fontSize:10,fontWeight:700,color:diffInc>=0?"#3DAA72":"#E05C5C"}}>{diffInc>=0?"+":""}{diffInc}%</span>}
               </div>
-              <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:"#3DAA72"}}>{demo?"****":totalInc.toFixed(2)} zł</span>
+              <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#3DAA72",whiteSpace:"nowrap"}}>{demo?"****":totalInc.toFixed(2)} zł</span>
             </div>
             <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}} style={{flex:1,padding:"7px 10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Jednorazowy</button>
-              <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("income");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
+              <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("income");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+              <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("income");}} style={{padding:"8px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>↻</button>
             </div>
           </div>
           {practiceCats.length>0&&<>
@@ -2817,15 +2826,15 @@ Zasady:
         <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div>
                 <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Koszty</span>
-                {diffExp!==null&&<span style={{background:diffExp<=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 7px",fontSize:11,fontWeight:700,color:diffExp<=0?"#3DAA72":"#E05C5C"}}>{diffExp>=0?"+":""}{diffExp}%</span>}
+                {diffExp!==null&&<span style={{marginLeft:6,background:diffExp<=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 6px",fontSize:10,fontWeight:700,color:diffExp<=0?"#3DAA72":"#E05C5C"}}>{diffExp>=0?"+":""}{diffExp}%</span>}
               </div>
-              <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:"#E05C5C"}}>{demo?"****":totalExp.toFixed(2)} zł</span>
+              <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#E05C5C",whiteSpace:"nowrap"}}>{demo?"****":totalExp.toFixed(2)} zł</span>
             </div>
             <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}} style={{flex:1,padding:"7px 10px",borderRadius:10,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Jednorazowy</button>
-              <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("expense");}} style={{padding:"7px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>↻ Cykliczny</button>
+              <button onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:""});setShowAdd("expense");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+              <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("expense");}} style={{padding:"8px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>↻</button>
             </div>
           </div>
           {renderItems("expense",expCats,"#E05C5C")}
