@@ -23,7 +23,7 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useMemo, useContext, createContext } = React;
+    const { useState, useEffect, useMemo, useContext, createContext, useRef } = React;
     const DarkCtx = createContext(false);
     const DemoCtx = createContext(false);
     const demoName=(name,idx)=>name?`Pacjent ${idx+1}`:"—";
@@ -2235,9 +2235,9 @@ Zasady:
 
 
     // ── BUDGET ────────────────────────────────────────────────────────────────
-    function CatMgrSection({type,cats,color,border,sub,dk,editCat,setEditCat,moveCat,renameCat,delCat,newSubName,setNewSubName,addSub,moveSub,renameSub,delSub,newCatName,setNewCatName,addCat}) {
-      const [localName,setLocalName]=useState(newCatName[type]||"");
-      const [localSubs,setLocalSubs]=useState({});
+    function CatMgrSection({type,cats,color,border,sub,dk,editCat,setEditCat,moveCat,renameCat,delCat,addSub,moveSub,renameSub,delSub,addCat}) {
+      const nameRef=useRef(null);
+      const subRefs=useRef({});
       return (
         <div style={{marginBottom:20}}>
           <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{type==="income"?"Przychody":"Koszty"}</div>
@@ -2276,18 +2276,18 @@ Zasady:
                 </div>
               ))}
               <div style={{display:"flex",gap:6,padding:"6px 10px 6px 28px",borderTop:`1px solid ${border}`,background:dk?"#111E1E":"#FAFCFD"}}>
-                <input value={localSubs[`${type}-${ci}`]||""} onChange={e=>setLocalSubs(n=>({...n,[`${type}-${ci}`]:e.target.value}))}
-                  onKeyDown={e=>{if(e.key==="Enter"){addSub(type,ci,localSubs[`${type}-${ci}`]||"");setLocalSubs(n=>({...n,[`${type}-${ci}`]:""}));}}}
+                <input ref={el=>subRefs.current[ci]=el} defaultValue=""
+                  onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addSub(type,ci,e.target.value);e.target.value="";}}}
                   placeholder="Dodaj podkategorię..." style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1px solid ${border}`,background:"transparent",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}/>
-                <button onClick={()=>{addSub(type,ci,localSubs[`${type}-${ci}`]||"");setLocalSubs(n=>({...n,[`${type}-${ci}`]:""}));}} style={{background:color+"30",color,border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:13}}>+</button>
+                <button onClick={()=>{const el=subRefs.current[ci];if(el&&el.value.trim()){addSub(type,ci,el.value);el.value="";}}} style={{background:color+"30",color,border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:13}}>+</button>
               </div>
             </div>
           ))}
           <div style={{display:"flex",gap:8,marginTop:8}}>
-            <input value={localName} onChange={e=>setLocalName(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"){addCat(type,localName);setLocalName("");}}}
+            <input ref={nameRef} defaultValue=""
+              onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addCat(type,e.target.value);e.target.value="";}}}
               placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
-            <button onClick={()=>{addCat(type,localName);setLocalName("");}} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
+            <button onClick={()=>{if(nameRef.current&&nameRef.current.value.trim()){addCat(type,nameRef.current.value);nameRef.current.value="";}}} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
           </div>
         </div>
       );
@@ -2828,8 +2828,8 @@ Zasady:
         />}
 
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
-          <CatMgrSection type="income" cats={incCats} color="#3DAA72" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} newSubName={{}} setNewSubName={()=>{}} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} newCatName={{}} setNewCatName={()=>{}} addCat={addCat}/>
-          <CatMgrSection type="expense" cats={expCats} color="#E05C5C" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} newSubName={{}} setNewSubName={()=>{}} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} newCatName={{}} setNewCatName={()=>{}} addCat={addCat}/>
+          <CatMgrSection type="income" cats={incCats} color="#3DAA72" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} addCat={addCat}/>
+          <CatMgrSection type="expense" cats={expCats} color="#E05C5C" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} addCat={addCat}/>
         </Modal>}
       </div>;
     }
