@@ -2235,6 +2235,65 @@ Zasady:
 
 
     // ── BUDGET ────────────────────────────────────────────────────────────────
+    function CatMgrSection({type,cats,color,border,sub,dk,editCat,setEditCat,moveCat,renameCat,delCat,newSubName,setNewSubName,addSub,moveSub,renameSub,delSub,newCatName,setNewCatName,addCat}) {
+      const [localName,setLocalName]=useState(newCatName[type]||"");
+      const [localSubs,setLocalSubs]=useState({});
+      return (
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{type==="income"?"Przychody":"Koszty"}</div>
+          {cats.map((cat,ci)=>(
+            <div key={ci} style={{marginBottom:8,border:`1px solid ${border}`,borderRadius:10,overflow:"hidden"}}>
+              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 10px",background:dk?"#0F1F1F":"#F7F9FB"}}>
+                <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  <button onClick={()=>moveCat(type,ci,-1)} disabled={ci===0} style={{background:"none",border:"none",cursor:ci===0?"default":"pointer",color:ci===0?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▲</button>
+                  <button onClick={()=>moveCat(type,ci,1)} disabled={ci===cats.length-1} style={{background:"none",border:"none",cursor:ci===cats.length-1?"default":"pointer",color:ci===cats.length-1?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▼</button>
+                </div>
+                {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="name"
+                  ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
+                      style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+                    <button onClick={()=>renameCat(type,ci,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+                    <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
+                  :<><span style={{flex:1,fontSize:14,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{cat.name}</span>
+                    <button onClick={()=>setEditCat({type,catIdx:ci,field:"name",value:cat.name})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:13}}>✏️</button>
+                    <button onClick={()=>delCat(type,ci)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,lineHeight:1}}>×</button></>
+                }
+              </div>
+              {(cat.subs||[]).map((s2,si)=>(
+                <div key={si} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px 6px 28px",borderTop:`1px solid ${border}`}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                    <button onClick={()=>moveSub(type,ci,si,-1)} disabled={si===0} style={{background:"none",border:"none",cursor:si===0?"default":"pointer",color:si===0?border:sub,fontSize:10,lineHeight:1,padding:"1px 2px"}}>▲</button>
+                    <button onClick={()=>moveSub(type,ci,si,1)} disabled={si===(cat.subs.length-1)} style={{background:"none",border:"none",cursor:si===(cat.subs.length-1)?"default":"pointer",color:si===(cat.subs.length-1)?border:sub,fontSize:10,lineHeight:1,padding:"1px 2px"}}>▼</button>
+                  </div>
+                  {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="sub"&&editCat.subIdx===si
+                    ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
+                        style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
+                      <button onClick={()=>renameSub(type,ci,si,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+                      <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
+                    :<><span style={{flex:1,fontSize:13,color:dk?"#A0C8C8":"#4A6070"}}>↳ {s2}</span>
+                      <button onClick={()=>setEditCat({type,catIdx:ci,field:"sub",subIdx:si,value:s2})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:12}}>✏️</button>
+                      <button onClick={()=>delSub(type,ci,si)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:15,lineHeight:1}}>×</button></>
+                  }
+                </div>
+              ))}
+              <div style={{display:"flex",gap:6,padding:"6px 10px 6px 28px",borderTop:`1px solid ${border}`,background:dk?"#111E1E":"#FAFCFD"}}>
+                <input value={localSubs[`${type}-${ci}`]||""} onChange={e=>setLocalSubs(n=>({...n,[`${type}-${ci}`]:e.target.value}))}
+                  onKeyDown={e=>{if(e.key==="Enter"){addSub(type,ci,localSubs[`${type}-${ci}`]||"");setLocalSubs(n=>({...n,[`${type}-${ci}`]:""}));}}}
+                  placeholder="Dodaj podkategorię..." style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1px solid ${border}`,background:"transparent",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}/>
+                <button onClick={()=>{addSub(type,ci,localSubs[`${type}-${ci}`]||"");setLocalSubs(n=>({...n,[`${type}-${ci}`]:""}));}} style={{background:color+"30",color,border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:13}}>+</button>
+              </div>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:8,marginTop:8}}>
+            <input value={localName} onChange={e=>setLocalName(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"){addCat(type,localName);setLocalName("");}}}
+              placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+            <button onClick={()=>{addCat(type,localName);setLocalName("");}} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
+          </div>
+        </div>
+      );
+    }
+
+    // ── BUDGET ────────────────────────────────────────────────────────────────
     // Struktura kategorii: [{name: "Wynagrodzenie", subs: ["Patryk", "Ania"]}, ...]
     // Migracja: stare string[] -> [{name, subs:[]}]
     function normCats(arr) {
@@ -2303,11 +2362,9 @@ Zasady:
         setBudget(b=>{const cur=normCats(b[key]||[]);return {...b,[key]:fn(cur)};});
       };
 
-      const addCat=(type)=>{
-        const name=newCatName[type]||"";
-        if(!name.trim())return;
+      const addCat=(type,name)=>{
+        if(!(name||"").trim())return;
         setCats(type,cats=>[...cats,{name:name.trim(),subs:[]}]);
-        setNewCatName(n=>({...n,[type]:""}));
       };
       const delCat=(type,catIdx)=>{
         setCats(type,cats=>cats.filter((_,i)=>i!==catIdx));
@@ -2335,12 +2392,9 @@ Zasady:
         });
         setEditCat(null);
       };
-      const addSub=(type,catIdx)=>{
-        const key=`${type}-${catIdx}`;
-        const name=(newSubName[key]||"").trim();
-        if(!name)return;
-        setCats(type,cats=>cats.map((c,i)=>i===catIdx?{...c,subs:[...(c.subs||[]),name]}:c));
-        setNewSubName(n=>({...n,[key]:""}));
+      const addSub=(type,catIdx,name)=>{
+        if(!(name||"").trim())return;
+        setCats(type,cats=>cats.map((c,i)=>i===catIdx?{...c,subs:[...(c.subs||[]),(name||"").trim()]}:c));
       };
       const delSub=(type,catIdx,subIdx)=>{
         setCats(type,cats=>cats.map((c,i)=>i===catIdx?{...c,subs:(c.subs||[]).filter((_,j)=>j!==subIdx)}:c));
@@ -2509,63 +2563,7 @@ Zasady:
       const getCats=(type)=>type==="income"?incCats:expCats;
       const getColor=(type)=>type==="income"?"#3DAA72":"#E05C5C";
 
-      const CatMgrSection=({type,cats,color})=>(
-        <div style={{marginBottom:20}}>
-          <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{type==="income"?"Przychody":"Koszty"}</div>
-          {cats.map((cat,ci)=>(
-            <div key={ci} style={{marginBottom:8,border:`1px solid ${border}`,borderRadius:10,overflow:"hidden"}}>
-              {/* Category row */}
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 10px",background:dk?"#0F1F1F":"#F7F9FB"}}>
-                <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                  <button onClick={()=>moveCat(type,ci,-1)} disabled={ci===0} style={{background:"none",border:"none",cursor:ci===0?"default":"pointer",color:ci===0?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▲</button>
-                  <button onClick={()=>moveCat(type,ci,1)} disabled={ci===cats.length-1} style={{background:"none",border:"none",cursor:ci===cats.length-1?"default":"pointer",color:ci===cats.length-1?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▼</button>
-                </div>
-                {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="name"
-                  ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
-                      style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
-                    <button onClick={()=>renameCat(type,ci,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
-                    <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
-                  :<><span style={{flex:1,fontSize:14,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{cat.name}</span>
-                    <button onClick={()=>setEditCat({type,catIdx:ci,field:"name",value:cat.name})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:13}}>✏️</button>
-                    <button onClick={()=>delCat(type,ci)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,lineHeight:1}}>×</button></>
-                }
-              </div>
-              {/* Subcategories */}
-              {(cat.subs||[]).map((s2,si)=>(
-                <div key={si} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px 6px 28px",borderTop:`1px solid ${border}`}}>
-                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                    <button onClick={()=>moveSub(type,ci,si,-1)} disabled={si===0} style={{background:"none",border:"none",cursor:si===0?"default":"pointer",color:si===0?border:sub,fontSize:10,lineHeight:1,padding:"1px 2px"}}>▲</button>
-                    <button onClick={()=>moveSub(type,ci,si,1)} disabled={si===(cat.subs.length-1)} style={{background:"none",border:"none",cursor:si===(cat.subs.length-1)?"default":"pointer",color:si===(cat.subs.length-1)?border:sub,fontSize:10,lineHeight:1,padding:"1px 2px"}}>▼</button>
-                  </div>
-                  {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="sub"&&editCat.subIdx===si
-                    ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
-                        style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
-                      <button onClick={()=>renameSub(type,ci,si,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
-                      <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
-                    :<><span style={{flex:1,fontSize:13,color:dk?"#A0C8C8":"#4A6070"}}>↳ {s2}</span>
-                      <button onClick={()=>setEditCat({type,catIdx:ci,field:"sub",subIdx:si,value:s2})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:12}}>✏️</button>
-                      <button onClick={()=>delSub(type,ci,si)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:15,lineHeight:1}}>×</button></>
-                  }
-                </div>
-              ))}
-              {/* Add subcategory */}
-              <div style={{display:"flex",gap:6,padding:"6px 10px 6px 28px",borderTop:`1px solid ${border}`,background:dk?"#111E1E":"#FAFCFD"}}>
-                <input value={newSubName[`${type}-${ci}`]||""} onChange={e=>setNewSubName(n=>({...n,[`${type}-${ci}`]:e.target.value}))}
-                  onKeyDown={e=>e.key==="Enter"&&addSub(type,ci)}
-                  placeholder="Dodaj podkategorię..." style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1px solid ${border}`,background:"transparent",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}/>
-                <button onClick={()=>addSub(type,ci)} style={{background:color+"30",color,border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:13}}>+</button>
-              </div>
-            </div>
-          ))}
-          {/* Add category */}
-          <div style={{display:"flex",gap:8,marginTop:8}}>
-            <input value={newCatName[type]||""} onChange={e=>setNewCatName(n=>({...n,[type]:e.target.value}))}
-              onKeyDown={e=>e.key==="Enter"&&addCat(type)}
-              placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
-            <button onClick={()=>addCat(type)} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
-          </div>
-        </div>
-      );
+      // CatMgrSection is defined outside Budget to prevent remount on keystroke
 
       const ItemForm=({type,onSave,onClose,title})=>{
         const cats=getCats(type);
@@ -2830,8 +2828,8 @@ Zasady:
         />}
 
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
-          <CatMgrSection type="income" cats={incCats} color="#3DAA72"/>
-          <CatMgrSection type="expense" cats={expCats} color="#E05C5C"/>
+          <CatMgrSection type="income" cats={incCats} color="#3DAA72" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} newSubName={{}} setNewSubName={()=>{}} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} newCatName={{}} setNewCatName={()=>{}} addCat={addCat}/>
+          <CatMgrSection type="expense" cats={expCats} color="#E05C5C" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} newSubName={{}} setNewSubName={()=>{}} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} newCatName={{}} setNewCatName={()=>{}} addCat={addCat}/>
         </Modal>}
       </div>;
     }
