@@ -2388,6 +2388,23 @@ Zasady:
       </Modal>;
     }
 
+    function BudgetRecurringOverrideForm({r,selMonth,overrideVal,dk,border,onSave,onReset,onEditGlobal,onClose}) {
+      const sub="#7A8FA6";
+      const hasOverride=overrideVal!==undefined;
+      const [amount,setAmount]=useState(hasOverride?String(overrideVal.amount):String(r.amount));
+      const [desc,setDesc]=useState(hasOverride?(overrideVal.desc||r.desc||""):(r.desc||""));
+      const monthLabel=new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
+      const inputStyle={width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",boxSizing:"border-box"};
+      return <Modal title={"Cykliczny · "+monthLabel} onClose={onClose}>
+        {hasOverride&&<div style={{background:dk?"#1A3030":"#FFF8E1",border:"1px solid #F0C040",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#8A6A00"}}>↻* Nadpisano dla tego miesiąca</div>}
+        <Inp label="Opis (dla tego miesiąca)" value={desc} onChange={v=>setDesc(v)}/>
+        <Inp label="Kwota (zł) *" value={amount} onChange={v=>setAmount(v)} type="number"/>
+        <Btn disabled={!amount} style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>onSave({amount:+amount,desc})}>Zapisz dla tego miesiąca</Btn>
+        {hasOverride&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={onReset}>↺ Resetuj do domyślnej ({r.amount} zł)</Btn>}
+        <Btn variant="secondary" style={{width:"100%",justifyContent:"center"}} onClick={onEditGlobal}>⚙ Edytuj globalnie →</Btn>
+      </Modal>;
+    }
+
     function BudgetItemForm({type,cats,form,setForm,onSave,onClose,title}) {
       const selCat=cats.find(c=>c.name===form.cat);
       const hasSubs=selCat&&(selCat.subs||[]).length>0;
@@ -2573,8 +2590,8 @@ Zasady:
       const practiceTotal=practiceCats.reduce((s,c)=>s+(c.v||0),0);
       const manualIncTotal=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
       // totalInc/Exp including recurring — defined below after recurring state
-      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
-      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
+      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
       const totalInc=practiceTotal+manualIncTotal+recurringIncTotalEarly;
       const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recurringExpTotalEarly;
 
@@ -2584,13 +2601,17 @@ Zasady:
       const [showRecurring,setShowRecurring]=useState(null); // "income"|"expense"|null - add modal
       const [editRecurring,setEditRecurring]=useState(null);
       const [rForm,setRForm]=useState({type:"expense",cat:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});
+      const [editRecurringOverride,setEditRecurringOverride]=useState(null); // {r, type}
 
       const recurring=useMemo(()=>budget.recurring||[],[budget]);
       const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)),[recurring,selMonth]);
       const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)),[recurring,selMonth]);
+      const recOverrides=useMemo(()=>monthData.recurringOverrides||{},[monthData]);
+      const recAmt=(r)=>recOverrides[r.id]!==undefined?+recOverrides[r.id].amount:+r.amount;
+      const recDesc=(r)=>recOverrides[r.id]!==undefined?(recOverrides[r.id].desc||r.desc||r.cat):(r.desc||r.cat);
       // monthly equivalent: weekly×4, monthly×1
-      const recurringIncTotal=recurringInc.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
-      const recurringExpTotal=recurringExp.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
+      const recurringIncTotal=recurringInc.reduce((s,r)=>s+recAmt(r)*(r.cycle==="weekly"?4:1),0);
+      const recurringExpTotal=recurringExp.reduce((s,r)=>s+recAmt(r)*(r.cycle==="weekly"?4:1),0);
 
       const saveRecurring=()=>{
         if(!rForm.cat||!rForm.amount)return;
@@ -2671,7 +2692,7 @@ Zasady:
           const catRec=recItems.filter(r=>r.cat===cat.name);
           if(!catItems.length&&!catRec.length)return null;
           const hasSubs=(cat.subs||[]).length>0;
-          const catTotal=catItems.reduce((s,i)=>s+(+i.amount||0),0)+catRec.reduce((s,r)=>s+(+r.amount||0),0);
+          const catTotal=catItems.reduce((s,i)=>s+(+i.amount||0),0)+catRec.reduce((s,r)=>s+recAmt(r),0);
           const expKey=type+"-"+cat.name;
           const isOpen=!!expandedCats[expKey];
           return <div key={cat.name}>
@@ -2691,7 +2712,7 @@ Zasady:
                     const subItems=catItems.filter(i=>i.subcat===s);
                     const subRec=catRec.filter(r=>r.subcat===s);
                     if(!subItems.length&&!subRec.length)return null;
-                    const subTotal=[...subItems,...subRec].reduce((a,i)=>a+(+i.amount||0),0);
+                    const subTotal=[...subItems,...subRec].reduce((a,i)=>a+(recOverrides[i.id]!==undefined?+recOverrides[i.id].amount:+i.amount||0),0);
                     const subKey=expKey+"-"+s;
                     const subOpen=!!expandedCats[subKey];
                     const subCount=subItems.length+subRec.length;
@@ -2713,13 +2734,13 @@ Zasady:
                           <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.subcat||item.cat}</span>
                           <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
                         </div>)}
-                        {catRec.filter(r=>r.subcat===s).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
+                        {catRec.filter(r=>r.subcat===s).map(r=><div key={r.id} onClick={()=>setEditRecurringOverride({r,type})}
                           style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 44px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
                           <div style={{display:"flex",alignItems:"center",gap:6}}>
-                            <span style={{fontSize:11,color,opacity:.6}}>↻</span>
-                            <span style={{fontSize:12,color:sub}}>{demo?"••••":r.desc||r.subcat||r.cat}</span>
+                            <span style={{fontSize:11,color,opacity:.6}}>{recOverrides[r.id]!==undefined?"↻*":"↻"}</span>
+                            <span style={{fontSize:12,color:sub}}>{demo?"••••":recDesc(r)}</span>
                           </div>
-                          <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+r.amount).toFixed(2)} zł</span>
+                          <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":recAmt(r).toFixed(2)} zł</span>
                         </div>)}
                       </>}
                     </div>;
@@ -2731,13 +2752,13 @@ Zasady:
                 <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.cat}</span>
                 <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
               </div>)}
-              {catRec.filter(r=>!r.subcat).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
+              {catRec.filter(r=>!r.subcat).map(r=><div key={r.id} onClick={()=>setEditRecurringOverride({r,type})}
                 style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{fontSize:12,color,opacity:.6}}>↻</span>
-                  <span style={{fontSize:12,color:sub}}>{demo?"••••":r.desc||r.cat}</span>
+                  <span style={{fontSize:12,color,opacity:.6}}>{recOverrides[r.id]!==undefined?"↻*":"↻"}</span>
+                  <span style={{fontSize:12,color:sub}}>{demo?"••••":recDesc(r)}</span>
                 </div>
-                <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+r.amount).toFixed(2)} zł</span>
+                <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":recAmt(r).toFixed(2)} zł</span>
               </div>)}
             </div>}
           </div>;
@@ -2890,8 +2911,8 @@ Zasady:
         {(()=>{
           const allEntries=[
             ...(practiceCats.map(c=>({id:"prac-"+c.label,date:selMonth+"-01",cat:"Praktyka",subcat:c.label,desc:c.label+" (auto)",amount:c.v,type:"income"}))),
-            ...(recurringInc.map(r=>({id:"rec-"+r.id,date:selMonth+"-"+(r.dayOfMonth||1).toString().padStart(2,"0"),cat:r.cat,subcat:r.subcat||"",desc:r.desc||r.cat,amount:+r.amount,type:"income"}))),
-            ...(recurringExp.map(r=>({id:"rec-"+r.id,date:selMonth+"-"+(r.dayOfMonth||1).toString().padStart(2,"0"),cat:r.cat,subcat:r.subcat||"",desc:r.desc||r.cat,amount:+r.amount,type:"expense"}))),
+            ...(recurringInc.map(r=>({id:"rec-"+r.id,date:selMonth+"-"+(r.dayOfMonth||1).toString().padStart(2,"0"),cat:r.cat,subcat:r.subcat||"",desc:recDesc(r),amount:recAmt(r),type:"income"}))),
+            ...(recurringExp.map(r=>({id:"rec-"+r.id,date:selMonth+"-"+(r.dayOfMonth||1).toString().padStart(2,"0"),cat:r.cat,subcat:r.subcat||"",desc:recDesc(r),amount:recAmt(r),type:"expense"}))),
             ...(monthData.income||[]).map(i=>({...i,type:"income",date:i.date||selMonth+"-01"})),
             ...(monthData.expenses||[]).map(e=>({...e,type:"expense",date:e.date||selMonth+"-01"})),
           ].sort((a,b)=>b.date.localeCompare(a.date)||(a.type==="income"?-1:1));
@@ -2946,6 +2967,31 @@ Zasady:
           title={showRecurring==="income"?"Nowy cykliczny przychód":"Nowy cykliczny koszt"}
           onSave={(f)=>{setBudget(b=>({...b,recurring:[...(b.recurring||[]),{...f,id:Date.now(),amount:+f.amount}]}));setShowRecurring(null);}}
           onClose={()=>setShowRecurring(null)}
+        />}
+
+        {editRecurringOverride&&<BudgetRecurringOverrideForm
+          r={editRecurringOverride.r}
+          selMonth={selMonth}
+          overrideVal={recOverrides[editRecurringOverride.r.id]}
+          dk={dk}
+          border={border}
+          onSave={(ov)=>{
+            setMonthData(d=>({...d,recurringOverrides:{...(d.recurringOverrides||{}),[editRecurringOverride.r.id]:ov}}));
+            setEditRecurringOverride(null);
+          }}
+          onReset={()=>{
+            const ov={...(monthData.recurringOverrides||{})};
+            delete ov[editRecurringOverride.r.id];
+            setMonthData(d=>({...d,recurringOverrides:ov}));
+            setEditRecurringOverride(null);
+          }}
+          onEditGlobal={()=>{
+            const r=editRecurringOverride.r;
+            setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});
+            setEditRecurring(r);
+            setEditRecurringOverride(null);
+          }}
+          onClose={()=>setEditRecurringOverride(null)}
         />}
 
         {editRecurring&&<BudgetEditRecurringForm
