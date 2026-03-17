@@ -2152,7 +2152,7 @@ Zasady:
               <div style={{fontSize:24,marginBottom:4}}>📷</div>
               <div style={{fontSize:13,fontWeight:600,color:"#0A7C7C"}}>Dodaj zdjęcie</div>
               <div style={{fontSize:11,color:sub,marginTop:2}}>lub kilka zdjęć naraz</div>
-              <input type="file" accept="image/*" multiple capture="environment" onChange={addImage} style={{display:"none"}}/>
+              <input type="file" accept="image/*" multiple onChange={addImage} style={{display:"none"}}/>
             </label>
           </div>
           {images.length>0&&<>
@@ -2344,9 +2344,22 @@ Zasady:
         {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
         <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. Czynsz, Rata kredytu"/>
         <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+        <div style={{display:"flex",gap:10,marginBottom:14}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
+            <select value={form.dayOfMonth||1} onChange={e=>setForm(f=>({...f,dayOfMonth:+e.target.value}))}
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
+            <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          </div>
+        </div>
         <div style={{marginBottom:14}}>
-          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
-          <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+          <input type="month" value={form.endMonth||""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
         </div>
         <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>onSave(form)}>Zapisz</Btn>
       </Modal>;
@@ -2362,9 +2375,22 @@ Zasady:
         {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
         <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
         <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
+        <div style={{display:"flex",gap:10,marginBottom:14}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
+            <select value={form.dayOfMonth||1} onChange={e=>setForm(f=>({...f,dayOfMonth:+e.target.value}))}
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
+            <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          </div>
+        </div>
         <div style={{marginBottom:14}}>
-          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
-          <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+          <input type="month" value={form.endMonth||""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
         </div>
         <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>onSave(form)}>Zapisz zmiany</Btn>
         <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={onDelete}>🗑️ Usuń</Btn>
@@ -2542,8 +2568,8 @@ Zasady:
       const practiceTotal=practiceCats.reduce((s,c)=>s+(c.v||0),0);
       const manualIncTotal=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
       // totalInc/Exp including recurring — defined below after recurring state
-      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
-      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
+      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
+      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>s+(+r.amount||0),0);
       const totalInc=practiceTotal+manualIncTotal+recurringIncTotalEarly;
       const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recurringExpTotalEarly;
 
@@ -2555,8 +2581,8 @@ Zasady:
       const [rForm,setRForm]=useState({type:"expense",cat:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});
 
       const recurring=useMemo(()=>budget.recurring||[],[budget]);
-      const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)),[recurring,selMonth]);
-      const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)),[recurring,selMonth]);
+      const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)),[recurring,selMonth]);
+      const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)),[recurring,selMonth]);
       // monthly equivalent: weekly×4, monthly×1
       const recurringIncTotal=recurringInc.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
       const recurringExpTotal=recurringExp.reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
@@ -2658,7 +2684,8 @@ Zasady:
               {hasSubs
                 ? (cat.subs||[]).map(s=>{
                     const subItems=catItems.filter(i=>i.subcat===s);
-                    if(!subItems.length)return null;
+                    const subRec=catRec.filter(r=>r.subcat===s);
+                    if(!subItems.length&&!subRec.length)return null;
                     const subTotal=subItems.reduce((a,i)=>a+(+i.amount||0),0);
                     return <div key={s}>
                       <div style={{display:"flex",justifyContent:"space-between",padding:"5px 16px 5px 28px",background:dk?"#0F1B1B":type==="income"?"#EBF7F1":"#FAF0F0",fontSize:10,fontWeight:600,color:sub}}>
@@ -2670,7 +2697,7 @@ Zasady:
                         <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.subcat||item.cat}</span>
                         <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
                       </div>)}
-                      {catRec.filter(r=>r.subcat===s2).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
+                      {catRec.filter(r=>r.subcat===s).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
                         style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 36px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
                           <span style={{fontSize:11,color,opacity:.6}}>↻</span>
