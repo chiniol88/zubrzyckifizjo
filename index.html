@@ -2321,16 +2321,6 @@ Zasady:
         <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
         <Inp label="Data" value={form.date||""} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>
         <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={onSave}>Zapisz zmiany</Btn>
-        <div style={{marginBottom:8}}>
-          <div style={{fontSize:12,color:sub,fontWeight:600,marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Przenieś do miesiąca</div>
-          <div style={{display:"flex",gap:8}}>
-            <select value={targetMonth} onChange={e=>setTargetMonth(e.target.value)}
-              style={{flex:1,padding:"10px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}>
-              {(monthsList||[]).map(m=><option key={m} value={m}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</option>)}
-            </select>
-            <Btn variant="secondary" onClick={()=>onMove(targetMonth)} disabled={targetMonth===selMonth}>→</Btn>
-          </div>
-        </div>
         <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={onDelete}>🗑️ Usuń</Btn>
       </Modal>;
     }
@@ -2458,17 +2448,18 @@ Zasady:
       const practiceCats=useMemo(()=>{
         const visitMap={};
         (visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
-        const map={Wizyta:0,Wypożyczalnia:0,Wózek:0};
+        const map={Wizyta:0,Wypożyczalnia:0};
         (finances||[]).filter(f=>{
           if(f.type!=="przychód")return false;
           const sid=f.sourceId||"";
+          const cat=(f.category||"").toLowerCase();
+          if(cat==="wózek"||sid.startsWith("wozek-"))return false;
           const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;
           return d&&d.startsWith(selMonth);
         }).forEach(f=>{
           const sid=f.sourceId||"";
           const cat=(f.category||"").toLowerCase();
           if(cat==="wizyta"||sid.startsWith("visit-"))map["Wizyta"]+=+f.amount||0;
-          else if(cat==="wózek"||sid.startsWith("wozek-"))map["Wózek"]+=+f.amount||0;
           else map["Wypożyczalnia"]+=+f.amount||0;
         });
         return Object.entries(map).filter(([,v])=>v>0).map(([label,v])=>({label,v}));
@@ -2555,9 +2546,21 @@ Zasady:
       const saveEdit=()=>{
         if(!editItem)return;
         const updated={...editItem.item,cat:form.cat,subcat:form.subcat||"",desc:form.desc,amount:+form.amount,date:form.date||editItem.item.date||selMonth+"-01"};
-        setMonthData(d=>editItem.type==="income"
-          ?{...d,income:(d.income||[]).map(i=>i.id===updated.id?updated:i)}
-          :{...d,expenses:(d.expenses||[]).map(i=>i.id===updated.id?updated:i)});
+        const targetMonth=updated.date.slice(0,7);
+        const mkey=editItem.type==="income"?"income":"expenses";
+        if(targetMonth!==selMonth){
+          setBudget(b=>{
+            const cur=(b.months||{})[selMonth]||{income:[],expenses:[]};
+            const tgt=(b.months||{})[targetMonth]||{income:[],expenses:[]};
+            const newCur={...cur,[mkey]:(cur[mkey]||[]).filter(i=>i.id!==updated.id)};
+            const newTgt={...tgt,[mkey]:[...(tgt[mkey]||[]),updated]};
+            return {...b,months:{...(b.months||{}),[selMonth]:newCur,[targetMonth]:newTgt}};
+          });
+        } else {
+          setMonthData(d=>editItem.type==="income"
+            ?{...d,income:(d.income||[]).map(i=>i.id===updated.id?updated:i)}
+            :{...d,expenses:(d.expenses||[]).map(i=>i.id===updated.id?updated:i)});
+        }
         setEditItem(null);
       };
       const delItem=(type,id)=>{
@@ -2848,7 +2851,7 @@ Zasady:
               <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#3DAA72",whiteSpace:"nowrap"}}>{demo?"****":totalInc.toFixed(2)} zł</span>
             </div>
             <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:"",date:selMonth+"-01"});setShowAdd("income");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+              <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:"",date:todayLocal()});setShowAdd("income");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
               <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("income");}} style={{padding:"8px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>↻</button>
             </div>
           </div>
@@ -2874,7 +2877,7 @@ Zasady:
               <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#E05C5C",whiteSpace:"nowrap"}}>{demo?"****":totalExp.toFixed(2)} zł</span>
             </div>
             <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:"",date:selMonth+"-01"});setShowAdd("expense");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+              <button onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:"",date:todayLocal()});setShowAdd("expense");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
               <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("expense");}} style={{padding:"8px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>↻</button>
             </div>
           </div>
@@ -2891,7 +2894,7 @@ Zasady:
             ...(recurringExp.map(r=>({id:"rec-"+r.id,date:selMonth+"-"+(r.dayOfMonth||1).toString().padStart(2,"0"),cat:r.cat,subcat:r.subcat||"",desc:r.desc||r.cat,amount:+r.amount,type:"expense"}))),
             ...(monthData.income||[]).map(i=>({...i,type:"income",date:i.date||selMonth+"-01"})),
             ...(monthData.expenses||[]).map(e=>({...e,type:"expense",date:e.date||selMonth+"-01"})),
-          ].sort((a,b)=>a.date.localeCompare(b.date)||(a.type==="income"?-1:1));
+          ].sort((a,b)=>b.date.localeCompare(a.date)||(a.type==="income"?-1:1));
           if(!allEntries.length)return null;
           return <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
             <div style={{padding:"10px 16px",borderBottom:`1px solid ${border}`,fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Wszystkie wpisy</div>
