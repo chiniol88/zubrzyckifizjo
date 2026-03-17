@@ -2679,32 +2679,44 @@ Zasady:
               </div>
               <span style={{fontWeight:800,fontSize:14,color}}>{demo?"****":catTotal.toFixed(2)} zł</span>
             </div>
-            {/* Expanded: individual entries grouped by subcat */}
+            {/* Expanded: subcategories as sums, or items if no subcats */}
             {isOpen&&<div style={{background:dk?"#0D1A1A":type==="income"?"#F7FCF9":"#FDF5F5"}}>
               {hasSubs
                 ? (cat.subs||[]).map(s=>{
                     const subItems=catItems.filter(i=>i.subcat===s);
                     const subRec=catRec.filter(r=>r.subcat===s);
                     if(!subItems.length&&!subRec.length)return null;
-                    const subTotal=subItems.reduce((a,i)=>a+(+i.amount||0),0);
+                    const subTotal=[...subItems,...subRec].reduce((a,i)=>a+(+i.amount||0),0);
+                    const subKey=expKey+"-"+s;
+                    const subOpen=!!expandedCats[subKey];
+                    const subCount=subItems.length+subRec.length;
                     return <div key={s}>
-                      <div style={{display:"flex",justifyContent:"space-between",padding:"5px 16px 5px 28px",background:dk?"#0F1B1B":type==="income"?"#EBF7F1":"#FAF0F0",fontSize:10,fontWeight:600,color:sub}}>
-                        <span>↳ {s}</span>
-                        <span style={{color}}>{demo?"****":subTotal.toFixed(2)} zł</span>
-                      </div>
-                      {subItems.map(item=><div key={item.id} onClick={()=>{setForm({cat:item.cat,subcat:item.subcat||"",desc:item.desc||"",amount:String(item.amount)});setEditItem({type,item});}}
-                        style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 36px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
-                        <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.subcat||item.cat}</span>
-                        <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
-                      </div>)}
-                      {catRec.filter(r=>r.subcat===s).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
-                        style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 36px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                      {/* Subcategory row — shows sum, click to expand items */}
+                      <div onClick={()=>setExpandedCats(e=>({...e,[subKey]:!e[subKey]}))}
+                        style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px 9px 28px",background:dk?"#0F1B1B":type==="income"?"#EBF7F1":"#FAF0F0",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <span style={{fontSize:11,color,opacity:.6}}>↻</span>
-                          <span style={{fontSize:12,color:sub}}>{demo?"••••":r.desc||r.subcat||r.cat}</span>
+                          <span style={{fontSize:10,color:subOpen?color:sub,display:"inline-block",transform:subOpen?"rotate(90deg)":"rotate(0deg)"}}>▶</span>
+                          <span style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>↳ {s}</span>
+                          <span style={{fontSize:10,color:sub}}>{subCount} {subCount===1?"wpis":"wpisów"}</span>
                         </div>
-                        <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+r.amount).toFixed(2)} zł</span>
-                      </div>)}
+                        <span style={{fontWeight:700,fontSize:13,color}}>{demo?"****":subTotal.toFixed(2)} zł</span>
+                      </div>
+                      {/* Expanded subcategory items */}
+                      {subOpen&&<>
+                        {subItems.map(item=><div key={item.id} onClick={()=>{setForm({cat:item.cat,subcat:item.subcat||"",desc:item.desc||"",amount:String(item.amount)});setEditItem({type,item});}}
+                          style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 44px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                          <span style={{fontSize:12,color:sub}}>{demo?"••••":item.desc||item.subcat||item.cat}</span>
+                          <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+item.amount).toFixed(2)} zł</span>
+                        </div>)}
+                        {catRec.filter(r=>r.subcat===s).map(r=><div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});setEditRecurring(r);}}
+                          style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px 8px 44px",borderBottom:`1px solid ${border}`,cursor:"pointer"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <span style={{fontSize:11,color,opacity:.6}}>↻</span>
+                            <span style={{fontSize:12,color:sub}}>{demo?"••••":r.desc||r.subcat||r.cat}</span>
+                          </div>
+                          <span style={{fontWeight:600,fontSize:12,color}}>{demo?"****":(+r.amount).toFixed(2)} zł</span>
+                        </div>)}
+                      </>}
                     </div>;
                   })
                 : null
@@ -2868,6 +2880,30 @@ Zasady:
           {(monthData.expenses||[]).length===0&&recurringExp.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak kosztów</div>}
         </div>
         </div>{/* end side-by-side grid */}
+
+        {/* HISTORIA MIESIĄCA */}
+        {(()=>{
+          const allEntries=[
+            ...(practiceCats.map(c=>({id:"prac-"+c.label,date:selMonth+"-01",cat:"Praktyka",subcat:c.label,desc:c.label+" (auto)",amount:c.v,type:"income"}))),
+            ...(recurringInc.map(r=>({id:"rec-"+r.id,date:selMonth+"-"+(r.dayOfMonth||1).toString().padStart(2,"0"),cat:r.cat,subcat:r.subcat||"",desc:r.desc||r.cat,amount:+r.amount,type:"income"}))),
+            ...(recurringExp.map(r=>({id:"rec-"+r.id,date:selMonth+"-"+(r.dayOfMonth||1).toString().padStart(2,"0"),cat:r.cat,subcat:r.subcat||"",desc:r.desc||r.cat,amount:+r.amount,type:"expense"}))),
+            ...(monthData.income||[]).map(i=>({...i,type:"income",date:selMonth+"-01"})),
+            ...(monthData.expenses||[]).map(e=>({...e,type:"expense",date:selMonth+"-01"})),
+          ].sort((a,b)=>a.date.localeCompare(b.date)||(a.type==="income"?-1:1));
+          if(!allEntries.length)return null;
+          return <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+            <div style={{padding:"10px 16px",borderBottom:`1px solid ${border}`,fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Wszystkie wpisy</div>
+            {allEntries.map((e,i)=>(
+              <div key={e.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<allEntries.length-1?`1px solid ${border}`:"none"}}>
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{fontSize:13,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"••••":e.desc||e.cat}</div>
+                  <div style={{fontSize:11,color:sub,marginTop:1}}>{e.cat}{e.subcat?" · "+e.subcat:""}</div>
+                </div>
+                <span style={{fontWeight:700,fontSize:13,color:e.type==="income"?"#3DAA72":"#E05C5C",flexShrink:0,marginLeft:8}}>{e.type==="income"?"+":"-"}{demo?"****":(+e.amount).toFixed(2)} zł</span>
+              </div>
+            ))}
+          </div>;
+        })()}
 
         {showAdd&&<BudgetItemForm type={showAdd} cats={showAdd==="income"?incCats:expCats} form={form} setForm={setForm} title={showAdd==="income"?"Nowy przychód":"Nowy koszt"} onSave={saveAdd} onClose={()=>setShowAdd(null)}/>}
 
