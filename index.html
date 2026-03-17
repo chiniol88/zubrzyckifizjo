@@ -2345,12 +2345,12 @@ Zasady:
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
-            <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+            <input type="date" value={(form.startMonth||(selMonth+"-01")).length===7?(form.startMonth||selMonth)+"-01":(form.startMonth||(selMonth+"-01"))} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
         <div style={{marginBottom:14}}>
           <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
-          <input type="month" value={form.endMonth||""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          <input type="date" value={form.endMonth?(form.endMonth.length===7?form.endMonth+"-01":form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
         </div>
         <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>onSave(form)}>Zapisz</Btn>
       </Modal>;
@@ -2376,12 +2376,12 @@ Zasady:
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
-            <input type="month" value={form.startMonth||selMonth} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+            <input type="date" value={(form.startMonth||(selMonth+"-01")).length===7?(form.startMonth||selMonth)+"-01":(form.startMonth||(selMonth+"-01"))} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
         <div style={{marginBottom:14}}>
           <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
-          <input type="month" value={form.endMonth||""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          <input type="date" value={form.endMonth?(form.endMonth.length===7?form.endMonth+"-01":form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
         </div>
         <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>onSave(form)}>Zapisz zmiany</Btn>
         <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={onDelete}>🗑️ Usuń</Btn>
@@ -2590,8 +2590,8 @@ Zasady:
       const practiceTotal=practiceCats.reduce((s,c)=>s+(c.v||0),0);
       const manualIncTotal=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
       // totalInc/Exp including recurring — defined below after recurring state
-      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
-      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
       const totalInc=practiceTotal+manualIncTotal+recurringIncTotalEarly;
       const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recurringExpTotalEarly;
 
@@ -2604,8 +2604,8 @@ Zasady:
       const [editRecurringOverride,setEditRecurringOverride]=useState(null); // {r, type}
 
       const recurring=useMemo(()=>budget.recurring||[],[budget]);
-      const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)),[recurring,selMonth]);
-      const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth<=selMonth)&&(!r.endMonth||r.endMonth>=selMonth)),[recurring,selMonth]);
+      const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)),[recurring,selMonth]);
+      const recurringExp=useMemo(()=>recurring.filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)),[recurring,selMonth]);
       const recOverrides=useMemo(()=>monthData.recurringOverrides||{},[monthData]);
       const recAmt=(r)=>recOverrides[r.id]!==undefined?+recOverrides[r.id].amount:+r.amount;
       const recDesc=(r)=>recOverrides[r.id]!==undefined?(recOverrides[r.id].desc||r.desc||r.cat):(r.desc||r.cat);
@@ -2809,9 +2809,16 @@ Zasady:
             const md2=(budget.months||{})[compareMonth]||{income:[],expenses:[]};
             const visitMap={};(visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
             let prac2=0;
-            (finances||[]).filter(f=>{if(f.type!=="przychód")return false;const sid=f.sourceId||"";const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;return d&&d.startsWith(compareMonth);}).forEach(f=>{prac2+=(+f.amount||0);});
-            const recInc2=(budget.recurring||[]).filter(r=>r.type==="income").reduce((s,r)=>s+(+r.amount||0),0);
-            const recExp2=(budget.recurring||[]).filter(r=>r.type==="expense").reduce((s,r)=>s+(+r.amount||0),0);
+            (finances||[]).filter(f=>{
+              if(f.type!=="przychód")return false;
+              const sid=f.sourceId||"";const cat=(f.category||"").toLowerCase();
+              if(cat==="wózek"||sid.startsWith("wozek-"))return false;
+              const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;
+              return d&&d.startsWith(compareMonth);
+            }).forEach(f=>{prac2+=(+f.amount||0);});
+            const ov2=(md2.recurringOverrides||{});
+            const recInc2=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=compareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=compareMonth)).reduce((s,r)=>{const ov=ov2[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+            const recExp2=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=compareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=compareMonth)).reduce((s,r)=>{const ov=ov2[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
             const inc2=prac2+(md2.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc2;
             const exp2=(md2.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp2;
             const rows=[
@@ -2846,9 +2853,18 @@ Zasady:
             const md=(budget.months||{})[m]||{income:[],expenses:[]};
             const visitMap={};(visits||[]).forEach(v=>{if(v.id)visitMap["visit-"+v.id]=v.date;});
             let prac=0;
-            (finances||[]).filter(f=>{if(f.type!=="przychód")return false;const sid=f.sourceId||"";const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;return d&&d.startsWith(m);}).forEach(f=>{prac+=(+f.amount||0);});
-            const inc2=prac+(md.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
-            const exp2=(md.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0);
+            (finances||[]).filter(f=>{
+              if(f.type!=="przychód")return false;
+              const sid=f.sourceId||"";const cat=(f.category||"").toLowerCase();
+              if(cat==="wózek"||sid.startsWith("wozek-"))return false;
+              const d=sid.startsWith("visit-")?(visitMap[sid]||f.date):f.date;
+              return d&&d.startsWith(m);
+            }).forEach(f=>{prac+=(+f.amount||0);});
+            const ovm=(md.recurringOverrides||{});
+            const recInc=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+            const recExp=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+            const inc2=prac+(md.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc;
+            const exp2=(md.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp;
             const isSelected=m===selMonth;
             return <div key={m} onClick={()=>{setSelMonth(m);setShowYear(false);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer",background:isSelected?(dk?"#1A3030":"#F0FAF6"):"transparent"}}>
               <span style={{fontSize:13,fontWeight:isSelected?700:500,color:dk?"#C8E8E8":"#1C2B3A",textTransform:"capitalize"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long"})}</span>
@@ -2987,7 +3003,7 @@ Zasady:
           }}
           onEditGlobal={()=>{
             const r=editRecurringOverride.r;
-            setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:r.startMonth||selMonth});
+            setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:(r.startMonth||selMonth+"-01").length===7?(r.startMonth||selMonth)+"-01":(r.startMonth||selMonth+"-01"),endMonth:r.endMonth?(r.endMonth.length===7?r.endMonth+"-01":r.endMonth):""});
             setEditRecurring(r);
             setEditRecurringOverride(null);
           }}
