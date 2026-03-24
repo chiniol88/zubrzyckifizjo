@@ -1253,12 +1253,12 @@
           {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(totalAmount-totalPaid)>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {demo?"****":totalAmount-totalPaid} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
           {!demo&&r.address&&<span>📍 {r.address}</span>}
         </div>
-        {isZakończone&&(r.notes||(hasReceipt||hasInvoice))&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
-          {(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
+        {(r.notes||(isZakończone&&(hasReceipt||hasInvoice)))&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
+          {isZakończone&&(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
             {hasReceipt&&<span style={{fontSize:11,fontWeight:600,color:"#0A7C7C",background:"#E6F4F4",borderRadius:6,padding:"2px 8px"}}>🧾 Paragon</span>}
             {hasInvoice&&<span style={{fontSize:11,fontWeight:600,color:"#7C6AF4",background:"#F0EEFF",borderRadius:6,padding:"2px 8px"}}>📄 Faktura</span>}
           </div>}
-          {r.notes&&<div style={{fontSize:12,color:"#7A8FA6",lineHeight:1.4,whiteSpace:"pre-wrap"}}>{r.notes}</div>}
+          {r.notes&&<div style={{fontSize:12,color:"#7A8FA6",lineHeight:1.4,whiteSpace:"pre-wrap"}}>📝 {r.notes}</div>}
         </div>}
       </Card>;
     }
@@ -1953,7 +1953,7 @@
       const [images,setImages]=useState([]); // base64 strings
       const [step,setStep]=useState("upload"); // upload | analyzing | review | done
       const [items,setItems]=useState([]); // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
-      const [receiptDate,setReceiptDate]=useState(selMonth+"-01");
+      const [receiptDate,setReceiptDate]=useState(todayLocal());
       const [receiptTotal,setReceiptTotal]=useState("");
       const [aiError,setAiError]=useState(null);
       const [dupWarning,setDupWarning]=useState(false);
@@ -2010,7 +2010,7 @@ Zasady:
 - Nie wliczaj linii z VAT, numerem NIP, adresem sklepu, podsumowaniami
 - Dla pozycji ilość×cena: amount = wynik mnożenia
 - Jeśli nie możesz przypisać kategorii: cat=null
-- Data: szukaj formatu DD.MM.YYYY lub DD-MM-YYYY na paragonie`;
+- Data: szukaj na paragonie w formatach DD.MM.YYYY, DD-MM-YYYY, YYYY-MM-DD — zwróć jako YYYY-MM-DD. Jeśli data nieczytelna lub jej nie ma — zwróć null (NIE zgaduj daty)`;
 
         try {
           const content=[
@@ -2078,6 +2078,7 @@ Zasady:
 
           setItems(newItems);
           if(parsed.date)setReceiptDate(parsed.date);
+          else setReceiptDate(todayLocal());
           if(parsed.total)setReceiptTotal(String(parsed.total));
 
           // Check duplicate — sprawdź w miesiącu daty paragonu
@@ -2094,6 +2095,9 @@ Zasady:
 
       const updateItem=(id,field,val)=>{
         setItems(prev=>prev.map(i=>i.id===id?{...i,[field]:val}:i));
+      };
+      const updateItemFields=(id,fields)=>{
+        setItems(prev=>prev.map(i=>i.id===id?{...i,...fields}:i));
       };
       const removeItem=(id)=>setItems(prev=>prev.filter(i=>i.id!==id));
       const addItem=()=>setItems(prev=>[...prev,{id:Date.now(),name:"",amount:0,cat:null,subcat:null,confidence:"high",unreadable:false,discountApplied:0}]);
@@ -2210,7 +2214,7 @@ Zasady:
                   </div>
                 </div>
                 <select value={(item.cat&&item.subcat)?item.cat+"/"+item.subcat:(item.cat||"")}
-                  onChange={e=>{const val=e.target.value;if(!val){updateItem(item.id,"cat",null);updateItem(item.id,"subcat",null);}else if(val.includes("/")){const[c,s]=val.split("/");updateItem(item.id,"cat",c);updateItem(item.id,"subcat",s);}else{updateItem(item.id,"cat",val);updateItem(item.id,"subcat",null);}}}
+                  onChange={e=>{const val=e.target.value;if(!val){updateItemFields(item.id,{cat:null,subcat:null});}else if(val.includes("/")){const[c,s]=val.split("/");updateItemFields(item.id,{cat:c,subcat:s});}else{updateItemFields(item.id,{cat:val,subcat:null});}}}
                   style={{...inputStyle,fontSize:12}}>
                   {catOptions("exp").map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
@@ -2726,12 +2730,16 @@ Zasady:
       const renderItems=(type,cats,color)=>{
         const items=type==="income"?monthData.income||[]:monthData.expenses||[];
         const recItems=type==="income"?recurringInc:recurringExp;
-        return cats.map(cat=>{
+        const catsWithTotals=cats.map(cat=>{
           const catItems=items.filter(i=>i.cat===cat.name);
           const catRec=recItems.filter(r=>r.cat===cat.name);
+          const catTotal=catItems.reduce((s,i)=>s+(+i.amount||0),0)+catRec.reduce((s,r)=>s+recAmt(r),0);
+          return {cat,catItems,catRec,catTotal};
+        }).filter(({catItems,catRec})=>catItems.length||catRec.length);
+        const sorted=type==="expense"?[...catsWithTotals].sort((a,b)=>b.catTotal-a.catTotal):catsWithTotals;
+        return sorted.map(({cat,catItems,catRec,catTotal})=>{
           if(!catItems.length&&!catRec.length)return null;
           const hasSubs=(cat.subs||[]).length>0;
-          const catTotal=catItems.reduce((s,i)=>s+(+i.amount||0),0)+catRec.reduce((s,r)=>s+recAmt(r),0);
           const expKey=type+"-"+cat.name;
           const isOpen=!!expandedCats[expKey];
           return <div key={cat.name}>
