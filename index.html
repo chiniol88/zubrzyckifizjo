@@ -1517,7 +1517,10 @@
                 const msg=tpl.replace(/\{imie\}/g,r.patientName.split(" ")[0])+(links?"\n"+links:"");
                 const smsHref="sms:"+(r.phone?r.phone.replace(/\s/g,""):"")+"?body="+encodeURIComponent(msg);
                 return <div style={{marginBottom:10}}>
-                  {r.reviewRequested&&<div style={{fontSize:12,color:"#F4A261",fontWeight:600,marginBottom:6,textAlign:"center"}}>⭐ Prośba o opinię już wysłana</div>}
+                  {r.reviewRequested&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,marginBottom:6}}>
+                    <span style={{fontSize:12,color:"#F4A261",fontWeight:600}}>⭐ Prośba o opinię wysłana</span>
+                    <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,reviewRequested:false}:x))} style={{background:"none",border:"none",color:"#7A8FA6",fontSize:11,cursor:"pointer",fontFamily:"inherit",padding:"2px 6px",borderRadius:6,textDecoration:"underline"}}>× odznacz</button>
+                  </div>}
                   <div style={{display:"flex",gap:8}}>
                     <a href={smsHref} style={{flex:1,textDecoration:"none"}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,reviewRequested:true}:x))}>
                       <Btn variant="secondary" style={{width:"100%",justifyContent:"center",background:r.reviewRequested?"#F0FAF5":undefined,borderColor:r.reviewRequested?"#3DAA72":undefined}}>
@@ -3488,6 +3491,38 @@ Zasady:
       return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget}/>;
     }
 
+    function ReviewSettings({settings,setSettings,dk,txt,sub,border}) {
+      const [template,setTemplate]=React.useState(settings.reviewTemplate||"");
+      const [links,setLinks]=React.useState([1,2,3].map(i=>({label:settings["reviewLinkLabel"+i]||"",url:settings["reviewLink"+i]||""})));
+      const inputStyle={padding:"8px 10px",borderRadius:8,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"};
+      const saveTemplate=()=>setSettings(s=>({...s,reviewTemplate:template}));
+      const saveLink=(i,field,val)=>{
+        const updated=links.map((l,idx)=>idx===i?{...l,[field]:val}:l);
+        setLinks(updated);
+        setSettings(s=>({...s,["reviewLinkLabel"+(i+1)]:updated[i].label,["reviewLink"+(i+1)]:updated[i].url}));
+      };
+      return <>
+        <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
+          <div style={{fontSize:14,color:txt,marginBottom:6}}>Szablon wiadomości</div>
+          <div style={{fontSize:12,color:sub,marginBottom:8}}>Użyj <b style={{color:txt}}>{"{imie}"}</b> aby wstawić imię pacjenta.</div>
+          <textarea value={template} onChange={e=>setTemplate(e.target.value)} onBlur={saveTemplate}
+            rows={4} placeholder="Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:"
+            style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
+        </div>
+        {links.map((lnk,i)=>(
+          <div key={i} style={{padding:"10px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
+            <div style={{fontSize:13,color:sub,marginBottom:6}}>Link {i+1} <span style={{fontSize:11}}>(np. Google Maps, Facebook)</span></div>
+            <div style={{display:"flex",gap:8}}>
+              <input value={lnk.label} onChange={e=>setLinks(ls=>ls.map((l,j)=>j===i?{...l,label:e.target.value}:l))} onBlur={e=>saveLink(i,"label",e.target.value)}
+                placeholder="Etykieta" style={{...inputStyle,flex:1}}/>
+              <input value={lnk.url} onChange={e=>setLinks(ls=>ls.map((l,j)=>j===i?{...l,url:e.target.value}:l))} onBlur={e=>saveLink(i,"url",e.target.value)}
+                placeholder="https://..." style={{...inputStyle,flex:2}}/>
+            </div>
+          </div>
+        ))}
+      </>;
+    }
+
     function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
       const dk=dark;
       const bg=dk?"#0F1F1F":"#fff";
@@ -3531,26 +3566,7 @@ Zasady:
             {settings.anthropicKey&&<div style={{fontSize:12,color:"#3DAA72",marginTop:6}}>✓ Klucz zapisany</div>}
           </div>
         </Sec>
-        <Sec title="OPINIE — LINKI DO SOCIALI">
-          <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
-            <div style={{fontSize:14,color:txt,marginBottom:6}}>Szablon wiadomości</div>
-            <div style={{fontSize:12,color:sub,marginBottom:8}}>Użyj <b style={{color:txt}}>{"{imie}"}</b> aby wstawić imię pacjenta.</div>
-            <textarea value={settings.reviewTemplate||""} onChange={e=>setSettings(s=>({...s,reviewTemplate:e.target.value}))}
-              rows={4} placeholder="Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:"
-              style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
-          </div>
-          {[1,2,3].map(i=>(
-            <div key={i} style={{padding:"10px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
-              <div style={{fontSize:13,color:sub,marginBottom:6}}>Link {i} <span style={{fontSize:11}}>(np. Google Maps, Facebook)</span></div>
-              <div style={{display:"flex",gap:8}}>
-                <input value={(settings["reviewLinkLabel"+i]||"")} onChange={e=>setSettings(s=>({...s,["reviewLinkLabel"+i]:e.target.value}))}
-                  placeholder="Etykieta" style={{flex:1,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
-                <input value={(settings["reviewLink"+i]||"")} onChange={e=>setSettings(s=>({...s,["reviewLink"+i]:e.target.value}))}
-                  placeholder="https://..." style={{flex:2,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
-              </div>
-            </div>
-          ))}
-        </Sec>
+        <Sec title="OPINIE — LINKI DO SOCIALI"><ReviewSettings settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A4040":"#E4EAF0"}/></Sec>
         <Sec title="INFORMACJE">
           <Row label="Wersja aplikacji"><span style={{fontSize:13,color:sub}}>ZubrzyckiFizjo 1.0</span></Row>
         </Sec>
