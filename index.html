@@ -3496,8 +3496,6 @@ Zasady:
       const saveTemplate=()=>setSettings(s=>({...s,reviewTemplate:template}));
       return <>
         <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
-          <div style={{fontSize:14,color:txt,marginBottom:6}}>Szablon wiadomości</div>
-          <div style={{fontSize:12,color:sub,marginBottom:8}}>Użyj <b style={{color:txt}}>{"{imie}"}</b> aby wstawić imię pacjenta.</div>
           <textarea value={template} onChange={e=>setTemplate(e.target.value)} onBlur={saveTemplate}
             rows={4} placeholder="Hej, dziękuję za wypożyczenie! Będę wdzięczny za opinię:"
             style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
