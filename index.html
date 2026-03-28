@@ -1244,7 +1244,7 @@
 
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
+          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
           {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:dl!==null?<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>:<Badge color="#7A8FA6">brak terminu</Badge>)}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
@@ -1263,7 +1263,7 @@
       </Card>;
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,rentalsView,setRentalsView,stock,setStock}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const view=rentalsView||"aktywne",setView=setRentalsView;
       const [showAdd,setShowAdd]=useState(false);
@@ -1510,6 +1510,23 @@
                 const dtEnd=endDate?""+endDate+"T"+endTime+":00":dtStart;
                 const desc="Tel: "+(r.phone||"brak")+(r.address?"\nAdres: "+r.address:"")+(r.notes?"\nNotatki: "+r.notes:"");
                 return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>openGCal("Wypożyczenie \u2013 "+r.patientName+" ("+r.equipment+")", dtStart, dtEnd, desc, false)}>📅 Dodaj do kalendarza</Btn>;
+              })()}
+              {(()=>{
+                const tpl=(settings&&settings.reviewTemplate)||"Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:";
+                const links=[1,2,3].map(i=>settings&&settings["reviewLink"+i]).filter(Boolean).join("\n");
+                const msg=tpl.replace(/\{imie\}/g,r.patientName.split(" ")[0])+(links?"\n"+links:"");
+                const smsHref="sms:"+(r.phone?r.phone.replace(/\s/g,""):"")+"?body="+encodeURIComponent(msg);
+                return <div style={{marginBottom:10}}>
+                  {r.reviewRequested&&<div style={{fontSize:12,color:"#F4A261",fontWeight:600,marginBottom:6,textAlign:"center"}}>⭐ Prośba o opinię już wysłana</div>}
+                  <div style={{display:"flex",gap:8}}>
+                    <a href={smsHref} style={{flex:1,textDecoration:"none"}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,reviewRequested:true}:x))}>
+                      <Btn variant="secondary" style={{width:"100%",justifyContent:"center",background:r.reviewRequested?"#F0FAF5":undefined,borderColor:r.reviewRequested?"#3DAA72":undefined}}>
+                        ⭐ {r.reviewRequested?"Wyślij ponownie":"Poproś o opinię"} → SMS
+                      </Btn>
+                    </a>
+                    <Btn variant="secondary" style={{flexShrink:0,padding:"0 14px"}} onClick={()=>{navigator.clipboard&&navigator.clipboard.writeText(msg).then(()=>alert("Skopiowano!"));setRentals(rs=>rs.map(x=>x.id===r.id?{...x,reviewRequested:true}:x));}}>📋</Btn>
+                  </div>
+                </div>;
               })()}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń wypożyczenie</Btn>
             </div>
@@ -3513,6 +3530,27 @@ Zasady:
             />
             {settings.anthropicKey&&<div style={{fontSize:12,color:"#3DAA72",marginTop:6}}>✓ Klucz zapisany</div>}
           </div>
+        </Sec>
+        <Sec title="OPINIE — LINKI DO SOCIALI">
+          <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
+            <div style={{fontSize:14,color:txt,marginBottom:6}}>Szablon wiadomości</div>
+            <div style={{fontSize:12,color:sub,marginBottom:8}}>Użyj <b style={{color:txt}}>{"{imie}"}</b> aby wstawić imię pacjenta.</div>
+            <textarea value={settings.reviewTemplate||""} onChange={e=>setSettings(s=>({...s,reviewTemplate:e.target.value}))}
+              rows={4} placeholder={"Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:
+"}
+              style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
+          </div>
+          {[1,2,3].map(i=>(
+            <div key={i} style={{padding:"10px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
+              <div style={{fontSize:13,color:sub,marginBottom:6}}>Link {i} <span style={{fontSize:11}}>(np. Google Maps, Facebook)</span></div>
+              <div style={{display:"flex",gap:8}}>
+                <input value={(settings["reviewLinkLabel"+i]||"")} onChange={e=>setSettings(s=>({...s,["reviewLinkLabel"+i]:e.target.value}))}
+                  placeholder="Etykieta" style={{flex:1,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
+                <input value={(settings["reviewLink"+i]||"")} onChange={e=>setSettings(s=>({...s,["reviewLink"+i]:e.target.value}))}
+                  placeholder="https://..." style={{flex:2,padding:"8px 10px",borderRadius:8,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
+              </div>
+            </div>
+          ))}
         </Sec>
         <Sec title="INFORMACJE">
           <Row label="Wersja aplikacji"><span style={{fontSize:13,color:sub}}>ZubrzyckiFizjo 1.0</span></Row>
