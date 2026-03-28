@@ -1512,9 +1512,8 @@
                 return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>openGCal("Wypożyczenie \u2013 "+r.patientName+" ("+r.equipment+")", dtStart, dtEnd, desc, false)}>📅 Dodaj do kalendarza</Btn>;
               })()}
               {(()=>{
-                const tpl=(settings&&settings.reviewTemplate)||"Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:";
-                const links=[1,2,3].map(i=>settings&&settings["reviewLink"+i]).filter(Boolean).join("\n");
-                const msg=tpl.replace(/\{imie\}/g,r.patientName.split(" ")[0])+(links?"\n"+links:"");
+                const tpl=(settings&&settings.reviewTemplate)||"Hej, dziękuję za wypożyczenie! Będę wdzięczny za opinię:";
+                const msg=tpl;
                 const smsHref="sms:"+(r.phone?r.phone.replace(/\s/g,""):"")+"?body="+encodeURIComponent(msg);
                 return <div style={{marginBottom:10}}>
                   {r.reviewRequested&&<div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8,marginBottom:6}}>
@@ -3493,33 +3492,17 @@ Zasady:
 
     function ReviewSettings({settings,setSettings,dk,txt,sub,border}) {
       const [template,setTemplate]=React.useState(settings.reviewTemplate||"");
-      const [links,setLinks]=React.useState([1,2,3].map(i=>({label:settings["reviewLinkLabel"+i]||"",url:settings["reviewLink"+i]||""})));
       const inputStyle={padding:"8px 10px",borderRadius:8,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"};
       const saveTemplate=()=>setSettings(s=>({...s,reviewTemplate:template}));
-      const saveLink=(i,field,val)=>{
-        const updated=links.map((l,idx)=>idx===i?{...l,[field]:val}:l);
-        setLinks(updated);
-        setSettings(s=>({...s,["reviewLinkLabel"+(i+1)]:updated[i].label,["reviewLink"+(i+1)]:updated[i].url}));
-      };
       return <>
         <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
           <div style={{fontSize:14,color:txt,marginBottom:6}}>Szablon wiadomości</div>
           <div style={{fontSize:12,color:sub,marginBottom:8}}>Użyj <b style={{color:txt}}>{"{imie}"}</b> aby wstawić imię pacjenta.</div>
           <textarea value={template} onChange={e=>setTemplate(e.target.value)} onBlur={saveTemplate}
-            rows={4} placeholder="Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:"
+            rows={4} placeholder="Hej, dziękuję za wypożyczenie! Będę wdzięczny za opinię:"
             style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
         </div>
-        {links.map((lnk,i)=>(
-          <div key={i} style={{padding:"10px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
-            <div style={{fontSize:13,color:sub,marginBottom:6}}>Link {i+1} <span style={{fontSize:11}}>(np. Google Maps, Facebook)</span></div>
-            <div style={{display:"flex",gap:8}}>
-              <input value={lnk.label} onChange={e=>setLinks(ls=>ls.map((l,j)=>j===i?{...l,label:e.target.value}:l))} onBlur={e=>saveLink(i,"label",e.target.value)}
-                placeholder="Etykieta" style={{...inputStyle,flex:1}}/>
-              <input value={lnk.url} onChange={e=>setLinks(ls=>ls.map((l,j)=>j===i?{...l,url:e.target.value}:l))} onBlur={e=>saveLink(i,"url",e.target.value)}
-                placeholder="https://..." style={{...inputStyle,flex:2}}/>
-            </div>
-          </div>
-        ))}
+
       </>;
     }
 
