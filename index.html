@@ -2142,7 +2142,7 @@ Zasady:
         const opts=[{value:"",label:"— wybierz —"}];
         cats.forEach(c=>{
           opts.push({value:c.name,label:c.name});
-          (c.subs||[]).forEach(s=>opts.push({value:c.name+"/"+s,label:"  ↳ "+s}));
+          (c.subs||[]).forEach(s=>opts.push({value:c.name+"\x1F"+s,label:"  ↳ "+s}));
         });
         return opts;
       };
@@ -2213,8 +2213,8 @@ Zasady:
                     <button onClick={()=>removeItem(item.id)} style={{width:26,height:26,borderRadius:7,background:"#FEE2E2",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>
                   </div>
                 </div>
-                <select value={(item.cat&&item.subcat)?item.cat+"/"+item.subcat:(item.cat||"")}
-                  onChange={e=>{const val=e.target.value;if(!val){updateItemFields(item.id,{cat:null,subcat:null});}else if(val.includes("/")){const[c,s]=val.split("/");updateItemFields(item.id,{cat:c,subcat:s});}else{updateItemFields(item.id,{cat:val,subcat:null});}}}
+                <select value={(item.cat&&item.subcat)?item.cat+"\x1F"+item.subcat:(item.cat||"")}
+                  onChange={e=>{const val=e.target.value;if(!val){updateItemFields(item.id,{cat:null,subcat:null});}else if(val.includes("\x1F")){const idx=val.indexOf("\x1F");updateItemFields(item.id,{cat:val.slice(0,idx),subcat:val.slice(idx+1)});}else{updateItemFields(item.id,{cat:val,subcat:null});}}}
                   style={{...inputStyle,fontSize:12}}>
                   {catOptions("exp").map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
@@ -2682,8 +2682,8 @@ Zasady:
         return total;
       },[finances,visits,prevMonth]);
       const prevOv=useMemo(()=>prevMonthData.recurringOverrides||{},[prevMonthData]);
-      const prevRecInc=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0),[budget,prevMonth,prevOv]);
-      const prevRecExp=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0),[budget,prevMonth,prevOv]);
+      const prevRecInc=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0),[budget,prevMonth,prevOv]);
+      const prevRecExp=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0),[budget,prevMonth,prevOv]);
       const prevTotalInc=prevPracticeTotal+(prevMonthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+prevRecInc;
       const prevTotalExp=(prevMonthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+prevRecExp;
       const diffInc=prevTotalInc>0?Math.round((totalInc-prevTotalInc)/prevTotalInc*100):null;
@@ -2914,8 +2914,8 @@ Zasady:
               return f.date&&f.date.startsWith(safeCompareMonth);
             }).forEach(f=>{prac2+=(+f.amount||0);});
             const ov2=(md2.recurringOverrides||{});
-            const recInc2=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
-            const recExp2=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+            const recInc2=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
+            const recExp2=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
             const inc2=prac2+(md2.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc2;
             const exp2=(md2.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp2;
             const rows=[
@@ -2958,8 +2958,8 @@ Zasady:
               return f.date&&f.date.startsWith(m);
             }).forEach(f=>{prac+=(+f.amount||0);});
             const ovm=(md.recurringOverrides||{});
-            const recInc=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
-            const recExp=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0);},0);
+            const recInc=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
+            const recExp=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
             const inc2=prac+(md.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc;
             const exp2=(md.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp;
             const isSelected=m===selMonth;
@@ -3354,7 +3354,7 @@ Zasady:
       const content = <>
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
-        {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock}/>}
+        {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
