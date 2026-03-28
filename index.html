@@ -3536,8 +3536,7 @@ Zasady:
             <div style={{fontSize:14,color:txt,marginBottom:6}}>Szablon wiadomości</div>
             <div style={{fontSize:12,color:sub,marginBottom:8}}>Użyj <b style={{color:txt}}>{"{imie}"}</b> aby wstawić imię pacjenta.</div>
             <textarea value={settings.reviewTemplate||""} onChange={e=>setSettings(s=>({...s,reviewTemplate:e.target.value}))}
-              rows={4} placeholder={"Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:
-"}
+              rows={4} placeholder="Hej {imie}, dziękuję za wypożyczenie! Będę wdzięczny za opinię:"
               style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
           </div>
           {[1,2,3].map(i=>(
