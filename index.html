@@ -382,7 +382,7 @@
 
         <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
-            {DOW.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
+            {DOW.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i>=5?(dk?"#F4A261":"#D0622A"):"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
             {cells.map((d,i)=>{
@@ -392,8 +392,11 @@
               const ec=(eventsByDay[d]||[]).length;
               const isToday=d===todayDay;
               const isOpen=d===openDay;
-              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):"transparent"}}>
-                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":(dk?"#C8E8E8":"#1C2B3A")}}>{d}</span>
+              const colIndex=i%7;
+              const isWeekend=colIndex>=5;
+              const weekendBg=dk?"rgba(244,162,97,0.08)":"rgba(208,98,42,0.06)";
+              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):isWeekend?weekendBg:"transparent"}}>
+                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":isWeekend?(dk?"#F4A261":"#D0622A"):(dk?"#C8E8E8":"#1C2B3A")}}>{d}</span>
                 <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
                   {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
                   {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
@@ -1706,8 +1709,13 @@
           </div>
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
           {!form.allDay&&<TimeSel label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>}
-          {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
-          {!form.renewable&&!form.allDay&&<TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}
+          {!form.renewable&&<Inp label="Data do (opcjonalna)" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
+          {!form.renewable&&form.endDate&&!form.allDay&&(<div style={{marginBottom:14}}>
+            {form._showEndTime
+              ? <TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>
+              : <button onClick={()=>setForm(f=>({...f,_showEndTime:true}))} style={{background:"#F2F5F7",border:"none",borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left"}}>+ Dodaj godzinę zakończenia</button>
+            }
+          </div>)}
           <div style={{marginBottom:14}}>
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(form.allDay||false)===o.v?"#E6F4F4":"#fff",color:(form.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
