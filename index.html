@@ -1281,7 +1281,7 @@
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
 
       const cnt={aktywne:rentals.filter(r=>r.status==="aktywne"&&!r.renewable).length,odnawialne:rentals.filter(r=>r.status==="aktywne"&&r.renewable).length,zakończone:rentals.filter(r=>r.status==="zakończone").length};
-      const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable):view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):rentals.filter(r=>r.status==="zakończone");
+      const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable):view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):rentals.filter(r=>r.status==="zakończone").slice().sort((a,b)=>(b.endDate||b.startDate||"").localeCompare(a.endDate||a.startDate||""));
 
       if(detail!==null) {
         const r=rentals.find(x=>x.id===detail);
@@ -3490,6 +3490,29 @@ Zasady:
       return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget}/>;
     }
 
+    function PasswordSetting({settings,setSettings,dk,border,txt}) {
+      const [pwd,setPwd]=React.useState(settings.appPassword||"");
+      const [confirm,setConfirm]=React.useState("");
+      const [saved,setSaved]=React.useState(false);
+      const [mismatch,setMismatch]=React.useState(false);
+      const save=()=>{
+        if(pwd&&pwd!==confirm){setMismatch(true);return;}
+        setMismatch(false);
+        setSettings(s=>({...s,appPassword:pwd}));
+        setSaved(true);setTimeout(()=>setSaved(false),2000);
+      };
+      const inputStyle={width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${mismatch?"#E05C5C":border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",marginBottom:8};
+      return <div>
+        <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setSaved(false);setMismatch(false);}} placeholder="Nowe hasło" style={inputStyle}/>
+        {pwd&&<input type="password" value={confirm} onChange={e=>{setConfirm(e.target.value);setMismatch(false);}} placeholder="Powtórz hasło" style={inputStyle}/>}
+        {mismatch&&<div style={{fontSize:12,color:"#E05C5C",marginBottom:8}}>Hasła nie są zgodne</div>}
+        <button onClick={save} style={{padding:"9px 18px",borderRadius:10,background:"#0A7C7C",color:"#fff",border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+          {saved?"✓ Zapisano":"Zapisz hasło"}
+        </button>
+        {settings.appPassword&&<button onClick={()=>{setPwd("");setConfirm("");setSettings(s=>({...s,appPassword:""}));}} style={{marginLeft:8,padding:"9px 14px",borderRadius:10,background:"none",border:`1px solid ${border}`,color:"#E05C5C",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Usuń hasło</button>}
+      </div>;
+    }
+
     function ReviewSettings({settings,setSettings,dk,txt,sub,border}) {
       const [template,setTemplate]=React.useState(settings.reviewTemplate||"");
       const inputStyle={padding:"8px 10px",borderRadius:8,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"};
@@ -3515,6 +3538,13 @@ Zasady:
       const Sec=({title,children})=><div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>{title}</div>{children}</div>;
       return <div style={{padding:"16px 12px 20px",background:sec,minHeight:"100vh"}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:txt,marginBottom:16}}>Ustawienia</div>
+        <Sec title="BEZPIECZEŃSTWO">
+          <div style={{padding:"12px 0"}}>
+            <div style={{fontSize:14,color:txt,marginBottom:6}}>Hasło dostępu do aplikacji</div>
+            <div style={{fontSize:12,color:sub,marginBottom:10}}>Wymagane przy każdym uruchomieniu przeglądarki. Zostaw puste aby wyłączyć.</div>
+            <PasswordSetting settings={settings} setSettings={setSettings} dk={dk} border={dk?"#2A4040":"#E4EAF0"} txt={txt}/>
+          </div>
+        </Sec>
         <Sec title="WYGLĄD">
           <Row label="Tryb ciemny"><Toggle val={dark} onToggle={()=>setDark(d=>!d)}/></Row>
           <Row label="Tryb demo (ukryj dane)"><Toggle val={demo} onToggle={()=>setDemo(d=>!d)}/></Row>
@@ -3554,7 +3584,32 @@ Zasady:
       </div>;
     }
 
+    function LockScreen({onUnlock}) {
+      const dk=useContext(DarkCtx);
+      const [pwd,setPwd]=React.useState("");
+      const [error,setError]=React.useState(false);
+      const [storedPwd]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("fizjo-settings")||"{}").appPassword||"";}catch{return "";}});
+      const check=()=>{
+        if(!storedPwd){onUnlock();return;}
+        if(pwd===storedPwd){sessionStorage.setItem("fizjo-unlocked","1");onUnlock();}
+        else{setError(true);setPwd("");}
+      };
+      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
+        <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Podaj hasło aby kontynuować</div>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:"0 4px 20px rgba(0,0,0,.1)"}}>
+          <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError(false);}}
+            onKeyDown={e=>e.key==="Enter"&&check()}
+            autoFocus placeholder="Hasło"
+            style={{width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:8}}/>
+          {error&&<div style={{fontSize:13,color:"#E05C5C",marginBottom:8}}>Nieprawidłowe hasło</div>}
+          <button onClick={check} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Wejdź</button>
+        </div>
+      </div>;
+    }
+
     function AppWrapper() {
+      const [unlocked,setUnlocked]=React.useState(()=>!!sessionStorage.getItem("fizjo-unlocked"));
       const [visits,setVisits,v1]=usePersistedState("fizjo-visits",[]);
       const [patients,setPatients,v2]=usePersistedState("fizjo-patients",[]);
       // Migracja: nadaj id wizytom które go nie mają — uruchamia się po załadowaniu z Supabase
@@ -3634,6 +3689,8 @@ Zasady:
         return()=>clearInterval(id);
       },[settings]);
 
+      const appPassword=(settings&&settings.appPassword)||"";
+      if(!unlocked&&appPassword)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
       return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
         <div>
