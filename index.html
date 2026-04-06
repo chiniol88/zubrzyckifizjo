@@ -382,7 +382,7 @@
 
         <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
-            {DOW.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i>=5?(dk?"#F4A261":"#D0622A"):"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
+            {DOW.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
             {cells.map((d,i)=>{
@@ -392,11 +392,8 @@
               const ec=(eventsByDay[d]||[]).length;
               const isToday=d===todayDay;
               const isOpen=d===openDay;
-              const colIndex=i%7;
-              const isWeekend=colIndex>=5;
-              const weekendBg=dk?"rgba(244,162,97,0.08)":"rgba(208,98,42,0.06)";
-              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):isWeekend?weekendBg:"transparent"}}>
-                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":isWeekend?(dk?"#F4A261":"#D0622A"):(dk?"#C8E8E8":"#1C2B3A")}}>{d}</span>
+              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):"transparent"}}>
+                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":(dk?"#C8E8E8":"#1C2B3A")}}>{d}</span>
                 <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
                   {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
                   {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
@@ -1281,6 +1278,195 @@
     }
 
 
+    function RentalStats({rentals}) {
+      const dk=useContext(DarkCtx);
+      const demo=useDemo();
+      const [open,setOpen]=useState(false);
+      const [period,setPeriod]=useState("12");
+
+      const today=todayLocal();
+      const periodMonths=+period;
+
+      const stats=useMemo(()=>{
+        const cutoff=new Date(today);
+        cutoff.setMonth(cutoff.getMonth()-periodMonths);
+        const cutStr=cutoff.toISOString().slice(0,10);
+
+        const finished=rentals.filter(r=>r.status==="zakończone"&&(r.endDate||r.startDate)>=cutStr);
+        const allInPeriod=rentals.filter(r=>(r.endDate||r.startDate)>=cutStr||(r.status==="aktywne"));
+
+        // Przychód per urządzenie
+        const revenueByEq={};
+        const countByEq={};
+        const daysOutByEq={};
+        EQUIPMENT.forEach(eq=>{revenueByEq[eq]=0;countByEq[eq]=0;daysOutByEq[eq]=0;});
+
+        rentals.filter(r=>(r.startDate>=cutStr||r.status==="aktywne")).forEach(r=>{
+          const eq=r.equipment;
+          if(!revenueByEq.hasOwnProperty(eq))return;
+          // przychód
+          const base=+r.amount||0;
+          const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+          const cycles=(r.cycles||[]).filter(c=>c.month>=cutStr.slice(0,7)).reduce((s,c)=>s+(+c.amountDue||base),0);
+          const rev=r.renewable?cycles:base+extDue;
+          revenueByEq[eq]=(revenueByEq[eq]||0)+rev;
+          countByEq[eq]=(countByEq[eq]||0)+1;
+          // dni w terenie
+          const start=r.startDate>=cutStr?r.startDate:cutStr;
+          const end=r.status==="aktywne"?today:(r.endDate||r.startDate);
+          if(end>=start){
+            const d=Math.round((new Date(end)-new Date(start))/(1000*60*60*24));
+            daysOutByEq[eq]=(daysOutByEq[eq]||0)+d;
+          }
+        });
+
+        // Średni czas wypożyczenia (zakończone)
+        const durByEq={};
+        const durCntByEq={};
+        finished.forEach(r=>{
+          const eq=r.equipment;
+          if(!r.endDate||!r.startDate)return;
+          const d=Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24));
+          if(d>=0){durByEq[eq]=(durByEq[eq]||0)+d;durCntByEq[eq]=(durCntByEq[eq]||0)+1;}
+        });
+
+        // Miesiące w zakresie
+        const totalDaysInPeriod=periodMonths*30;
+
+        // Top urządzenia po przychodzie
+        const ranked=EQUIPMENT.map(eq=>({
+          eq,
+          revenue:revenueByEq[eq]||0,
+          count:countByEq[eq]||0,
+          daysOut:daysOutByEq[eq]||0,
+          avgDur:durCntByEq&&durCntByEq[eq]>0?Math.round(durByEq[eq]/durCntByEq[eq]):null,
+          occupancy:Math.min(100,Math.round(((daysOutByEq[eq]||0)/totalDaysInPeriod)*100))
+        })).sort((a,b)=>b.revenue-a.revenue);
+
+        const totalRevenue=ranked.reduce((s,x)=>s+x.revenue,0);
+        const totalCount=ranked.reduce((s,x)=>s+x.count,0);
+        const avgDuration=finished.length>0?(()=>{
+          const durations=finished.filter(r=>r.endDate&&r.startDate).map(r=>Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24)));
+          return durations.length>0?Math.round(durations.reduce((a,b)=>a+b,0)/durations.length):null;
+        })():null;
+
+        // Przychód miesięczny (ostatnie 6 miesięcy)
+        const monthlyRev={};
+        for(let i=0;i<6;i++){
+          const d=new Date(today);d.setMonth(d.getMonth()-i);
+          monthlyRev[d.toISOString().slice(0,7)]=0;
+        }
+        rentals.forEach(r=>{
+          const base=+r.amount||0;
+          if(r.renewable){
+            (r.cycles||[]).forEach(c=>{if(monthlyRev.hasOwnProperty(c.month))monthlyRev[c.month]+=(+c.amountDue||base);});
+          } else {
+            const m=(r.endDate||r.startDate||"").slice(0,7);
+            if(monthlyRev.hasOwnProperty(m))monthlyRev[m]+=base+(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+          }
+        });
+        const monthlyArr=Object.entries(monthlyRev).sort((a,b)=>a[0].localeCompare(b[0]));
+        const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]),1);
+
+        // Najdłużej nieużywane (zakończone, brak aktywnego)
+        const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
+        const lastUsed={};
+        rentals.filter(r=>r.status==="zakończone").forEach(r=>{
+          const d=r.endDate||r.startDate;
+          if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;
+        });
+        const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({
+          eq,lastDate:lastUsed[eq],
+          idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))
+        })).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
+
+        return {ranked,totalRevenue,totalCount,avgDuration,monthlyArr,maxMonthly,idle};
+      },[rentals,period,today]);
+
+      const borderC=dk?"#2A4040":"#F2F5F7";
+      const textC=dk?"#C8E8E8":"#1C2B3A";
+      const subC="#7A8FA6";
+
+      return <div style={{padding:"0 20px 12px"}}>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",justifyContent:"center",alignItems:"center",padding:"13px 16px",cursor:"pointer",position:"relative"}}>
+            <span style={{fontSize:13,fontWeight:700,color:dk?"#8ABABA":"#4A6070",textTransform:"uppercase",letterSpacing:.8}}>📊 Statystyki sprzętu</span>
+            <span style={{position:"absolute",right:16,fontSize:12,color:subC}}>{open?"▲":"▼"}</span>
+          </div>
+          {open&&<div style={{borderTop:`1px solid ${borderC}`,padding:"14px 16px 16px"}}>
+
+            {/* Okres */}
+            <div style={{display:"flex",gap:6,marginBottom:16}}>
+              {[{v:"3",l:"3 mies."},{v:"6",l:"6 mies."},{v:"12",l:"12 mies."},{v:"24",l:"2 lata"}].map(o=>
+                <button key={o.v} onClick={()=>setPeriod(o.v)} style={{flex:1,padding:"6px 4px",borderRadius:10,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:period===o.v?"#0A7C7C":dk?"#1E3A3A":"#F2F5F7",color:period===o.v?"#fff":subC,fontFamily:"inherit"}}>{o.l}</button>
+              )}
+            </div>
+
+            {/* KPI górne */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+              {[
+                {l:"Przychód",v:demo?"****":stats.totalRevenue+" zł"},
+                {l:"Wypożyczeń",v:stats.totalCount},
+                {l:"Śr. czas",v:stats.avgDuration!=null?stats.avgDuration+" dni":"—"}
+              ].map(k=><div key={k.l} style={{background:dk?"#0F1E1E":"#F8FAFB",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+                <div style={{fontSize:11,color:subC,marginBottom:4,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>{k.l}</div>
+                <div style={{fontSize:16,fontWeight:800,color:textC}}>{k.v}</div>
+              </div>)}
+            </div>
+
+            {/* Przychód miesięczny - mini wykres słupkowy */}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Przychód miesięczny</div>
+              <div style={{display:"flex",alignItems:"flex-end",gap:4,height:60}}>
+                {stats.monthlyArr.map(([m,v])=>{
+                  const pct=Math.round((v/stats.maxMonthly)*100);
+                  const isCurrentMonth=m===today.slice(0,7);
+                  return <div key={m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                    <div style={{fontSize:9,color:subC,fontWeight:600}}>{demo?"?":v>0?v+"zł":""}</div>
+                    <div style={{width:"100%",height:Math.max(3,Math.round(pct*0.44))+"px",borderRadius:4,background:isCurrentMonth?"#0A7C7C":dk?"#2A5A5A":"#B8D8D8",transition:"height .3s"}}/>
+                    <div style={{fontSize:8,color:subC}}>{m.slice(5)}</div>
+                  </div>;
+                })}
+              </div>
+            </div>
+
+            {/* Ranking urządzeń */}
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Ranking urządzeń</div>
+              {stats.ranked.filter(x=>x.count>0||x.daysOut>0).slice(0,6).map((x,i)=><div key={x.eq} style={{padding:"8px 0",borderBottom:`1px solid ${borderC}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <div style={{fontSize:13,fontWeight:600,color:textC,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    <span style={{color:i===0?"#F4A261":i===1?"#7A8FA6":i===2?"#A06030":subC,marginRight:6,fontWeight:800}}>#{i+1}</span>{x.eq}
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:textC,flexShrink:0,marginLeft:8}}>{demo?"****":x.revenue+" zł"}</div>
+                </div>
+                <div style={{display:"flex",gap:10,fontSize:11,color:subC}}>
+                  <span>📦 {x.count} wyp.</span>
+                  <span>📅 {x.daysOut} dni</span>
+                  {x.avgDur!=null&&<span>⌀ {x.avgDur}d/wyp.</span>}
+                  <span>🔥 {x.occupancy}% obłożenie</span>
+                </div>
+                {/* Pasek obłożenia */}
+                <div style={{marginTop:4,height:3,borderRadius:2,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
+                  <div style={{height:"100%",width:x.occupancy+"%",background:x.occupancy>70?"#3DAA72":x.occupancy>30?"#F4A261":"#E4EAF0",borderRadius:2,transition:"width .4s"}}/>
+                </div>
+              </div>)}
+            </div>
+
+            {/* Nieużywany sprzęt */}
+            {stats.idle.length>0&&<div>
+              <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>🕐 Najdłużej nieużywany</div>
+              {stats.idle.map(x=><div key={x.eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${borderC}`}}>
+                <span style={{fontSize:13,color:textC,fontWeight:500}}>{x.eq}</span>
+                <span style={{fontSize:12,color:x.idleDays>90?"#E05C5C":x.idleDays>30?"#F4A261":subC,fontWeight:600}}>{x.idleDays} dni bez wyp.</span>
+              </div>)}
+            </div>}
+
+          </div>}
+        </div>
+      </div>;
+    }
+
     function RCard({r,onClick}) {
       const demo=useDemo();
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
@@ -1695,6 +1881,7 @@
           )}
         </div>
         <StockPanel rentals={rentals} stock={stock} setStock={setStock}/>
+        <RentalStats rentals={rentals}/>
         <div style={{padding:"0 20px"}}>
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
@@ -1709,13 +1896,8 @@
           </div>
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
           {!form.allDay&&<TimeSel label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>}
-          {!form.renewable&&<Inp label="Data do (opcjonalna)" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
-          {!form.renewable&&form.endDate&&!form.allDay&&(<div style={{marginBottom:14}}>
-            {form._showEndTime
-              ? <TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>
-              : <button onClick={()=>setForm(f=>({...f,_showEndTime:true}))} style={{background:"#F2F5F7",border:"none",borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left"}}>+ Dodaj godzinę zakończenia</button>
-            }
-          </div>)}
+          {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
+          {!form.renewable&&!form.allDay&&<TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}
           <div style={{marginBottom:14}}>
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(form.allDay||false)===o.v?"#E6F4F4":"#fff",color:(form.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
