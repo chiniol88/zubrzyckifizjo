@@ -37,21 +37,72 @@
     const maskAmt=(demo,amt)=>demo?demoAmt():amt;
 
     const SUPA_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co";
-    const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxanJsenNkZnlqZWFqZmthdGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjUzMzgsImV4cCI6MjA4ODE0MTMzOH0.sFWfnIV0tpNnwB65du9dNYTMSelrlEpMXxWf4Mcww4g";
+    const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxanJsenNkZnlqZWFqZmthdGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjUzMzgsImV4cCI6MjA4ODE0MTMzOH0.sFWfnIV0tpNnwB65du9dNYTMSelrlEpMXxWf4Mcww4g";
+
+    // Token sesji — ustawiany po zalogowaniu przez Supabase Auth
+    let _supaToken = null;
+    const getHeaders = () => ({
+      "apikey": SUPA_ANON,
+      "Authorization": `Bearer ${_supaToken || SUPA_ANON}`,
+      "Content-Type": "application/json"
+    });
+
+    // Supabase Auth
+    async function supaSignIn(email, password) {
+      const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {"apikey": SUPA_ANON, "Content-Type": "application/json"},
+        body: JSON.stringify({email, password})
+      });
+      const d = await r.json();
+      if(d.access_token) {
+        _supaToken = d.access_token;
+        // Zapisz refresh token w sessionStorage (znika po zamknięciu przeglądarki)
+        sessionStorage.setItem("fizjo-refresh", d.refresh_token);
+        sessionStorage.setItem("fizjo-token", d.access_token);
+        return {ok: true};
+      }
+      return {ok: false, error: d.error_description || d.msg || "Błąd logowania"};
+    }
+
+    async function supaRefresh() {
+      const refresh = sessionStorage.getItem("fizjo-refresh");
+      if(!refresh) return false;
+      const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: {"apikey": SUPA_ANON, "Content-Type": "application/json"},
+        body: JSON.stringify({refresh_token: refresh})
+      });
+      const d = await r.json();
+      if(d.access_token) {
+        _supaToken = d.access_token;
+        sessionStorage.setItem("fizjo-token", d.access_token);
+        sessionStorage.setItem("fizjo-refresh", d.refresh_token);
+        return true;
+      }
+      return false;
+    }
+
+    async function supaSignOut() {
+      sessionStorage.removeItem("fizjo-token");
+      sessionStorage.removeItem("fizjo-refresh");
+      _supaToken = null;
+    }
 
     async function dbGet(key) {
       try {
         const r = await fetch(`${SUPA_URL}/rest/v1/app_data?key=eq.${key}&select=value`,
-          {headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`}});
+          {headers: getHeaders()});
+        if(r.status === 401) return null;
         const d = await r.json();
         return d?.[0]?.value ?? null;
       } catch { return null; }
     }
     async function dbSet(key, value) {
       try {
-        await fetch(`${SUPA_URL}/rest/v1/app_data`,{method:"POST",
-          headers:{"apikey":SUPA_KEY,"Authorization":`Bearer ${SUPA_KEY}`,"Content-Type":"application/json","Prefer":"resolution=merge-duplicates"},
-          body:JSON.stringify({key,value})});
+        await fetch(`${SUPA_URL}/rest/v1/app_data`, {method: "POST",
+          headers: {...getHeaders(), "Prefer": "resolution=merge-duplicates"},
+          body: JSON.stringify({key, value})});
       } catch {}
     }
     function usePersistedState(key, initial) {
@@ -3538,12 +3589,12 @@ Zasady:
       const Sec=({title,children})=><div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>{title}</div>{children}</div>;
       return <div style={{padding:"16px 12px 20px",background:sec,minHeight:"100vh"}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:txt,marginBottom:16}}>Ustawienia</div>
-        <Sec title="BEZPIECZEŃSTWO">
-          <div style={{padding:"12px 0"}}>
-            <div style={{fontSize:14,color:txt,marginBottom:6}}>Hasło dostępu do aplikacji</div>
-            <div style={{fontSize:12,color:sub,marginBottom:10}}>Wymagane przy każdym uruchomieniu przeglądarki. Zostaw puste aby wyłączyć.</div>
-            <PasswordSetting settings={settings} setSettings={setSettings} dk={dk} border={dk?"#2A4040":"#E4EAF0"} txt={txt}/>
-          </div>
+
+        <Sec title="KONTO">
+          <Row label="Zalogowany"><span style={{fontSize:13,color:sub}}>✓ aktywna sesja</span></Row>
+          <Row label="Wyloguj się">
+            <button onClick={()=>{supaSignOut();window.location.reload();}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Wyloguj</button>
+          </Row>
         </Sec>
         <Sec title="WYGLĄD">
           <Row label="Tryb ciemny"><Toggle val={dark} onToggle={()=>setDark(d=>!d)}/></Row>
@@ -3586,30 +3637,44 @@ Zasady:
 
     function LockScreen({onUnlock}) {
       const dk=useContext(DarkCtx);
+      const [email,setEmail]=React.useState("");
       const [pwd,setPwd]=React.useState("");
-      const [error,setError]=React.useState(false);
-      const [storedPwd]=React.useState(()=>{try{return JSON.parse(localStorage.getItem("fizjo-settings")||"{}").appPassword||"";}catch{return "";}});
-      const check=()=>{
-        if(!storedPwd){onUnlock();return;}
-        if(pwd===storedPwd){sessionStorage.setItem("fizjo-unlocked","1");onUnlock();}
-        else{setError(true);setPwd("");}
+      const [error,setError]=React.useState("");
+      const [loading,setLoading]=React.useState(false);
+      const check=async()=>{
+        if(!email||!pwd)return;
+        setLoading(true);setError("");
+        const res=await supaSignIn(email,pwd);
+        setLoading(false);
+        if(res.ok){onUnlock();}
+        else{setError(res.error);setPwd("");}
       };
+      const inputStyle={width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10};
       return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
-        <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Podaj hasło aby kontynuować</div>
+        <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Zaloguj się aby kontynuować</div>
         <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:"0 4px 20px rgba(0,0,0,.1)"}}>
-          <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError(false);}}
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
             onKeyDown={e=>e.key==="Enter"&&check()}
-            autoFocus placeholder="Hasło"
-            style={{width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:8}}/>
-          {error&&<div style={{fontSize:13,color:"#E05C5C",marginBottom:8}}>Nieprawidłowe hasło</div>}
-          <button onClick={check} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Wejdź</button>
+            autoFocus placeholder="Email" style={inputStyle}/>
+          <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}}
+            onKeyDown={e=>e.key==="Enter"&&check()}
+            placeholder="Hasło" style={inputStyle}/>
+          {error&&<div style={{fontSize:13,color:"#E05C5C",marginBottom:10}}>{error}</div>}
+          <button onClick={check} disabled={loading||!email||!pwd}
+            style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:loading?"wait":"pointer",fontFamily:"inherit",opacity:loading?0.7:1}}>
+            {loading?"Logowanie...":"Zaloguj się"}
+          </button>
         </div>
       </div>;
     }
 
     function AppWrapper() {
-      const [unlocked,setUnlocked]=React.useState(()=>!!sessionStorage.getItem("fizjo-unlocked"));
+      const [unlocked,setUnlocked]=React.useState(()=>{
+        const t=sessionStorage.getItem("fizjo-token");
+        if(t){_supaToken=t;return true;}
+        return false;
+      });
       const [visits,setVisits,v1]=usePersistedState("fizjo-visits",[]);
       const [patients,setPatients,v2]=usePersistedState("fizjo-patients",[]);
       // Migracja: nadaj id wizytom które go nie mają — uruchamia się po załadowaniu z Supabase
@@ -3689,8 +3754,7 @@ Zasady:
         return()=>clearInterval(id);
       },[settings]);
 
-      const appPassword=(settings&&settings.appPassword)||"";
-      if(!unlocked&&appPassword)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
+      if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
       return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
         <div>
