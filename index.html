@@ -89,6 +89,15 @@
       _supaToken = null;
     }
 
+    async function supaResetPassword(email) {
+      const r = await fetch(`${SUPA_URL}/auth/v1/recover`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json","apikey":SUPA_KEY},
+        body: JSON.stringify({email})
+      });
+      return r.ok;
+    }
+
     async function dbGet(key) {
       try {
         const r = await fetch(`${SUPA_URL}/rest/v1/app_data?key=eq.${key}&select=value`,
@@ -1223,11 +1232,33 @@
       );
     }
 
+    // Pomocnik: ile sztuk danego sprzętu było w danym dniu
+    // stock = {qty:{eq:n}, history:[{eq,qty,from}]}
+    // Migracja ze starego formatu (plain {eq:n}) odbywa się w StockPanel przy zapisie
+    function qtyAt(stock, eq, dateStr) {
+      // stary format (brak history) — zwróć qty lub 1
+      const qty = stock && stock.qty ? stock.qty : stock;
+      const history = (stock && stock.history) || [];
+      // wpisy dla tego urządzenia posortowane rosnąco po dacie
+      const entries = history.filter(h=>h.eq===eq).sort((a,b)=>a.from.localeCompare(b.from));
+      if(entries.length===0) return (qty&&qty[eq])||1;
+      // znajdź ostatni wpis który był <= dateStr
+      let result = (qty&&qty[eq])||1;
+      for(const e of entries){
+        if(e.from<=dateStr) result=e.qty;
+        else break;
+      }
+      return result;
+    }
+
     function StockPanel({rentals,stock,setStock}) {
       const dk=useContext(DarkCtx);
       const [open,setOpen]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
       const [draft,setDraft]=useState({});
+
+      // normalizuj stock do nowego formatu jeśli stary
+      const qty = stock && stock.qty ? stock.qty : (stock||{});
 
       const activeCount=useMemo(()=>{
         const m={};
@@ -1235,13 +1266,30 @@
         return m;
       },[rentals]);
 
-      const total=eq=>stock[eq]||1;
+      const total=eq=>qty[eq]||1;
 
       const summary=useMemo(()=>{
         let free=0,warn=0,occupied=0;
         EQUIPMENT.forEach(eq=>{const tot=total(eq),fr=tot-(activeCount[eq]||0);if(fr===0)occupied++;else if(fr===1&&tot>1)warn++;else free++;});
         return {free,warn,occupied};
-      },[activeCount,stock]);
+      },[activeCount,qty]);
+
+      const saveStock=()=>{
+        const today=todayLocal();
+        const prevQty=qty;
+        const history=[...((stock&&stock.history)||[])];
+        // dla każdego eq które się zmieniło — dodaj wpis historii
+        EQUIPMENT.forEach(eq=>{
+          const newQty=+draft[eq]||1;
+          const oldQty=prevQty[eq]||1;
+          if(newQty!==oldQty){
+            history.push({eq,qty:newQty,from:today});
+          }
+        });
+        const newQty=Object.fromEntries(EQUIPMENT.map(eq=>[eq,+draft[eq]||1]));
+        setStock({qty:newQty,history});
+        setShowEdit(false);
+      };
 
       return <>
         <div style={{padding:"0 20px 12px"}}>
@@ -1258,12 +1306,12 @@
                   <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{fr}/{tot}</span>
                 </div>;
               })}
-              <button onClick={e=>{e.stopPropagation();setDraft(Object.fromEntries(EQUIPMENT.map(eq=>[eq,String(stock[eq]||1)])));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Edytuj stany magazynowe</button>
+              <button onClick={e=>{e.stopPropagation();setDraft(Object.fromEntries(EQUIPMENT.map(eq=>[eq,String(qty[eq]||1)])));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Edytuj stany magazynowe</button>
             </div>}
           </div>
         </div>
         {showEdit&&<Modal title="Edytuj stany magazynowe" onClose={()=>setShowEdit(false)}>
-          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Podaj ile sztuk każdego sprzętu posiadasz łącznie.</div>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Podaj ile sztuk każdego sprzętu posiadasz łącznie. Zmiany są zapisywane z datą dzisiejszą i uwzględniane w statystykach historycznych.</div>
           {EQUIPMENT.map(eq=><div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
             <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1272,13 +1320,13 @@
               <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
             </div>
           </div>)}
-          <Btn style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{setStock(Object.fromEntries(Object.entries(draft).map(([k,v])=>[k,+v])));setShowEdit(false);}}>Zapisz stany</Btn>
+          <Btn style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={saveStock}>Zapisz stany</Btn>
         </Modal>}
       </>;
     }
 
 
-    function RentalStats({rentals}) {
+    function RentalStats({rentals,stock}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [open,setOpen]=useState(false);
@@ -1293,34 +1341,61 @@
         const cutStr=cutoff.toISOString().slice(0,10);
 
         const finished=rentals.filter(r=>r.status==="zakończone"&&(r.endDate||r.startDate)>=cutStr);
-        const allInPeriod=rentals.filter(r=>(r.endDate||r.startDate)>=cutStr||(r.status==="aktywne"));
 
-        // Przychód per urządzenie
+        // Przychód i liczba per urządzenie
         const revenueByEq={};
         const countByEq={};
-        const daysOutByEq={};
-        EQUIPMENT.forEach(eq=>{revenueByEq[eq]=0;countByEq[eq]=0;daysOutByEq[eq]=0;});
+        EQUIPMENT.forEach(eq=>{revenueByEq[eq]=0;countByEq[eq]=0;});
 
-        rentals.filter(r=>(r.startDate>=cutStr||r.status==="aktywne")).forEach(r=>{
+        rentals.filter(r=>r.startDate>=cutStr||r.status==="aktywne").forEach(r=>{
           const eq=r.equipment;
           if(!revenueByEq.hasOwnProperty(eq))return;
-          // przychód
           const base=+r.amount||0;
           const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
           const cycles=(r.cycles||[]).filter(c=>c.month>=cutStr.slice(0,7)).reduce((s,c)=>s+(+c.amountDue||base),0);
-          const rev=r.renewable?cycles:base+extDue;
-          revenueByEq[eq]=(revenueByEq[eq]||0)+rev;
-          countByEq[eq]=(countByEq[eq]||0)+1;
-          // dni w terenie
-          const start=r.startDate>=cutStr?r.startDate:cutStr;
-          const end=r.status==="aktywne"?today:(r.endDate||r.startDate);
-          if(end>=start){
-            const d=Math.round((new Date(end)-new Date(start))/(1000*60*60*24));
-            daysOutByEq[eq]=(daysOutByEq[eq]||0)+d;
-          }
+          revenueByEq[eq]+=(r.renewable?cycles:base+extDue);
+          const rEnd=r.status==="aktywne"?today:(r.endDate||r.startDate);
+          if(rEnd>=cutStr) countByEq[eq]++;
         });
 
-        // Średni czas wypożyczenia (zakończone)
+        // Obłożenie — miesiąc po miesiącu z historyczną ilością sztuk
+        const daysOutByEq={};
+        const availDaysByEq={};
+        EQUIPMENT.forEach(eq=>{daysOutByEq[eq]=0;availDaysByEq[eq]=0;});
+
+        for(let mi=0;mi<periodMonths;mi++){
+          const mDate=new Date(today);
+          mDate.setDate(1);
+          mDate.setMonth(mDate.getMonth()-mi);
+          const mStr=mDate.toISOString().slice(0,7);
+          const mStart=mStr+"-01";
+          const mEndDate=new Date(mDate.getFullYear(),mDate.getMonth()+1,0);
+          const mEnd=mEndDate.toISOString().slice(0,10);
+          const rangeStart=mStart<cutStr?cutStr:mStart;
+          const rangeEnd=mEnd>today?today:mEnd;
+          if(rangeEnd<rangeStart)continue;
+          const daysInRange=Math.round((new Date(rangeEnd)-new Date(rangeStart))/(1000*60*60*24))+1;
+
+          EQUIPMENT.forEach(eq=>{
+            const midMonth=mStr+"-15";
+            const qty=qtyAt(stock,eq,midMonth);
+            availDaysByEq[eq]+=daysInRange*qty;
+
+            rentals.forEach(r=>{
+              if(r.equipment!==eq)return;
+              const rStart=r.startDate||"";
+              const rEnd=r.status==="aktywne"?today:(r.endDate||rStart);
+              const overlapStart=rStart>rangeStart?rStart:rangeStart;
+              const overlapEnd=rEnd<rangeEnd?rEnd:rangeEnd;
+              if(overlapEnd>=overlapStart){
+                const d=Math.round((new Date(overlapEnd)-new Date(overlapStart))/(1000*60*60*24))+1;
+                daysOutByEq[eq]+=d;
+              }
+            });
+          });
+        }
+
+        // Średni czas wypożyczenia (zakończone w okresie)
         const durByEq={};
         const durCntByEq={};
         finished.forEach(r=>{
@@ -1330,24 +1405,21 @@
           if(d>=0){durByEq[eq]=(durByEq[eq]||0)+d;durCntByEq[eq]=(durCntByEq[eq]||0)+1;}
         });
 
-        // Miesiące w zakresie
-        const totalDaysInPeriod=periodMonths*30;
-
-        // Top urządzenia po przychodzie
         const ranked=EQUIPMENT.map(eq=>({
           eq,
           revenue:revenueByEq[eq]||0,
           count:countByEq[eq]||0,
           daysOut:daysOutByEq[eq]||0,
-          avgDur:durCntByEq&&durCntByEq[eq]>0?Math.round(durByEq[eq]/durCntByEq[eq]):null,
-          occupancy:Math.min(100,Math.round(((daysOutByEq[eq]||0)/totalDaysInPeriod)*100))
+          availDays:availDaysByEq[eq]||0,
+          avgDur:durCntByEq[eq]>0?Math.round(durByEq[eq]/durCntByEq[eq]):null,
+          occupancy:availDaysByEq[eq]>0?Math.min(100,Math.round((daysOutByEq[eq]/availDaysByEq[eq])*100)):0
         })).sort((a,b)=>b.revenue-a.revenue);
 
         const totalRevenue=ranked.reduce((s,x)=>s+x.revenue,0);
         const totalCount=ranked.reduce((s,x)=>s+x.count,0);
         const avgDuration=finished.length>0?(()=>{
-          const durations=finished.filter(r=>r.endDate&&r.startDate).map(r=>Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24)));
-          return durations.length>0?Math.round(durations.reduce((a,b)=>a+b,0)/durations.length):null;
+          const durs=finished.filter(r=>r.endDate&&r.startDate).map(r=>Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24)));
+          return durs.length>0?Math.round(durs.reduce((a,b)=>a+b,0)/durs.length):null;
         })():null;
 
         // Przychód miesięczny (ostatnie 6 miesięcy)
@@ -1368,7 +1440,7 @@
         const monthlyArr=Object.entries(monthlyRev).sort((a,b)=>a[0].localeCompare(b[0]));
         const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]),1);
 
-        // Najdłużej nieużywane (zakończone, brak aktywnego)
+        // Najdłużej nieużywane
         const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{
@@ -1381,7 +1453,7 @@
         })).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
 
         return {ranked,totalRevenue,totalCount,avgDuration,monthlyArr,maxMonthly,idle};
-      },[rentals,period,today]);
+      },[rentals,stock,period,today]);
 
       const borderC=dk?"#2A4040":"#F2F5F7";
       const textC=dk?"#C8E8E8":"#1C2B3A";
@@ -1442,9 +1514,9 @@
                 </div>
                 <div style={{display:"flex",gap:10,fontSize:11,color:subC}}>
                   <span>📦 {x.count} wyp.</span>
-                  <span>📅 {x.daysOut} dni</span>
+                  <span>📅 {x.daysOut} dni w ter.</span>
                   {x.avgDur!=null&&<span>⌀ {x.avgDur}d/wyp.</span>}
-                  <span>🔥 {x.occupancy}% obłożenie</span>
+                  <span>🔥 {x.occupancy}% obłoż.</span>
                 </div>
                 {/* Pasek obłożenia */}
                 <div style={{marginTop:4,height:3,borderRadius:2,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
@@ -1881,7 +1953,7 @@
           )}
         </div>
         <StockPanel rentals={rentals} stock={stock} setStock={setStock}/>
-        <RentalStats rentals={rentals}/>
+        <RentalStats rentals={rentals} stock={stock}/>
         <div style={{padding:"0 20px"}}>
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
@@ -3756,14 +3828,40 @@ Zasady:
       const sec=dk?"#0A1A1A":"#F2F5F7";
       const txt=dk?"#E8F5F5":"#1C2B3A";
       const sub="#7A8FA6";
+      const [resetState,setResetState]=useState(null); // null | "sending" | "sent" | "error"
       const Row=({label,children})=><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}><span style={{fontSize:14,color:txt}}>{label}</span>{children}</div>;
       const Toggle=({val,onToggle})=><div onClick={onToggle} style={{width:44,height:24,borderRadius:12,background:val?"#0A7C7C":"#D0DCE8",cursor:"pointer",position:"relative",transition:"background 0.2s"}}><div style={{position:"absolute",top:3,left:val?23:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/></div>;
       const Sec=({title,children})=><div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>{title}</div>{children}</div>;
+
+      // wyciągnij email z JWT
+      const userEmail=useMemo(()=>{
+        try{
+          const token=sessionStorage.getItem("fizjo-token");
+          if(!token)return null;
+          const payload=JSON.parse(atob(token.split(".")[1]));
+          return payload.email||null;
+        }catch{return null;}
+      },[]);
+
+      const handleResetPassword=async()=>{
+        if(!userEmail)return;
+        setResetState("sending");
+        const ok=await supaResetPassword(userEmail);
+        setResetState(ok?"sent":"error");
+      };
       return <div style={{padding:"16px 12px 20px",background:sec,minHeight:"100vh"}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:txt,marginBottom:16}}>Ustawienia</div>
 
         <Sec title="KONTO">
-          <Row label="Zalogowany"><span style={{fontSize:13,color:sub}}>✓ aktywna sesja</span></Row>
+          <Row label="Zalogowany"><span style={{fontSize:13,color:sub}}>{userEmail||"✓ aktywna sesja"}</span></Row>
+          <Row label="Zmień hasło">
+            {resetState==="sent"
+              ? <span style={{fontSize:13,color:"#3DAA72",fontWeight:600}}>✓ Email wysłany</span>
+              : resetState==="error"
+              ? <span style={{fontSize:13,color:"#E05C5C",fontWeight:600}}>Błąd — spróbuj ponownie</span>
+              : <button onClick={handleResetPassword} disabled={resetState==="sending"} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit",opacity:resetState==="sending"?0.6:1}}>{resetState==="sending"?"Wysyłanie...":"Wyślij link"}</button>
+            }
+          </Row>
           <Row label="Wyloguj się">
             <button onClick={()=>{supaSignOut();window.location.reload();}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Wyloguj</button>
           </Row>
@@ -3841,11 +3939,68 @@ Zasady:
       </div>;
     }
 
+    function PasswordResetScreen() {
+      const dk=useContext(DarkCtx);
+      const [pwd,setPwd]=React.useState("");
+      const [pwd2,setPwd2]=React.useState("");
+      const [status,setStatus]=React.useState(null); // null | "saving" | "done" | "error"
+      const [error,setError]=React.useState("");
+
+      const handleSave=async()=>{
+        if(pwd.length<6){setError("Hasło musi mieć min. 6 znaków");return;}
+        if(pwd!==pwd2){setError("Hasła nie są identyczne");return;}
+        setStatus("saving");setError("");
+        try{
+          const r=await fetch(`${SUPA_URL}/auth/v1/user`,{
+            method:"PUT",
+            headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":`Bearer ${_supaToken}`},
+            body:JSON.stringify({password:pwd})
+          });
+          if(r.ok){setStatus("done");}
+          else{const d=await r.json();setError(d.message||"Błąd");setStatus(null);}
+        }catch{setError("Błąd połączenia");setStatus(null);}
+      };
+
+      const inputStyle={width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10};
+
+      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
+        <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Ustaw nowe hasło</div>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:"0 4px 20px rgba(0,0,0,.1)"}}>
+          {status==="done"
+            ? <div style={{textAlign:"center"}}>
+                <div style={{fontSize:40,marginBottom:12}}>✅</div>
+                <div style={{fontWeight:700,fontSize:16,color:dk?"#E8F5F5":"#1C2B3A",marginBottom:8}}>Hasło zmienione!</div>
+                <button onClick={()=>{window.location.hash="";window.location.reload();}} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Zaloguj się</button>
+              </div>
+            : <>
+                <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} placeholder="Nowe hasło" style={inputStyle}/>
+                <input type="password" value={pwd2} onChange={e=>{setPwd2(e.target.value);setError("");}} placeholder="Powtórz hasło" style={{...inputStyle,marginBottom:error?6:16}}/>
+                {error&&<div style={{fontSize:13,color:"#E05C5C",marginBottom:10}}>{error}</div>}
+                <button onClick={handleSave} disabled={status==="saving"||!pwd||!pwd2} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:status==="saving"?"wait":"pointer",fontFamily:"inherit",opacity:status==="saving"?0.7:1}}>
+                  {status==="saving"?"Zapisywanie...":"Zapisz hasło"}
+                </button>
+              </>
+          }
+        </div>
+      </div>;
+    }
+
     function AppWrapper() {
       const [unlocked,setUnlocked]=React.useState(false);
       const [authChecked,setAuthChecked]=React.useState(false);
+      const [isRecovery,setIsRecovery]=React.useState(false);
 
       React.useEffect(()=>{
+        // Sprawdź czy to link resetujący hasło
+        const hash=window.location.hash;
+        if(hash&&hash.includes("type=recovery")&&hash.includes("access_token=")){
+          try{
+            const params=new URLSearchParams(hash.slice(1));
+            const token=params.get("access_token");
+            if(token){_supaToken=token;setIsRecovery(true);setAuthChecked(true);return;}
+          }catch{}
+        }
         const t=sessionStorage.getItem("fizjo-token");
         if(t){
           // Weryfikuj token przez testowe zapytanie
@@ -3949,6 +4104,7 @@ Zasady:
       },[settings]);
 
       if(!authChecked)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div></div>;
+      if(isRecovery)return<DarkCtx.Provider value={dark}><PasswordResetScreen/></DarkCtx.Provider>;
       if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
       return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
