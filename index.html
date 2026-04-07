@@ -92,7 +92,7 @@
     async function supaResetPassword(email) {
       const r = await fetch(`${SUPA_URL}/auth/v1/recover`, {
         method: "POST",
-        headers: {"Content-Type":"application/json","apikey":SUPA_KEY},
+        headers: {"Content-Type":"application/json","apikey":SUPA_ANON},
         body: JSON.stringify({email})
       });
       return r.ok;
@@ -3953,7 +3953,7 @@ Zasady:
         try{
           const r=await fetch(`${SUPA_URL}/auth/v1/user`,{
             method:"PUT",
-            headers:{"Content-Type":"application/json","apikey":SUPA_KEY,"Authorization":`Bearer ${_supaToken}`},
+            headers:{"Content-Type":"application/json","apikey":SUPA_ANON,"Authorization":`Bearer ${_supaToken}`},
             body:JSON.stringify({password:pwd})
           });
           if(r.ok){setStatus("done");}
@@ -3971,7 +3971,7 @@ Zasady:
             ? <div style={{textAlign:"center"}}>
                 <div style={{fontSize:40,marginBottom:12}}>✅</div>
                 <div style={{fontWeight:700,fontSize:16,color:dk?"#E8F5F5":"#1C2B3A",marginBottom:8}}>Hasło zmienione!</div>
-                <button onClick={()=>{window.location.hash="";window.location.reload();}} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Zaloguj się</button>
+                <button onClick={()=>{_supaToken=null;sessionStorage.removeItem("fizjo-token");sessionStorage.removeItem("fizjo-refresh");window.location.href=window.location.pathname;}} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Zaloguj się</button>
               </div>
             : <>
                 <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} placeholder="Nowe hasło" style={inputStyle}/>
