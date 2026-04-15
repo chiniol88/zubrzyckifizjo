@@ -528,7 +528,11 @@
               const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
               const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
               const totalAmt=(+ev.r.amount||0)+extDue;
-              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):totalAmt+" zł";
+              const paymentsPaid=(ev.r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+              const extPaid=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
+              const totalPaid=(paymentsPaid||(ev.r.amountPaid||0))+extPaid;
+              const remaining=totalAmt-totalPaid;
+              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?(remaining>0?`do zapłaty: ${remaining} zł`:null):totalAmt+" zł";
               const timeLabel=ev.type==="start"?(ev.r.startTime||""):( ev.type==="end"?(ev.r.endTime||""):"");
               const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
@@ -538,7 +542,7 @@
                   <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <Badge color={color}>{sub}</Badge>
+                  {sub&&<Badge color={color}>{sub}</Badge>}
                   <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+(ev.r.equipment||"Do ustalenia")+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
                 </div>
               </div>;
