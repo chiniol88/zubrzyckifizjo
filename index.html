@@ -492,11 +492,20 @@
                 <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
               </div>
             </div>;}
-            if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";return <div key={"ad-r"+idx} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
+            if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
+              const extDue2=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+              const totalAmt2=(+ev.r.amount||0)+extDue2;
+              const paymentsPaid2=(ev.r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+              const extPaid2=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
+              const totalPaid2=(paymentsPaid2||(ev.r.amountPaid||0))+extPaid2;
+              const remaining2=totalAmt2-totalPaid2;
+              const adSub=ev.type==="end"?(remaining2>0?`do zapłaty: ${remaining2} zł`:null):ev.type==="start"?totalAmt2+" zł":null;
+              return <div key={"ad-r"+idx} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
                 <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
                 <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
               </div>
+              {adSub&&<Badge color={ev.type==="end"?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
             </div>;}
             return null;
           })}
