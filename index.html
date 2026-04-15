@@ -127,7 +127,7 @@
       return new Date(v.date+"T"+(v.time||"00:00")+":00") <= new Date() ? "zakończona" : "zaplanowana";
     };
     const emptyVisit = () => ({date:todayLocal(),time:"15:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
-    const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",endDate:"",endTime:"10:00",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
+    const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",startAllDay:false,endDate:"",endTime:"10:00",endAllDay:false,renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula"];
@@ -358,7 +358,7 @@
       const dayAllDay=[
         ...dayEvents.filter(e=>e.allDay).map(x=>({_kind:"event",e:x})),
         ...dayVisits.filter(v=>v.allDay).map(v=>({_kind:"visit",v})),
-        ...dayRentals.filter(ev=>ev.r.allDay).map(ev=>({_kind:"rental",ev}))
+        ...dayRentals.filter(ev=>(ev.type==="start"?(ev.r.startAllDay||ev.r.allDay):ev.type==="end"?(ev.r.endAllDay||ev.r.allDay):false)).map(ev=>({_kind:"rental",ev}))
       ].sort((a,b)=>{
         const ta=a._kind==="event"?a.e.title:a._kind==="visit"?a.v.patientName:a.ev.r.patientName;
         const tb=b._kind==="event"?b.e.title:b._kind==="visit"?b.v.patientName:b.ev.r.patientName;
@@ -367,7 +367,7 @@
       const dayTimedAll=openDay?[
         ...dayVisits.filter(v=>!v.allDay).map(v=>({_kind:"visit",_time:v.time||"00:00",v})),
         ...dayEvents.filter(e=>!e.allDay).map(e=>({_kind:"event",_time:e.time||"00:00",e})),
-        ...dayRentals.filter(ev=>!ev.r.allDay).map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):"00:00",ev}))
+        ...dayRentals.filter(ev=>!(ev.type==="start"?(ev.r.startAllDay||ev.r.allDay):ev.type==="end"?(ev.r.endAllDay||ev.r.allDay):false)).map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):"00:00",ev}))
       ].sort((a,b)=>a._time.localeCompare(b._time)):[];
 
       return <div style={{marginTop:16}}>
@@ -1862,12 +1862,17 @@
               <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"Odnawialne"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,renewable:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${ef.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:ef.renewable===o.v?"#E6F4F4":"#fff",color:ef.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
             </div>
             <Inp label="Data od" value={ef.startDate} onChange={v=>setEf(f=>({...f,startDate:v}))} type="date"/>
-            {!ef.allDay&&<TimeSel label="Godzina rozpoczęcia" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))}/>}
-            {!ef.renewable&&<Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>}
-            {!ef.renewable&&!ef.allDay&&<TimeSel label="Godzina zakończenia" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}
-            <div style={{marginBottom:14}}>
-              <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(ef.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(ef.allDay||false)===o.v?"#E6F4F4":"#fff",color:(ef.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
+            <div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Dowóz</div>
+            <div style={{display:"flex",gap:6,marginBottom:10}}>
+              {[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=>{const cur=ef.startAllDay!==undefined?ef.startAllDay:(ef.allDay||false);return <button key={String(o.v)} onClick={()=>setEf(f=>({...f,startAllDay:o.v,allDay:undefined}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${cur===o.v?"#0A7C7C":"#E4EAF0"}`,background:cur===o.v?"#E6F4F4":"#fff",color:cur===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>;})}
             </div>
+            {!(ef.startAllDay!==undefined?ef.startAllDay:(ef.allDay||false))&&<TimeSel label="Godzina dowozu" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))}/>}
+            {!ef.renewable&&<Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>}
+            {!ef.renewable&&ef.endDate&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
+            <div style={{display:"flex",gap:6,marginBottom:10}}>
+              {[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=>{const cur=ef.endAllDay!==undefined?ef.endAllDay:(ef.allDay||false);return <button key={String(o.v)} onClick={()=>setEf(f=>({...f,endAllDay:o.v,allDay:undefined}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${cur===o.v?"#0A7C7C":"#E4EAF0"}`,background:cur===o.v?"#E6F4F4":"#fff",color:cur===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>;})}
+            </div>
+            {!(ef.endAllDay!==undefined?ef.endAllDay:(ef.allDay||false))&&<TimeSel label="Godzina odbioru" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}</>}
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
             <Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
@@ -1970,12 +1975,13 @@
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"🔄 Odnawialne miesięcznie"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,renewable:o.v,endDate:o.v?"":f.endDate}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${form.renewable===o.v?"#0A7C7C":"#E4EAF0"}`,background:form.renewable===o.v?"#E6F4F4":"#fff",color:form.renewable===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
           </div>
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
-          {!form.allDay&&<TimeSel label="Godzina rozpoczęcia" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>}
-          {!form.renewable&&<Inp label="Data do" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
-          {!form.renewable&&!form.allDay&&<TimeSel label="Godzina zakończenia" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}
-          <div style={{marginBottom:14}}>
-            <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.allDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(form.allDay||false)===o.v?"#E6F4F4":"#fff",color:(form.allDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
-          </div>
+          <div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Dowóz</div>
+          <div style={{display:"flex",gap:6,marginBottom:10}}>{[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,startAllDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.startAllDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(form.startAllDay||false)===o.v?"#E6F4F4":"#fff",color:(form.startAllDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
+          {!form.startAllDay&&<TimeSel label="Godzina dowozu" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>}
+          {!form.renewable&&<Inp label="Data do (opcjonalna)" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
+          {!form.renewable&&form.endDate&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
+          <div style={{display:"flex",gap:6,marginBottom:10}}>{[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,endAllDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.endAllDay||false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(form.endAllDay||false)===o.v?"#E6F4F4":"#fff",color:(form.endAllDay||false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
+          {!form.endAllDay&&<TimeSel label="Godzina odbioru" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}</>}
           <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
           {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
@@ -1988,7 +1994,7 @@
             if(!form.patientName)return;
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
-            const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:[],status:"aktywne"};
+            const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:[],status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
             setShowAdd(false);setToast("Wypożyczenie dodane");
