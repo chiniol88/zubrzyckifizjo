@@ -127,7 +127,7 @@
       return new Date(v.date+"T"+(v.time||"00:00")+":00") <= new Date() ? "zakończona" : "zaplanowana";
     };
     const emptyVisit = () => ({date:todayLocal(),time:"15:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
-    const emptyRental = () => ({equipment:"Artromot K1 2025",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",endDate:"",endTime:"10:00",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
+    const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",endDate:"",endTime:"10:00",renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula"];
@@ -445,7 +445,7 @@
             if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";return <div key={"ad-r"+idx} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
                 <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}</div></div>
+                <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
               </div>
             </div>;}
             return null;
@@ -485,11 +485,11 @@
               return <div key={"r"+idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
                 <div onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
                   <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
-                  <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
+                  <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   <Badge color={color}>{sub}</Badge>
-                  <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+ev.r.equipment+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+                  <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+(ev.r.equipment||"Do ustalenia")+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
                 </div>
               </div>;
             }
@@ -616,7 +616,7 @@
           res.push({kind:"visit",label:"Wizyta",title:(v.allDay?"🗓 ":"⏰ ")+(v.time?v.time+" · ":"")+v.patientName,sub:v.date+" · "+v.type+(v.price?" · "+v.price+" zł":"")+(pat.phone?" · 📞 "+pat.phone:""),item:v});
         });
         // wypożyczenia
-        rentals.filter(r=>(r.patientName||"").toLowerCase().includes(q)||(r.equipment||"").toLowerCase().includes(q)||(r.address||"").toLowerCase().includes(q)||((r.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")))).slice(0,5).forEach(r=>res.push({kind:"rental",label:"Sprzęt",title:"📦 "+r.patientName+" – "+r.equipment,sub:r.startDate+(r.endDate?" → "+r.endDate:"")+" · "+(r.status||"")+(r.phone?" · 📞 "+r.phone:""),item:r}));
+        rentals.filter(r=>(r.patientName||"").toLowerCase().includes(q)||(r.equipment||"").toLowerCase().includes(q)||(r.address||"").toLowerCase().includes(q)||((r.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")))).slice(0,5).forEach(r=>res.push({kind:"rental",label:"Sprzęt",title:"📦 "+r.patientName+" – "+(r.equipment||"Do ustalenia"),sub:r.startDate+(r.endDate?" → "+r.endDate:"")+" · "+(r.status||"")+(r.phone?" · 📞 "+r.phone:""),item:r}));
         // pacjenci
         patients.filter(p=>(p.name||"").toLowerCase().includes(q)||(p.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""))||(p.address||"").toLowerCase().includes(q)).slice(0,3).forEach(p=>res.push({kind:"patient",label:"Pacjent",title:"👤 "+p.name,sub:(p.phone?"📞 "+p.phone:"")+(p.address?" · "+p.address:""),item:p}));
         // wydarzenia
@@ -716,7 +716,7 @@
               {upcoming.map(r=>{const d=dateDiff(today,r.endDate);return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div><div style={{fontWeight:600}}>{r.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName} · {r.endDate}</div></div>
+                    <div><div style={{fontWeight:600}}>{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName} · {r.endDate}</div></div>
                     <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
                   </div>
                 </Card>
@@ -737,7 +737,7 @@
               {unpaidCycles.map(r=>{const n=(r.cycles||[]).filter(c=>!c.paid).length;return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #E05C5C"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div><div style={{fontWeight:600}}>{r.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName}</div></div>
+                    <div><div style={{fontWeight:600}}>{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName}</div></div>
                     <Badge color="#E05C5C">{n} {n===1?"miesiąc":"mies."}</Badge>
                   </div>
                 </Card>
@@ -1192,7 +1192,7 @@
           setRentals(rs=>rs.map(rr=>rr.id===r.id?{...rr,cycles:newCycles}:rr));
           const newFinances=months.filter(x=>checked[x.month]&&+(amounts[x.month]||0)>0).map(x=>{
             const label=new Date(x.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-            return {id:Date.now()+Math.random(),sourceId:"cycle-"+r.id+"-"+x.month,date:x.paidDate,type:"przychód",category:"Wypożyczalnia",amount:+(amounts[x.month]||0),description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label};
+            return {id:Date.now()+Math.random(),sourceId:"cycle-"+r.id+"-"+x.month,date:x.paidDate,type:"przychód",category:"Wypożyczalnia",amount:+(amounts[x.month]||0),description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label};
           });
           if(newFinances.length)setFinances(fs=>[...newFinances,...fs]);
         }}>✓ Zatwierdź historię ({months.filter(x=>checked[x.month]).length} mies.)</Btn>
@@ -1221,7 +1221,7 @@
             <input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
+            <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
             <button onClick={()=>{if(!window.confirm("Usunąć cykl "+label+"?"))return;setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).filter(c=>c.month!==cycle.month)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
           </div>
         </div>
@@ -1557,7 +1557,7 @@
 
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
+          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment||"❓ Do ustalenia"}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
           {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:dl!==null?<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>:<Badge color="#7A8FA6">brak terminu</Badge>)}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
@@ -1607,7 +1607,7 @@
             <div style={{padding:"16px 20px 0"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
                 <div>
-                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{r.equipment}</div>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{r.equipment||"❓ Do ustalenia"}</div>
                   {r.renewable?<Badge color="#7C6AF4">🔄 Odnawialne miesięcznie</Badge>:dl!==null&&<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po terminie":dl===0?"Termin dziś!":dl+" dni"}</Badge>}
                 </div>
                 <Btn small variant="secondary" onClick={()=>{setEf({...r,amount:String(r.amount),amountPaid:String(r.amountPaid||0)});setShowEdit(true);}}>✏️ Edytuj</Btn>
@@ -1853,7 +1853,7 @@
           </div>
 
           {showEdit&&ef&&<Modal title="Edytuj wypożyczenie" onClose={()=>setShowEdit(false)}>
-            <Sel label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={EQUIPMENT.map(x=>({value:x,label:x}))}/>
+            <Sel label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...EQUIPMENT.map(x=>({value:x,label:x}))]}/>
             <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
@@ -1891,7 +1891,7 @@
           </Modal>}
 
           {showExtend&&<Modal title={extForm.editId!=null?"Edytuj przedłużenie":"Przedłuż wypożyczenie"} onClose={()=>setShowExtend(false)}>
-            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{r.patientName} · {r.equipment}</div>
+            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{r.patientName} · {r.equipment||"❓ Do ustalenia"}</div>
             {extForm.editId==null&&<div style={{marginBottom:12,padding:"10px 14px",background:"#F2F5F7",borderRadius:10,fontSize:13}}>
               <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
             </div>}
@@ -1917,16 +1917,16 @@
                 }:x));
                 // Sync finansów — wpis dotyczy amountPaid
                 const extSid="extend-"+r.id+"-"+extForm.editId;
-                if(oldPaid>0&&paid>0) setFinances(fs=>fs.map(f=>f.sourceId===extSid?{...f,amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"}:f));
+                if(oldPaid>0&&paid>0) setFinances(fs=>fs.map(f=>f.sourceId===extSid?{...f,amount:paid,description:"Przedłużenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"}:f));
                 else if(oldPaid>0&&paid===0) setFinances(fs=>fs.filter(f=>f.sourceId!==extSid));
-                else if(oldPaid===0&&paid>0) setFinances(fs=>[{id:Date.now(),sourceId:extSid,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                else if(oldPaid===0&&paid>0) setFinances(fs=>[{id:Date.now(),sourceId:extSid,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...(fs||[])]);
                 setToast("Przedłużenie zaktualizowane");
               } else {
                 const extId = Date.now();
                 const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,endTime:extForm.endTime||"10:00",amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?(extForm.payDate||todayLocal()):null};
                 setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
                 if(paid>0){
-                  setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+r.equipment+")"},...(fs||[])]);
+                  setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...(fs||[])]);
                 }
                 setToast("Przedłużono do "+extForm.newEndDate);
               }
@@ -1960,7 +1960,8 @@
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
         {showAdd&&<Modal title="Nowe wypożyczenie" onClose={()=>setShowAdd(false)}>
-          <Sel label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={EQUIPMENT.map(x=>({value:x,label:x}))}/>
+          <Sel label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...EQUIPMENT.map(x=>({value:x,label:x}))]}/>
+
           <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))}/>
@@ -3797,12 +3798,12 @@ Zasady:
         });
         rentals.forEach(r=>(r.payments||[]).forEach(p=>{
           const sid="payment-"+p.id; if(ex.has(sid))return;
-          toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+")"});
+          toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"});
         }));
         rentals.forEach(r=>(r.cycles||[]).filter(c=>c.paid).forEach(c=>{
           const sid="cycle-"+r.id+"-"+c.month; if(ex.has(sid))return;
           const label=new Date(c.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-          toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||c.month+"-15",type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+r.equipment+") "+label});
+          toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||c.month+"-15",type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label});
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals]);
