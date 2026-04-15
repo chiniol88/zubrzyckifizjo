@@ -89,15 +89,6 @@
       _supaToken = null;
     }
 
-    async function supaResetPassword(email) {
-      const r = await fetch(`${SUPA_URL}/auth/v1/recover`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json","apikey":SUPA_ANON},
-        body: JSON.stringify({email})
-      });
-      return r.ok;
-    }
-
     async function dbGet(key) {
       try {
         const r = await fetch(`${SUPA_URL}/rest/v1/app_data?key=eq.${key}&select=value`,
@@ -1133,9 +1124,9 @@
       const add=()=>{
         const v=+amt; if(!v) return;
         const rem=rentalAmount-(amountPaid||0);
-        if(v>rem){alert(`Wpłata (${v} zł) przekracza pozostałą kwotę (${rem} zł)`);return;}
+        if(v>rem+0.01){alert(`Wpłata (${v} zł) przekracza pozostałą kwotę (${rem} zł)`);return;}
         const np={id:Date.now(),amount:v,date};
-        setRentals(rs=>rs.map(x=>x.id===rentalId?{...x,payments:[...(x.payments||[]),np],amountPaid:Math.min((x.amountPaid||0)+v,rentalAmount)}:x));
+        setRentals(rs=>rs.map(x=>x.id===rentalId?{...x,payments:[...(x.payments||[]),np]}:x));
         setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+np.id,date,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+patientName+" ("+equipment+")"},...fs]);
         setAmt("");
       };
@@ -1469,7 +1460,7 @@
 
             {/* Okres */}
             <div style={{display:"flex",gap:6,marginBottom:16}}>
-              {[{v:"3",l:"3 mies."},{v:"6",l:"6 mies."},{v:"12",l:"12 mies."},{v:"24",l:"2 lata"}].map(o=>
+              {[{v:"1",l:"1 mies."},{v:"2",l:"2 mies."},{v:"3",l:"3 mies."},{v:"6",l:"6 mies."},{v:"12",l:"12 mies."}].map(o=>
                 <button key={o.v} onClick={()=>setPeriod(o.v)} style={{flex:1,padding:"6px 4px",borderRadius:10,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:period===o.v?"#0A7C7C":dk?"#1E3A3A":"#F2F5F7",color:period===o.v?"#fff":subC,fontFamily:"inherit"}}>{o.l}</button>
               )}
             </div>
@@ -1547,7 +1538,8 @@
       const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
       const totalAmount=(+r.amount||0)+extDue;
       const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-      const totalPaid=(r.amountPaid||0)+extPaid;
+      const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+      const totalPaid=Math.max(paymentsPaid,r.amountPaid||0)+extPaid;
 
       // Zbierz wszystkie dokumenty (z payments + extensions)
       const allDocs=new Set([
@@ -1702,7 +1694,7 @@
                     // Zapłacono = wpłaty z payments + amountPaid z przedłużeń
                     const paymentsPaid = (r.payments||[]).reduce((s,p)=>s+p.amount,0);
                     const extPaid = (r.extensions||[]).reduce((s,e)=>s+(e.amountPaid||0),0);
-                    const totalPaid = paymentsPaid + extPaid;
+                    const totalPaid = Math.max(paymentsPaid,r.amountPaid||0)+extPaid;
                     const remaining = totalAmount - totalPaid;
 
                     // Historia wpłat: normalne wpłaty + przedłużenia które mają amountPaid>0
@@ -1741,7 +1733,7 @@
                               </div>
                               <button onClick={()=>{
                                 if(p._type==="payment"){
-                                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id),amountPaid:Math.max(0,(x.amountPaid||0)-p.amount)}:x));
+                                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id)}:x));
                                   setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id));
                                 } else {
                                   // Usuń wpłatę za przedłużenie — zeruj amountPaid, zachowaj amountDue
@@ -1803,7 +1795,7 @@
                   const totalAmount=(+r.amount||0)+extTotal;
                   const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+p.amount,0);
                   const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-                  const remaining=totalAmount-(paymentsPaid+extPaid);
+                  const remaining=totalAmount-(Math.max(paymentsPaid,r.amountPaid||0)+extPaid);
                   if(r.renewable&&!closeDate){alert("Podaj datę zakończenia");return;}
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
                   const endMonth=r.renewable&&closeDate?closeDate.slice(0,7):null;
@@ -3828,40 +3820,14 @@ Zasady:
       const sec=dk?"#0A1A1A":"#F2F5F7";
       const txt=dk?"#E8F5F5":"#1C2B3A";
       const sub="#7A8FA6";
-      const [resetState,setResetState]=useState(null); // null | "sending" | "sent" | "error"
       const Row=({label,children})=><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}><span style={{fontSize:14,color:txt}}>{label}</span>{children}</div>;
       const Toggle=({val,onToggle})=><div onClick={onToggle} style={{width:44,height:24,borderRadius:12,background:val?"#0A7C7C":"#D0DCE8",cursor:"pointer",position:"relative",transition:"background 0.2s"}}><div style={{position:"absolute",top:3,left:val?23:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/></div>;
       const Sec=({title,children})=><div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>{title}</div>{children}</div>;
-
-      // wyciągnij email z JWT
-      const userEmail=useMemo(()=>{
-        try{
-          const token=sessionStorage.getItem("fizjo-token");
-          if(!token)return null;
-          const payload=JSON.parse(atob(token.split(".")[1]));
-          return payload.email||null;
-        }catch{return null;}
-      },[]);
-
-      const handleResetPassword=async()=>{
-        if(!userEmail)return;
-        setResetState("sending");
-        const ok=await supaResetPassword(userEmail);
-        setResetState(ok?"sent":"error");
-      };
       return <div style={{padding:"16px 12px 20px",background:sec,minHeight:"100vh"}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:txt,marginBottom:16}}>Ustawienia</div>
 
         <Sec title="KONTO">
-          <Row label="Zalogowany"><span style={{fontSize:13,color:sub}}>{userEmail||"✓ aktywna sesja"}</span></Row>
-          <Row label="Zmień hasło">
-            {resetState==="sent"
-              ? <span style={{fontSize:13,color:"#3DAA72",fontWeight:600}}>✓ Email wysłany</span>
-              : resetState==="error"
-              ? <span style={{fontSize:13,color:"#E05C5C",fontWeight:600}}>Błąd — spróbuj ponownie</span>
-              : <button onClick={handleResetPassword} disabled={resetState==="sending"} style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit",opacity:resetState==="sending"?0.6:1}}>{resetState==="sending"?"Wysyłanie...":"Wyślij link"}</button>
-            }
-          </Row>
+          <Row label="Zalogowany"><span style={{fontSize:13,color:sub}}>✓ aktywna sesja</span></Row>
           <Row label="Wyloguj się">
             <button onClick={()=>{supaSignOut();window.location.reload();}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Wyloguj</button>
           </Row>
@@ -3939,68 +3905,11 @@ Zasady:
       </div>;
     }
 
-    function PasswordResetScreen() {
-      const dk=useContext(DarkCtx);
-      const [pwd,setPwd]=React.useState("");
-      const [pwd2,setPwd2]=React.useState("");
-      const [status,setStatus]=React.useState(null); // null | "saving" | "done" | "error"
-      const [error,setError]=React.useState("");
-
-      const handleSave=async()=>{
-        if(pwd.length<6){setError("Hasło musi mieć min. 6 znaków");return;}
-        if(pwd!==pwd2){setError("Hasła nie są identyczne");return;}
-        setStatus("saving");setError("");
-        try{
-          const r=await fetch(`${SUPA_URL}/auth/v1/user`,{
-            method:"PUT",
-            headers:{"Content-Type":"application/json","apikey":SUPA_ANON,"Authorization":`Bearer ${_supaToken}`},
-            body:JSON.stringify({password:pwd})
-          });
-          if(r.ok){setStatus("done");}
-          else{const d=await r.json();setError(d.message||"Błąd");setStatus(null);}
-        }catch{setError("Błąd połączenia");setStatus(null);}
-      };
-
-      const inputStyle={width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10};
-
-      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
-        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
-        <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Ustaw nowe hasło</div>
-        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:"0 4px 20px rgba(0,0,0,.1)"}}>
-          {status==="done"
-            ? <div style={{textAlign:"center"}}>
-                <div style={{fontSize:40,marginBottom:12}}>✅</div>
-                <div style={{fontWeight:700,fontSize:16,color:dk?"#E8F5F5":"#1C2B3A",marginBottom:8}}>Hasło zmienione!</div>
-                <button onClick={()=>{_supaToken=null;sessionStorage.removeItem("fizjo-token");sessionStorage.removeItem("fizjo-refresh");window.location.href=window.location.pathname;}} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Zaloguj się</button>
-              </div>
-            : <>
-                <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} placeholder="Nowe hasło" style={inputStyle}/>
-                <input type="password" value={pwd2} onChange={e=>{setPwd2(e.target.value);setError("");}} placeholder="Powtórz hasło" style={{...inputStyle,marginBottom:error?6:16}}/>
-                {error&&<div style={{fontSize:13,color:"#E05C5C",marginBottom:10}}>{error}</div>}
-                <button onClick={handleSave} disabled={status==="saving"||!pwd||!pwd2} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:status==="saving"?"wait":"pointer",fontFamily:"inherit",opacity:status==="saving"?0.7:1}}>
-                  {status==="saving"?"Zapisywanie...":"Zapisz hasło"}
-                </button>
-              </>
-          }
-        </div>
-      </div>;
-    }
-
     function AppWrapper() {
       const [unlocked,setUnlocked]=React.useState(false);
       const [authChecked,setAuthChecked]=React.useState(false);
-      const [isRecovery,setIsRecovery]=React.useState(false);
 
       React.useEffect(()=>{
-        // Sprawdź czy to link resetujący hasło
-        const hash=window.location.hash;
-        if(hash&&hash.includes("type=recovery")&&hash.includes("access_token=")){
-          try{
-            const params=new URLSearchParams(hash.slice(1));
-            const token=params.get("access_token");
-            if(token){_supaToken=token;setIsRecovery(true);setAuthChecked(true);return;}
-          }catch{}
-        }
         const t=sessionStorage.getItem("fizjo-token");
         if(t){
           // Weryfikuj token przez testowe zapytanie
@@ -4104,7 +4013,6 @@ Zasady:
       },[settings]);
 
       if(!authChecked)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div></div>;
-      if(isRecovery)return<DarkCtx.Provider value={dark}><PasswordResetScreen/></DarkCtx.Provider>;
       if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
       return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
