@@ -532,7 +532,8 @@
               const extPaid=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
               const totalPaid=(paymentsPaid||(ev.r.amountPaid||0))+extPaid;
               const remaining=totalAmt-totalPaid;
-              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?(remaining>0?`do zapłaty: ${remaining} zł`:null):totalAmt+" zł";
+              const endSub=remaining>0?`do zapłaty: ${remaining} zł`:null;
+              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?endSub:totalAmt+" zł";
               const timeLabel=ev.type==="start"?(ev.r.startTime||""):( ev.type==="end"?(ev.r.endTime||""):"");
               const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
