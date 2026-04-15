@@ -275,6 +275,36 @@
       openICS({summary, dtStart, dtEnd, description, allDay});
     }
 
+    function getHolidays(year) {
+      // Wielkanoc — algorytm Gaussa
+      const a=year%19,b=Math.floor(year/100),c=year%100;
+      const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+      const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+      const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
+      const m=Math.floor((a+11*h+22*l)/451);
+      const month=Math.floor((h+l-7*m+114)/31);
+      const day=((h+l-7*m+114)%31)+1;
+      const easter=new Date(year,month-1,day);
+      const fmt=(d)=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),dd=String(d.getDate()).padStart(2,"0");return y+"-"+m+"-"+dd;};
+      const add=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r;};
+      const holidays=new Set([
+        year+"-01-01", // Nowy Rok
+        year+"-01-06", // Trzech Króli
+        fmt(easter),   // Wielkanoc (niedziela)
+        fmt(add(easter,1)), // Lany Poniedziałek
+        year+"-05-01", // Święto Pracy
+        year+"-05-03", // Święto Konstytucji
+        fmt(add(easter,60)), // Boże Ciało
+        year+"-08-15", // Wniebowzięcie NMP
+        year+"-11-01", // Wszystkich Świętych
+        year+"-11-11", // Święto Niepodległości
+        year+"-12-24", // Wigilia
+        year+"-12-25", // Boże Narodzenie
+        year+"-12-26", // Drugi dzień Bożego Narodzenia
+      ]);
+      return holidays;
+    }
+
     function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents,patients}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
@@ -351,6 +381,8 @@
       for(let i=0;i<startOffset;i++)cells.push(null);
       for(let d=1;d<=daysInMonth;d++)cells.push(d);
 
+      const holidays=useMemo(()=>getHolidays(calYear),[calYear]);
+
       const openDateStr=openDay?monthStr+"-"+String(openDay).padStart(2,"0"):null;
       const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
       const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
@@ -382,7 +414,7 @@
 
         <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
-            {DOW.map(d=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
+            {DOW.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i>=5?(dk?"#F4A261":"#D0622A"):"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
             {cells.map((d,i)=>{
@@ -392,8 +424,14 @@
               const ec=(eventsByDay[d]||[]).length;
               const isToday=d===todayDay;
               const isOpen=d===openDay;
-              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):"transparent"}}>
-                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":(dk?"#C8E8E8":"#1C2B3A")}}>{d}</span>
+              const colIndex=i%7;
+              const isWeekend=colIndex>=5;
+              const dateStr=monthStr+"-"+String(d).padStart(2,"0");
+              const isHoliday=holidays.has(dateStr);
+              const normalBg=isHoliday?(dk?"#4A1010":"#FDECEA"):isWeekend?(dk?"rgba(244,162,97,0.12)":"rgba(244,162,97,0.15)"):"transparent";
+              const normalColor=isHoliday?"#C0392B":isWeekend?(dk?"#F4A261":"#D0622A"):(dk?"#C8E8E8":"#1C2B3A");
+              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):normalBg}}>
+                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":normalColor}}>{d}</span>
                 <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
                   {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
                   {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
@@ -3674,7 +3712,7 @@ Zasady:
 
 
     // ── APP ───────────────────────────────────────────────────────────────────
-    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"finances",i:I.fin,l:"Finanse"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
+    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"finances",i:I.fin,l:"Finanse"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
     function useIsDesktop(){
       const [desk,setDesk]=React.useState(()=>window.innerWidth>=900);
@@ -3817,18 +3855,24 @@ Zasady:
     }
 
 
-    function ReviewSettings({settings,setSettings,dk,txt,sub,border}) {
-      const [template,setTemplate]=React.useState(settings.reviewTemplate||"");
-      const inputStyle={padding:"8px 10px",borderRadius:8,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"};
-      const saveTemplate=()=>setSettings(s=>({...s,reviewTemplate:template}));
-      return <>
-        <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
-          <textarea value={template} onChange={e=>setTemplate(e.target.value)} onBlur={saveTemplate}
-            rows={4} placeholder="Hej, dziękuję za wypożyczenie! Będę wdzięczny za opinię:"
-            style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}/>
-        </div>
-
-      </>;
+    function SocialLinks({settings,setSettings,dk,txt,sub,border}) {
+      const links=settings.socialLinks||[];
+      const save=(newLinks)=>setSettings(s=>({...s,socialLinks:newLinks}));
+      const add=()=>save([...links,{id:Date.now(),name:"",url:""}]);
+      const upd=(id,field,val)=>save(links.map(l=>l.id===id?{...l,[field]:val}:l));
+      const del=(id)=>save(links.filter(l=>l.id!==id));
+      const inp=(extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
+      return <div style={{paddingTop:8,paddingBottom:4}}>
+        {links.length===0&&<div style={{fontSize:13,color:sub,padding:"8px 0 12px"}}>Brak linków — dodaj pierwszy poniżej.</div>}
+        {links.map((l,i)=><div key={l.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+          <span style={{fontSize:13,color:sub,minWidth:20,textAlign:"right"}}>{i+1}.</span>
+          <input value={l.name} onChange={e=>upd(l.id,"name",e.target.value)} placeholder="Nazwa (np. Facebook)" style={{...inp(),flex:"0 0 120px"}}/>
+          <input value={l.url} onChange={e=>upd(l.id,"url",e.target.value)} placeholder="https://..." style={{...inp(),flex:1,minWidth:0}}/>
+          {l.url&&<a href={l.url} target="_blank" rel="noreferrer" style={{fontSize:18,textDecoration:"none"}}>🔗</a>}
+          <button onClick={()=>del(l.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#E05C5C",padding:"0 2px",flexShrink:0}}>×</button>
+        </div>)}
+        <button onClick={add} style={{background:dk?"#1E3A3A":"#F2F5F7",border:"none",borderRadius:10,padding:"9px 16px",fontSize:13,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left"}}>+ Dodaj kolejny</button>
+      </div>;
     }
 
     function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
@@ -3881,7 +3925,7 @@ Zasady:
             {settings.anthropicKey&&<div style={{fontSize:12,color:"#3DAA72",marginTop:6}}>✓ Klucz zapisany</div>}
           </div>
         </Sec>
-        <Sec title="OPINIE — LINKI DO SOCIALI"><ReviewSettings settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A4040":"#E4EAF0"}/></Sec>
+        <Sec title="LINKI — MEDIA SPOŁECZNOŚCIOWE"><SocialLinks settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A4040":"#E4EAF0"}/></Sec>
         <Sec title="INFORMACJE">
           <Row label="Wersja aplikacji"><span style={{fontSize:13,color:sub}}>ZubrzyckiFizjo 1.0</span></Row>
         </Sec>
