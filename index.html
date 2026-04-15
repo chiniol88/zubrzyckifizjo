@@ -108,13 +108,20 @@
     function usePersistedState(key, initial, ready=true) {
       const [state, setState] = useState(initial);
       const [loaded, setLoaded] = useState(false);
+      const userChanged = React.useRef(false);
       useEffect(()=>{
-        if(!ready){setLoaded(false);return;}
+        if(!ready){setLoaded(false);userChanged.current=false;return;}
         setLoaded(false);
+        userChanged.current=false;
         dbGet(key).then(v=>{if(v!==null)setState(v);setLoaded(true);});
       },[ready]);
-      useEffect(()=>{if(!loaded||!ready)return;const t=setTimeout(()=>dbSet(key,state),800);return()=>clearTimeout(t);},[state,loaded,ready]);
-      return [state,setState,loaded];
+      const setStateUser = React.useCallback((v)=>{userChanged.current=true;setState(v);},[]);
+      useEffect(()=>{
+        if(!loaded||!ready||!userChanged.current)return;
+        const t=setTimeout(()=>dbSet(key,state),800);
+        return()=>clearTimeout(t);
+      },[state,loaded,ready]);
+      return [state,setStateUser,loaded];
     }
 
     // ── UTILS ─────────────────────────────────────────────────────────────────
