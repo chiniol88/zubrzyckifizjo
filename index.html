@@ -1126,7 +1126,12 @@
         const rem=rentalAmount-(amountPaid||0);
         if(v>rem+0.01){alert(`Wpłata (${v} zł) przekracza pozostałą kwotę (${rem} zł)`);return;}
         const np={id:Date.now(),amount:v,date};
-        setRentals(rs=>rs.map(x=>x.id===rentalId?{...x,payments:[...(x.payments||[]),np]}:x));
+        setRentals(rs=>rs.map(x=>{
+          if(x.id!==rentalId)return x;
+          const newPayments=[...(x.payments||[]),np];
+          const newPaid=newPayments.reduce((s,q)=>s+(+q.amount||0),0);
+          return {...x,payments:newPayments,amountPaid:newPaid};
+        }));
         setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+np.id,date,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+patientName+" ("+equipment+")"},...fs]);
         setAmt("");
       };
@@ -1539,7 +1544,7 @@
       const totalAmount=(+r.amount||0)+extDue;
       const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
       const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
-      const totalPaid=Math.max(paymentsPaid,r.amountPaid||0)+extPaid;
+      const totalPaid=(paymentsPaid||(r.amountPaid||0))+extPaid;
 
       // Zbierz wszystkie dokumenty (z payments + extensions)
       const allDocs=new Set([
@@ -1694,7 +1699,7 @@
                     // Zapłacono = wpłaty z payments + amountPaid z przedłużeń
                     const paymentsPaid = (r.payments||[]).reduce((s,p)=>s+p.amount,0);
                     const extPaid = (r.extensions||[]).reduce((s,e)=>s+(e.amountPaid||0),0);
-                    const totalPaid = Math.max(paymentsPaid,r.amountPaid||0)+extPaid;
+                    const totalPaid = (paymentsPaid||(r.amountPaid||0))+extPaid;
                     const remaining = totalAmount - totalPaid;
 
                     // Historia wpłat: normalne wpłaty + przedłużenia które mają amountPaid>0
@@ -1733,7 +1738,12 @@
                               </div>
                               <button onClick={()=>{
                                 if(p._type==="payment"){
-                                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,payments:(x.payments||[]).filter(q=>q.id!==p.id)}:x));
+                                  setRentals(rs=>rs.map(x=>{
+                                    if(x.id!==r.id)return x;
+                                    const newPayments=(x.payments||[]).filter(q=>q.id!==p.id);
+                                    const newPaid=newPayments.reduce((s,q)=>s+(+q.amount||0),0);
+                                    return {...x,payments:newPayments,amountPaid:newPaid};
+                                  }));
                                   setFinances(fs=>fs.filter(f=>f.sourceId!=="payment-"+p.id));
                                 } else {
                                   // Usuń wpłatę za przedłużenie — zeruj amountPaid, zachowaj amountDue
@@ -1795,7 +1805,7 @@
                   const totalAmount=(+r.amount||0)+extTotal;
                   const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+p.amount,0);
                   const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-                  const remaining=totalAmount-(Math.max(paymentsPaid,r.amountPaid||0)+extPaid);
+                  const remaining=totalAmount-((paymentsPaid||(r.amountPaid||0))+extPaid);
                   if(r.renewable&&!closeDate){alert("Podaj datę zakończenia");return;}
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
                   const endMonth=r.renewable&&closeDate?closeDate.slice(0,7):null;
@@ -2140,7 +2150,7 @@
         const sid=entry.sourceId;
         if(!sid){setFinances(fs=>fs.filter(f=>f.id!==entry.id));return;}
         if(sid.startsWith("visit-")){const vid=+sid.replace("visit-","");setVisits(vs=>vs.filter(v=>+v.id!==vid));}
-        else if(sid.startsWith("payment-")){const pid=+sid.replace("payment-","");setRentals(rs=>rs.map(r=>{const found=(r.payments||[]).find(p=>+p.id===pid);if(!found)return r;return{...r,payments:(r.payments||[]).filter(p=>+p.id!==pid),amountPaid:Math.max(0,(r.amountPaid||0)-found.amount)};}));}
+        else if(sid.startsWith("payment-")){const pid=+sid.replace("payment-","");setRentals(rs=>rs.map(r=>{const found=(r.payments||[]).find(p=>+p.id===pid);if(!found)return r;const newPmts=(r.payments||[]).filter(p=>+p.id!==pid);return{...r,payments:newPmts,amountPaid:newPmts.reduce((s,p)=>s+(+p.amount||0),0)};}));}
         else if(sid.startsWith("extend-")){const rest=sid.slice(7);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const eid=+rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,extensions:(r.extensions||[]).map(e=>+e.id===eid?{...e,amountPaid:0,paidDate:null}:e)}));}
         else if(sid.startsWith("cycle-")){const rest=sid.slice(6);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const mo=rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,cycles:(r.cycles||[]).map(c=>c.month===mo?{...c,paid:false,paidDate:null}:c)}));}
         else if(sid.startsWith("wozek-")){const cid=+sid.replace("wozek-","");setNfzCases(cs=>(cs||[]).map(c=>+c.id===cid?{...c,realized:false}:c));}
