@@ -109,18 +109,53 @@
       const [state, setState] = useState(initial);
       const [loaded, setLoaded] = useState(false);
       const userChanged = React.useRef(false);
+      const stateRef = React.useRef(state);
+      stateRef.current = state;
+
+      // Initial load
       useEffect(()=>{
         if(!ready){setLoaded(false);userChanged.current=false;return;}
         setLoaded(false);
         userChanged.current=false;
-        dbGet(key).then(v=>{if(v!==null)setState(v);setLoaded(true);});
+        dbGet(key).then(v=>{
+          // Jeśli użytkownik zdążył coś zmienić zanim odpowiedź wróciła — nie nadpisuj
+          if(!userChanged.current&&v!==null)setState(v);
+          setLoaded(true);
+        });
       },[ready]);
-      const setStateUser = React.useCallback((v)=>{userChanged.current=true;setState(v);},[]);
+
+      // Save on user changes (debounced)
       useEffect(()=>{
         if(!loaded||!ready||!userChanged.current)return;
-        const t=setTimeout(()=>dbSet(key,state),800);
+        const t=setTimeout(()=>{
+          dbSet(key,state).then(()=>{
+            // Po udanym zapisie — zgaś flagę żeby polling mógł pracować
+            userChanged.current=false;
+          });
+        },800);
         return()=>clearTimeout(t);
       },[state,loaded,ready]);
+
+      // Polling co 30s — synchronizacja między urządzeniami
+      useEffect(()=>{
+        if(!loaded||!ready)return;
+        const interval=setInterval(()=>{
+          // Nie sprawdzaj gdy user coś właśnie zmienia (albo czeka na zapis)
+          if(userChanged.current)return;
+          dbGet(key).then(v=>{
+            if(v===null||userChanged.current)return;
+            // Porównaj — jeśli inne, zaktualizuj bez ustawiania userChanged
+            try{
+              if(JSON.stringify(v)!==JSON.stringify(stateRef.current)){
+                setState(v);
+              }
+            }catch{}
+          });
+        },30000);
+        return()=>clearInterval(interval);
+      },[loaded,ready]);
+
+      const setStateUser = React.useCallback((v)=>{userChanged.current=true;setState(v);},[]);
       return [state,setStateUser,loaded];
     }
 
@@ -777,11 +812,21 @@
                   <Badge color={p._days===0?"#F4A261":p._days<=3?"#F4A261":"#3DAA72"}>{p._days===0?"Dziś!":p._days===1?"Jutro":"Za "+p._days+" dni"}</Badge>
                 </div>
               </Card>)}
-              {upcoming.map(r=>{const d=dateDiff(today,r.endDate);return(
+              {upcoming.map(r=>{const d=dateDiff(today,r.endDate);
+                const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+                const totalAmt=(+r.amount||0)+extDue;
+                const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+                const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
+                const totalPaid=(paymentsPaid||(r.amountPaid||0))+extPaid;
+                const remaining=totalAmt-totalPaid;
+                return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div><div style={{fontWeight:600}}>{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName} · {r.endDate}</div></div>
-                    <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
+                    <div><div style={{fontWeight:600}}>{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {r.endDate}</div></div>
+                    <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                      <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
+                      {remaining>0&&<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>}
+                    </div>
                   </div>
                 </Card>
               );})}
