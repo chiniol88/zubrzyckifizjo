@@ -2806,9 +2806,19 @@ Zasady:
             <input type="month" value={(form.startMonth||(selMonth)).length>7?(form.startMonth||selMonth).slice(0,7):(form.startMonth||selMonth)} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
-          <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+        <div style={{display:"flex",gap:10,marginBottom:14}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <select value={form.endDayOfMonth||""} onChange={e=>setForm(f=>({...f,endDayOfMonth:e.target.value?+e.target.value:null}))}
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              <option value="">— brak —</option>
+              {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          </div>
         </div>
         <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>onSave(form)}>Zapisz</Btn>
       </Modal>;
@@ -2837,9 +2847,19 @@ Zasady:
             <input type="month" value={(form.startMonth||(selMonth)).length>7?(form.startMonth||selMonth).slice(0,7):(form.startMonth||selMonth)} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
-          <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+        <div style={{display:"flex",gap:10,marginBottom:14}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <select value={form.endDayOfMonth||""} onChange={e=>setForm(f=>({...f,endDayOfMonth:e.target.value?+e.target.value:null}))}
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              <option value="">— brak —</option>
+              {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+          </div>
         </div>
         <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>onSave(form)}>Zapisz zmiany</Btn>
         <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={onDelete}>🗑️ Usuń</Btn>
