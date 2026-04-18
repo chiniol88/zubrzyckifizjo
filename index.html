@@ -3112,7 +3112,8 @@ Zasady:
       const [showRecurring,setShowRecurring]=useState(null); // "income"|"expense"|null - add modal
       const [editRecurring,setEditRecurring]=useState(null);
       const [rForm,setRForm]=useState({type:"expense",cat:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});
-      const [editRecurringOverride,setEditRecurringOverride]=useState(null); // {r, type}
+      const [editRecurringOverride,setEditRecurringOverride]=useState(null);
+      const [openRecurringCats,setOpenRecurringCats]=useState(new Set());
 
       const recurring=useMemo(()=>budget.recurring||[],[budget]);
       const recurringInc=useMemo(()=>recurring.filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)),[recurring,selMonth]);
@@ -3339,33 +3340,43 @@ Zasady:
           </div>
           {(budget.recurring||[]).length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak wpisów cyklicznych</div>}
           {["income","expense"].map(typ=>{
-            const recs=(budget.recurring||[]).filter(r=>r.type===typ).slice().sort((a,b)=>a.cat.localeCompare(b.cat,"pl")||a.desc.localeCompare(b.desc,"pl"));
+            const recs=(budget.recurring||[]).filter(r=>r.type===typ);
             if(!recs.length)return null;
             const col=typ==="income"?"#3DAA72":"#E05C5C";
             const label=typ==="income"?"Przychody cykliczne":"Koszty cykliczne";
-            // Grupuj po kategorii
-            const catGroups=[...new Set(recs.map(r=>r.cat))];
+            // Buduj grupy kategorii z sumami, sortuj od największej
+            const catGroups=[...new Set(recs.map(r=>r.cat))].map(cat=>{
+              const catRecs=recs.filter(r=>r.cat===cat).slice().sort((a,b)=>(+b.amount||0)-(+a.amount||0));
+              const catActiveSum=catRecs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
+              return {cat,catRecs,catActiveSum};
+            }).sort((a,b)=>b.catActiveSum-a.catActiveSum);
+            const totalActiveSum=recs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
             return <div key={typ}>
               <div style={{padding:"6px 16px",background:dk?"#0F1F1F":typ==="income"?"#F0F9F5":"#FDF7F7",fontSize:10,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>
-              {catGroups.map(cat=>{
-                const catRecs=recs.filter(r=>r.cat===cat);
-                const catActiveSum=catRecs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
+              {catGroups.map(({cat,catRecs,catActiveSum})=>{
+                const key=typ+"-"+cat;
+                const isOpen=openRecurringCats.has(key);
+                const toggle=()=>setOpenRecurringCats(s=>{const n=new Set(s);n.has(key)?n.delete(key):n.add(key);return n;});
                 return <div key={cat}>
-                  <div style={{padding:"5px 16px",background:dk?"#162828":typ==="income"?"#E8F7F0":"#FEF0F0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span style={{fontSize:11,fontWeight:700,color:col}}>{cat}</span>
-                    {catActiveSum>0&&<span style={{fontSize:11,fontWeight:700,color:col}}>{demo?"****":catActiveSum.toFixed(2)} zł</span>}
+                  <div onClick={toggle} style={{padding:"10px 16px",background:dk?"#162828":typ==="income"?"#E8F7F0":"#FEF0F0",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",borderBottom:`1px solid ${border}`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:12,color:col,fontWeight:500}}>{isOpen?"▾":"▸"}</span>
+                      <span style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{cat}</span>
+                      <span style={{fontSize:11,color:sub}}>({catRecs.length})</span>
+                    </div>
+                    <span style={{fontSize:13,fontWeight:700,color:col}}>{demo?"****":catActiveSum.toFixed(2)} zł</span>
                   </div>
-                  {catRecs.map(r=>{
+                  {isOpen&&catRecs.map(r=>{
                     const isActive=(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth);
                     return <div key={r.id} onClick={()=>{setRForm({type:r.type,cat:r.cat,subcat:r.subcat||"",desc:r.desc,amount:String(r.amount),cycle:"monthly",startMonth:(r.startMonth||selMonth+"-01").length===7?(r.startMonth||selMonth)+"-01":(r.startMonth||selMonth+"-01"),endMonth:r.endMonth?(r.endMonth.length===7?r.endMonth+"-01":r.endMonth):""});setEditRecurring(r);}}
-                      style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer",opacity:isActive?1:.45}}>
+                      style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px 9px 32px",borderBottom:`1px solid ${border}`,cursor:"pointer",opacity:isActive?1:.45}}>
                       <div style={{minWidth:0,flex:1}}>
                         <div style={{display:"flex",alignItems:"center",gap:6}}>
                           <span style={{fontSize:13,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"••••":r.desc||r.cat}</span>
                           {!isActive&&<span style={{fontSize:10,color:sub,background:dk?"#2A3A3A":"#F0F0F0",borderRadius:4,padding:"1px 5px"}}>nieaktywny</span>}
                         </div>
                         <div style={{fontSize:11,color:sub,marginTop:1}}>
-                          {r.subcat?" · "+r.subcat:""}{r.dayOfMonth||1}. każdego miesiąca
+                          {r.subcat?""+r.subcat+" · ":""}{r.dayOfMonth||1}. każdego miesiąca
                           {r.startMonth?" · od "+new Date(r.startMonth.slice(0,7)+"-15").toLocaleDateString("pl-PL",{month:"short",year:"numeric"}):""}
                           {r.endMonth?" · do "+new Date(r.endMonth.slice(0,7)+"-15").toLocaleDateString("pl-PL",{month:"short",year:"numeric"}):""}
                         </div>
@@ -3377,7 +3388,7 @@ Zasady:
               })}
               <div style={{padding:"8px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:dk?"#0F1F1F":typ==="income"?"#E8F7F0":"#FEF0F0"}}>
                 <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Suma miesięczna</span>
-                <span style={{fontSize:14,fontWeight:800,color:col}}>{demo?"****":recs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0).toFixed(2)} zł</span>
+                <span style={{fontSize:14,fontWeight:800,color:col}}>{demo?"****":totalActiveSum.toFixed(2)} zł</span>
               </div>
             </div>;
           })}
