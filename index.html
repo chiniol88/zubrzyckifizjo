@@ -3974,18 +3974,19 @@ Zasady:
 
 
     function SocialLinks({settings,setSettings,dk,txt,sub,border}) {
-      const links=settings.socialLinks||[];
-      const save=(newLinks)=>setSettings(s=>({...s,socialLinks:newLinks}));
-      const add=()=>save([...links,{id:Date.now(),name:"",url:""}]);
-      const upd=(id,field,val)=>save(links.map(l=>l.id===id?{...l,[field]:val}:l));
-      const del=(id)=>save(links.filter(l=>l.id!==id));
+      const [links,setLinks]=React.useState(()=>settings.socialLinks||[]);
+      const saveToSettings=(newLinks)=>setSettings(s=>({...s,socialLinks:newLinks}));
+      const add=()=>{const newLinks=[...links,{id:Date.now(),name:"",url:""}];setLinks(newLinks);saveToSettings(newLinks);};
+      const upd=(id,field,val)=>setLinks(ls=>ls.map(l=>l.id===id?{...l,[field]:val}:l));
+      const blur=(newLinks)=>saveToSettings(newLinks);
+      const del=(id)=>{const newLinks=links.filter(l=>l.id!==id);setLinks(newLinks);saveToSettings(newLinks);};
       const inp=(extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
       return <div style={{paddingTop:8,paddingBottom:4}}>
         {links.length===0&&<div style={{fontSize:13,color:sub,padding:"8px 0 12px"}}>Brak linków — dodaj pierwszy poniżej.</div>}
         {links.map((l,i)=><div key={l.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
           <span style={{fontSize:13,color:sub,minWidth:20,textAlign:"right"}}>{i+1}.</span>
-          <input value={l.name} onChange={e=>upd(l.id,"name",e.target.value)} placeholder="Nazwa (np. Facebook)" style={{...inp(),flex:"0 0 120px"}}/>
-          <input value={l.url} onChange={e=>upd(l.id,"url",e.target.value)} placeholder="https://..." style={{...inp(),flex:1,minWidth:0}}/>
+          <input value={l.name} onChange={e=>upd(l.id,"name",e.target.value)} onBlur={()=>blur(links.map(x=>x.id===l.id?{...x,name:x.name}:x))} placeholder="Nazwa (np. Facebook)" style={{...inp(),flex:"0 0 120px"}}/>
+          <input value={l.url} onChange={e=>upd(l.id,"url",e.target.value)} onBlur={()=>blur(links.map(x=>x.id===l.id?{...x,url:x.url}:x))} placeholder="https://..." style={{...inp(),flex:1,minWidth:0}}/>
           {l.url&&<a href={l.url} target="_blank" rel="noreferrer" style={{fontSize:18,textDecoration:"none"}}>🔗</a>}
           <button onClick={()=>del(l.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#E05C5C",padding:"0 2px",flexShrink:0}}>×</button>
         </div>)}
