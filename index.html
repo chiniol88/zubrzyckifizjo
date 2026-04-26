@@ -3373,33 +3373,31 @@ Zasady:
         </div>
 
         {/* PANEL B — ANALIZA KOSZTÓW STAŁYCH */}
-        {(()=>{const maxRecExp=Math.max(...analysisData.map(x=>x.mRecExp),1);return(
-          return <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
-            <div onClick={()=>setShowAnalysis(v=>!v)} style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-              <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>📊 Analiza kosztów stałych</span>
-              <span style={{fontSize:12,color:sub}}>{showAnalysis?"▲":"▼"}</span>
-            </div>
-            {showAnalysis&&<div style={{borderTop:`1px solid ${border}`}}>
-              <div style={{display:"grid",gridTemplateColumns:"70px 1fr 60px 50px 50px",gap:0}}>
-                {["Miesiąc","","Stałe","% prych.","% kost."].map((h,i)=><div key={i} style={{padding:"6px 10px",fontSize:10,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.3,borderBottom:`1px solid ${border}`,background:dk?"#111E1E":"#F8FAFB"}}>{h}</div>)}
-                {analysisData.map(({m,mRecExp,mTotalInc,mTotalExp,pctInc,pctExp})=>{
-                  const isCur=m===selMonth;
-                  const barW=maxRecExp>0?Math.round(mRecExp/maxRecExp*100):0;
-                  return <React.Fragment key={m}>
-                    <div style={{padding:"8px 10px",fontSize:12,fontWeight:isCur?700:400,color:isCur?"#0A7C7C":dk?"#C8E8E8":"#1C2B3A",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"short",year:"2-digit"})}</div>
-                    <div style={{padding:"8px 6px",borderBottom:`1px solid ${border}`,display:"flex",alignItems:"center",background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent"}}>
-                      <div style={{height:6,borderRadius:3,background:"#E05C5C",width:barW+"%",minWidth:mRecExp>0?4:0,transition:"width .3s"}}/>
-                    </div>
-                    <div style={{padding:"8px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"right"}}>{demo?"***":mRecExp>0?mRecExp.toFixed(0)+"zł":"—"}</div>
-                    <div style={{padding:"8px 6px",fontSize:12,color:pctInc!=null?(pctInc>80?"#E05C5C":pctInc>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"center"}}>{pctInc!=null?pctInc+"%":"—"}</div>
-                    <div style={{padding:"8px 6px",fontSize:12,color:pctExp!=null?(pctExp>80?"#E05C5C":pctExp>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"center"}}>{pctExp!=null?pctExp+"%":"—"}</div>
-                  </React.Fragment>;
-                })}
-              </div>
-              <div style={{padding:"8px 12px",fontSize:11,color:sub,fontStyle:"italic"}}>Aktualny miesiąc podświetlony. Kolor % przychodów: zielony &lt;50%, pomarańczowy &lt;80%, czerwony &gt;80%.</div>
-            </div>}
+        <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+          <div onClick={()=>setShowAnalysis(v=>!v)} style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+            <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>📊 Analiza kosztów stałych</span>
+            <span style={{fontSize:12,color:sub}}>{showAnalysis?"▲":"▼"}</span>
           </div>
-        );})()}
+          {showAnalysis&&(()=>{const maxRecExp=Math.max(...analysisData.map(x=>x.mRecExp),1);return <div style={{borderTop:`1px solid ${border}`}}>
+            <div style={{display:"grid",gridTemplateColumns:"70px 1fr 60px 50px 50px",gap:0}}>
+              {["Miesiąc","","Stałe","% prych.","% kost."].map((h,i)=><div key={i} style={{padding:"6px 10px",fontSize:10,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.3,borderBottom:`1px solid ${border}`,background:dk?"#111E1E":"#F8FAFB"}}>{h}</div>)}
+              {analysisData.map(({m,mRecExp,mTotalInc,mTotalExp,pctInc,pctExp})=>{
+                const isCur=m===selMonth;
+                const barW=maxRecExp>0?Math.round(mRecExp/maxRecExp*100):0;
+                return <React.Fragment key={m}>
+                  <div style={{padding:"8px 10px",fontSize:12,fontWeight:isCur?700:400,color:isCur?"#0A7C7C":dk?"#C8E8E8":"#1C2B3A",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"short",year:"2-digit"})}</div>
+                  <div style={{padding:"8px 6px",borderBottom:`1px solid ${border}`,display:"flex",alignItems:"center",background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent"}}>
+                    <div style={{height:6,borderRadius:3,background:"#E05C5C",width:barW+"%",minWidth:mRecExp>0?4:0,transition:"width .3s"}}/>
+                  </div>
+                  <div style={{padding:"8px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"right"}}>{demo?"***":mRecExp>0?mRecExp.toFixed(0)+"zł":"—"}</div>
+                  <div style={{padding:"8px 6px",fontSize:12,color:pctInc!=null?(pctInc>80?"#E05C5C":pctInc>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"center"}}>{pctInc!=null?pctInc+"%":"—"}</div>
+                  <div style={{padding:"8px 6px",fontSize:12,color:pctExp!=null?(pctExp>80?"#E05C5C":pctExp>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"center"}}>{pctExp!=null?pctExp+"%":"—"}</div>
+                </React.Fragment>;
+              })}
+            </div>
+            <div style={{padding:"8px 12px",fontSize:11,color:sub,fontStyle:"italic"}}>Aktualny miesiąc podświetlony. Kolor % przychodów: zielony &lt;50%, pomarańczowy &lt;80%, czerwony &gt;80%.</div>
+          </div>;})()}
+        </div>
 
         {/* LISTA CYKLICZNYCH */}
         {showRecurringList&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
