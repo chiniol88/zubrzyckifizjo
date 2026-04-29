@@ -434,7 +434,7 @@
 
       const holidays=useMemo(()=>getHolidays(calYear),[calYear]);
 
-      const openDateStr=openDay?monthStr+"-"+String(openDay).padStart(2,"0"):null;
+      const openDateStr=openDay||null;
       const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
       const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
       const dayEvents=openDay?(eventsByDay[openDay]||[]):[];
@@ -470,19 +470,19 @@
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
             {cells.map(({d,overflow,ms},i)=>{
               const isOverflow=overflow!==null;
+              const dateStr=ms+"-"+String(d).padStart(2,"0");
               const vc=(visitsByDay[dateStr]||[]).length;
               const rc=(rentalEventsByDay[dateStr]||[]).length;
               const ec=(eventsByDay[dateStr]||[]).length;
-              const isToday=!isOverflow&&d===todayDay;
-              const isOpen=!isOverflow&&d===openDay;
+              const isToday=dateStr===today;
+              const isOpen=dateStr===openDay;
               const colIndex=i%7;
               const isWeekend=colIndex>=5;
-              const dateStr=ms+"-"+String(d).padStart(2,"0");
               const isHoliday=!isOverflow&&holidays.has(dateStr);
               const overflowColor=dk?"#2A3A3A":"#C8D4D8";
               const normalBg=isHoliday?(dk?"#5A0A0A":"#FCCFCF"):isWeekend?(dk?"rgba(244,162,97,0.22)":"rgba(244,162,97,0.28)"):"transparent";
               const normalColor=isHoliday?"#B71C1C":isWeekend?(dk?"#F4A261":"#C0622A"):(dk?"#C8E8E8":"#1C2B3A");
-              return <div key={ms+"-"+d} onClick={()=>{if(isOverflow){if(overflow==="next"){if(calMonth===12){setCalYear(y=>y+1);setCalMonth(1);}else setCalMonth(m=>m+1);}else{if(calMonth===1){setCalYear(y=>y-1);setCalMonth(12);}else setCalMonth(m=>m-1);}setOpenDay(null);}else setOpenDay(isOpen?null:d);}} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",opacity:isOverflow?0.45:1,background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):isOverflow?"transparent":normalBg}}>
+              return <div key={dateStr} onClick={()=>{if(isOverflow){if(overflow==="next"){if(calMonth===12){setCalYear(y=>y+1);setCalMonth(1);}else setCalMonth(m=>m+1);}else{if(calMonth===1){setCalYear(y=>y-1);setCalMonth(12);}else setCalMonth(m=>m-1);}setOpenDay(null);}else setOpenDay(isOpen?null:dateStr);}} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",opacity:isOverflow?0.45:1,background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):isOverflow?"transparent":normalBg}}>
                 <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":isOverflow?overflowColor:normalColor}}>{d}</span>
                 <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
                   {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
