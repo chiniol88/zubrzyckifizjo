@@ -421,8 +421,6 @@
       };
 
       const DOW=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
-      const todayDay=today.startsWith(monthStr)?+today.slice(8):null;
-      const cells=[];
       const prevMonthDays=new Date(calYear,calMonth-1,0).getDate();
       const nextMonthStr=calMonth===12?`${calYear+1}-01`:`${calYear}-${String(calMonth+1).padStart(2,"0")}`;
       const prevMonthStr=calMonth===1?`${calYear-1}-12`:`${calYear}-${String(calMonth-1).padStart(2,"0")}`;
@@ -664,7 +662,7 @@
           if(b<t) b.setFullYear(b.getFullYear()+1);
           const days=Math.round((b-t)/86400000);
           const hasYear=p.birthday.length===10;
-          const age=hasYear?+todayLocal().slice(0,4)- +p.birthday.slice(0,4)-(mmdd<todayLocal().slice(5)?0:mmdd===todayLocal().slice(5)?0:1):null;
+          const age=hasYear?+todayLocal().slice(0,4)-+p.birthday.slice(0,4)-(mmdd<todayLocal().slice(5)?0:mmdd===todayLocal().slice(5)?0:1):null;
           return {...p,_days:days,_age:age};
         }).sort((a,b)=>a._days-b._days);
       },[patients,today]);
@@ -914,21 +912,17 @@
     // ── PATIENTS ──────────────────────────────────────────────────────────────
     function BirthdayInput({value, onChange}) {
       const dk=useContext(DarkCtx);
-      const hasYear = value.length===10;
-      const noYear = value.length===5;
-      const knowYear = value===""?true:hasYear;
-      const mmdd = hasYear?value.slice(5):value;
-      const mm = mmdd?mmdd.slice(0,2):"";
-      const dd = mmdd?mmdd.slice(3):"";
-      const sel = (extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
+      const hasYear=value.length===10;
+      const knowYear=value===""?true:hasYear;
+      const mmdd=hasYear?value.slice(5):value;
+      const mm=mmdd?mmdd.slice(0,2):"";
+      const dd=mmdd?mmdd.slice(3):"";
+      const sel=(extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
       const months=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
       const setMM=(v)=>{const d=dd||"01";knowYear?onChange(value.slice(0,5)+v+"-"+d):onChange(v+"-"+d);};
       const setDD=(v)=>{knowYear?onChange(value.slice(0,8)+v):onChange(mm?mm+"-"+v:"");};
       const setYear=(v)=>{if(mm&&dd)onChange(v+"-"+mm+"-"+dd);};
-      const toggleKnowYear=(checked)=>{
-        if(checked){onChange(mm&&dd?todayLocal().slice(0,4)+"-"+mm+"-"+dd:"");}
-        else{onChange(mm&&dd?mm+"-"+dd:"");}
-      };
+      const toggleKnowYear=(checked)=>{if(checked){onChange(mm&&dd?todayLocal().slice(0,4)+"-"+mm+"-"+dd:"");}else{onChange(mm&&dd?mm+"-"+dd:"");}};
       return <div style={{marginBottom:14}}>
         <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Data urodzin</div>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
@@ -943,7 +937,7 @@
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:knowYear?8:0}}>
           <input type="checkbox" checked={knowYear} onChange={e=>toggleKnowYear(e.target.checked)} style={{width:15,height:15,cursor:"pointer"}}/>
-          <span style={{fontSize:12,color:dk?"#7A8FA6":"#7A8FA6",cursor:"pointer"}} onClick={()=>toggleKnowYear(!knowYear)}>Znam rok urodzenia</span>
+          <span style={{fontSize:12,color:"#7A8FA6",cursor:"pointer"}} onClick={()=>toggleKnowYear(!knowYear)}>Znam rok urodzenia</span>
         </div>
         {knowYear&&<input type="number" min="1900" max={new Date().getFullYear()} value={hasYear?value.slice(0,4):""} onChange={e=>setYear(e.target.value)} placeholder="Rok (np. 1985)" style={{...sel(),width:"100%",boxSizing:"border-box"}}/>}
       </div>;
@@ -951,9 +945,9 @@
 
     function BirthdayCard({birthday, dk}) {
       const today = todayLocal();
-      const mmdd = birthday.length===5?birthday:birthday.slice(5);
-      const hasYear = birthday.length===10;
-      const age = hasYear ? +today.slice(0,4) - +birthday.slice(0,4) - (mmdd > today.slice(5) ? 1 : 0) : null;
+      const mmdd=birthday.length===5?birthday:birthday.slice(5);
+      const hasYear=birthday.length===10;
+      const age=hasYear?+today.slice(0,4)-+birthday.slice(0,4)-(mmdd>today.slice(5)?1:0):null;
       const thisYearBd = today.slice(0,4) + "-" + mmdd;
       const bdDate = new Date(thisYearBd + "T12:00:00");
       const todayDate = new Date(today + "T12:00:00");
@@ -962,10 +956,7 @@
       return <Card style={{marginBottom:10,background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Urodziny</div>
         <div style={{fontSize:14,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>
-          {hasYear
-            ? new Date(birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})+" · "+age+" lat"
-            : new Date(today.slice(0,4)+"-"+mmdd+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long"})
-          }
+          {hasYear?new Date(birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})+" · "+age+" lat":new Date(today.slice(0,4)+"-"+mmdd+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long"})}
         </div>
         {daysTo<=7&&<div style={{fontSize:12,color:"#F4A261",fontWeight:700,marginTop:4}}>{daysTo===0?"🎂 Dzisiaj!":daysTo===1?"🎂 Jutro!":"🎂 Za "+daysTo+" dni"}</div>}
       </Card>;
