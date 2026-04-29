@@ -366,46 +366,49 @@
 
       const rentalEventsByDay=useMemo(()=>{
         const m={};
-        const add=(day,ev)=>{const d=+day;if(!m[d])m[d]=[];m[d].push(ev);};
+        const add=(dateStr,ev)=>{if(!m[dateStr])m[dateStr]=[];m[dateStr].push(ev);};
+        const visibleMonths=[prevMonthStr,monthStr,nextMonthStr];
         rentals.forEach(r=>{
-          if(r.status==="zakończone"&&!r.startDate.startsWith(monthStr)&&!(r.endDate||"").startsWith(monthStr))return;
+          if(r.status==="zakończone"&&!visibleMonths.some(ms=>r.startDate.startsWith(ms))&&!visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))return;
           if(!r.renewable){
-            if((r.startDate||"").startsWith(monthStr))add(r.startDate.slice(8),{type:"start",r});
-            if((r.endDate||"").startsWith(monthStr))add(r.endDate.slice(8),{type:"end",r});
+            if(visibleMonths.some(ms=>(r.startDate||"").startsWith(ms)))add(r.startDate,{type:"start",r});
+            if(visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))add(r.endDate,{type:"end",r});
           } else {
             (r.cycles||[]).forEach(c=>{
-              if(c.month===monthStr){
-                const startDay=r.startDate.slice(8);
-                add(startDay,{type:"cycle",c,r});
+              if(visibleMonths.includes(c.month)){
+                add(r.startDate.slice(0,7)===c.month?r.startDate:c.month+"-01",{type:"cycle",c,r});
               }
             });
-            if(r.startDate.startsWith(monthStr)&&!(r.cycles||[]).some(c=>c.month===monthStr)){
-              add(r.startDate.slice(8),{type:"start",r});
+            if(visibleMonths.some(ms=>r.startDate.startsWith(ms))&&!(r.cycles||[]).some(c=>c.month===r.startDate.slice(0,7))){
+              add(r.startDate,{type:"start",r});
+            }
+            if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms))){
+              add(r.plannedReturn,{type:"plannedReturn",r});
             }
           }
         });
         return m;
-      },[rentals,monthStr]);
+      },[rentals,monthStr,prevMonthStr,nextMonthStr]);
 
       const visitsByDay=useMemo(()=>{
         const m={};
-        visits.filter(v=>v.date&&v.date.startsWith(monthStr)).forEach(v=>{
-          const d=+v.date.slice(8);
-          if(!m[d])m[d]=[];
-          m[d].push(v);
+        const visibleMonths=[prevMonthStr,monthStr,nextMonthStr];
+        visits.filter(v=>v.date&&visibleMonths.some(ms=>v.date.startsWith(ms))).forEach(v=>{
+          if(!m[v.date])m[v.date]=[];
+          m[v.date].push(v);
         });
         return m;
-      },[visits,monthStr]);
+      },[visits,monthStr,prevMonthStr,nextMonthStr]);
 
       const eventsByDay=useMemo(()=>{
         const m={};
-        (events||[]).filter(e=>e.date&&e.date.startsWith(monthStr)).forEach(e=>{
-          const d=+e.date.slice(8);
-          if(!m[d])m[d]=[];
-          m[d].push(e);
+        const visibleMonths=[prevMonthStr,monthStr,nextMonthStr];
+        (events||[]).filter(e=>e.date&&visibleMonths.some(ms=>e.date.startsWith(ms))).forEach(e=>{
+          if(!m[e.date])m[e.date]=[];
+          m[e.date].push(e);
         });
         return m;
-      },[events,monthStr]);
+      },[events,monthStr,prevMonthStr,nextMonthStr]);
 
       const saveEvt=()=>{
         if(!evtForm.title.trim()||!evtForm.date)return;
@@ -420,8 +423,14 @@
       const DOW=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
       const todayDay=today.startsWith(monthStr)?+today.slice(8):null;
       const cells=[];
-      for(let i=0;i<startOffset;i++)cells.push(null);
-      for(let d=1;d<=daysInMonth;d++)cells.push(d);
+      const prevMonthDays=new Date(calYear,calMonth-1,0).getDate();
+      const nextMonthStr=calMonth===12?`${calYear+1}-01`:`${calYear}-${String(calMonth+1).padStart(2,"0")}`;
+      const prevMonthStr=calMonth===1?`${calYear-1}-12`:`${calYear}-${String(calMonth-1).padStart(2,"0")}`;
+      const cells=[];
+      for(let i=0;i<startOffset;i++)cells.push({d:prevMonthDays-startOffset+1+i,overflow:"prev",ms:prevMonthStr});
+      for(let d=1;d<=daysInMonth;d++)cells.push({d,overflow:null,ms:monthStr});
+      const remaining=(7-cells.length%7)%7;
+      for(let d=1;d<=remaining;d++)cells.push({d,overflow:"next",ms:nextMonthStr});
 
       const holidays=useMemo(()=>getHolidays(calYear),[calYear]);
 
@@ -432,7 +441,7 @@
       const dayAllDay=[
         ...dayEvents.filter(e=>e.allDay).map(x=>({_kind:"event",e:x})),
         ...dayVisits.filter(v=>v.allDay).map(v=>({_kind:"visit",v})),
-        ...dayRentals.filter(ev=>(ev.type==="start"?(ev.r.startAllDay||ev.r.allDay):ev.type==="end"?(ev.r.endAllDay||ev.r.allDay):false)).map(ev=>({_kind:"rental",ev}))
+        ...dayRentals.filter(ev=>(ev.type==="start"?(ev.r.startAllDay||ev.r.allDay):ev.type==="end"?(ev.r.endAllDay||ev.r.allDay):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay!==false):false)).map(ev=>({_kind:"rental",ev}))
       ].sort((a,b)=>{
         const ta=a._kind==="event"?a.e.title:a._kind==="visit"?a.v.patientName:a.ev.r.patientName;
         const tb=b._kind==="event"?b.e.title:b._kind==="visit"?b.v.patientName:b.ev.r.patientName;
@@ -441,7 +450,7 @@
       const dayTimedAll=openDay?[
         ...dayVisits.filter(v=>!v.allDay).map(v=>({_kind:"visit",_time:v.time||"00:00",v})),
         ...dayEvents.filter(e=>!e.allDay).map(e=>({_kind:"event",_time:e.time||"00:00",e})),
-        ...dayRentals.filter(ev=>!(ev.type==="start"?(ev.r.startAllDay||ev.r.allDay):ev.type==="end"?(ev.r.endAllDay||ev.r.allDay):false)).map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):"00:00",ev}))
+        ...dayRentals.filter(ev=>!(ev.type==="start"?(ev.r.startAllDay||ev.r.allDay):ev.type==="end"?(ev.r.endAllDay||ev.r.allDay):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay!==false):false)).map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):ev.type==="plannedReturn"?(ev.r.plannedReturnTime||"00:00"):"00:00",ev}))
       ].sort((a,b)=>a._time.localeCompare(b._time)):[];
 
       return <div style={{marginTop:16}}>
@@ -459,21 +468,22 @@
             {DOW.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i>=5?(dk?"#F4A261":"#D0622A"):"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2}}>
-            {cells.map((d,i)=>{
-              if(!d)return<div key={"e"+i}/>;
-              const vc=(visitsByDay[d]||[]).length;
-              const rc=(rentalEventsByDay[d]||[]).length;
-              const ec=(eventsByDay[d]||[]).length;
-              const isToday=d===todayDay;
-              const isOpen=d===openDay;
+            {cells.map(({d,overflow,ms},i)=>{
+              const isOverflow=overflow!==null;
+              const vc=(visitsByDay[dateStr]||[]).length;
+              const rc=(rentalEventsByDay[dateStr]||[]).length;
+              const ec=(eventsByDay[dateStr]||[]).length;
+              const isToday=!isOverflow&&d===todayDay;
+              const isOpen=!isOverflow&&d===openDay;
               const colIndex=i%7;
               const isWeekend=colIndex>=5;
-              const dateStr=monthStr+"-"+String(d).padStart(2,"0");
-              const isHoliday=holidays.has(dateStr);
+              const dateStr=ms+"-"+String(d).padStart(2,"0");
+              const isHoliday=!isOverflow&&holidays.has(dateStr);
+              const overflowColor=dk?"#2A3A3A":"#C8D4D8";
               const normalBg=isHoliday?(dk?"#5A0A0A":"#FCCFCF"):isWeekend?(dk?"rgba(244,162,97,0.22)":"rgba(244,162,97,0.28)"):"transparent";
               const normalColor=isHoliday?"#B71C1C":isWeekend?(dk?"#F4A261":"#C0622A"):(dk?"#C8E8E8":"#1C2B3A");
-              return <div key={d} onClick={()=>setOpenDay(isOpen?null:d)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):normalBg}}>
-                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":normalColor}}>{d}</span>
+              return <div key={ms+"-"+d} onClick={()=>{if(isOverflow){if(overflow==="next"){if(calMonth===12){setCalYear(y=>y+1);setCalMonth(1);}else setCalMonth(m=>m+1);}else{if(calMonth===1){setCalYear(y=>y-1);setCalMonth(12);}else setCalMonth(m=>m-1);}setOpenDay(null);}else setOpenDay(isOpen?null:d);}} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",opacity:isOverflow?0.45:1,background:isOpen?"#0A7C7C":isToday?(dk?"#0A3030":"#E6F4F4"):isOverflow?"transparent":normalBg}}>
+                <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#0A7C7C":isOverflow?overflowColor:normalColor}}>{d}</span>
                 <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
                   {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#0A7C7C"}}/>)}
                   {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
@@ -527,7 +537,7 @@
                 <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(v)}</Badge>
               </div>
             </div>;}
-            if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
+            if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":"🔄 Opłata";
               const extDue2=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
               const totalAmt2=(+ev.r.amount||0)+extDue2;
               const paymentsPaid2=(ev.r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
@@ -568,7 +578,7 @@
               </div>
             </div>;}
             if(item._kind==="rental"){const ev=item.ev;
-              const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":"🔄 Opłata";
+              const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":"🔄 Opłata";
               const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
               const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
               const totalAmt=(+ev.r.amount||0)+extDue;
@@ -642,16 +652,19 @@
       const birthdayReminders = useMemo(()=>{
         return (patients||[]).filter(p=>{
           if(!p.birthday||p.archived) return false;
-          const b=new Date(todayLocal().slice(0,4)+"-"+p.birthday.slice(5)+"T12:00:00");
+          const mmdd=p.birthday.length===5?p.birthday:p.birthday.slice(5);
+          const b=new Date(todayLocal().slice(0,4)+"-"+mmdd+"T12:00:00");
           const t=new Date(todayLocal()+"T12:00:00");
           if(b<t) b.setFullYear(b.getFullYear()+1);
           return Math.round((b-t)/86400000)<=7;
         }).map(p=>{
-          const b=new Date(todayLocal().slice(0,4)+"-"+p.birthday.slice(5)+"T12:00:00");
+          const mmdd=p.birthday.length===5?p.birthday:p.birthday.slice(5);
+          const b=new Date(todayLocal().slice(0,4)+"-"+mmdd+"T12:00:00");
           const t=new Date(todayLocal()+"T12:00:00");
           if(b<t) b.setFullYear(b.getFullYear()+1);
           const days=Math.round((b-t)/86400000);
-          const age=todayLocal().slice(0,4)-p.birthday.slice(0,4)-(p.birthday.slice(5)<todayLocal().slice(5)?0:p.birthday.slice(5)===todayLocal().slice(5)?0:1);
+          const hasYear=p.birthday.length===10;
+          const age=hasYear?+todayLocal().slice(0,4)- +p.birthday.slice(0,4)-(mmdd<todayLocal().slice(5)?0:mmdd===todayLocal().slice(5)?0:1):null;
           return {...p,_days:days,_age:age};
         }).sort((a,b)=>a._days-b._days);
       },[patients,today]);
@@ -899,17 +912,61 @@
     }
 
     // ── PATIENTS ──────────────────────────────────────────────────────────────
+    function BirthdayInput({value, onChange}) {
+      const dk=useContext(DarkCtx);
+      const hasYear = value.length===10;
+      const noYear = value.length===5;
+      const knowYear = value===""?true:hasYear;
+      const mmdd = hasYear?value.slice(5):value;
+      const mm = mmdd?mmdd.slice(0,2):"";
+      const dd = mmdd?mmdd.slice(3):"";
+      const sel = (extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
+      const months=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+      const setMM=(v)=>{const d=dd||"01";knowYear?onChange(value.slice(0,5)+v+"-"+d):onChange(v+"-"+d);};
+      const setDD=(v)=>{knowYear?onChange(value.slice(0,8)+v):onChange(mm?mm+"-"+v:"");};
+      const setYear=(v)=>{if(mm&&dd)onChange(v+"-"+mm+"-"+dd);};
+      const toggleKnowYear=(checked)=>{
+        if(checked){onChange(mm&&dd?todayLocal().slice(0,4)+"-"+mm+"-"+dd:"");}
+        else{onChange(mm&&dd?mm+"-"+dd:"");}
+      };
+      return <div style={{marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Data urodzin</div>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          <select value={mm} onChange={e=>setMM(e.target.value)} style={{...sel(),flex:2}}>
+            <option value="">Miesiąc</option>
+            {months.map((m,i)=><option key={i} value={String(i+1).padStart(2,"0")}>{m}</option>)}
+          </select>
+          <select value={dd} onChange={e=>setDD(e.target.value)} style={{...sel(),flex:1}}>
+            <option value="">Dzień</option>
+            {Array.from({length:31},(_,i)=><option key={i} value={String(i+1).padStart(2,"0")}>{i+1}</option>)}
+          </select>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:knowYear?8:0}}>
+          <input type="checkbox" checked={knowYear} onChange={e=>toggleKnowYear(e.target.checked)} style={{width:15,height:15,cursor:"pointer"}}/>
+          <span style={{fontSize:12,color:dk?"#7A8FA6":"#7A8FA6",cursor:"pointer"}} onClick={()=>toggleKnowYear(!knowYear)}>Znam rok urodzenia</span>
+        </div>
+        {knowYear&&<input type="number" min="1900" max={new Date().getFullYear()} value={hasYear?value.slice(0,4):""} onChange={e=>setYear(e.target.value)} placeholder="Rok (np. 1985)" style={{...sel(),width:"100%",boxSizing:"border-box"}}/>}
+      </div>;
+    }
+
     function BirthdayCard({birthday, dk}) {
       const today = todayLocal();
-      const age = +today.slice(0,4) - +birthday.slice(0,4) - (birthday.slice(5) > today.slice(5) ? 1 : 0);
-      const thisYearBd = today.slice(0,4) + "-" + birthday.slice(5);
+      const mmdd = birthday.length===5?birthday:birthday.slice(5);
+      const hasYear = birthday.length===10;
+      const age = hasYear ? +today.slice(0,4) - +birthday.slice(0,4) - (mmdd > today.slice(5) ? 1 : 0) : null;
+      const thisYearBd = today.slice(0,4) + "-" + mmdd;
       const bdDate = new Date(thisYearBd + "T12:00:00");
       const todayDate = new Date(today + "T12:00:00");
       if(bdDate < todayDate) bdDate.setFullYear(bdDate.getFullYear() + 1);
       const daysTo = Math.round((bdDate - todayDate) / 86400000);
       return <Card style={{marginBottom:10,background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Urodziny</div>
-        <div style={{fontSize:14,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>{new Date(birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})} · {age} lat</div>
+        <div style={{fontSize:14,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>
+          {hasYear
+            ? new Date(birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})+" · "+age+" lat"
+            : new Date(today.slice(0,4)+"-"+mmdd+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long"})
+          }
+        </div>
         {daysTo<=7&&<div style={{fontSize:12,color:"#F4A261",fontWeight:700,marginTop:4}}>{daysTo===0?"🎂 Dzisiaj!":daysTo===1?"🎂 Jutro!":"🎂 Za "+daysTo+" dni"}</div>}
       </Card>;
     }
@@ -1065,7 +1122,7 @@
             <Txa label="Diagnoza" value={editForm.diagnosis||""} onChange={v=>setEditForm(f=>({...f,diagnosis:v}))} rows={2}/>
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
             <Inp label="Domyślna cena wizyty (zł)" value={editForm.defaultPrice||""} onChange={v=>setEditForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>
-            <Inp label="Data urodzin" value={editForm.birthday||""} onChange={v=>setEditForm(f=>({...f,birthday:v}))} type="date"/>
+            <BirthdayInput value={editForm.birthday||""} onChange={v=>setEditForm(f=>({...f,birthday:v}))}/>
             {!confirmDelPat
               ? <>
                   <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{
@@ -1203,7 +1260,7 @@
           <Txa label="Diagnoza" value={newForm.diagnosis} onChange={v=>setNewForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={newForm.notes} onChange={v=>setNewForm(f=>({...f,notes:v}))} rows={2}/>
           <Inp label="Domyślna cena wizyty (zł)" value={newForm.defaultPrice||""} onChange={v=>setNewForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>
-          <Inp label="Data urodzin" value={newForm.birthday||""} onChange={v=>setNewForm(f=>({...f,birthday:v}))} type="date"/>
+          <BirthdayInput value={newForm.birthday||""} onChange={v=>setNewForm(f=>({...f,birthday:v}))}/>
           <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;setPatients(ps=>[...ps,{...newForm,id:Date.now()}]);setNewForm({name:"",phone:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
         </Modal>}
         {showQuickV&&quickV&&<Modal title={"Wizyta – "+quickV.patientName} onClose={()=>setShowQuickV(false)}>
@@ -1666,7 +1723,7 @@
 
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment||"❓ Do ustalenia"}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
+          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment||"❓ Do ustalenia"}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}{r.plannedReturn&&<Badge color="#3DAA72">📅 {r.plannedReturn}</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
           {r.status==="aktywne"&&(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:dl!==null?<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>:<Badge color="#7A8FA6">brak terminu</Badge>)}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
@@ -1905,9 +1962,18 @@
               </Card>}
 
               {r.status==="aktywne"&&<>
+                {r.renewable&&<div style={{marginBottom:14,background:dk?"#0F2020":"#F0F9F5",borderRadius:12,padding:"12px 14px"}}>
+                  <div style={{fontSize:12,color:"#3DAA72",marginBottom:8,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>📅 Planowany odbiór</div>
+                  <Inp label="" value={r.plannedReturn||""} onChange={v=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:v||null}:x))} type="date"/>
+                  {r.plannedReturn&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
+                  <div style={{display:"flex",gap:6,marginBottom:8}}>{[{v:true,l:"🗓 Całodniowy"},{v:false,l:"⏰ Konkretna godzina"}].map(o=><button key={String(o.v)} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturnAllDay:o.v}:x))} style={{flex:1,padding:"7px",borderRadius:10,border:`2px solid ${(r.plannedReturnAllDay!==false)===o.v?"#0A7C7C":"#E4EAF0"}`,background:(r.plannedReturnAllDay!==false)===o.v?"#E6F4F4":"#fff",color:(r.plannedReturnAllDay!==false)===o.v?"#0A7C7C":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
+                  {r.plannedReturnAllDay===false&&<TimeSel label="Godzina odbioru" value={r.plannedReturnTime||"10:00"} onChange={v=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturnTime:v}:x))}/>}
+                  <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:x))} style={{background:"none",border:"none",fontSize:12,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>× Usuń planowany odbiór</button>
+                  </>}
+                </div>}
                 {r.renewable&&<div style={{marginBottom:10}}>
                   <div style={{fontSize:12,color:"#7A8FA6",marginBottom:6,fontWeight:600}}>Data zakończenia wypożyczenia</div>
-                  <Inp label="" value={closeDate||""} onChange={v=>setCloseDate(v)} type="date"/>
+                  <Inp label="" value={closeDate||r.plannedReturn||""} onChange={v=>setCloseDate(v)} type="date"/>
                 </div>}
                 <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{
                   const extTotal=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
@@ -2247,7 +2313,7 @@
           cnt[name]=(cnt[name]||0)+1;
           map[name]=(map[name]||0)+(+v.price||0);
         });
-        return Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,c])=>([n,map[n]||0,c]));
+        return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,v])=>([n,v,cnt[n]||0]));
       },[periodVisits]);
 
       // Lista wpisów: wizyty z visits + reszta z finances
