@@ -577,7 +577,7 @@
             </div>;}
             if(item._kind==="rental"){const ev=item.ev;
               const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":"🔄 Opłata";
-              const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
+              const color=ev.type==="end"?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
               const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
               const totalAmt=(+ev.r.amount||0)+extDue;
               const paymentsPaid=(ev.r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
@@ -585,7 +585,7 @@
               const totalPaid=(paymentsPaid||(ev.r.amountPaid||0))+extPaid;
               const remaining=totalAmt-totalPaid;
               const endSub=remaining>0?`do zapłaty: ${remaining} zł`:null;
-              const sub=ev.type==="cycle"?(ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?endSub:totalAmt+" zł";
+              const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?endSub:totalAmt+" zł";
               const timeLabel=ev.type==="start"?(ev.r.startTime||""):( ev.type==="end"?(ev.r.endTime||""):"");
               const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
@@ -634,7 +634,7 @@
 
       const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
       const upcoming = rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
-      const unpaidCycles = rentals.filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid));
+      const unpaidCycles = rentals.filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid&&!c.cancelled));
 
       const wózkiReminders = useMemo(()=>{
         if(!nfzCases) return [];
@@ -854,7 +854,7 @@
                   </div>
                 </Card>;
               })}
-              {unpaidCycles.map(r=>{const n=(r.cycles||[]).filter(c=>!c.paid).length;return(
+              {unpaidCycles.map(r=>{const n=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).length;return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #E05C5C"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div><div style={{fontWeight:600}}>{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName}</div></div>
@@ -991,7 +991,7 @@
       const history = [...patVisits.map(v=>({...v,_t:"v",_d:v.date||"",_time:v.time||"00:00"})),...patRentals.map(r=>({...r,_t:"r",_d:r.startDate||"",_time:"00:00"}))].sort((a,b)=>(b._d||"").localeCompare(a._d||"")||(b._time||"").localeCompare(a._time||""));
 
       const patTotalVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona").reduce((s,v)=>s+(+v.price||0),0) : 0;
-      const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+(r.renewable?(r.cycles||[]).filter(c=>c.paid).reduce((ss,c)=>ss+c.amount,0):(r.amountPaid||0)),0) : 0;
+      const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+(r.renewable?(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((ss,c)=>ss+c.amount,0):(r.amountPaid||0)),0) : 0;
       const patTotal = patTotalVisits + patTotalRentals;
       const patDoneVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona") : [];
       const patAvgPrice = patDoneVisits.length ? Math.round(patDoneVisits.reduce((s,v)=>s+(+v.price||0),0)/patDoneVisits.length) : 0;
@@ -1361,7 +1361,15 @@
       const [payDate,setPayDate]=useState(todayLocal);
       const label=new Date(cycle.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
       const sid="cycle-"+r.id+"-"+cycle.month;
-      if(cycle.paid) return (
+      if(cycle.cancelled) return (
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F2F5F7",opacity:.5}}>
+          <div style={{display:"flex",gap:12,alignItems:"center"}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:"#7A8FA6",flexShrink:0}}/>
+            <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",textDecoration:"line-through"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>Anulowany</div></div>
+          </div>
+          <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,cancelled:false}:c)}:x))} style={{background:"#F2F5F7",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
+        </div>
+      );
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
             <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
@@ -1379,7 +1387,7 @@
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
-            <button onClick={()=>{if(!window.confirm("Usunąć cykl "+label+"?"))return;setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).filter(c=>c.month!==cycle.month)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+            <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,cancelled:true}:c)}:x))} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
           </div>
         </div>
       );
@@ -1505,7 +1513,7 @@
           if(!revenueByEq.hasOwnProperty(eq))return;
           const base=+r.amount||0;
           const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
-          const cycles=(r.cycles||[]).filter(c=>c.month>=cutStr.slice(0,7)).reduce((s,c)=>s+(+c.amountDue||base),0);
+          const cycles=(r.cycles||[]).filter(c=>c.month>=cutStr.slice(0,7)&&!c.cancelled).reduce((s,c)=>s+(+c.amountDue||base),0);
           revenueByEq[eq]+=(r.renewable?cycles:base+extDue);
           const rEnd=r.status==="aktywne"?today:(r.endDate||r.startDate);
           if(rEnd>=cutStr) countByEq[eq]++;
@@ -1584,7 +1592,7 @@
         rentals.forEach(r=>{
           const base=+r.amount||0;
           if(r.renewable){
-            (r.cycles||[]).forEach(c=>{if(monthlyRev.hasOwnProperty(c.month))monthlyRev[c.month]+=(+c.amountDue||base);});
+            (r.cycles||[]).filter(c=>!c.cancelled).forEach(c=>{if(monthlyRev.hasOwnProperty(c.month))monthlyRev[c.month]+=(+c.amountDue||base);});
           } else {
             const m=(r.endDate||r.startDate||"").slice(0,7);
             if(monthlyRev.hasOwnProperty(m))monthlyRev[m]+=base+(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
@@ -1695,7 +1703,7 @@
     function RCard({r,onClick}) {
       const demo=useDemo();
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
-      const unpaid=(r.cycles||[]).filter(c=>!c.paid).length;
+      const unpaid=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).length;
       const isZakończone=r.status==="zakończone";
       const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
       const totalAmount=(+r.amount||0)+extDue;
@@ -1976,7 +1984,7 @@
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
                   const endMonth=r.renewable&&closeDate?closeDate.slice(0,7):null;
                   setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?closeDate:x.endDate,
-                    cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.month<=endMonth)):x.cycles
+                    cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.cancelled||c.month<=endMonth)):x.cycles
                   }:x));
                   if(endMonth){
                     const toRemove=new Set((r.cycles||[]).filter(c=>!c.paid&&c.month>endMonth).map(c=>"cycle-"+r.id+"-"+c.month));
@@ -4089,7 +4097,7 @@ Zasady:
           const sid="payment-"+p.id; if(ex.has(sid))return;
           toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"});
         }));
-        rentals.forEach(r=>(r.cycles||[]).filter(c=>c.paid).forEach(c=>{
+        rentals.forEach(r=>(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).forEach(c=>{
           const sid="cycle-"+r.id+"-"+c.month; if(ex.has(sid))return;
           const label=new Date(c.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
           toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||c.month+"-15",type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label});
