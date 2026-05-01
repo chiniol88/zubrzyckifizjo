@@ -105,6 +105,9 @@
           body: JSON.stringify({key, value})});
       } catch {}
     }
+    let _savingCount=0;
+    const _notifySave=()=>window.dispatchEvent(new CustomEvent("fizjo-save",{detail:_savingCount>0}));
+
     function usePersistedState(key, initial, ready=true) {
       const [state, setState] = useState(initial);
       const [loaded, setLoaded] = useState(false);
@@ -124,17 +127,33 @@
         });
       },[ready]);
 
-      // Save on user changes (debounced)
+      // Save on user changes (debounced 300ms)
       useEffect(()=>{
         if(!loaded||!ready||!userChanged.current)return;
         const t=setTimeout(()=>{
+          _savingCount++;_notifySave();
           dbSet(key,state).then(()=>{
-            // Po udanym zapisie — zgaś flagę żeby polling mógł pracować
             userChanged.current=false;
-          });
-        },800);
+          }).finally(()=>{_savingCount--;_notifySave();});
+        },300);
         return()=>clearTimeout(t);
       },[state,loaded,ready]);
+
+      // iOS: natychmiastowy zapis gdy apka schodzi w tło
+      useEffect(()=>{
+        const flush=()=>{
+          if(loaded&&ready&&userChanged.current){
+            _savingCount++;_notifySave();
+            dbSet(key,stateRef.current).finally(()=>{_savingCount--;_notifySave();});
+          }
+        };
+        document.addEventListener("visibilitychange",flush);
+        window.addEventListener("pagehide",flush);
+        return()=>{
+          document.removeEventListener("visibilitychange",flush);
+          window.removeEventListener("pagehide",flush);
+        };
+      },[loaded,ready]);
 
       // Polling co 30s — synchronizacja między urządzeniami
       useEffect(()=>{
@@ -377,7 +396,7 @@
             if(visibleMonths.some(ms=>(r.startDate||"").startsWith(ms)))add(r.startDate,{type:"start",r});
             if(visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))add(r.endDate,{type:"end",r});
           } else {
-            (r.cycles||[]).forEach(c=>{
+            (r.cycles||[]).filter(c=>!c.cancelled).forEach(c=>{
               if(visibleMonths.includes(c.month)){
                 add(r.startDate.slice(0,7)===c.month?r.startDate:c.month+"-01",{type:"cycle",c,r});
               }
@@ -1943,7 +1962,7 @@
               {r.renewable&&(r.cycles||[]).length>0&&(()=>{
                 const paid=(r.cycles||[]).filter(c=>c.paid);
                 const total=paid.reduce((s,c)=>s+c.amount,0);
-                const unpaidN=(r.cycles||[]).filter(c=>!c.paid).length;
+                const unpaidN=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).length;
                 return <Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Podsumowanie wypożyczenia</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
@@ -1982,10 +2001,11 @@
                   const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+p.amount,0);
                   const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
                   const remaining=totalAmount-((paymentsPaid||(r.amountPaid||0))+extPaid);
-                  if(r.renewable&&!closeDate){alert("Podaj datę zakończenia");return;}
+                  const effectiveCloseDate=closeDate||r.plannedReturn||"";
+                  if(r.renewable&&!effectiveCloseDate){alert("Podaj datę zakończenia");return;}
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
-                  const endMonth=r.renewable&&closeDate?closeDate.slice(0,7):null;
-                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?closeDate:x.endDate,
+                  const endMonth=r.renewable&&effectiveCloseDate?effectiveCloseDate.slice(0,7):null;
+                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?effectiveCloseDate:x.endDate,
                     cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.cancelled||c.month<=endMonth)):x.cycles
                   }:x));
                   if(endMonth){
@@ -3949,9 +3969,16 @@ Zasady:
       const dk=dark;
       const desk=useIsDesktop();
 
+      const [isSaving,setIsSaving]=useState(false);
+      useEffect(()=>{
+        const h=e=>setIsSaving(e.detail);
+        window.addEventListener("fizjo-save",h);
+        return()=>window.removeEventListener("fizjo-save",h);
+      },[]);
+
       const activeRentals=(rentals||[]).filter(r=>r.status==="aktywne").length;
       const todayVisits=(visits||[]).filter(v=>v.date===todayLocal()).length;
-      const unpaidCount=(rentals||[]).filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid)).length;
+      const unpaidCount=(rentals||[]).filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid&&!c.cancelled)).length;
 
       const content = <>
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
@@ -4015,7 +4042,12 @@ Zasady:
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
             {content}
           </div>
-          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",padding:"10px 0 16px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
+          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",flexDirection:"column",padding:"0 0 16px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
+            <div style={{height:isSaving?22:0,overflow:"hidden",transition:"height .2s",background:"#0A7C7C",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#fff",opacity:.8,animation:"spin .8s linear infinite"}}/>
+              <span style={{fontSize:11,fontWeight:600,color:"#fff",letterSpacing:.3}}>Zapisywanie…</span>
+            </div>
+            <div style={{display:"flex",paddingTop:10}}>
             {TABS.map(t=>{
               return <button key={t.id}
                 onClick={()=>setTab(t.id)}
@@ -4024,8 +4056,8 @@ Zasady:
                 <span style={{fontSize:12,fontWeight:600,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#4A6070"}}>{t.l}</span>
               </button>;
             })}
+            </div>
           </div>
-        </div>
       </>;
     }
 
@@ -4040,6 +4072,8 @@ Zasady:
           if((r.cycles||[]).some(c=>c.month===cm))return false;
           // Skip if cycles empty AND startDate older than current month — needs HistoryFill first
           if((r.cycles||[]).length===0&&r.startDate.slice(0,7)<cm)return false;
+          // Skip if plannedReturn is set and is in a past month — rental is effectively done
+          if(r.plannedReturn&&r.plannedReturn.slice(0,7)<cm)return false;
           return true;
         });
         if(!needsUpdate)return;
@@ -4047,12 +4081,13 @@ Zasady:
           if(r.status!=="aktywne"||!r.renewable)return r;
           if((r.cycles||[]).some(c=>c.month===cm))return r;
           if((r.cycles||[]).length===0&&r.startDate.slice(0,7)<cm)return r;
+          if(r.plannedReturn&&r.plannedReturn.slice(0,7)<cm)return r;
           const last=[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month))[0];
           return {...r,cycles:[...(r.cycles||[]),{month:cm,amount:last?last.amount:(r.amount||0),paid:false,paidDate:null}]};
         }));
       },[]);
       useEffect(()=>{
-        if(!visits||!rentals||!finances)return;
+        if(!v3||!v4||!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];
         visits.forEach(v=>{
           const sid="visit-"+v.id; if(ex.has(sid))return;
@@ -4069,7 +4104,7 @@ Zasady:
           toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||c.month+"-15",type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label});
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
-      },[visits,rentals]);
+      },[visits,rentals,v3,v4]);
       return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget}/>;
     }
 
