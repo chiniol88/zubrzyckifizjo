@@ -4062,7 +4062,7 @@ Zasady:
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,rentalsLoaded,financesLoaded}) {
       // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
       // or are new (startDate is in current month)
       useEffect(()=>{
@@ -4088,7 +4088,7 @@ Zasady:
         }));
       },[]);
       useEffect(()=>{
-        if(!v3||!v4||!visits||!rentals||!finances)return;
+        if(!rentalsLoaded||!financesLoaded||!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];
         visits.forEach(v=>{
           const sid="visit-"+v.id; if(ex.has(sid))return;
@@ -4105,7 +4105,7 @@ Zasady:
           toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||c.month+"-15",type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label});
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
-      },[visits,rentals,v3,v4]);
+      },[visits,rentals,rentalsLoaded,financesLoaded]);
       return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget}/>;
     }
 
@@ -4395,7 +4395,7 @@ Zasady:
               <button onClick={()=>setShowBackupBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#1C2B3A"}}>×</button>
             </div>
           </div>}
-          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget}/>
+          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} rentalsLoaded={v3} financesLoaded={v4}/>
         </div>
       </DemoCtx.Provider></DarkCtx.Provider>;
     }
