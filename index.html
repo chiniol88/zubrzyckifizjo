@@ -1623,7 +1623,8 @@
 
       const costs=(stock&&stock.costs)||{};
       const getCosts=eq=>costs[eq]||{purchase:0,repairs:[]};
-      const getTotalInvestment=eq=>{const c=getCosts(eq);return(+c.purchase||0)+(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0);};
+      const getQty=eq=>(stock&&stock.qty&&stock.qty[eq])||1;
+      const getTotalInvestment=eq=>{const c=getCosts(eq);const qty=getQty(eq);return(+c.purchase||0)*qty+(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0);};
       const setPurchase=(eq,val)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,purchase:+val||0}}};});
       const saveRepair=(eq,rep)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:[...(ex.repairs||[]).filter(r=>r.id!==rep.id),rep]}}};});
       const deleteRepair=(eq,id)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});
@@ -1677,6 +1678,8 @@
                 const roi=investment>0?Math.round((earned/investment)*100):null;
                 const isOpen=roiEq===eq;
                 const c=getCosts(eq);
+                const qty=getQty(eq);
+                const purchaseTotal=(+c.purchase||0)*qty;
                 const repairsTotal=(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0);
                 const last3m=new Date(today);last3m.setMonth(last3m.getMonth()-3);
                 const last3mStr=last3m.toISOString().slice(0,10);
@@ -1706,7 +1709,7 @@
                       </div>
                       <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:subC}}>
                         <span>{demo?"****":"Zarobiono: "+earned+" zł"}</span>
-                        <span>{demo?"****":"Inwestycja: "+investment+" zł"}</span>
+                        <span>{demo?"****":(qty>1?qty+"×"+(+c.purchase||0)+" zł":((+c.purchase||0)>0?(+c.purchase||0)+" zł":"—"))+(repairsTotal>0?" + "+repairsTotal+" zł napraw":"")}</span>
                       </div>
                       {monthsLeft!==null&&remaining>0&&<div style={{fontSize:11,color:"#F4A261",marginTop:3}}>⏳ Zwrot za ~{monthsLeft} mies.</div>}
                       {remaining<=0&&<div style={{fontSize:11,color:"#3DAA72",marginTop:3}}>✅ Zwróciło się w całości!</div>}
