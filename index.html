@@ -1816,7 +1816,7 @@
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
 
       const cnt={aktywne:rentals.filter(r=>r.status==="aktywne"&&!r.renewable).length,odnawialne:rentals.filter(r=>r.status==="aktywne"&&r.renewable).length,zakończone:rentals.filter(r=>r.status==="zakończone").length};
-      const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable):view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):rentals.filter(r=>r.status==="zakończone").slice().sort((a,b)=>(b.endDate||b.startDate||"").localeCompare(a.endDate||a.startDate||""));
+      const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable).slice().sort((a,b)=>(a.endDate||"9999-99-99").localeCompare(b.endDate||"9999-99-99")):view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):rentals.filter(r=>r.status==="zakończone").slice().sort((a,b)=>(a.endDate||a.startDate||"").localeCompare(b.endDate||b.startDate||""));
 
       if(detail!==null) {
         const r=rentals.find(x=>x.id===detail);
