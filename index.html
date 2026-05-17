@@ -1811,12 +1811,17 @@
       const [confirmDel,setConfirmDel]=useState(false);
       const [closeDate,setCloseDate]=useState("");
       const [toast,setToast]=useState(null);
+      const [zakSubView,setZakSubView]=useState("wszystkie");
 
       useEffect(()=>{if(initialDetail!=null)setDetail(initialDetail);},[initialDetail]);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
 
       const cnt={aktywne:rentals.filter(r=>r.status==="aktywne"&&!r.renewable).length,odnawialne:rentals.filter(r=>r.status==="aktywne"&&r.renewable).length,zakończone:rentals.filter(r=>r.status==="zakończone").length};
-      const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable).slice().sort((a,b)=>(a.endDate||"9999-99-99").localeCompare(b.endDate||"9999-99-99")):view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):rentals.filter(r=>r.status==="zakończone").slice().sort((a,b)=>(a.endDate||a.startDate||"").localeCompare(b.endDate||b.startDate||""));
+      const cntZakOkres=rentals.filter(r=>r.status==="zakończone"&&!r.renewable).length;
+      const cntZakCykl=rentals.filter(r=>r.status==="zakończone"&&r.renewable).length;
+      const zakBase=rentals.filter(r=>r.status==="zakończone");
+      const zakFiltered=zakSubView==="cykliczne"?zakBase.filter(r=>r.renewable):zakSubView==="okresowe"?zakBase.filter(r=>!r.renewable):zakBase;
+      const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable).slice().sort((a,b)=>(a.endDate||"9999-99-99").localeCompare(b.endDate||"9999-99-99")):view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):zakFiltered.slice().sort((a,b)=>(b.endDate||b.startDate||"").localeCompare(a.endDate||a.startDate||""));
 
       if(detail!==null) {
         const r=rentals.find(x=>x.id===detail);
@@ -2193,6 +2198,11 @@
             <button key={x.k} onClick={()=>setView(x.k)} style={{flex:1,padding:"8px 6px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,whiteSpace:"nowrap",background:view===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:view===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit",textAlign:"center"}}>{x.l}</button>
           )}
         </div>
+        {view==="zakończone"&&<div style={{display:"flex",gap:6,padding:"0 20px 12px"}}>
+          {[{k:"wszystkie",l:`Wszystkie (${cnt.zakończone})`},{k:"okresowe",l:`Okresowe (${cntZakOkres})`},{k:"cykliczne",l:`🔄 Cykl. (${cntZakCykl})`}].map(x=>
+            <button key={x.k} onClick={()=>setZakSubView(x.k)} style={{flex:1,padding:"6px 4px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,whiteSpace:"nowrap",background:zakSubView===x.k?"#5A7A9A":dk?"#1A2A2A":"#EAF0F5",color:zakSubView===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit",textAlign:"center"}}>{x.l}</button>
+          )}
+        </div>}
         <StockPanel rentals={rentals} stock={stock} setStock={setStock}/>
         <RentalStats rentals={rentals} stock={stock}/>
         <div style={{padding:"0 20px"}}>
