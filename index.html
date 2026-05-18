@@ -1626,14 +1626,13 @@
         });
         let totalCount=0;
         rentals.forEach(r=>{const rEnd=r.status==="aktywne"?today:(r.endDate||r.startDate);if(rEnd>=cutStr)totalCount++;});
-        const topEquip=EQUIPMENT.map(eq=>({eq,rev:equipRevPeriod[eq]||0})).filter(x=>x.rev>0).sort((a,b)=>b.rev-a.rev);
         const monthlyArr=Object.entries(monthlyRev).sort((a,b)=>a[0].localeCompare(b[0]));
         const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]),1);
         const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
         const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
-        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,topEquip};
+        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr};
       },[rentals,finances,period,today,rentalEquipMap,paymentRentalMap]);
 
       const costs=(stock&&stock.costs)||{};
@@ -1685,48 +1684,51 @@
           </div>
         </div>
 
-        {/* Top sprzęt w okresie */}
-        {stats.topEquip.length>0&&<div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>📦 Przychód wg sprzętu (okres)</div>
-          {stats.topEquip.map((x)=>{
-            const pct=Math.round((x.rev/stats.topEquip[0].rev)*100);
-            return <div key={x.eq} style={{marginBottom:8}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                <span style={{fontWeight:600,color:textC,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{x.eq}</span>
-                <span style={{color:"#0A7C7C",fontWeight:700,flexShrink:0,marginLeft:8}}>{demo?"****":x.rev.toFixed(2)+" zł"}</span>
-              </div>
-              <div style={{height:5,borderRadius:3,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
-                <div style={{height:"100%",width:pct+"%",background:"#0A7C7C",borderRadius:3,transition:"width .5s"}}/>
-              </div>
-            </div>;
-          })}
-        </div>}
-
-        {/* Skąd trafiają klienci */}
+        {/* Skąd trafiają klienci — sortowanie po przychodzie */}
         {(()=>{
           const periodRentals=rentals.filter(r=>(r.startDate||"")>=stats.cutStr);
-          const withSrc=periodRentals.filter(r=>r.source);
-          const total=withSrc.length;
-          const counts={};RENTAL_SOURCES.forEach(s=>{counts[s.value]=withSrc.filter(r=>r.source===s.value).length;});
+          if(periodRentals.length===0)return null;
+          // Przychód i liczba wypożyczeń per źródło (z rzeczywistych finansów)
+          const revBySource={};const cntBySource={};
+          RENTAL_SOURCES.forEach(s=>{revBySource[s.value]=0;cntBySource[s.value]=0;});
+          // mapa rentalId → source
+          const rentalSrcMap={};rentals.forEach(r=>{if(r.source)rentalSrcMap[r.id]=r.source;});
+          // policz wypożyczenia z okresu per źródło
+          periodRentals.forEach(r=>{if(r.source&&cntBySource.hasOwnProperty(r.source))cntBySource[r.source]++;});
+          // zsumuj przychód z finansów
+          (finances||[]).forEach(f=>{
+            if(f.type!=="przychód"||(f.date||"")<stats.cutStr)return;
+            const rid=getRid(f.sourceId);if(!rid)return;
+            const src=rentalSrcMap[rid];
+            if(src&&revBySource.hasOwnProperty(src))revBySource[src]+=(+f.amount||0);
+          });
+          const totalRev=Object.values(revBySource).reduce((s,v)=>s+v,0);
+          const totalCnt=Object.values(cntBySource).reduce((s,v)=>s+v,0);
+          const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
+          const topRev=sorted[0]?.rev||1;
+          const withoutSrc=periodRentals.filter(r=>!r.source).length;
           return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:total>0?10:6}}>📢 Skąd trafiają klienci</div>
-            {total===0
+            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:totalRev>0?10:6}}>📢 Skąd trafiają klienci</div>
+            {totalRev===0
               ?<div style={{fontSize:12,color:subC}}>Brak danych — uzupełnij źródło przy dodawaniu wypożyczeń</div>
-              :RENTAL_SOURCES.map(s=>{
-                const cnt=counts[s.value]||0;
-                const pct=Math.round((cnt/total)*100);
-                return <div key={s.value} style={{marginBottom:8}}>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                    <span style={{color:textC,fontWeight:500}}>{s.label}</span>
-                    <span style={{color:s.color,fontWeight:700}}>{cnt} · {pct}%</span>
+              :sorted.map(s=>{
+                const pct=totalRev>0?Math.round((s.rev/totalRev)*100):0;
+                const barW=Math.round((s.rev/topRev)*100);
+                return <div key={s.value} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,marginBottom:3}}>
+                    <span style={{color:textC,fontWeight:600}}>{s.label}</span>
+                    <span style={{flexShrink:0,marginLeft:8,textAlign:"right"}}>
+                      <span style={{color:s.color,fontWeight:800,fontSize:13}}>{demo?"****":s.rev.toFixed(2)+" zł"}</span>
+                      <span style={{color:subC,fontWeight:500}}> · {pct}% · {s.cnt} wyp.</span>
+                    </span>
                   </div>
                   <div style={{height:6,borderRadius:3,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
-                    <div style={{height:"100%",width:pct+"%",background:s.color,borderRadius:3,transition:"width .5s"}}/>
+                    <div style={{height:"100%",width:barW+"%",background:s.color,borderRadius:3,transition:"width .5s"}}/>
                   </div>
                 </div>;
               })
             }
-            {total>0&&total<periodRentals.length&&<div style={{fontSize:11,color:subC,marginTop:6}}>{periodRentals.length-total} z {periodRentals.length} bez oznaczonego źródła</div>}
+            {withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:6}}>{withoutSrc} z {periodRentals.length} bez oznaczonego źródła</div>}
           </div>;
         })()}
 
