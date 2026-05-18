@@ -1574,6 +1574,7 @@
       const [period,setPeriod]=useState("12");
       const [roiEq,setRoiEq]=useState(null);
       const [repairForm,setRepairForm]=useState(null);
+      const [showRentalList,setShowRentalList]=useState(false);
       const today=todayLocal();
       const borderC=dk?"#2A4040":"#F2F5F7";
       const textC=dk?"#C8E8E8":"#1C2B3A";
@@ -1707,6 +1708,7 @@
           const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
           const topRev=sorted[0]?.rev||1;
           const withoutSrc=periodRentals.filter(r=>!r.source).length;
+          const listSorted=[...periodRentals].sort((a,b)=>(b.startDate||"").localeCompare(a.startDate||""));
           return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
             <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:totalRev>0?10:6}}>📢 Skąd trafiają klienci</div>
             {totalRev===0
@@ -1729,6 +1731,22 @@
               })
             }
             {withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:6}}>{withoutSrc} z {periodRentals.length} bez oznaczonego źródła</div>}
+            <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:`1px solid ${borderC}`,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+              {showRentalList?"▲ Ukryj listę":"▼ Lista wypożyczeń ("+periodRentals.length+")"}
+            </button>
+            {showRentalList&&<div style={{marginTop:8}}>
+              {listSorted.map(r=>{
+                const src=RENTAL_SOURCES.find(s=>s.value===r.source);
+                const eq=(r.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL");
+                return <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${borderC}`,fontSize:12,gap:6}}>
+                  <span style={{color:subC,flexShrink:0,fontSize:11}}>{r.startDate?.slice(5)}</span>
+                  <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":r.patientName}</span>
+                  <span style={{color:subC,flexShrink:0,fontSize:11}}>{eq}</span>
+                  <span style={{color:"#3DAA72",fontWeight:700,flexShrink:0}}>{r.amount?r.amount+" zł":"—"}</span>
+                  {src?<span style={{color:src.color,fontWeight:700,fontSize:10,flexShrink:0}}>{src.label.split(" ")[0]}</span>:<span style={{color:subC,fontSize:10,flexShrink:0}}>—</span>}
+                </div>;
+              })}
+            </div>}
           </div>;
         })()}
 
