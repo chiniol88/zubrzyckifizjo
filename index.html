@@ -1636,7 +1636,7 @@
         const durationIncludeMap=stock&&stock.durationInclude||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
-        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment));
+        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr);
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
         return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,avgDuration};
       },[rentals,finances,period,today,rentalEquipMap,paymentRentalMap,stock]);
@@ -1669,9 +1669,8 @@
           {[
             {l:"Przychód (okres)",v:demo?"****":stats.totalRevenue.toFixed(2)+" zł",c:"#3DAA72"},
             {l:"Aktywnych teraz",v:rentals.filter(r=>r.status==="aktywne").length,c:"#0A7C7C"},
-            {l:"Łącznie zarobiono",v:demo?"****":allTimeTotal.toFixed(2)+" zł",c:"#7C6AF4"},
             {l:"Wypożyczeń (okres)",v:stats.totalCount,c:"#F4A261"},
-            {l:"Śr. czas wypożyczenia",v:stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych",c:"#2E86AB"},
+            {l:"Śr. czas wyp. (okres)",v:stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych",c:"#2E86AB"},
           ].map((k,i)=>
             <div key={i} style={{background:bg,borderRadius:14,padding:"12px 14px",border:`1.5px solid ${borderC}`}}>
               <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{k.l}</div>
