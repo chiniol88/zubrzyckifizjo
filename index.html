@@ -228,6 +228,8 @@
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula","Balkonik ortopedyczny"];
+    // Sprzęt wykluczony ze średniego czasu wypożyczenia (krótkoterminowy)
+    const EQUIPMENT_SKIP_DURATION = ["Ambonka Paula","Balkonik ortopedyczny"];
     const RENTAL_SOURCES = [
       {value:"reklama",label:"📢 Reklama",color:"#7C6AF4"},
       {value:"slawek",label:"🤝 Sławek",color:"#3DAA72"},
@@ -1633,7 +1635,7 @@
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
         const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
-        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&r.equipment!=="Balkonik ortopedyczny"&&r.equipment!=="Ambonka Paula");
+        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&!EQUIPMENT_SKIP_DURATION.includes(r.equipment));
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
         return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,avgDuration};
       },[rentals,finances,period,today,rentalEquipMap,paymentRentalMap]);
