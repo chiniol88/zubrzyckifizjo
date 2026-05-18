@@ -224,10 +224,16 @@
       return new Date(v.date+"T"+(v.time||"00:00")+":00") <= new Date() ? "zakończona" : "zaplanowana";
     };
     const emptyVisit = () => ({date:todayLocal(),time:"15:00",type:"Rehabilitacja domowa",price:"150",status:"zaplanowana",patientName:"",patientId:null,notes:""});
-    const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",startAllDay:false,endDate:"",endTime:"10:00",endAllDay:false,renewable:false,amount:"",amountPaid:"",transport:"",notes:""});
+    const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",startAllDay:false,endDate:"",endTime:"10:00",endAllDay:false,renewable:false,amount:"",amountPaid:"",transport:"",notes:"",source:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula","Balkonik ortopedyczny"];
+    const RENTAL_SOURCES = [
+      {value:"reklama",label:"📢 Reklama (Google/FB)",color:"#7C6AF4"},
+      {value:"polecenie_pacjenta",label:"🤝 Polecenie pacjenta",color:"#3DAA72"},
+      {value:"polecenie_kolegi",label:"👥 Polecenie kolegi z branży",color:"#0A7C7C"},
+      {value:"inne",label:"🔍 Inne / Bezpośrednio",color:"#F4A261"},
+    ];
 
     // ── UI ────────────────────────────────────────────────────────────────────
     const I = {
@@ -1613,7 +1619,7 @@
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
         const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
-        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle};
+        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr};
       },[rentals,period,today]);
 
       const borderC=dk?"#2A4040":"#F2F5F7";
@@ -1669,6 +1675,33 @@
                 })}
               </div>
             </div>
+
+            {/* Skąd trafiają klienci */}
+            {(()=>{
+              const periodRentals=rentals.filter(r=>{const d=r.startDate||"";return d>=stats.cutStr;});
+              const withSrc=periodRentals.filter(r=>r.source);
+              const total=withSrc.length;
+              if(periodRentals.length===0) return null;
+              const counts={};
+              RENTAL_SOURCES.forEach(s=>{counts[s.value]=withSrc.filter(r=>r.source===s.value).length;});
+              return <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>📢 Skąd trafiają klienci</div>
+                {RENTAL_SOURCES.map(s=>{
+                  const cnt=counts[s.value]||0;
+                  const pct=total>0?Math.round((cnt/total)*100):0;
+                  return <div key={s.value} style={{marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                      <span style={{color:dk?"#E0F0F0":"#1A2E35",fontWeight:500}}>{s.label}</span>
+                      <span style={{color:s.color,fontWeight:700}}>{cnt} · {pct}%</span>
+                    </div>
+                    <div style={{height:6,borderRadius:3,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
+                      <div style={{height:"100%",width:pct+"%",background:s.color,borderRadius:3,transition:"width .5s"}}/>
+                    </div>
+                  </div>;
+                })}
+                {total<periodRentals.length&&<div style={{fontSize:11,color:subC,marginTop:4}}>{periodRentals.length-total} z {periodRentals.length} bez oznaczonego źródła</div>}
+              </div>;
+            })()}
 
             {/* ROI per urządzenie */}
             <div style={{marginBottom:16}}>
@@ -2151,6 +2184,7 @@
             <Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
             <Txa label="Notatki" value={ef.notes||""} onChange={v=>setEf(f=>({...f,notes:v}))} rows={2}/>
+            <Sel label="Skąd dowiedział się o wypożyczeniu?" value={ef.source||""} onChange={v=>setEf(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
               const u={...ef,amount:raw,amountPaid:Math.min(+(ef.amountPaid||0),raw),patientId:pat?.id||ef.patientId||null};
@@ -2270,6 +2304,7 @@
           </div>}
           <Inp label="Transport (zł)" value={form.transport||""} onChange={v=>setForm(f=>({...f,transport:v}))} type="number" placeholder="0"/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
+          <Sel label="Skąd dowiedział się o wypożyczeniu?" value={form.source||""} onChange={v=>setForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
