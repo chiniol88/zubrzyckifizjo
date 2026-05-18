@@ -1613,7 +1613,7 @@
         let totalRevenue=0;
         const equipRevPeriod={};EQUIPMENT.forEach(eq=>equipRevPeriod[eq]=0);
         const monthlyRev={};
-        for(let i=0;i<6;i++){const d=new Date(today);d.setMonth(d.getMonth()-i);monthlyRev[d.toISOString().slice(0,7)]=0;}
+        for(let i=0;i<12;i++){const d=new Date(today);d.setMonth(d.getMonth()-i);monthlyRev[d.toISOString().slice(0,7)]=0;}
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód")return;
           const rid=getRid(f.sourceId);if(!rid)return;
@@ -1633,7 +1633,9 @@
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
         const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
-        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr};
+        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate);
+        const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,avgDuration};
       },[rentals,finances,period,today,rentalEquipMap,paymentRentalMap]);
 
       const costs=(stock&&stock.costs)||{};
@@ -1662,6 +1664,7 @@
             {l:"Aktywnych teraz",v:rentals.filter(r=>r.status==="aktywne").length,c:"#0A7C7C"},
             {l:"Łącznie zarobiono",v:demo?"****":allTimeTotal.toFixed(2)+" zł",c:"#7C6AF4"},
             {l:"Wypożyczeń (okres)",v:stats.totalCount,c:"#F4A261"},
+            {l:"Śr. czas wypożyczenia",v:stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych",c:"#2E86AB"},
           ].map((k,i)=>
             <div key={i} style={{background:bg,borderRadius:14,padding:"12px 14px",border:`1.5px solid ${borderC}`}}>
               <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{k.l}</div>
@@ -1672,7 +1675,7 @@
 
         {/* Wykres miesięczny */}
         <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Przychód miesięczny (wpłaty)</div>
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Sezonowość — przychód miesięczny (12 mies.)</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:4,height:60}}>
             {stats.monthlyArr.map(([m,v])=>{
               const pct=Math.round((v/stats.maxMonthly)*100);
