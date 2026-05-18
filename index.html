@@ -1568,7 +1568,7 @@
     }
 
 
-    function RentalStats({rentals,stock,setStock,finances}) {
+    function RentalStats({rentals,stock,setStock,finances,budget}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [period,setPeriod]=useState("12");
@@ -1637,8 +1637,32 @@
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
         const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr);
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
-        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,avgDuration};
-      },[rentals,finances,period,today,rentalEquipMap,paymentRentalMap,stock]);
+        // Wydatki marketingowe z budżetu — kat. Firma / podkat. Marketing
+        const cutMonth=cutStr.slice(0,7);
+        const todayMonth=today.slice(0,7);
+        let marketingSpend=0;
+        // ręczne wpisy
+        Object.entries((budget&&budget.months)||{}).forEach(([month,data])=>{
+          if(month<cutMonth||month>todayMonth)return;
+          (data.expenses||[]).forEach(e=>{if(e.cat==="Firma"&&e.subcat==="Marketing")marketingSpend+=(+e.amount||0);});
+        });
+        // cykliczne
+        ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&r.cat==="Firma"&&r.subcat==="Marketing").forEach(r=>{
+          const rStart=(r.startMonth||"0000-00").slice(0,7);
+          const rEnd=(r.endMonth||"9999-99").slice(0,7);
+          let d=new Date(cutMonth+"-15");const endD=new Date(todayMonth+"-15");
+          while(d<=endD){
+            const m=d.toISOString().slice(0,7);
+            if(m>=rStart&&m<=rEnd){
+              const ov=((budget.months||{})[m]||{}).recurringOverrides||{};
+              const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
+              marketingSpend+=amt*(r.cycle==="weekly"?4:1);
+            }
+            d.setMonth(d.getMonth()+1);
+          }
+        });
+        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,avgDuration,marketingSpend};
+      },[rentals,finances,period,today,rentalEquipMap,paymentRentalMap,stock,budget]);
 
       const costs=(stock&&stock.costs)||{};
       const getCosts=eq=>costs[eq]||{purchase:0,repairs:[]};
@@ -1670,6 +1694,7 @@
             {l:"Aktywnych teraz",v:rentals.filter(r=>r.status==="aktywne").length,c:"#0A7C7C"},
             {l:"Wypożyczeń (okres)",v:stats.totalCount,c:"#F4A261"},
             {l:"Śr. czas wyp. (okres)",v:stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych",c:"#2E86AB"},
+            {l:"Marketing (wydatki)",v:demo?"****":stats.marketingSpend.toFixed(2)+" zł",c:"#E05C5C"},
           ].map((k,i)=>
             <div key={i} style={{background:bg,borderRadius:14,padding:"12px 14px",border:`1.5px solid ${borderC}`}}>
               <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{k.l}</div>
@@ -2529,7 +2554,7 @@
               {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:year===y?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{y}</button>)}
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
-            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances}/>}
+            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} budget={budget}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
