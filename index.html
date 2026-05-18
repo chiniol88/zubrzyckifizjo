@@ -1625,8 +1625,7 @@
           const m=(f.date||"").slice(0,7);
           if(monthlyRev.hasOwnProperty(m)&&eq)monthlyRev[m]+=(+f.amount||0);
         });
-        let totalCount=0;
-        rentals.forEach(r=>{const rEnd=r.status==="aktywne"?today:(r.endDate||r.startDate);if(rEnd>=cutStr)totalCount++;});
+        const totalCount=rentals.filter(r=>(r.startDate||"")>=cutStr).length;
         const monthlyArr=Object.entries(monthlyRev).sort((a,b)=>a[0].localeCompare(b[0]));
         const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]),1);
         const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
