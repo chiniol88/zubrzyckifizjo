@@ -1111,7 +1111,10 @@
               <Card style={{marginBottom:10}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:pat.address?10:0}}>
                   <div style={{fontSize:14,color:"#7A8FA6"}}>{pat.phone||"Brak telefonu"}</div>
-                  {pat.phone&&<a href={`tel:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>}
+                  {pat.phone&&<div style={{display:"flex",gap:6}}>
+                    <a href={`tel:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>
+                    <a href={`sms:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#0A7C7C"/> SMS</Btn></a>
+                  </div>}
                 </div>
                 {pat.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{pat.address}</div>
@@ -2019,7 +2022,10 @@
                 <div style={{fontWeight:700,fontSize:16,marginBottom:12}}>{demo?"Pacjent":r.patientName}</div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:r.address?10:0}}>
                   <div style={{fontSize:14,color:"#7A8FA6"}}>{maskPhone(demo,r.phone)}</div>
-                  {r.phone&&!demo&&<a href={`tel:${r.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>}
+                  {r.phone&&!demo&&<div style={{display:"flex",gap:6}}>
+                    <a href={`tel:${r.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>
+                    <a href={`sms:${r.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#0A7C7C"/> SMS</Btn></a>
+                  </div>}
                 </div>
                 {r.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{maskAddr(demo,r.address)}</div>
@@ -4037,7 +4043,10 @@ Zasady:
                 <div style={{display:"grid",gap:10}}>
                   {cas.phone&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,color:dk?"#C8E8E8":"#1C2B3A"}}>{maskPhone(demo,cas.phone)}</span>
-                    {!demo&&<a href={`tel:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>}
+                    {!demo&&<div style={{display:"flex",gap:6}}>
+                      <a href={`tel:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>
+                      <a href={`sms:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#0A7C7C"/> SMS</Btn></a>
+                    </div>}
                   </div>}
                   {cas.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{maskAddr(demo,cas.address)}</span>
