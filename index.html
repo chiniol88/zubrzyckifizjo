@@ -2435,8 +2435,8 @@
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
-      const [viewMode,setViewMode]=useState(()=>{const h=window.location.hash.replace("#","").split("-");return h[1]||sessionStorage.getItem("fizjo-viewmode")||"month";});
-      useEffect(()=>{sessionStorage.setItem("fizjo-viewmode",viewMode);},[viewMode]);
+      const [viewMode,setViewMode]=useState(()=>{const h=window.location.hash.replace("#","").split("-");return h[1]||"month";});
+      useEffect(()=>{window.location.replace("#finances-"+viewMode);},[viewMode]);
       const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
       const [year,setYear]=useState(()=>todayLocal().slice(0,4));
       const [weekStart,setWeekStart]=useState(()=>{const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");});
@@ -4186,7 +4186,7 @@ Zasady:
 
     function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget}) {
       const [tab,setTab]=useState(()=>{const h=window.location.hash.replace("#","").split("-")[0];return["dashboard","patients","rentals","finances","nfz","settings"].includes(h)?h:"dashboard";});
-      useEffect(()=>{const vm=sessionStorage.getItem("fizjo-viewmode")||"";window.location.replace("#"+tab+(tab==="finances"&&vm?"-"+vm:""));},[tab]);
+      useEffect(()=>{if(tab!=="finances")window.location.replace("#"+tab);},[tab]);
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
