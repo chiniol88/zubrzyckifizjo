@@ -1684,20 +1684,14 @@
       const mktgLabel=mktgCat?(mktgCat+(mktgSub?" / "+mktgSub:"")):"— wybierz —";
 
       return <div style={{padding:"0 20px 24px"}}>
-        {/* Selektor miesiąca — jak w Dom */}
-        {(()=>{
-          const months=[];
-          for(let i=11;i>=0;i--){const d=new Date(today);d.setDate(1);d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
-          const MNAMES=["styczeń","luty","marzec","kwiecień","maj","czerwiec","lipiec","sierpień","wrzesień","październik","listopad","grudzień"];
-          return <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-            {months.map(m=>{
-              const [y,mo]=m.split("-");
-              const label=MNAMES[+mo-1]+" "+y;
-              const active=m===selMonth;
-              return <button key={m} onClick={()=>setSelMonth(m)} style={{flexShrink:0,padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:active?"#0A7C7C":dk?"#1E3A3A":"#F2F5F7",color:active?"#fff":subC,fontFamily:"inherit",whiteSpace:"nowrap"}}>{label}</button>;
-            })}
-          </div>;
-        })()}
+        {/* Selektor miesiąca — kompaktowy */}
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:textC,fontFamily:"'Syne',sans-serif"}}>
+            {new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}
+          </div>
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+        </div>
 
         {/* KPI — pierwsze 4 w siatce 2x2 */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -3610,18 +3604,13 @@ Zasady:
       };
 
       return <div style={{padding:"0 20px 40px"}}>
-        {/* Month selector */}
+        {/* Month selector — kompaktowy */}
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:32,height:32,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:16,color:dk?"#7ABABA":"#4A6070",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-          <div style={{flex:1,display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
-            {monthsList.map(m=><button key={m} onClick={()=>setSelMonth(m)}
-              style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",
-                background:selMonth===m?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",
-                color:selMonth===m?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>
-              {new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}
-            </button>)}
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:dk?"#7ABABA":"#4A6070",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"'Syne',sans-serif"}}>
+            {new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}
           </div>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);const nm=d.toISOString().slice(0,7);setSelMonth(nm);}} style={{flexShrink:0,width:32,height:32,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:16,color:dk?"#7ABABA":"#4A6070",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:dk?"#7ABABA":"#4A6070",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
 
         {/* D — badge kosztów stałych */}
