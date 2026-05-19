@@ -1637,17 +1637,24 @@
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
         const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr);
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
-        // Wydatki marketingowe z budżetu — kat. Firma / podkat. Marketing
+        // Wydatki marketingowe z budżetu — kategoria wybrana przez użytkownika
         const cutMonth=cutStr.slice(0,7);
         const todayMonth=today.slice(0,7);
+        const mktgCat=(stock&&stock.marketingCat)||"";
+        const mktgSub=(stock&&stock.marketingSub)||"";
         let marketingSpend=0;
+        // Jeśli użytkownik wybrał kategorię — dopasowanie dokładne; inaczej fallback na "firma"/"marketing" case-insensitive
+        const matchCat=(cat,sub)=>{
+          if(mktgCat) return cat===mktgCat&&(!mktgSub||sub===mktgSub);
+          return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";
+        };
         // ręczne wpisy
         Object.entries((budget&&budget.months)||{}).forEach(([month,data])=>{
           if(month<cutMonth||month>todayMonth)return;
-          (data.expenses||[]).forEach(e=>{if(e.cat==="Firma"&&e.subcat==="Marketing")marketingSpend+=(+e.amount||0);});
+          (data.expenses||[]).forEach(e=>{if(matchCat(e.cat,e.subcat))marketingSpend+=(+e.amount||0);});
         });
         // cykliczne
-        ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&r.cat==="Firma"&&r.subcat==="Marketing").forEach(r=>{
+        ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&matchCat(r.cat,r.subcat)).forEach(r=>{
           const rStart=(r.startMonth||"0000-00").slice(0,7);
           const rEnd=(r.endMonth||"9999-99").slice(0,7);
           let d=new Date(cutMonth+"-15");const endD=new Date(todayMonth+"-15");
@@ -1678,6 +1685,17 @@
       const deleteRepair=(eq,id)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});
 
       const allTimeTotal=EQUIPMENT.reduce((s,eq)=>s+(allTimeRevenue[eq]||0),0);
+      // Kategorie z budżetu do pickera marketingu
+      const mktgCat=(stock&&stock.marketingCat)||"";
+      const mktgSub=(stock&&stock.marketingSub)||"";
+      const budgetCatMap={};
+      Object.values((budget&&budget.months)||{}).forEach(function(data){
+        (data.expenses||[]).forEach(function(e){if(e.cat){if(!budgetCatMap[e.cat])budgetCatMap[e.cat]=[];if(e.subcat&&budgetCatMap[e.cat].indexOf(e.subcat)<0)budgetCatMap[e.cat].push(e.subcat);}});
+      });
+      ((budget&&budget.recurring)||[]).forEach(function(r){if(r.type==="expense"&&r.cat){if(!budgetCatMap[r.cat])budgetCatMap[r.cat]=[];if(r.subcat&&budgetCatMap[r.cat].indexOf(r.subcat)<0)budgetCatMap[r.cat].push(r.subcat);}});
+      const budgetCatNames=Object.keys(budgetCatMap).sort();
+      const budgetSubNames=mktgCat&&budgetCatMap[mktgCat]?budgetCatMap[mktgCat].sort():[];
+      const mktgLabel=mktgCat?(mktgCat+(mktgSub?" / "+mktgSub:"")):"— wybierz —";
 
       return <div style={{padding:"0 20px 24px"}}>
         {/* Selektor okresu */}
@@ -1687,20 +1705,43 @@
           )}
         </div>
 
-        {/* KPI */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+        {/* KPI — pierwsze 4 w siatce 2x2 */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
           {[
             {l:"Przychód (okres)",v:demo?"****":stats.totalRevenue.toFixed(2)+" zł",c:"#3DAA72"},
             {l:"Aktywnych teraz",v:rentals.filter(r=>r.status==="aktywne").length,c:"#0A7C7C"},
             {l:"Wypożyczeń (okres)",v:stats.totalCount,c:"#F4A261"},
             {l:"Śr. czas wyp. (okres)",v:stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych",c:"#2E86AB"},
-            {l:"Marketing (wydatki)",v:demo?"****":stats.marketingSpend.toFixed(2)+" zł",c:"#E05C5C"},
           ].map((k,i)=>
             <div key={i} style={{background:bg,borderRadius:14,padding:"12px 14px",border:`1.5px solid ${borderC}`}}>
               <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{k.l}</div>
               <div style={{fontSize:18,fontWeight:800,color:k.c,fontFamily:"'Syne',sans-serif"}}>{k.v}</div>
             </div>
           )}
+        </div>
+
+        {/* KPI Marketing — osobny kafelek z pickerem kategorii */}
+        <div style={{background:bg,borderRadius:14,padding:"12px 14px",border:`1.5px solid ${borderC}`,marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Marketing (wydatki)</div>
+            <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:10,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 6px",borderRadius:6,fontFamily:"inherit"}}>
+              {(stock&&stock._mktgOpen)?"zamknij":"zmien kat."}
+            </button>
+          </div>
+          <div style={{fontSize:18,fontWeight:800,color:"#E05C5C",fontFamily:"'Syne',sans-serif",marginBottom:(stock&&stock._mktgOpen)?10:0}}>
+            {demo?"****":stats.marketingSpend.toFixed(2)+" zł"}
+          </div>
+          {stock&&stock._mktgOpen&&<div>
+            <div style={{fontSize:11,color:subC,marginBottom:4}}>Kategoria w budzecie (Dom):</div>
+            <select value={mktgCat} onChange={e=>setStock(s=>({...s,marketingCat:e.target.value,marketingSub:""}))} style={{width:"100%",padding:"7px",borderRadius:8,border:"1px solid "+borderC,background:bg,color:textC,fontSize:13,fontFamily:"inherit",marginBottom:6}}>
+              <option value="">-- domyslnie: Firma / Marketing --</option>
+              {budgetCatNames.map(c=><option key={c} value={c}>{c}</option>)}
+            </select>
+            {mktgCat&&<select value={mktgSub} onChange={e=>setStock(s=>({...s,marketingSub:e.target.value}))} style={{width:"100%",padding:"7px",borderRadius:8,border:"1px solid "+borderC,background:bg,color:textC,fontSize:13,fontFamily:"inherit"}}>
+              <option value="">-- cala kategoria --</option>
+              {budgetSubNames.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>}
+          </div>}
         </div>
 
         {/* Wykres miesięczny */}
@@ -2406,7 +2447,8 @@
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
-      const [viewMode,setViewMode]=useState("month");
+      const [viewMode,setViewMode]=useState(()=>sessionStorage.getItem("fizjo-viewmode")||"month");
+      useEffect(()=>{sessionStorage.setItem("fizjo-viewmode",viewMode);},[viewMode]);
       const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
       const [year,setYear]=useState(()=>todayLocal().slice(0,4));
       const [weekStart,setWeekStart]=useState(()=>{const d=new Date();const day=d.getDay()||7;d.setDate(d.getDate()-day+1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");});
@@ -4160,7 +4202,8 @@ Zasady:
     }
 
     function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget}) {
-      const [tab,setTab]=useState("dashboard");
+      const [tab,setTab]=useState(()=>sessionStorage.getItem("fizjo-tab")||"dashboard");
+      useEffect(()=>{sessionStorage.setItem("fizjo-tab",tab);},[tab]);
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
