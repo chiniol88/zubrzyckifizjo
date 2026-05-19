@@ -2447,7 +2447,7 @@
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
-      const [viewMode,setViewMode]=useState(()=>sessionStorage.getItem("fizjo-viewmode")||"month");
+      const [viewMode,setViewMode]=useState(()=>{const h=window.location.hash.replace("#","").split("-");return h[1]||sessionStorage.getItem("fizjo-viewmode")||"month";});
       useEffect(()=>{sessionStorage.setItem("fizjo-viewmode",viewMode);},[viewMode]);
       const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
       const [year,setYear]=useState(()=>todayLocal().slice(0,4));
@@ -4202,8 +4202,8 @@ Zasady:
     }
 
     function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget}) {
-      const [tab,setTab]=useState(()=>sessionStorage.getItem("fizjo-tab")||"dashboard");
-      useEffect(()=>{sessionStorage.setItem("fizjo-tab",tab);},[tab]);
+      const [tab,setTab]=useState(()=>{const h=window.location.hash.replace("#","").split("-")[0];return["dashboard","patients","rentals","finances","nfz","settings"].includes(h)?h:"dashboard";});
+      useEffect(()=>{const vm=sessionStorage.getItem("fizjo-viewmode")||"";window.location.replace("#"+tab+(tab==="finances"&&vm?"-"+vm:""));},[tab]);
       const [dlRental,setDlRental]=useState(null);
       const [wozkiSel,setWozkiSel]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
