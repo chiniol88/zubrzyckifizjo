@@ -1571,7 +1571,7 @@
     function RentalStats({rentals,stock,setStock,finances,budget}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
-      const [period,setPeriod]=useState("12");
+      const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
       const [roiEq,setRoiEq]=useState(null);
       const [repairForm,setRepairForm]=useState(null);
       const [showRentalList,setShowRentalList]=useState(false);
@@ -1606,26 +1606,24 @@
         return rev;
       },[finances,rentalEquipMap,paymentRentalMap]);
 
-      // Statystyki okresu — też z finansów (faktyczne wpłaty)
+      // Statystyki miesięczne — konkretny miesiąc kalendarzowy
       const stats=useMemo(()=>{
-        const cutoff=new Date(today);cutoff.setMonth(cutoff.getMonth()-(+period));
-        const cutStr=cutoff.toISOString().slice(0,10);
+        const cutStr=selMonth+"-01";
+        // ostatni dzień miesiąca
+        const lastDay=new Date(new Date(selMonth+"-01").getFullYear(),new Date(selMonth+"-01").getMonth()+1,0).getDate();
+        const cutEnd=selMonth+"-"+String(lastDay).padStart(2,"0");
         let totalRevenue=0;
-        const equipRevPeriod={};EQUIPMENT.forEach(eq=>equipRevPeriod[eq]=0);
         const monthlyRev={};
         for(let i=0;i<12;i++){const d=new Date(today);d.setMonth(d.getMonth()-i);monthlyRev[d.toISOString().slice(0,7)]=0;}
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód")return;
           const rid=getRid(f.sourceId);if(!rid)return;
           const eq=rentalEquipMap[rid];
-          if(f.date>=cutStr){
-            totalRevenue+=(+f.amount||0);
-            if(eq&&equipRevPeriod.hasOwnProperty(eq))equipRevPeriod[eq]+=(+f.amount||0);
-          }
+          if(f.date>=cutStr&&f.date<=cutEnd)totalRevenue+=(+f.amount||0);
           const m=(f.date||"").slice(0,7);
           if(monthlyRev.hasOwnProperty(m)&&eq)monthlyRev[m]+=(+f.amount||0);
         });
-        const totalCount=rentals.filter(r=>(r.startDate||"")>=cutStr).length;
+        const totalCount=rentals.filter(r=>(r.startDate||"")>=cutStr&&(r.startDate||"")<=cutEnd).length;
         const monthlyArr=Object.entries(monthlyRev).sort((a,b)=>a[0].localeCompare(b[0]));
         const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]),1);
         const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
@@ -1635,41 +1633,29 @@
         const durationIncludeMap=stock&&stock.durationInclude||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
-        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr);
+        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
-        // Wydatki marketingowe z budżetu — kategoria wybrana przez użytkownika
-        const cutMonth=cutStr.slice(0,7);
-        const todayMonth=today.slice(0,7);
+        // Marketing z budżetu — tylko wybrany miesiąc
         const mktgCat=(stock&&stock.marketingCat)||"";
         const mktgSub=(stock&&stock.marketingSub)||"";
-        let marketingSpend=0;
-        // Jeśli użytkownik wybrał kategorię — dopasowanie dokładne; inaczej fallback na "firma"/"marketing" case-insensitive
         const matchCat=(cat,sub)=>{
           if(mktgCat) return cat===mktgCat&&(!mktgSub||sub===mktgSub);
           return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";
         };
-        // ręczne wpisy
-        Object.entries((budget&&budget.months)||{}).forEach(([month,data])=>{
-          if(month<cutMonth||month>todayMonth)return;
-          (data.expenses||[]).forEach(e=>{if(matchCat(e.cat,e.subcat))marketingSpend+=(+e.amount||0);});
-        });
-        // cykliczne
+        let marketingSpend=0;
+        const mData=(budget&&budget.months&&budget.months[selMonth])||{};
+        (mData.expenses||[]).forEach(e=>{if(matchCat(e.cat,e.subcat))marketingSpend+=(+e.amount||0);});
         ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&matchCat(r.cat,r.subcat)).forEach(r=>{
           const rStart=(r.startMonth||"0000-00").slice(0,7);
           const rEnd=(r.endMonth||"9999-99").slice(0,7);
-          let d=new Date(cutMonth+"-15");const endD=new Date(todayMonth+"-15");
-          while(d<=endD){
-            const m=d.toISOString().slice(0,7);
-            if(m>=rStart&&m<=rEnd){
-              const ov=((budget.months||{})[m]||{}).recurringOverrides||{};
-              const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
-              marketingSpend+=amt*(r.cycle==="weekly"?4:1);
-            }
-            d.setMonth(d.getMonth()+1);
+          if(selMonth>=rStart&&selMonth<=rEnd){
+            const ov=((budget.months||{})[selMonth]||{}).recurringOverrides||{};
+            const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
+            marketingSpend+=amt*(r.cycle==="weekly"?4:1);
           }
         });
-        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,avgDuration,marketingSpend};
-      },[rentals,finances,period,today,rentalEquipMap,paymentRentalMap,stock,budget]);
+        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,cutEnd,avgDuration,marketingSpend};
+      },[rentals,finances,selMonth,today,rentalEquipMap,paymentRentalMap,stock,budget]);
 
       const costs=(stock&&stock.costs)||{};
       const getCosts=eq=>costs[eq]||{purchase:0,repairs:[]};
@@ -1698,12 +1684,20 @@
       const mktgLabel=mktgCat?(mktgCat+(mktgSub?" / "+mktgSub:"")):"— wybierz —";
 
       return <div style={{padding:"0 20px 24px"}}>
-        {/* Selektor okresu */}
-        <div style={{display:"flex",gap:6,marginBottom:16}}>
-          {[{v:"1",l:"1 mies."},{v:"3",l:"3 mies."},{v:"6",l:"6 mies."},{v:"12",l:"12 mies."}].map(o=>
-            <button key={o.v} onClick={()=>setPeriod(o.v)} style={{flex:1,padding:"8px 4px",borderRadius:10,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:period===o.v?"#0A7C7C":dk?"#1E3A3A":"#F2F5F7",color:period===o.v?"#fff":subC,fontFamily:"inherit"}}>{o.l}</button>
-          )}
-        </div>
+        {/* Selektor miesiąca — jak w Dom */}
+        {(()=>{
+          const months=[];
+          for(let i=11;i>=0;i--){const d=new Date(today);d.setDate(1);d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
+          const MNAMES=["styczeń","luty","marzec","kwiecień","maj","czerwiec","lipiec","sierpień","wrzesień","październik","listopad","grudzień"];
+          return <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+            {months.map(m=>{
+              const [y,mo]=m.split("-");
+              const label=MNAMES[+mo-1]+" "+y;
+              const active=m===selMonth;
+              return <button key={m} onClick={()=>setSelMonth(m)} style={{flexShrink:0,padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:active?"#0A7C7C":dk?"#1E3A3A":"#F2F5F7",color:active?"#fff":subC,fontFamily:"inherit",whiteSpace:"nowrap"}}>{label}</button>;
+            })}
+          </div>;
+        })()}
 
         {/* KPI — pierwsze 4 w siatce 2x2 */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1761,7 +1755,7 @@
 
         {/* Skąd trafiają klienci — sortowanie po przychodzie */}
         {(()=>{
-          const periodRentals=rentals.filter(r=>(r.startDate||"")>=stats.cutStr);
+          const periodRentals=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd);
           if(periodRentals.length===0)return null;
           // Przychód i liczba wypożyczeń per źródło (z rzeczywistych finansów)
           const revBySource={};const cntBySource={};
@@ -1772,7 +1766,7 @@
           periodRentals.forEach(r=>{if(r.source&&cntBySource.hasOwnProperty(r.source))cntBySource[r.source]++;});
           // zsumuj przychód z finansów
           (finances||[]).forEach(f=>{
-            if(f.type!=="przychód"||(f.date||"")<stats.cutStr)return;
+            if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
             const rid=getRid(f.sourceId);if(!rid)return;
             const src=rentalSrcMap[rid];
             if(src&&revBySource.hasOwnProperty(src))revBySource[src]+=(+f.amount||0);
