@@ -2304,11 +2304,21 @@
             <Sel label="Skąd dowiedział się o wypożyczeniu?" value={ef.source||""} onChange={v=>setEf(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
-              const u={...ef,amount:raw,amountPaid:Math.min(+(ef.amountPaid||0),raw),patientId:pat?.id||ef.patientId||null};
-              setRentals(rs=>rs.map(x=>x.id===detail?{...x,...u}:x));
+              const newPaid=Math.min(+(ef.amountPaid||0),raw);
+              const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null};
+              const cur=rentals.find(x=>x.id===detail);
+              // Jeśli brak wpłat w tablicy payments, a amountPaid > 0 → utwórz wpłatę i wpis finansowy
+              const hasPayments=cur&&(cur.payments||[]).length>0;
+              if(!hasPayments&&newPaid>0){
+                const npid=Date.now();
+                const np={id:npid,amount:newPaid,date:u.startDate||todayLocal()};
+                setRentals(rs=>rs.map(x=>x.id===detail?{...x,...u,payments:[np]}:x));
+                setFinances(fs=>[{id:Date.now()+1,sourceId:"payment-"+npid,date:u.startDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:newPaid,description:"Wypożyczenie – "+u.patientName+" ("+(u.equipment||"Do ustalenia")+")"},...fs]);
+              } else {
+                setRentals(rs=>rs.map(x=>x.id===detail?{...x,...u}:x));
+              }
               // Sync opisy finansów: normalne wpłaty + przedłużenia
               setFinances(fs=>fs.map(f=>{
-                const cur=rentals.find(x=>x.id===detail);
                 if(!cur)return f;
                 const isPayment=(cur.payments||[]).some(p=>f.sourceId==="payment-"+p.id);
                 const isExtension=f.sourceId&&f.sourceId.startsWith("extend-"+detail+"-");
