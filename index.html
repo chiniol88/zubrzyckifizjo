@@ -1802,7 +1802,24 @@
           const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
           const topRev=sorted[0]?.rev||1;
           const withoutSrc=periodRentals.filter(r=>!r.source).length;
-          const listSorted=[...periodRentals].sort((a,b)=>(b.startDate||"").localeCompare(a.startDate||""));
+          // Lista wpłat w miesiącu — uwzględnia przedłużenia i cykle (nie tylko starty)
+          const listItems=[];
+          (finances||[]).forEach(f=>{
+            if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
+            const rid=getRid(f.sourceId);if(!rid)return;
+            const r=rentals.find(x=>x.id===rid);if(!r)return;
+            const isExt=(f.sourceId||"").startsWith("extend-");
+            const isCycle=(f.sourceId||"").startsWith("cycle-");
+            listItems.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,source:r.source,type:isExt?"↪ Przedłużenie":isCycle?"↻ Cykl":"Wpłata"});
+          });
+          // legacy — amountPaid bez payments
+          rentals.forEach(r=>{
+            if((r.payments||[]).length>0||(r.cycles||[]).length>0)return;
+            const paid=+r.amountPaid||0;if(!paid)return;
+            const d=r.startDate||"";
+            if(d>=stats.cutStr&&d<=stats.cutEnd)listItems.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,source:r.source,type:"Wpłata"});
+          });
+          listItems.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
           return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
             <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:totalRev>0?10:6}}>📢 Skąd trafiają klienci</div>
             {totalRev===0
@@ -1826,17 +1843,19 @@
             }
             {withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:6}}>{withoutSrc} z {periodRentals.length} bez oznaczonego źródła</div>}
             <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:`1px solid ${borderC}`,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-              {showRentalList?"▲ Ukryj listę":"▼ Lista wypożyczeń ("+periodRentals.length+")"}
+              {showRentalList?"▲ Ukryj listę":"▼ Lista wpłat ("+listItems.length+")"}
             </button>
             {showRentalList&&<div style={{marginTop:8}}>
-              {listSorted.map(r=>{
-                const src=RENTAL_SOURCES.find(s=>s.value===r.source);
-                const eq=(r.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL");
-                return <div key={r.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${borderC}`,fontSize:12,gap:6}}>
-                  <span style={{color:subC,flexShrink:0,fontSize:11}}>{r.startDate?.slice(5)}</span>
-                  <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":r.patientName}</span>
+              {listItems.map(item=>{
+                const src=RENTAL_SOURCES.find(s=>s.value===item.source);
+                const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL");
+                const isExt=item.type!=="Wpłata";
+                return <div key={item.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${borderC}`,fontSize:12,gap:6}}>
+                  <span style={{color:subC,flexShrink:0,fontSize:11}}>{item.date?.slice(5)}</span>
+                  <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":item.patientName}</span>
                   <span style={{color:subC,flexShrink:0,fontSize:11}}>{eq}</span>
-                  <span style={{color:"#3DAA72",fontWeight:700,flexShrink:0}}>{r.amount?r.amount+" zł":"—"}</span>
+                  {isExt&&<span style={{color:"#7C6AF4",fontWeight:700,fontSize:10,flexShrink:0}}>{item.type}</span>}
+                  <span style={{color:"#3DAA72",fontWeight:700,flexShrink:0}}>{item.amount+" zł"}</span>
                   {src?<span style={{color:src.color,fontWeight:700,fontSize:10,flexShrink:0}}>{src.label.split(" ")[0]}</span>:<span style={{color:subC,fontSize:10,flexShrink:0}}>—</span>}
                 </div>;
               })}
