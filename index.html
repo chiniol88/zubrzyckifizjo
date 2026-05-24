@@ -2014,6 +2014,105 @@
       </Card>;
     }
 
+    function generateUmowa(r) {
+      const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const today=new Date();
+      const todayStr=today.getDate()+' '+['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'][today.getMonth()]+' '+today.getFullYear()+' r.';
+      const eq=r.equipment||'';
+      const isAK1=eq.includes('Artromot')||eq.includes('artromot');
+      const isKinetec=eq.includes('Kinetec')||eq.includes('kinetec')||eq.includes('Optiflex');
+      const isBalk=eq.includes('Balkonik')||eq.includes('balkonik')||eq.includes('Ambonka');
+      const isInne=!isAK1&&!isKinetec&&!isBalk;
+      const isCPM=isAK1||isKinetec||(isInne&&!isBalk);
+      const ch=v=>v?'&#9745;':'&#9744;';
+      const fmtDate=d=>d?d.split('-').reverse().join('.'):'___________';
+      let duration='',dailyRate='';
+      if(r.startDate&&r.endDate){
+        const days=Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24));
+        duration=days>0?days:'';
+        if(r.amount&&days>0){const net=(+r.amount)-(+r.transport||0);dailyRate=(net/days).toFixed(2);}
+      }
+      const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Umowa wypożyczenia</title><style>
+@media print{@page{margin:2cm}body{-webkit-print-color-adjust:exact}}
+body{font-family:Arial,sans-serif;font-size:10pt;line-height:1.45;color:#000;margin:2cm}
+.hdr{text-align:center;margin-bottom:14px}.hdr b{font-size:13pt}
+.hdr p{font-size:9pt;margin:2px 0}
+h1{font-size:12pt;font-weight:bold;text-align:center;color:#003399;text-decoration:underline;border-bottom:2px solid #003399;padding-bottom:4px;margin:10px 0 14px}
+.sec{font-weight:bold;text-align:center;border-bottom:2px solid #003399;margin:12px 0 7px;padding-bottom:3px;font-size:10.5pt}
+.bl{display:inline-block;border-bottom:1px solid #000;min-width:110px}
+.bl2{min-width:220px}.bl3{min-width:300px}
+p{margin:3px 0}.bold7{font-weight:bold}
+.row{display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;margin:3px 0}
+.dim{color:#aaa}
+.sigs{margin-top:48px;display:flex;justify-content:space-between}
+.sig{width:44%}.sig-line{border-top:1px solid #000;margin-top:44px;padding-top:4px;font-weight:bold;font-size:9pt}
+</style></head><body>
+<div class="hdr"><b>ZubrzyckiPatrykFizjo</b>
+<p>ul. Mysłowicka 14/37, 40-487 Katowice &nbsp;|&nbsp; NIP: 9542788785 &nbsp;|&nbsp; tel. 601 668 535</p>
+<p>Konto: 27 1870 1045 2078 1085 9811 0001</p></div>
+<h1>UMOWA WYPOŻYCZENIA SPRZĘTU REHABILITACYJNEGO</h1>
+<p>Zawarta w <span class="bl bl2"></span>, dnia ${todayStr} pomiędzy:</p>
+<p><b>Właścicielem:</b> ZubrzyckiPatrykFizjo, Patryk Zubrzycki, ul. Mysłowicka 14/37, 40-487 Katowice, NIP: 9542788785</p>
+<p style="text-align:center;margin:4px 0">a</p>
+<p><b>Wypożyczającym:</b> Imię i nazwisko: <b>${esc(r.patientName)||'<span class="bl bl2"></span>'}</b> &nbsp; PESEL: <span class="bl" style="min-width:140px"></span></p>
+<p>Adres: <b>${esc(r.address)||'<span class="bl bl3"></span>'}</b></p>
+<p>Tel.: <b>${esc(r.phone)||'<span class="bl" style="min-width:140px"></span>'}</b></p>
+<div class="sec">§1 &nbsp; Przedmiot umowy</div>
+<p>Właściciel oddaje Wypożyczającemu do używania urządzenie rehabilitacyjne:</p>
+<table style="margin:6px 0;width:100%"><tr>
+<td style="width:50%">${ch(isAK1)} CPM artromot K1</td><td>${ch(isKinetec)} CPM Kinetec</td></tr><tr>
+<td>${ch(isBalk)} Balkonik</td><td>${ch(isInne)} Inne: ${isInne?'<b>'+esc(eq)+'</b>':'<span class="bl" style="min-width:140px"></span>'}</td></tr></table>
+<p>Urządzenie zostaje wydane w stanie sprawnym, kompletnym i czystym. Wypożyczający potwierdza odbiór sprzętu i zapoznanie się z zasadami jego obsługi.</p>
+<div class="sec">§2 &nbsp; Okres wypożyczenia i stawka</div>
+<p class="${isCPM?'':'dim'}"><b>Aparat CPM (rozliczenie w dobach):</b></p>
+<div class="row">Okres: <b>${isCPM&&duration?duration:'<span class="bl" style="min-width:30px"></span>'}</b> dób,&nbsp; od <b>${isCPM?fmtDate(r.startDate):'<span class="bl" style="min-width:80px"></span>'}</b> do <b>${isCPM?fmtDate(r.endDate):'<span class="bl" style="min-width:80px"></span>'}</b>&nbsp; Stawka: <b>${isCPM&&dailyRate?dailyRate:'<span class="bl" style="min-width:50px"></span>'}</b> zł / dobę</div>
+<p style="margin-top:6px" class="${isBalk?'':'dim'}"><b>Balkonik / inny sprzęt (rozliczenie w miesiącach):</b></p>
+<div class="row">Okres: <span class="bl" style="min-width:30px"></span> mies.,&nbsp; od <span class="bl" style="min-width:80px"></span> do <span class="bl" style="min-width:80px"></span>&nbsp; Stawka: <span class="bl" style="min-width:50px"></span> zł / mies.</div>
+<div class="sec">§3 &nbsp; Wynagrodzenie i płatność</div>
+<p><b>1.</b> Opłata za dowóz i odbiór urządzenia: <b>${r.transport&&+r.transport>0?esc(String(r.transport)):'<span class="bl" style="min-width:50px"></span>'}</b> zł</p>
+<p><b>2.</b> Wynagrodzenie za cały okres wypożyczenia wynosi: <b>${r.amount?esc(String(r.amount)):'<span class="bl" style="min-width:60px"></span>'}</b> zł (słownie: <span class="bl bl2"></span>).</p>
+<p><b>3.</b> Płatność następuje z góry w dniu podpisania umowy w formie: &#9744; gotówka &nbsp; &#9744; przelew &nbsp; &#9744; BLIK</p>
+<p><b>4.</b> W przypadku płatności przelewem lub BLIK, za datę zapłaty uznaje się dzień wpływu środków na rachunek Właściciela.</p>
+<p><b>5.</b> Dane do przelewu: ZubrzyckiPatrykFizjo — 27 1870 1045 2078 1085 9811 0001</p>
+<div class="sec">§4 &nbsp; Obowiązki Wypożyczającego i odpowiedzialność</div>
+<p><b>1.</b> Wypożyczający zobowiązuje się do używania urządzenia zgodnie z jego przeznaczeniem i instrukcją obsługi.</p>
+<p><b>2.</b> Wypożyczający zobowiązuje się do przechowywania urządzenia w odpowiednich warunkach, chroniąc je przed uszkodzeniem, zawilgoceniem i kradzieżą.</p>
+<p><b>3.</b> Wypożyczający ponosi pełną odpowiedzialność materialną za uszkodzenie, zniszczenie lub utratę urządzenia w czasie trwania umowy, w tym kradzież.</p>
+<p><b>4.</b> W przypadku awarii lub uszkodzenia Wypożyczający niezwłocznie powiadamia Właściciela.</p>
+<p><b>5.</b> Wypożyczający nie może oddawać urządzenia w podnajem ani użyczać osobom trzecim bez pisemnej zgody Właściciela.</p>
+<p><b>6.</b> W przypadku stwierdzenia przy zwrocie uszkodzeń przekraczających normalne zużycie eksploatacyjne, Wypożyczający zobowiązuje się pokryć koszty naprawy według wyceny serwisowej.</p>
+<p class="bold7"><b>7. Aparaty CPM — podczas użytkowania należy obowiązkowo stosować długie spodnie lub podłożyć ręcznik/ścierkę pod kończynę, celem ochrony podkładek urządzenia przed zabrudzeniem. Niestosowanie się do powyższego wymogu i stwierdzenie przy zwrocie zabrudzeń lub odbarwień podkładek jest równoznaczne z obowiązkiem pokrycia przez Wypożyczającego kosztów ich czyszczenia lub wymiany.</b></p>
+<div class="sec">§5 &nbsp; Przedłużenie okresu wypożyczenia</div>
+<p><b>1.</b> Wypożyczający może przedłużyć okres wypożyczenia po uprzednim uzgodnieniu z Właścicielem i uiszczeniu stosownej opłaty.</p>
+<p><b>2.</b> Prośba o przedłużenie powinna być zgłoszona najpóźniej na 5 dni przed upływem pierwotnego terminu zwrotu.</p>
+<p><b>3.</b> Okres przedłużenia ustalany jest indywidualnie przez Strony.</p>
+<div class="sec">§6 &nbsp; Zwrot urządzenia</div>
+<p><b>1.</b> Wypożyczający zobowiązuje się do zwrotu urządzenia w terminie określonym w §2, w stanie niepogorszonym ponad normalne zużycie eksploatacyjne.</p>
+<p><b>2.</b> Urządzenie należy zwrócić kompletne, czyste i sprawne.</p>
+<p><b>3.</b> Zwrot urządzenia następuje poprzez odbiór przez Właściciela w miejscu, w którym zostało ono dostarczone, chyba że Strony uzgodniły inaczej.</p>
+<p><b>4.</b> Za każdy dzień opóźnienia w zwrocie ponad pierwotny termin, Wypożyczający uiszcza opłatę w wysokości stawki dobowej / dziennej wynikającej z §2.</p>
+<p><b>5.</b> W przypadku gdy odbiór urządzenia przez Właściciela nastąpi po upływie ustalonego terminu z przyczyn leżących po stronie Właściciela, Wypożyczający nie ponosi z tego tytułu żadnych dodatkowych kosztów.</p>
+<div class="sec">§7 &nbsp; Ochrona danych osobowych (RODO)</div>
+<p><b>1.</b> Administratorem danych osobowych Wypożyczającego jest ZubrzyckiPatrykFizjo, Patryk Zubrzycki, ul. Mysłowicka 14/37, 40-487 Katowice, NIP: 9542788785.</p>
+<p><b>2.</b> Dane osobowe przetwarzane są na podstawie art. 6 ust. 1 lit. b RODO (realizacja umowy) oraz art. 6 ust. 1 lit. c RODO (obowiązki prawne).</p>
+<p><b>3.</b> Dane przechowywane są przez okres niezbędny do realizacji umowy oraz wynikający z przepisów prawa (w szczególności podatkowych).</p>
+<p><b>4.</b> Wypożyczającemu przysługuje prawo dostępu do danych, ich sprostowania, usunięcia lub ograniczenia przetwarzania.</p>
+<div class="sec">§8 &nbsp; Postanowienia końcowe</div>
+<p><b>1.</b> Umowa sporządzona w dwóch jednobrzmiących egzemplarzach, po jednym dla każdej ze Stron.</p>
+<p><b>2.</b> Wszelkie zmiany umowy wymagają formy pisemnej pod rygorem nieważności.</p>
+<p><b>3.</b> W sprawach nieuregulowanych niniejszą umową mają zastosowanie przepisy Kodeksu Cywilnego.</p>
+<p><b>4.</b> Spory wynikłe z umowy Strony zobowiązują się rozstrzygać polubownie, a w razie braku porozumienia — przed sądem właściwym dla siedziby Właściciela.</p>
+<div class="sigs">
+<div class="sig"><div class="sig-line">Podpis WYPOŻYCZAJĄCEGO</div></div>
+<div class="sig" style="text-align:right"><div class="sig-line">Podpis WŁAŚCICIELA</div></div>
+</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+      const win=window.open('','_blank');
+      if(win){win.document.write(html);win.document.close();}
+      else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
+    }
+
     function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
@@ -2057,7 +2156,10 @@
                   <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{r.equipment||"❓ Do ustalenia"}</div>
                   {r.renewable?<Badge color="#7C6AF4">🔄 Odnawialne miesięcznie</Badge>:dl!==null&&<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po terminie":dl===0?"Termin dziś!":dl+" dni"}</Badge>}
                 </div>
-                <Btn small variant="secondary" onClick={()=>{setEf({...r,amount:String(r.amount),amountPaid:String(r.amountPaid||0)});setShowEdit(true);}}>✏️ Edytuj</Btn>
+                <div style={{display:"flex",gap:6}}>
+                  {!demo&&<Btn small variant="secondary" onClick={()=>generateUmowa(r)}>📄 Umowa</Btn>}
+                  <Btn small variant="secondary" onClick={()=>{setEf({...r,amount:String(r.amount),amountPaid:String(r.amountPaid||0)});setShowEdit(true);}}>✏️ Edytuj</Btn>
+                </div>
               </div>
 
               <Card style={{marginBottom:10}}>
