@@ -1781,28 +1781,9 @@
 
         {/* Skąd trafiają klienci — sortowanie po przychodzie */}
         {(()=>{
-          const periodRentals=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd);
-          if(periodRentals.length===0)return null;
-          // Przychód i liczba wypożyczeń per źródło (z rzeczywistych finansów)
-          const revBySource={};const cntBySource={};
-          RENTAL_SOURCES.forEach(s=>{revBySource[s.value]=0;cntBySource[s.value]=0;});
-          // mapa rentalId → source
-          const rentalSrcMap={};rentals.forEach(r=>{if(r.source)rentalSrcMap[r.id]=r.source;});
-          // policz wypożyczenia z okresu per źródło
-          periodRentals.forEach(r=>{if(r.source&&cntBySource.hasOwnProperty(r.source))cntBySource[r.source]++;});
-          // zsumuj przychód z finansów
-          (finances||[]).forEach(f=>{
-            if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
-            const rid=getRid(f.sourceId);if(!rid)return;
-            const src=rentalSrcMap[rid];
-            if(src&&revBySource.hasOwnProperty(src))revBySource[src]+=(+f.amount||0);
-          });
-          const totalRev=Object.values(revBySource).reduce((s,v)=>s+v,0);
-          const totalCnt=Object.values(cntBySource).reduce((s,v)=>s+v,0);
-          const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
-          const topRev=sorted[0]?.rev||1;
-          const withoutSrc=periodRentals.filter(r=>!r.source).length;
-          // Lista wpłat w miesiącu — uwzględnia przedłużenia i cykle (nie tylko starty)
+          // Wypożyczenia które wystartowały w miesiącu (do licznika i cntBySource)
+          const periodRentals=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd&&!r.reserved);
+          // Lista WSZYSTKICH wpłat w miesiącu (wpłaty + przedłużenia + cykle + legacy)
           const listItems=[];
           (finances||[]).forEach(f=>{
             if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
@@ -1820,6 +1801,20 @@
             if(d>=stats.cutStr&&d<=stats.cutEnd)listItems.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,source:r.source,type:"Wpłata"});
           });
           listItems.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+          if(listItems.length===0&&periodRentals.length===0)return null;
+          // Przychód per źródło — budowany z listItems (spójny z listą i sumą totalRevenue)
+          const revBySource={};const cntBySource={};
+          RENTAL_SOURCES.forEach(s=>{revBySource[s.value]=0;cntBySource[s.value]=0;});
+          listItems.forEach(item=>{
+            if(item.source&&revBySource.hasOwnProperty(item.source))revBySource[item.source]+=item.amount;
+          });
+          // Liczba nowych wypożyczeń per źródło (tylko starty w miesiącu)
+          periodRentals.forEach(r=>{if(r.source&&cntBySource.hasOwnProperty(r.source))cntBySource[r.source]++;});
+          const totalRev=listItems.reduce((s,item)=>s+item.amount,0);
+          const totalCnt=Object.values(cntBySource).reduce((s,v)=>s+v,0);
+          const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
+          const topRev=sorted[0]?.rev||1;
+          const withoutSrc=listItems.filter(item=>!item.source).length;
           return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
             <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:totalRev>0?10:6}}>📢 Skąd trafiają klienci</div>
             {totalRev===0
