@@ -1612,37 +1612,65 @@
       // Statystyki miesięczne — konkretny miesiąc kalendarzowy
       const stats=useMemo(()=>{
         const cutStr=selMonth+"-01";
-        // ostatni dzień miesiąca
         const lastDay=new Date(new Date(selMonth+"-01").getFullYear(),new Date(selMonth+"-01").getMonth()+1,0).getDate();
         const cutEnd=selMonth+"-"+String(lastDay).padStart(2,"0");
-        let totalRevenue=0;
+
+        // ── PRZYCHÓD ────────────────────────────────────────────────────────────
+        // Inicjalizacja wykresu 12 miesięcy
         const monthlyRev={};
         for(let i=0;i<12;i++){const d=new Date(today);d.setMonth(d.getMonth()-i);monthlyRev[d.toISOString().slice(0,7)]=0;}
+
+        // 1) Wpłaty z tablicy finances (mają właściwy sourceId linkujący do rental)
+        const countedRids=new Set(); // rentale policzone z finances (żeby nie dublować z legacy)
+        let totalRevenue=0;
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód")return;
           const rid=getRid(f.sourceId);if(!rid)return;
-          const eq=rentalEquipMap[rid];
-          if(f.date>=cutStr&&f.date<=cutEnd)totalRevenue+=(+f.amount||0);
+          countedRids.add(rid);
+          if((f.date||"")>=cutStr&&(f.date||"")<=cutEnd)totalRevenue+=(+f.amount||0);
           const m=(f.date||"").slice(0,7);
-          if(monthlyRev.hasOwnProperty(m)&&eq)monthlyRev[m]+=(+f.amount||0);
+          if(monthlyRev.hasOwnProperty(m))monthlyRev[m]+=(+f.amount||0);
         });
-        const totalCount=rentals.filter(r=>(r.startDate||"")>=cutStr&&(r.startDate||"")<=cutEnd).length;
+
+        // 2) Legacy: rental z amountPaid > 0 ale bez tablicy payments (brak wpisu w finances)
+        //    Używamy startDate jako przybliżonej daty wpłaty
+        rentals.forEach(r=>{
+          if(countedRids.has(r.id))return; // już policzone z finances
+          if((r.payments||[]).length>0)return; // ma payments — powinny być w finances
+          if((r.cycles||[]).length>0)return; // odnawialne — cykle obsługiwane osobno
+          const paid=+r.amountPaid||0;if(paid<=0)return;
+          const d=r.startDate||"";
+          if(d>=cutStr&&d<=cutEnd)totalRevenue+=paid;
+          const m=d.slice(0,7);
+          if(monthlyRev.hasOwnProperty(m))monthlyRev[m]+=paid;
+        });
+
+        // ── LICZBA WYPOŻYCZEŃ ────────────────────────────────────────────────────
+        // Wypożyczenia które ZACZĘŁY SIĘ w miesiącu (nie rezerwacje czekające na start)
+        const totalCount=rentals.filter(r=>
+          (r.startDate||"")>=cutStr&&
+          (r.startDate||"")<=cutEnd&&
+          !r.reserved
+        ).length;
+
+        // ── POZOSTAŁE METRYKI ────────────────────────────────────────────────────
         const monthlyArr=Object.entries(monthlyRev).sort((a,b)=>a[0].localeCompare(b[0]));
         const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]),1);
         const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
         const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
-        const durationIncludeMap=stock&&stock.durationInclude||{};
+        const durationIncludeMap=(stock&&stock.durationInclude)||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
         const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
-        // Marketing z budżetu — tylko wybrany miesiąc
+
+        // ── MARKETING ───────────────────────────────────────────────────────────
         const mktgCat=(stock&&stock.marketingCat)||"";
         const mktgSub=(stock&&stock.marketingSub)||"";
         const matchCat=(cat,sub)=>{
-          if(mktgCat) return cat===mktgCat&&(!mktgSub||sub===mktgSub);
+          if(mktgCat)return cat===mktgCat&&(!mktgSub||sub===mktgSub);
           return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";
         };
         let marketingSpend=0;
@@ -1657,6 +1685,7 @@
             marketingSpend+=amt*(r.cycle==="weekly"?4:1);
           }
         });
+
         return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,cutEnd,avgDuration,marketingSpend};
       },[rentals,finances,selMonth,today,rentalEquipMap,paymentRentalMap,stock,budget]);
 
