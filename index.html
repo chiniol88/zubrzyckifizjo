@@ -2355,7 +2355,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     {r.reserved&&<span style={{fontSize:11,fontWeight:400,marginLeft:4}}>{r.startDate?"· start "+r.startDate:"· czeka "+(r.reservedAt?dateDiff(r.reservedAt,todayLocal()):0)+"d"}</span>}
                   </button>
                 </div>
-                {r.renewable&&<div style={{marginBottom:14,background:dk?"#0F2020":"#F0F9F5",borderRadius:12,padding:"12px 14px"}}>
+                <div style={{marginBottom:14,background:dk?"#0F2020":"#F0F9F5",borderRadius:12,padding:"12px 14px"}}>
                   <div style={{fontSize:12,color:"#3DAA72",marginBottom:8,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>📅 Planowany odbiór</div>
                   <Inp label="" value={r.plannedReturn||""} onChange={v=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:v||null}:x))} type="date"/>
                   {r.plannedReturn&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
@@ -2363,7 +2363,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   {r.plannedReturnAllDay===false&&<TimeSel label="Godzina odbioru" value={r.plannedReturnTime||"10:00"} onChange={v=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturnTime:v}:x))}/>}
                   <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:x))} style={{background:"none",border:"none",fontSize:12,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>× Usuń planowany odbiór</button>
                   </>}
-                </div>}
+                </div>
                 {r.renewable&&<div style={{marginBottom:10}}>
                   <div style={{fontSize:12,color:"#7A8FA6",marginBottom:6,fontWeight:600}}>Data zakończenia wypożyczenia</div>
                   <Inp label="" value={closeDate||r.plannedReturn||""} onChange={v=>setCloseDate(v)} type="date"/>
@@ -2500,6 +2500,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 setRentals(rs=>rs.map(x=>x.id===r.id?{
                   ...x,
                   endDate: isLast ? extForm.newEndDate : x.endDate,
+                  ...(isLast?{plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:{}),
                   extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,endTime:extForm.endTime||"10:00",amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0?(extForm.payDate||todayLocal()):e.paidDate}:e)
                 }:x));
                 // Sync finansów — wpis dotyczy amountPaid
@@ -2511,7 +2512,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               } else {
                 const extId = Date.now();
                 const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,endTime:extForm.endTime||"10:00",amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?(extForm.payDate||todayLocal()):null};
-                setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext]}:x));
+                setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext],plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:x));
                 if(paid>0){
                   setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...(fs||[])]);
                 }
