@@ -440,6 +440,7 @@
           if(!r.renewable){
             if(visibleMonths.some(ms=>(r.startDate||"").startsWith(ms)))add(r.startDate,{type:"start",r});
             if(visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))add(r.endDate,{type:"end",r});
+            if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms)))add(r.plannedReturn,{type:"plannedReturn",r});
           } else {
             (r.cycles||[]).filter(c=>!c.cancelled).forEach(c=>{
               if(visibleMonths.includes(c.month)){
