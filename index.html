@@ -651,14 +651,14 @@
               const remaining=totalAmt-totalPaid;
               const endSub=remaining>0?`do zapłaty: ${remaining} zł`:null;
               const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?endSub:ev.type==="plannedReturn"?(remaining>0?`do zapłaty: ${remaining} zł`:null):totalAmt+" zł";
-              const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):"";
-              const pickupTime=ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?(ev.r.plannedReturnTime||"10:00"):"cały dzień"):null;
+              const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):ev.type==="plannedReturn"?(ev.r.plannedReturnTime||""):"";
+
               const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               return <div key={"r"+idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
                 <div onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
                   <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
-                  <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{pickupTime?" · ⏰ "+pickupTime:""}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
+                  <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:6}}>
                   {sub&&<Badge color={color}>{sub}</Badge>}
