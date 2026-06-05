@@ -2730,22 +2730,33 @@ p{margin:2px 0}.bold7{font-weight:bold}
             {viewMode!=="sprzet"&&<Btn small onClick={()=>{setForm(ef());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Dodaj</Btn>}
           </div>
           <div style={{padding:"0 20px"}}>
-            <div style={{display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:2}}>
-              {[{k:"week",l:"Tydzień"},{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"range",l:"Zakres"},{k:"budget",l:"🏠 Dom"},{k:"sprzet",l:"📦 Sprzęt"}].map(x=>
-                <button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:viewMode===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:viewMode===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{x.l}</button>
-              )}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8}}>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {[{k:"week",l:"Tydzień"},{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"range",l:"Zakres"}].map(x=>
+                  <button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:viewMode===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:viewMode===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{x.l}</button>
+                )}
+              </div>
+              <div style={{display:"flex",gap:6,flexShrink:0}}>
+                {[{k:"budget",l:"🏠"},{k:"sprzet",l:"📦"}].map(x=>
+                  <button key={x.k} onClick={()=>setViewMode(x.k)} title={x.k==="budget"?"Dom":"Sprzęt"} style={{width:36,height:34,borderRadius:10,border:`1.5px solid ${viewMode===x.k?"#0A7C7C":border}`,cursor:"pointer",fontSize:16,background:viewMode===x.k?(dk?"#0A3030":"#E6F4F4"):dk?"#1A2A2A":"#fff",color:viewMode===x.k?"#0A7C7C":sub,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{x.l}</button>
+                )}
+              </div>
             </div>
 
-            {viewMode==="week"&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-              <button onClick={()=>{const d=new Date(weekStart);d.setDate(d.getDate()-7);setWeekStart(d.toISOString().slice(0,10));}} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-              <div style={{flex:1,textAlign:"center",fontWeight:600,fontSize:13,color:dk?"#C8E8E8":"#1C2B3A"}}>{weekStart} – {weekEnd}</div>
-              <button onClick={()=>{const d=new Date(weekStart);d.setDate(d.getDate()+7);setWeekStart(d.toISOString().slice(0,10));}} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
-            </div>}
-            {viewMode==="month"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-              {months.map(m=><button key={m} onClick={()=>setMonth(m)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:month===m?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:month===m?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</button>)}
-            </div>}
-            {viewMode==="year"&&<div style={{display:"flex",gap:8,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-              {years.map(y=><button key={y} onClick={()=>setYear(y)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:year===y?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:year===y?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{y}</button>)}
+            {(viewMode==="week"||viewMode==="month"||viewMode==="year")&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+              <button onClick={()=>{
+                if(viewMode==="week"){const d=new Date(weekStart);d.setDate(d.getDate()-7);setWeekStart(d.toISOString().slice(0,10));}
+                else if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()-1);setMonth(d.toISOString().slice(0,7));}
+                else setYear(String(+year-1));
+              }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>‹</button>
+              <div style={{flex:1,textAlign:"center",fontWeight:600,fontSize:13,color:dk?"#C8E8E8":"#1C2B3A",textTransform:"capitalize"}}>
+                {viewMode==="week"?weekStart+" – "+weekEnd:viewMode==="month"?new Date(month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"}):year}
+              </div>
+              <button onClick={()=>{
+                if(viewMode==="week"){const d=new Date(weekStart);d.setDate(d.getDate()+7);setWeekStart(d.toISOString().slice(0,10));}
+                else if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()+1);setMonth(d.toISOString().slice(0,7));}
+                else setYear(String(+year+1));
+              }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
             {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} budget={budget}/>}
