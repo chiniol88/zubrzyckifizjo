@@ -2632,11 +2632,12 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     const pacjent=String(cells[0]||"").trim();
                     if(!pacjent)continue;
                     const sprzet=String(cells[3]||"").trim();
-                    const dataOd=toYMD(cells[4]);
-                    if(!dataOd||!/^\d{4}-\d{2}-\d{2}$/.test(dataOd)){errs.push(`Wiersz ${i+1} "${pacjent}": zła data od "${cells[4]}" — wpisz DD-MM-RRRR lub RRRR-MM-DD`);continue;}
-                    const dataDo=toYMD(cells[5]);
+                    const dataOdRaw=toYMD(cells[4]);
+                    const dataOd=/^\d{4}-\d{2}-\d{2}$/.test(dataOdRaw)?dataOdRaw:"";
+                    const dataDoRaw=toYMD(cells[5]);
+                    const dataDo=/^\d{4}-\d{2}-\d{2}$/.test(dataDoRaw)?dataDoRaw:"";
                     const skadRaw=String(cells[9]||"").trim().toLowerCase();
-                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres:String(cells[2]||"").trim(),sprzet,dataOd,dataDo:dataDo&&/^\d{4}-\d{2}-\d{2}$/.test(dataDo)?dataDo:dataOd,kwota:+(cells[6]||0),zaplacono:+(cells[7]||0),dowoz:+(cells[8]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
+                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres:String(cells[2]||"").trim(),sprzet,dataOd,dataDo:dataDo||dataOd,kwota:+(cells[6]||0),zaplacono:+(cells[7]||0),dowoz:+(cells[8]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
                   }
                   setCsvRows(rows);setCsvError(errs.length?errs.join("\n"):"");
                   if(importRef.current)importRef.current.value="";
