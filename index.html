@@ -2130,6 +2130,10 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [closeDate,setCloseDate]=useState("");
       const [toast,setToast]=useState(null);
       const [zakSubView,setZakSubView]=useState("wszystkie");
+      const [showImport,setShowImport]=useState(false);
+      const [csvRows,setCsvRows]=useState([]);
+      const [csvError,setCsvError]=useState("");
+      const importRef=useRef(null);
 
       useEffect(()=>{if(initialDetail!=null)setDetail(initialDetail);},[initialDetail]);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
@@ -2537,7 +2541,10 @@ p{margin:2px 0}.bold7{font-weight:bold}
       return <div>
         <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
           <div style={{minWidth:0}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800}}>Wypożyczalnia</div><div style={{fontSize:13,color:"#7A8FA6"}}>{cnt.aktywne+cnt.odnawialne} aktywnych</div></div>
-          <Btn small onClick={()=>{setForm(emptyRental());setShowAdd(true);}} style={{flexShrink:0}}><Ico d={I.plus} s={16} c="#fff"/> Nowe</Btn>
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
+            <button onClick={()=>{setCsvRows([]);setCsvError("");setShowImport(true);}} style={{height:34,padding:"0 12px",borderRadius:20,border:"1.5px solid #0A7C7C",background:"transparent",color:"#0A7C7C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 Import</button>
+            <Btn small onClick={()=>{setForm(emptyRental());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowe</Btn>
+          </div>
         </div>
         <div style={{display:"flex",gap:6,padding:"0 20px 16px"}}>
           {[{k:"aktywne",l:`Aktywne (${cnt.aktywne})`},{k:"odnawialne",l:`🔄 Odn. (${cnt.odnawialne})`},{k:"zakończone",l:`Zakończone (${cnt.zakończone})`}].map(x=>
@@ -2587,6 +2594,83 @@ p{margin:2px 0}.bold7{font-weight:bold}
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
             setShowAdd(false);setToast("Wypożyczenie dodane");
           }}>Zapisz wypożyczenie</Btn>
+        </Modal>}
+        {showImport&&<Modal title="Import CSV" onClose={()=>{setShowImport(false);setCsvRows([]);setCsvError("");}}>
+          <div style={{marginBottom:14,background:dk?"#0F2020":"#F0F9F5",borderRadius:12,padding:"12px 14px"}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>1. Pobierz szablon Excel/CSV</div>
+            <div style={{fontSize:12,color:"#7A8FA6",marginBottom:10}}>Otwórz w Excelu, uzupełnij, zapisz jako CSV UTF-8</div>
+            <button onClick={()=>{
+              const h="Pacjent;Telefon;Adres;Data od;Data do;Kwota;Zapłacono;Dowóz;Skąd;Notatki";
+              const ex1="Jan Kowalski;600123456;Ulica 1 Katowice;2025-01-09;2025-01-23;540;540;0;slawek;przykład";
+              const ex2="Anna Nowak;601234567;Nowa 5 Sosnowiec;2025-02-01;2025-02-14;480;480;50;reklama;";
+              const ex3=";;Kolumna Skąd: slawek / reklama / szpital / organicznie / (zostaw puste);;;;;;;";
+              const blob=new Blob(["﻿"+h+"\n"+ex1+"\n"+ex2+"\n"+ex3],{type:"text/csv;charset=utf-8"});
+              const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="szablon_wypozyczenia.csv";a.click();URL.revokeObjectURL(url);
+            }} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>📥 Pobierz szablon</button>
+          </div>
+          <div style={{marginBottom:14,background:dk?"#0F2020":"#F0F9F5",borderRadius:12,padding:"12px 14px"}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>2. Wgraj wypełniony plik</div>
+            <input ref={importRef} type="file" accept=".csv,text/csv" style={{display:"none"}} onChange={e=>{
+              const f=e.target.files?.[0];if(!f)return;
+              const reader=new FileReader();
+              reader.onload=ev=>{
+                try{
+                  const text=ev.target.result;
+                  const lines=text.trim().split(/\r?\n/).filter(l=>l.trim());
+                  if(lines.length<2){setCsvError("Plik jest pusty lub brak danych poza nagłówkiem");setCsvRows([]);return;}
+                  const sep=lines[0].includes(";")?";":",";
+                  const rows=[],errs=[];
+                  for(let i=1;i<lines.length;i++){
+                    const ln=lines[i].trim();if(!ln)continue;
+                    const cells=[];let cur="",inQ=false;
+                    for(let c=0;c<ln.length;c++){if(ln[c]==='"'){inQ=!inQ;}else if(ln[c]===sep&&!inQ){cells.push(cur.trim().replace(/^"|"$/g,""));cur="";}else cur+=ln[c];}
+                    cells.push(cur.trim().replace(/^"|"$/g,""));
+                    const pacjent=(cells[0]||"").trim();
+                    if(!pacjent)continue;
+                    const dataOd=(cells[3]||"").trim();
+                    if(!dataOd||!/^\d{4}-\d{2}-\d{2}$/.test(dataOd)){errs.push(`Wiersz ${i+1} "${pacjent}": zła data od "${dataOd}" (wymagany format RRRR-MM-DD)`);continue;}
+                    const dataDo=(cells[4]||"").trim();
+                    const skadRaw=(cells[8]||"").trim().toLowerCase().replace(/ę/g,"e").replace(/ą/g,"a").replace(/ó/g,"o").replace(/ł/g,"l").replace(/ś/g,"s").replace(/ź/g,"z").replace(/ż/g,"z").replace(/ć/g,"c").replace(/ń/g,"n");
+                    const skadMap={"slawek":"slawek","sławek":"slawek","reklama":"reklama","szpital":"szpital","organicznie":"organicznie"};
+                    rows.push({pacjent,telefon:(cells[1]||"").trim(),adres:(cells[2]||"").trim(),dataOd,dataDo:dataDo&&/^\d{4}-\d{2}-\d{2}$/.test(dataDo)?dataDo:dataOd,kwota:+(cells[5]||0),zaplacono:+(cells[6]||0),dowoz:+(cells[7]||0),skad:skadMap[skadRaw]||"",notatki:(cells[9]||"").trim()});
+                  }
+                  setCsvRows(rows);setCsvError(errs.length?errs.join("\n"):"");
+                  if(importRef.current)importRef.current.value="";
+                }catch(ex){setCsvError("Błąd odczytu pliku: "+ex.message);setCsvRows([]);}
+              };
+              reader.readAsText(f,"UTF-8");
+            }}/>
+            <button onClick={()=>importRef.current&&importRef.current.click()} style={{width:"100%",padding:"10px",borderRadius:10,border:"2px dashed #0A7C7C",background:"transparent",color:"#0A7C7C",fontWeight:600,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>📂 Wybierz plik CSV</button>
+          </div>
+          {csvError&&<div style={{marginBottom:12,background:"#FFF0F0",borderRadius:10,padding:"10px 12px",fontSize:12,color:"#E05C5C",whiteSpace:"pre-wrap"}}>{csvError}</div>}
+          {csvRows.length>0&&<div style={{marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:600,marginBottom:8,color:"#3DAA72"}}>✅ Załadowano {csvRows.length} wierszy:</div>
+            <div style={{maxHeight:180,overflowY:"auto",display:"flex",flexDirection:"column",gap:5}}>
+              {csvRows.slice(0,25).map((row,i)=><div key={i} style={{background:dk?"#1A2A2A":"#F0F9F5",borderRadius:8,padding:"7px 10px",fontSize:12,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                <span style={{fontWeight:600}}>{row.pacjent}</span>
+                <span style={{color:"#7A8FA6"}}>{row.dataOd}→{row.dataDo}</span>
+                <span style={{color:"#3DAA72",fontWeight:600}}>{row.kwota} zł</span>
+                {row.skad&&<span style={{color:"#7C6AF4",fontSize:11}}>({row.skad})</span>}
+              </div>)}
+              {csvRows.length>25&&<div style={{fontSize:12,color:"#7A8FA6",textAlign:"center",padding:"4px"}}>...i {csvRows.length-25} więcej</div>}
+            </div>
+          </div>}
+          <Btn disabled={csvRows.length===0} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+            const now=Date.now();
+            const newRentals=csvRows.map((row,i)=>{
+              const payId=now+i*100+1;
+              const paid=+row.zaplacono;
+              return {id:now+i*100,patientId:null,patientName:row.pacjent,phone:row.telefon,address:row.adres,equipment:"",startDate:row.dataOd,endDate:row.dataDo,amount:+row.kwota,amountPaid:paid,payments:paid>0?[{id:payId,amount:paid,date:row.dataOd}]:[],cycles:[],status:"zakończone",renewable:false,startAllDay:true,endAllDay:true,transport:+row.dowoz,source:row.skad,notes:row.notatki};
+            });
+            const newFinances=csvRows.flatMap((row,i)=>{
+              const payId=now+i*100+1;const paid=+row.zaplacono;if(paid<=0)return[];
+              return [{id:now+i*100+50,sourceId:"payment-"+payId,date:row.dataOd,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+row.pacjent+" (import)"}];
+            });
+            setRentals(rs=>[...newRentals,...rs]);
+            if(newFinances.length>0)setFinances(fs=>[...newFinances,...fs]);
+            setShowImport(false);setCsvRows([]);setCsvError("");
+            setToast("Zaimportowano "+newRentals.length+" wypożyczeń ✅");
+          }}>Importuj {csvRows.length > 0 ? csvRows.length+" " : ""}wypożyczeń →</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </div>;
@@ -4390,7 +4474,7 @@ Zasady:
         {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
-        {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo}/>}
+        {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
       </>;
 
       if(desk) {
@@ -4535,7 +4619,119 @@ Zasady:
       </div>;
     }
 
-    function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo}) {
+    function ImportCSV({setRentals,setFinances,dk,txt,sub}) {
+      const [csv,setCsv]=useState("");
+      const [parsed,setParsed]=useState(null);
+      const [done,setDone]=useState(false);
+
+      const parseDate=s=>{
+        if(!s||!s.trim())return"";
+        s=s.trim();
+        if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+        const m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})$/);
+        if(m)return`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+        return s;
+      };
+
+      const parseNum=s=>{
+        if(!s||!String(s).trim())return 0;
+        return parseFloat(String(s).trim().replace(",","."))||0;
+      };
+
+      const parseRows=()=>{
+        const lines=csv.trim().split("\n").filter(l=>l.trim());
+        const rows=[];
+        for(const line of lines){
+          const sep=line.includes("\t")?"\t":line.includes(";")?";":","
+          const cols=line.split(sep).map(c=>c.trim().replace(/^"|"$/g,""));
+          if(!cols[0]&&!cols[2])continue;
+          rows.push({
+            patientName:cols[0]||"",
+            phone:cols[1]||"",
+            equipment:cols[2]||"",
+            startDate:parseDate(cols[3]),
+            endDate:parseDate(cols[4]||""),
+            amount:parseNum(cols[5]),
+            amountPaid:parseNum(cols[6]),
+            notes:cols[7]||""
+          });
+        }
+        setParsed(rows);
+        setDone(false);
+      };
+
+      const doImport=()=>{
+        const now=Date.now();
+        const today=todayLocal();
+        const newRentals=parsed.map((r,i)=>{
+          const pid=now+i;
+          const isFinished=r.endDate&&r.endDate<today;
+          const payId=now+10000+i;
+          const payments=r.amountPaid>0?[{id:payId,amount:r.amountPaid,date:r.endDate||r.startDate||today}]:[];
+          return{
+            id:pid,status:isFinished?"zakończone":"aktywne",
+            equipment:r.equipment,patientName:r.patientName,phone:r.phone,
+            address:"",startDate:r.startDate,startAllDay:true,endDate:r.endDate,endAllDay:true,
+            renewable:false,amount:r.amount||"",amountPaid:r.amountPaid||0,
+            payments,transport:"",notes:r.notes,source:"import"
+          };
+        });
+        const newFinances=[];
+        parsed.forEach((r,i)=>{
+          if(r.amountPaid>0){
+            const payId=now+10000+i;
+            newFinances.push({
+              id:now+20000+i,sourceId:"payment-"+payId,
+              date:r.endDate||r.startDate||today,
+              type:"przychód",category:"Wypożyczalnia",amount:r.amountPaid,
+              description:"Wypożyczenie – "+r.patientName+(r.equipment?" ("+r.equipment+")":"")
+            });
+          }
+        });
+        setRentals(rs=>[...newRentals,...(rs||[])]);
+        if(newFinances.length>0)setFinances(fs=>[...newFinances,...(fs||[])]);
+        setDone(true);setCsv("");setParsed(null);
+      };
+
+      const rowCount=csv.trim()?csv.trim().split("\n").filter(l=>l.trim()).length:0;
+      return <div style={{padding:"12px 0"}}>
+        <div style={{fontSize:12,color:sub,marginBottom:8,lineHeight:1.6}}>
+          Wklej dane z Excela lub Google Sheets (Tab lub średnik jako separator):<br/>
+          <b style={{color:txt}}>Kolumny:</b> pacjent · telefon · sprzęt · data_od · data_do · kwota · zapłacono · notatki
+        </div>
+        {done&&<div style={{fontSize:13,color:"#3DAA72",marginBottom:8,fontWeight:600}}>✓ Import zakończony pomyślnie!</div>}
+        <textarea value={csv} onChange={e=>{setCsv(e.target.value);setParsed(null);setDone(false);}} rows={6}
+          placeholder={"Jan Kowalski\t600123456\tCPM Artromot K1\t01.03.2024\t14.03.2024\t420\t420"}
+          style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}
+        />
+        <div style={{display:"flex",gap:8,marginTop:8}}>
+          <button onClick={parseRows} disabled={!csv.trim()} style={{flex:1,padding:"9px",borderRadius:10,background:"#E6F4F4",border:"none",fontWeight:700,fontSize:13,color:"#0A7C7C",cursor:csv.trim()?"pointer":"default",fontFamily:"inherit"}}>
+            Podgląd ({rowCount} {rowCount===1?"wiersz":rowCount<5?"wiersze":"wierszy"})
+          </button>
+          {parsed&&parsed.length>0&&<button onClick={doImport} style={{flex:1,padding:"9px",borderRadius:10,background:"#0A7C7C",border:"none",fontWeight:700,fontSize:13,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+            Importuj {parsed.length} →
+          </button>}
+        </div>
+        {parsed&&parsed.length>0&&<div style={{marginTop:12,overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr>{["Pacjent","Sprzęt","Od","Do","Kwota","Zapłacono"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 6px",color:sub,fontWeight:700,borderBottom:`1px solid ${dk?"#2A4040":"#E4EAF0"}`}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {parsed.slice(0,6).map((r,i)=><tr key={i}>
+                <td style={{padding:"4px 6px",color:txt}}>{r.patientName||"—"}</td>
+                <td style={{padding:"4px 6px",color:txt}}>{r.equipment||"—"}</td>
+                <td style={{padding:"4px 6px",color:txt}}>{r.startDate||"—"}</td>
+                <td style={{padding:"4px 6px",color:txt}}>{r.endDate||"—"}</td>
+                <td style={{padding:"4px 6px",color:txt}}>{r.amount||"—"}</td>
+                <td style={{padding:"4px 6px",color:txt}}>{r.amountPaid||"—"}</td>
+              </tr>)}
+              {parsed.length>6&&<tr><td colSpan={6} style={{padding:"4px 6px",color:sub,fontStyle:"italic"}}>...i {parsed.length-6} więcej</td></tr>}
+            </tbody>
+          </table>
+        </div>}
+      </div>;
+    }
+
+    function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,setRentals,setFinances}) {
       const dk=dark;
       const bg=dk?"#0F1F1F":"#fff";
       const sec=dk?"#0A1A1A":"#F2F5F7";
@@ -4556,6 +4752,9 @@ Zasady:
         <Sec title="WYGLĄD">
           <Row label="Tryb ciemny"><Toggle val={dark} onToggle={()=>setDark(d=>!d)}/></Row>
           <Row label="Tryb demo (ukryj dane)"><Toggle val={demo} onToggle={()=>setDemo(d=>!d)}/></Row>
+        </Sec>
+        <Sec title="IMPORT ZALEGŁYCH WYPOŻYCZEŃ">
+          <ImportCSV setRentals={setRentals} setFinances={setFinances} dk={dk} txt={txt} sub={sub}/>
         </Sec>
         <Sec title="DANE">
           <Row label="Eksport kopii zapasowej">
