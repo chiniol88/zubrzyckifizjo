@@ -2602,8 +2602,8 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <div style={{fontSize:12,color:"#7A8FA6",marginBottom:10}}>Otwórz w Excelu, uzupełnij, zapisz jako CSV UTF-8</div>
             <button onClick={()=>{
               const h="Pacjent;Telefon;Adres;Data od;Data do;Kwota;Zapłacono;Dowóz;Skąd;Notatki";
-              const ex1="Jan Kowalski;600123456;Ulica 1 Katowice;2025-01-09;2025-01-23;540;540;0;slawek;przykład";
-              const ex2="Anna Nowak;601234567;Nowa 5 Sosnowiec;2025-02-01;2025-02-14;480;480;50;reklama;";
+              const ex1="Jan Kowalski;600123456;Ulica 1 Katowice;09-01-2025;23-01-2025;540;540;0;slawek;przykład";
+              const ex2="Anna Nowak;601234567;Nowa 5 Sosnowiec;01-02-2025;14-02-2025;480;480;50;reklama;";
               const ex3=";;Kolumna Skąd: slawek / reklama / szpital / organicznie / (zostaw puste);;;;;;;";
               const blob=new Blob(["﻿"+h+"\n"+ex1+"\n"+ex2+"\n"+ex3],{type:"text/csv;charset=utf-8"});
               const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="szablon_wypozyczenia.csv";a.click();URL.revokeObjectURL(url);
@@ -2632,7 +2632,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     const pacjent=String(cells[0]||"").trim();
                     if(!pacjent)continue;
                     const dataOd=toYMD(cells[3]);
-                    if(!dataOd||!/^\d{4}-\d{2}-\d{2}$/.test(dataOd)){errs.push(`Wiersz ${i+1} "${pacjent}": zła data od "${cells[3]}" — wpisz RRRR-MM-DD`);continue;}
+                    if(!dataOd||!/^\d{4}-\d{2}-\d{2}$/.test(dataOd)){errs.push(`Wiersz ${i+1} "${pacjent}": zła data od "${cells[3]}" — wpisz DD-MM-RRRR lub RRRR-MM-DD`);continue;}
                     const dataDo=toYMD(cells[4]);
                     const skadRaw=String(cells[8]||"").trim().toLowerCase();
                     rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres:String(cells[2]||"").trim(),dataOd,dataDo:dataDo&&/^\d{4}-\d{2}-\d{2}$/.test(dataDo)?dataDo:dataOd,kwota:+(cells[5]||0),zaplacono:+(cells[6]||0),dowoz:+(cells[7]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[9]||"").trim()});
