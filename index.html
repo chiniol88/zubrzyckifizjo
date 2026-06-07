@@ -2626,7 +2626,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 try{
                   if(rawRows.length<2){setCsvError("Brak danych poza nagłówkiem");setCsvRows([]);return;}
                   const rows=[],errs=[];
-                  const skadMap={"slawek":"slawek","sławek":"slawek","reklama":"reklama","szpital":"szpital","organicznie":"organicznie"};
+                  const skadMap={"slawek":"slawek","sławek":"slawek","reklama":"reklama","szpital":"szpital","organicznie":"organicznie","organiczne":"organicznie","organic":"organicznie"};
                   for(let i=1;i<rawRows.length;i++){
                     const cells=rawRows[i];
                     const pacjent=String(cells[0]||"").trim();
