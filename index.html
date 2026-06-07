@@ -2601,10 +2601,10 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>1. Pobierz szablon Excel/CSV</div>
             <div style={{fontSize:12,color:"#7A8FA6",marginBottom:10}}>Otwórz w Excelu, uzupełnij, zapisz jako CSV UTF-8</div>
             <button onClick={()=>{
-              const h="Pacjent;Telefon;Adres;Data od;Data do;Kwota;Zapłacono;Dowóz;Skąd;Notatki";
-              const ex1="Jan Kowalski;600123456;Ulica 1 Katowice;09-01-2025;23-01-2025;540;540;0;slawek;przykład";
-              const ex2="Anna Nowak;601234567;Nowa 5 Sosnowiec;01-02-2025;14-02-2025;480;480;50;reklama;";
-              const ex3=";;Kolumna Skąd: slawek / reklama / szpital / organicznie / (zostaw puste);;;;;;;";
+              const h="Pacjent;Telefon;Adres;Sprzęt;Data od;Data do;Kwota;Zapłacono;Dowóz;Skąd;Notatki";
+              const ex1="Jan Kowalski;600123456;Ulica 1 Katowice;Artromot K1 2025;09-01-2025;23-01-2025;540;540;0;slawek;przykład";
+              const ex2="Anna Nowak;601234567;Nowa 5 Sosnowiec;;01-02-2025;14-02-2025;480;480;50;reklama;";
+              const ex3=";;Sprzęt: Artromot K1 2025 / Artromot K1 I / Kinetec Spectra / Kinetec Spectra SZ / Optiflex;;;;;;Skąd: slawek / reklama / szpital / organicznie;;";
               const blob=new Blob(["﻿"+h+"\n"+ex1+"\n"+ex2+"\n"+ex3],{type:"text/csv;charset=utf-8"});
               const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="szablon_wypozyczenia.csv";a.click();URL.revokeObjectURL(url);
             }} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>📥 Pobierz szablon</button>
@@ -2631,11 +2631,12 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     const cells=rawRows[i];
                     const pacjent=String(cells[0]||"").trim();
                     if(!pacjent)continue;
-                    const dataOd=toYMD(cells[3]);
-                    if(!dataOd||!/^\d{4}-\d{2}-\d{2}$/.test(dataOd)){errs.push(`Wiersz ${i+1} "${pacjent}": zła data od "${cells[3]}" — wpisz DD-MM-RRRR lub RRRR-MM-DD`);continue;}
-                    const dataDo=toYMD(cells[4]);
-                    const skadRaw=String(cells[8]||"").trim().toLowerCase();
-                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres:String(cells[2]||"").trim(),dataOd,dataDo:dataDo&&/^\d{4}-\d{2}-\d{2}$/.test(dataDo)?dataDo:dataOd,kwota:+(cells[5]||0),zaplacono:+(cells[6]||0),dowoz:+(cells[7]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[9]||"").trim()});
+                    const sprzet=String(cells[3]||"").trim();
+                    const dataOd=toYMD(cells[4]);
+                    if(!dataOd||!/^\d{4}-\d{2}-\d{2}$/.test(dataOd)){errs.push(`Wiersz ${i+1} "${pacjent}": zła data od "${cells[4]}" — wpisz DD-MM-RRRR lub RRRR-MM-DD`);continue;}
+                    const dataDo=toYMD(cells[5]);
+                    const skadRaw=String(cells[9]||"").trim().toLowerCase();
+                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres:String(cells[2]||"").trim(),sprzet,dataOd,dataDo:dataDo&&/^\d{4}-\d{2}-\d{2}$/.test(dataDo)?dataDo:dataOd,kwota:+(cells[6]||0),zaplacono:+(cells[7]||0),dowoz:+(cells[8]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
                   }
                   setCsvRows(rows);setCsvError(errs.length?errs.join("\n"):"");
                   if(importRef.current)importRef.current.value="";
@@ -2686,7 +2687,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
             const newRentals=csvRows.map((row,i)=>{
               const payId=now+i*100+1;
               const paid=+row.zaplacono;
-              return {id:now+i*100,patientId:null,patientName:row.pacjent,phone:row.telefon,address:row.adres,equipment:"",startDate:row.dataOd,endDate:row.dataDo,amount:+row.kwota,amountPaid:paid,payments:paid>0?[{id:payId,amount:paid,date:row.dataOd}]:[],cycles:[],status:"zakończone",renewable:false,startAllDay:true,endAllDay:true,transport:+row.dowoz,source:row.skad,notes:row.notatki};
+              return {id:now+i*100,patientId:null,patientName:row.pacjent,phone:row.telefon,address:row.adres,equipment:row.sprzet||"",startDate:row.dataOd,endDate:row.dataDo,amount:+row.kwota,amountPaid:paid,payments:paid>0?[{id:payId,amount:paid,date:row.dataOd}]:[],cycles:[],status:"zakończone",renewable:false,startAllDay:true,endAllDay:true,transport:+row.dowoz,source:row.skad,notes:row.notatki};
             });
             const newFinances=csvRows.flatMap((row,i)=>{
               const payId=now+i*100+1;const paid=+row.zaplacono;if(paid<=0)return[];
