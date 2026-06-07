@@ -1580,6 +1580,18 @@
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
       const [roiEq,setRoiEq]=useState(null);
       const [repairForm,setRepairForm]=useState(null);
+      const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
+      const sourceStats=useMemo(()=>{
+        const yr=String(statsYear);
+        const base=rentals.filter(r=>r.status==="zakończone"&&(r.startDate||"").startsWith(yr));
+        return [...RENTAL_SOURCES.map(s=>s.value),""].map(sv=>{
+          const rows=base.filter(r=>(r.source||"")===sv);
+          const src=RENTAL_SOURCES.find(s=>s.value===sv);
+          return{value:sv,label:src?src.label:"❓ Nieznane",color:src?src.color:"#7A8FA6",cnt:rows.length,rev:rows.reduce((s,r)=>s+(+r.amountPaid||0),0)};
+        }).filter(x=>x.cnt>0).sort((a,b)=>b.cnt-a.cnt);
+      },[rentals,statsYear]);
+      const statsTotalCnt=sourceStats.reduce((s,x)=>s+x.cnt,0);
+      const statsTotalRev=sourceStats.reduce((s,x)=>s+x.rev,0);
       const [showRentalList,setShowRentalList]=useState(false);
       const today=todayLocal();
       const borderC=dk?"#2A4040":"#F2F5F7";
@@ -1960,6 +1972,38 @@
           </div>)}
         </div>}
 
+        <div style={{margin:"16px 0 0",background:bg,borderRadius:14,padding:"14px 16px",border:`1px solid ${borderC}`}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+            <div style={{fontWeight:700,fontSize:14,color:textC}}>📊 Źródła pacjentów</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>‹</button>
+              <span style={{fontWeight:700,fontSize:15,minWidth:40,textAlign:"center",color:textC}}>{statsYear}</span>
+              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
+            </div>
+          </div>
+          {statsTotalCnt===0
+            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń w {statsYear} r.</div>
+            :<>
+              {sourceStats.map(x=>{
+                const pct=statsTotalCnt>0?Math.round(x.cnt/statsTotalCnt*100):0;
+                return <div key={x.value||"none"} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <span style={{fontSize:13,fontWeight:600,color:textC}}>{x.label}</span>
+                    <span style={{fontSize:12,color:subC}}>{x.cnt} wypożyczeń · <span style={{color:"#3DAA72",fontWeight:600}}>{demo?"****":x.rev.toLocaleString("pl-PL")+" zł"}</span> · {pct}%</span>
+                  </div>
+                  <div style={{height:6,borderRadius:4,background:dk?"#1E3A3A":"#F2F5F7",overflow:"hidden"}}>
+                    <div style={{height:"100%",width:pct+"%",background:x.color,borderRadius:4,transition:"width .3s"}}/>
+                  </div>
+                </div>;
+              })}
+              <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${borderC}`,display:"flex",justifyContent:"space-between",fontSize:13}}>
+                <span style={{fontWeight:700,color:textC}}>Łącznie</span>
+                <span style={{fontWeight:700,color:textC}}>{statsTotalCnt} wypożyczeń · <span style={{color:"#3DAA72"}}>{demo?"****":statsTotalRev.toLocaleString("pl-PL")+" zł"}</span></span>
+              </div>
+            </>
+          }
+        </div>
+
         {repairForm&&<Modal title="Naprawa / serwis" onClose={()=>setRepairForm(null)}>
           <div style={{fontSize:13,fontWeight:600,color:subC,marginBottom:12}}>{repairForm.eq}</div>
           <Inp label="Kwota (zł)" value={repairForm.amount} onChange={v=>setRepairForm(f=>({...f,amount:v}))} type="number"/>
@@ -2135,23 +2179,6 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [csvRows,setCsvRows]=useState([]);
       const [csvError,setCsvError]=useState("");
       const importRef=useRef(null);
-      const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
-
-      const sourceStats=useMemo(()=>{
-        const yr=String(statsYear);
-        const base=rentals.filter(r=>r.status==="zakończone"&&(r.startDate||"").startsWith(yr));
-        const all=[...RENTAL_SOURCES.map(s=>s.value),""];
-        return all.map(sv=>{
-          const rows=base.filter(r=>(r.source||"")===(sv));
-          const cnt=rows.length;
-          const rev=rows.reduce((s,r)=>s+(+r.amountPaid||0),0);
-          const src=RENTAL_SOURCES.find(s=>s.value===sv);
-          return{value:sv,label:src?src.label:"❓ Nieznane",color:src?src.color:"#7A8FA6",cnt,rev};
-        }).filter(x=>x.cnt>0).sort((a,b)=>b.cnt-a.cnt);
-      },[rentals,statsYear]);
-
-      const statsTotalCnt=sourceStats.reduce((s,x)=>s+x.cnt,0);
-      const statsTotalRev=sourceStats.reduce((s,x)=>s+x.rev,0);
 
       useEffect(()=>{if(initialDetail!=null)setDetail(initialDetail);},[initialDetail]);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
@@ -2585,37 +2612,6 @@ p{margin:2px 0}.bold7{font-weight:bold}
           )}
         </div>}
         <StockPanel rentals={rentals} stock={stock} setStock={setStock}/>
-        <div style={{margin:"0 20px 16px",background:dk?"#0F2020":"#fff",borderRadius:14,padding:"14px 16px",border:`1px solid ${dk?"#1E3A3A":"#E4EAF0"}`}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-            <div style={{fontWeight:700,fontSize:14}}>📊 Źródła pacjentów</div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>‹</button>
-              <span style={{fontWeight:700,fontSize:15,minWidth:40,textAlign:"center"}}>{statsYear}</span>
-              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"}}>›</button>
-            </div>
-          </div>
-          {statsTotalCnt===0
-            ?<div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń w {statsYear} r.</div>
-            :<>
-              {sourceStats.map(x=>{
-                const pct=statsTotalCnt>0?Math.round(x.cnt/statsTotalCnt*100):0;
-                return <div key={x.value} style={{marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:600}}>{x.label}</span>
-                    <span style={{fontSize:12,color:"#7A8FA6"}}>{x.cnt} wypożyczeń · <span style={{color:"#3DAA72",fontWeight:600}}>{x.rev.toLocaleString("pl-PL")} zł</span> · {pct}%</span>
-                  </div>
-                  <div style={{height:6,borderRadius:4,background:dk?"#1E3A3A":"#F2F5F7",overflow:"hidden"}}>
-                    <div style={{height:"100%",width:pct+"%",background:x.color,borderRadius:4,transition:"width .3s"}}/>
-                  </div>
-                </div>;
-              })}
-              <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${dk?"#1E3A3A":"#F2F5F7"}`,display:"flex",justifyContent:"space-between",fontSize:13}}>
-                <span style={{fontWeight:700}}>Łącznie</span>
-                <span style={{fontWeight:700}}>{statsTotalCnt} wypożyczeń · <span style={{color:"#3DAA72"}}>{statsTotalRev.toLocaleString("pl-PL")} zł</span></span>
-              </div>
-            </>
-          }
-        </div>
         <div style={{padding:"0 20px"}}>
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
