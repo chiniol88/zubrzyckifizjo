@@ -8,8 +8,8 @@
   <title>ZubrzyckiFizjo</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7/babel.min.js"></script>
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -420,6 +420,7 @@
       const [openDay,setOpenDay]=useState(null);
       const [showEvtModal,setShowEvtModal]=useState(false);
       const [evtForm,setEvtForm]=useState({title:"",date:"",allDay:false,time:"10:00",notes:"",address:"",editId:null});
+      const [quickRental,setQuickRental]=useState(null);
 
       const daysInMonth=new Date(calYear,calMonth,0).getDate();
       const firstDow=new Date(calYear,calMonth-1,1).getDay();
@@ -609,7 +610,7 @@
               const totalPaid2=(paymentsPaid2||(ev.r.amountPaid||0))+extPaid2;
               const remaining2=totalAmt2-totalPaid2;
               const adSub=ev.type==="end"?(remaining2>0?`do zapłaty: ${remaining2} zł`:null):ev.type==="start"?totalAmt2+" zł":null;
-              return <div key={"ad-r"+idx} onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
+              return <div key={"ad-r"+idx} onClick={()=>setQuickRental(ev.r)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
                 <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
                 <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
@@ -657,7 +658,7 @@
               const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
               return <div key={"r"+idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
-                <div onClick={()=>onGoToRental(ev.r.id)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
+                <div onClick={()=>setQuickRental(ev.r)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
                   <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
                   <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
                 </div>
@@ -670,6 +671,34 @@
             return null;
           })}
         </div>}
+
+        {quickRental&&(()=>{const r=quickRental;
+          const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
+          const totalAmt=(+r.amount||0)+extDue;
+          const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+          const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
+          const totalPaid=(paymentsPaid||(+r.amountPaid||0))+extPaid;
+          const remaining=totalAmt-totalPaid;
+          const statusColor=r.status==="aktywne"?"#3DAA72":r.status==="zakończone"?"#7A8FA6":"#F4A261";
+          return <Modal title="Podgląd wypożyczenia" onClose={()=>setQuickRental(null)}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:18,fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{r.patientName}</div>
+              <Badge color={statusColor}>{r.status}</Badge>
+            </div>
+            <div style={{background:dk?"#1A3030":"#F7FAFC",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:15}}>📦</span><span style={{fontWeight:600,color:dk?"#E8F5F5":"#1C2B3A"}}>{r.equipment||"❓ Do ustalenia"}</span></div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📅</span><span style={{fontSize:13,color:"#7A8FA6"}}>{r.startDate||"—"} → {r.endDate||"—"}</span></div>
+              {r.address&&<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📍</span><a href={"https://maps.google.com/?q="+encodeURIComponent(r.address)} target="_blank" rel="noreferrer" style={{fontSize:13,color:"#0A7C7C",textDecoration:"none"}}>{r.address}</a></div>}
+              {r.phone&&<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📞</span><a href={"tel:"+r.phone} style={{fontSize:13,color:"#0A7C7C",textDecoration:"none",fontWeight:600}}>{r.phone}</a></div>}
+            </div>
+            <div style={{background:dk?"#0F2020":"#EFF6FF",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Kwota całkowita</span><span style={{fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{totalAmt} zł</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Zapłacono</span><span style={{fontWeight:700,color:"#3DAA72"}}>{totalPaid} zł</span></div>
+              {remaining>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Pozostało</span><span style={{fontWeight:700,color:"#E05C5C"}}>{remaining} zł</span></div>}
+            </div>
+            {r.notes&&<div style={{fontSize:13,color:"#7A8FA6",marginBottom:12,padding:"8px 12px",background:dk?"#1A3030":"#F7FAFC",borderRadius:10,whiteSpace:"pre-wrap"}}>📝 {r.notes}</div>}
+            <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{setQuickRental(null);onGoToRental(r.id);}}>Otwórz pełny widok →</Btn>
+          </Modal>;})()}
 
         {showEvtModal&&<Modal title={evtForm.editId?"Edytuj wydarzenie":"Nowe wydarzenie"} onClose={()=>setShowEvtModal(false)}>
           <Inp label="Tytuł *" value={evtForm.title} onChange={v=>setEvtForm(f=>({...f,title:v}))} placeholder="np. Konferencja, Urlop..."/>
@@ -823,7 +852,7 @@
             {searchResults&&searchResults.length===0&&<div style={{padding:"10px 4px",fontSize:13,color:"#7A8FA6"}}>Brak wyników</div>}
             {searchResults&&searchResults.length>0&&<div style={{background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 2px 12px rgba(0,0,0,.08)",marginTop:6,overflow:"hidden"}}>
               {searchResults.map((r,i)=><div key={i} onClick={()=>{
-                if(r.kind==="rental") goToRental(r.item);
+                if(r.kind==="rental") goToRental(r.item.id);
                 else if(r.kind==="visit") setEditV(r.item);
                 setSearchQ("");
               }} style={{padding:"10px 14px",borderBottom:i<searchResults.length-1?"1px solid "+(dk?"#2A4040":"#F0F4F8"):"none",cursor:"pointer"}}>
@@ -2160,7 +2189,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,rentalsView,setRentalsView,stock,setStock,settings}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const view=rentalsView||"aktywne",setView=setRentalsView;
@@ -2180,7 +2209,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [csvError,setCsvError]=useState("");
       const importRef=useRef(null);
 
-      useEffect(()=>{if(initialDetail!=null)setDetail(initialDetail);},[initialDetail]);
+      const effectiveDetail = detail !== null ? detail : (initialDetail ?? null);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
 
       const cnt={aktywne:rentals.filter(r=>r.status==="aktywne"&&!r.renewable).length,odnawialne:rentals.filter(r=>r.status==="aktywne"&&r.renewable).length,zakończone:rentals.filter(r=>r.status==="zakończone").length};
@@ -2193,14 +2222,14 @@ p{margin:2px 0}.bold7{font-weight:bold}
         ...rentals.filter(r=>r.status==="aktywne"&&!r.renewable&&!r.reserved).sort((a,b)=>(a.endDate||"9999-99-99").localeCompare(b.endDate||"9999-99-99"))
       ]:view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):zakFiltered.slice().sort((a,b)=>(b.endDate||b.startDate||"").localeCompare(a.endDate||a.startDate||""));
 
-      if(detail!==null) {
-        const r=rentals.find(x=>x.id===detail);
+      if(effectiveDetail!==null) {
+        const r=rentals.find(x=>x.id===effectiveDetail);
         if(!r){setDetail(null);return null;}
         const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
         const maps=r.address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(r.address)}`:null;
         return <>
           <div>
-            <button onClick={close} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}><Ico d={I.back} s={18} c="#0A7C7C"/> Wypożyczalnia</button>
+            <button onClick={close} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}><Ico d={I.back} s={18} c="#0A7C7C"/> {backLabel||"Wypożyczalnia"}</button>
             <div style={{padding:"16px 20px 0"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
                 <div>
@@ -4534,9 +4563,11 @@ Zasady:
       const [tab,setTab]=useState(()=>{const h=window.location.hash.replace("#","").split("-")[0];return["dashboard","patients","rentals","finances","nfz","settings"].includes(h)?h:"dashboard";});
       useEffect(()=>{if(tab!=="finances")window.location.replace("#"+tab);},[tab]);
       const [dlRental,setDlRental]=useState(null);
+      const [dlReturnTab,setDlReturnTab]=useState("rentals");
+      const [dlBackLabel,setDlBackLabel]=useState("Wypożyczalnia");
       const [wozkiSel,setWozkiSel]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
-      const goToRental=id=>{setDlRental(id);setTab("rentals");};
+      const goToRental=(id,returnTab="rentals")=>{setDlReturnTab(returnTab);setDlBackLabel(returnTab==="dashboard"?"Pulpit":"Wypożyczalnia");setDlRental(id);setTab("rentals");};
       const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
       const dk=dark;
       const desk=useIsDesktop();
@@ -4553,9 +4584,9 @@ Zasady:
       const unpaidCount=(rentals||[]).filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid&&!c.cancelled)).length;
 
       const content = <>
-        {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={goToRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
+        {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
-        {tab==="rentals"&&<Rentals rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} onDetailClosed={()=>setDlRental(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
+        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
