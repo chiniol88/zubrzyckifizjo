@@ -1096,6 +1096,29 @@
       const [showQuickV,setShowQuickV]=useState(false);
       const [quickV,setQuickV]=useState(null);
 
+      const equipClients=useMemo(()=>{
+        const byName={};
+        (rentals||[]).forEach(r=>{
+          if(!r.patientName)return;
+          const n=r.patientName;
+          if(!byName[n])byName[n]={name:n,phone:"",address:"",rc:0,wc:0,lastDate:""};
+          if(r.phone&&!byName[n].phone)byName[n].phone=r.phone;
+          if(r.address&&!byName[n].address)byName[n].address=r.address;
+          byName[n].rc++;
+          if((r.startDate||"")>byName[n].lastDate)byName[n].lastDate=r.startDate||"";
+        });
+        (nfzCases||[]).forEach(c=>{
+          if(!c.patientName)return;
+          const n=c.patientName;
+          if(!byName[n])byName[n]={name:n,phone:"",address:"",rc:0,wc:0,lastDate:""};
+          if(c.phone&&!byName[n].phone)byName[n].phone=c.phone;
+          if(c.address&&!byName[n].address)byName[n].address=c.address;
+          byName[n].wc++;
+          if((c.orderDate||"")>byName[n].lastDate)byName[n].lastDate=c.orderDate||"";
+        });
+        return Object.values(byName).sort((a,b)=>a.name.localeCompare(b.name,"pl"));
+      },[rentals,nfzCases]);
+
       const pat = selId ? patients.find(p=>p.id===selId) : null;
       if(selId && !pat) { setSelId(null); return null; }
 
@@ -1338,28 +1361,6 @@
       const lastVisitDate=p=>visits.filter(v=>v.patientId===p.id).map(v=>v.date).sort((a,b)=>b.localeCompare(a))[0]||"";
       const sorted=[...filtered].sort((a,b)=>sort==="alpha"?a.name.localeCompare(b.name,"pl"):lastVisitDate(b).localeCompare(lastVisitDate(a)));
 
-      const equipClients=useMemo(()=>{
-        const byName={};
-        (rentals||[]).forEach(r=>{
-          if(!r.patientName)return;
-          const n=r.patientName;
-          if(!byName[n])byName[n]={name:n,phone:"",address:"",rc:0,wc:0,lastDate:""};
-          if(r.phone&&!byName[n].phone)byName[n].phone=r.phone;
-          if(r.address&&!byName[n].address)byName[n].address=r.address;
-          byName[n].rc++;
-          if((r.startDate||"")>byName[n].lastDate)byName[n].lastDate=r.startDate||"";
-        });
-        (nfzCases||[]).forEach(c=>{
-          if(!c.patientName)return;
-          const n=c.patientName;
-          if(!byName[n])byName[n]={name:n,phone:"",address:"",rc:0,wc:0,lastDate:""};
-          if(c.phone&&!byName[n].phone)byName[n].phone=c.phone;
-          if(c.address&&!byName[n].address)byName[n].address=c.address;
-          byName[n].wc++;
-          if((c.orderDate||"")>byName[n].lastDate)byName[n].lastDate=c.orderDate||"";
-        });
-        return Object.values(byName).sort((a,b)=>a.name.localeCompare(b.name,"pl"));
-      },[rentals,nfzCases]);
       const equipFiltered=equipClients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.phone||"").includes(search));
       return <div>
         <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
