@@ -1880,17 +1880,52 @@
 
         {/* Wykres miesięczny */}
         <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Sezonowość — przychód miesięczny (12 mies.)</div>
-          <div style={{display:"flex",alignItems:"flex-end",gap:4,height:60}}>
-            {stats.monthlyArr.map(([m,v])=>{
-              const pct=Math.round((v/stats.maxMonthly)*100);
-              return <div key={m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                <div style={{fontSize:9,color:subC,fontWeight:600}}>{demo?"?":v>0?v+"zł":""}</div>
-                <div style={{width:"100%",height:Math.max(3,Math.round(pct*0.44))+"px",borderRadius:4,background:m===today.slice(0,7)?"#0A7C7C":dk?"#2A5A5A":"#B8D8D8",transition:"height .3s"}}/>
-                <div style={{fontSize:8,color:subC}}>{m.slice(5)}</div>
-              </div>;
-            })}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5}}>Przychód — 12 mies.</div>
+            <div style={{fontSize:10,color:subC}}>kliknij = zmień miesiąc</div>
           </div>
+          <div style={{overflowX:"auto",paddingBottom:2}}>
+            <div style={{display:"flex",alignItems:"flex-end",gap:4,height:88,minWidth:stats.monthlyArr.length*32}}>
+              {stats.monthlyArr.map(([m,v])=>{
+                const pct=stats.maxMonthly>0?Math.round((v/stats.maxMonthly)*100):0;
+                const isSel=m===selMonth;
+                const isToday=m===today.slice(0,7);
+                const barH=Math.max(3,Math.round(pct*0.68));
+                const barCol=isSel?"#0A7C7C":isToday?(dk?"#2E86AB":"#5BA3C9"):dk?"#2A5A5A":"#B8D8D8";
+                return <div key={m} onClick={()=>setSelMonth(m)} style={{minWidth:28,flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"}}>
+                  <div style={{fontSize:9,color:isSel?"#0A7C7C":subC,fontWeight:isSel?700:600,minHeight:12,textAlign:"center"}}>{demo?"?":v>0?(v>=1000?(v/1000).toFixed(1)+"k":v)+" zł":""}</div>
+                  <div style={{width:"100%",height:barH+"px",borderRadius:4,background:barCol,transition:"height .3s,background .15s"}}/>
+                  <div style={{fontSize:8,color:isSel?"#0A7C7C":subC,fontWeight:isSel?700:400}}>{m.slice(5)}</div>
+                </div>;
+              })}
+            </div>
+          </div>
+          {(()=>{
+            const nonZero=stats.monthlyArr.filter(([,v])=>v>0);
+            if(nonZero.length===0)return null;
+            const avg=Math.round(nonZero.reduce((s,[,v])=>s+v,0)/nonZero.length);
+            const best=nonZero.reduce((a,b)=>b[1]>a[1]?b:a);
+            const curIdx=stats.monthlyArr.findIndex(([m])=>m===selMonth);
+            const prevV=curIdx>0?stats.monthlyArr[curIdx-1][1]:null;
+            const curV=stats.monthlyArr[curIdx]?.[1]||0;
+            const diff=prevV!==null?curV-prevV:null;
+            const bestLabel=new Date(best[0]+"-15").toLocaleDateString("pl-PL",{month:"short"});
+            const tileStyle={flex:1,minWidth:80,background:dk?"#0A2020":"#EFF8F6",borderRadius:10,padding:"7px 10px",textAlign:"center"};
+            return <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
+              <div style={tileStyle}>
+                <div style={{fontSize:10,color:subC,marginBottom:2}}>Najlepszy</div>
+                <div style={{fontWeight:700,fontSize:13,color:"#0A7C7C"}}>{demo?"???":bestLabel+" · "+(best[1]>=1000?(best[1]/1000).toFixed(1)+"k":best[1])+" zł"}</div>
+              </div>
+              <div style={tileStyle}>
+                <div style={{fontSize:10,color:subC,marginBottom:2}}>Śr. miesięczna</div>
+                <div style={{fontWeight:700,fontSize:13,color:"#0A7C7C"}}>{demo?"???":avg+" zł"}</div>
+              </div>
+              {diff!==null&&<div style={{...tileStyle,background:diff>=0?(dk?"#0A2A1A":"#E8F7ED"):(dk?"#2A0A0A":"#FEE8E8")}}>
+                <div style={{fontSize:10,color:subC,marginBottom:2}}>vs poprzedni</div>
+                <div style={{fontWeight:700,fontSize:13,color:diff>=0?"#3DAA72":"#E05C5C"}}>{demo?"????":(diff>=0?"+":"")+diff+" zł"}</div>
+              </div>}
+            </div>;
+          })()}
         </div>
 
         {/* Skąd trafiają klienci — sortowanie po przychodzie */}
