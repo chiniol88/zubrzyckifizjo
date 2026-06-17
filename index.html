@@ -2531,22 +2531,22 @@ p{margin:2px 0}.bold7{font-weight:bold}
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
               const newPaid=Math.min(+(ef.amountPaid||0),raw);
               const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null};
-              const cur=rentals.find(x=>x.id===detail);
+              const cur=rentals.find(x=>x.id===effectiveDetail);
               // Jeśli brak wpłat w tablicy payments, a amountPaid > 0 → utwórz wpłatę i wpis finansowy
               const hasPayments=cur&&(cur.payments||[]).length>0;
               if(!hasPayments&&newPaid>0){
                 const npid=Date.now();
                 const np={id:npid,amount:newPaid,date:u.startDate||todayLocal()};
-                setRentals(rs=>rs.map(x=>x.id===detail?{...x,...u,payments:[np]}:x));
+                setRentals(rs=>rs.map(x=>x.id===effectiveDetail?{...x,...u,payments:[np]}:x));
                 setFinances(fs=>[{id:Date.now()+1,sourceId:"payment-"+npid,date:u.startDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:newPaid,description:"Wypożyczenie – "+u.patientName+" ("+(u.equipment||"Do ustalenia")+")"},...fs]);
               } else {
-                setRentals(rs=>rs.map(x=>x.id===detail?{...x,...u}:x));
+                setRentals(rs=>rs.map(x=>x.id===effectiveDetail?{...x,...u}:x));
               }
               // Sync opisy finansów: normalne wpłaty + przedłużenia
               setFinances(fs=>fs.map(f=>{
                 if(!cur)return f;
                 const isPayment=(cur.payments||[]).some(p=>f.sourceId==="payment-"+p.id);
-                const isExtension=f.sourceId&&f.sourceId.startsWith("extend-"+detail+"-");
+                const isExtension=f.sourceId&&f.sourceId.startsWith("extend-"+effectiveDetail+"-");
                 if(isPayment) return{...f,description:"Wypożyczenie – "+u.patientName+" ("+u.equipment+")"};
                 if(isExtension) return{...f,description:"Przedłużenie – "+u.patientName+" ("+u.equipment+")"};
                 return f;
@@ -2606,7 +2606,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć to wypożyczenie?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
-              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===detail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+c.month));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==detail));setConfirmDel(false);close();}}>Usuń</Btn>
+              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===effectiveDetail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+c.month));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==effectiveDetail));setConfirmDel(false);close();}}>Usuń</Btn>
             </div>
           </Modal>}
         </>;
