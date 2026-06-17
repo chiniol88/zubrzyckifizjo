@@ -718,7 +718,7 @@
     }
 
     // ── DASHBOARD ─────────────────────────────────────────────────────────────
-    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,goToRental,nfzCases,goToWozki,todos,setTodos,events,setEvents}) {
+    function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,allClients,goToRental,nfzCases,goToWozki,todos,setTodos,events,setEvents}) {
       const demo=useDemo();
       const today = todayLocal();
       const dk=useContext(DarkCtx);
@@ -813,7 +813,7 @@
         const q=(searchQ||"").trim().toLowerCase();
         if(q.length<2) return null;
         const res=[];
-        const patByName=Object.fromEntries((patients||[]).map(p=>[p.name,p]));
+        const patByName=Object.fromEntries((allClients||patients||[]).map(p=>[p.name,p]));
         // wizyty
         visits.filter(v=>{
           const pat=patByName[v.patientName]||{};
@@ -825,7 +825,7 @@
         // wypożyczenia
         rentals.filter(r=>(r.patientName||"").toLowerCase().includes(q)||(r.equipment||"").toLowerCase().includes(q)||(r.address||"").toLowerCase().includes(q)||((r.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")))).slice(0,5).forEach(r=>res.push({kind:"rental",label:"Sprzęt",title:"📦 "+r.patientName+" – "+(r.equipment||"Do ustalenia"),sub:r.startDate+(r.endDate?" → "+r.endDate:"")+" · "+(r.status||"")+(r.phone?" · 📞 "+r.phone:""),item:r}));
         // pacjenci
-        patients.filter(p=>(p.name||"").toLowerCase().includes(q)||(p.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""))||(p.address||"").toLowerCase().includes(q)).slice(0,3).forEach(p=>res.push({kind:"patient",label:"Pacjent",title:"👤 "+p.name,sub:(p.phone?"📞 "+p.phone:"")+(p.address?" · "+p.address:""),item:p}));
+        (allClients||patients||[]).filter(p=>(p.name||"").toLowerCase().includes(q)||(p.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""))||(p.address||"").toLowerCase().includes(q)).slice(0,3).forEach(p=>res.push({kind:"patient",label:"Klient",title:"👤 "+p.name,sub:(p.phone?"📞 "+p.phone:"")+(p.address?" · "+p.address:""),item:p}));
         // wydarzenia
         events.filter(e=>(e.title||"").toLowerCase().includes(q)||(e.notes||"").toLowerCase().includes(q)).slice(0,3).forEach(e=>res.push({kind:"event",label:"Wydarzenie",title:"📌 "+e.title,sub:e.date+(e.time?" · "+e.time:""),item:e}));
         return res;
@@ -979,7 +979,7 @@
         </div>
 
         {showAdd&&<Modal title="Nowa wizyta" onClose={()=>setShowAdd(false)}>
-          <PatientPicker label="Pacjent *" value={vf.patientName} onChange={v=>setVf(f=>({...f,patientName:v}))} onSelect={p=>setVf(f=>({...f,patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):f.price}))} patients={patients}/>
+          <PatientPicker label="Pacjent *" value={vf.patientName} onChange={v=>setVf(f=>({...f,patientName:v}))} onSelect={p=>setVf(f=>({...f,patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):f.price}))} patients={allClients||patients}/>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
             {!vf.allDay&&<TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>}
@@ -1074,7 +1074,7 @@
       </Card>;
     }
 
-    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases}) {
+    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,allClients}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [selId,setSelId]=useState(null);
@@ -1133,8 +1133,8 @@
       const patTotal = patTotalVisits + patTotalRentals + patTotalWozki;
       const patDoneVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona") : [];
       const patAvgPrice = patDoneVisits.length ? Math.round(patDoneVisits.reduce((s,v)=>s+(+v.price||0),0)/patDoneVisits.length) : 0;
-      const patFirstVisit = patDoneVisits.length ? patDoneVisits.map(v=>v.date).sort()[0] : null;
-      const patSinceMonths = patFirstVisit ? Math.round((new Date(todayLocal())-new Date(patFirstVisit))/2592000000) : 0;
+      const patFirstDate = pat ? [...patDoneVisits.map(v=>v.date),...patRentals.map(r=>r.startDate||""),...patWozki.map(c=>c.orderDate||"")].filter(Boolean).sort()[0]||null : null;
+      const patSinceMonths = patFirstDate ? Math.round((new Date(todayLocal())-new Date(patFirstDate))/2592000000) : 0;
 
       const syncFinance = (v,isNew) => {
         const done = v.status==="zakończona"||new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
@@ -1193,13 +1193,13 @@
               </Card>}
               {pat.birthday&&<BirthdayCard birthday={pat.birthday} dk={dk}/>}
 
-              {patDoneVisits.length>0&&<Card style={{marginBottom:10,background:dk?"#1A2A2A":"#F7FAFA",border:"1.5px solid #E4EAF0"}}>
+              {(patDoneVisits.length>0||patRentals.length>0||patWozki.length>0)&&<Card style={{marginBottom:10,background:dk?"#1A2A2A":"#F7FAFA",border:"1.5px solid #E4EAF0"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Statystyki</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                   {[
-                    {l:"Wizyty",v:patDoneVisits.length,c:"#0A7C7C"},
-                    {l:"Śr. cena",v:patAvgPrice+" zł",c:"#7C6AF4"},
-                    {l:"Pacjent od",v:patSinceMonths<1?"<1 mies.":patSinceMonths<12?patSinceMonths+" mies.":(patSinceMonths/12).toFixed(1).replace(".0","")+" lat",c:"#F4A261"},
+                    patDoneVisits.length>0?{l:"Wizyty",v:patDoneVisits.length,c:"#0A7C7C"}:{l:"Wypożyczenia",v:patRentals.length,c:"#7C6AF4"},
+                    patDoneVisits.length>0?{l:"Śr. cena",v:patAvgPrice+" zł",c:"#7C6AF4"}:{l:"Wózki NFZ",v:patWozki.length,c:"#F4A261"},
+                    {l:"Klient od",v:patSinceMonths<1?"<1 mies.":patSinceMonths<12?patSinceMonths+" mies.":(patSinceMonths/12).toFixed(1).replace(".0","")+" lat",c:"#F4A261"},
                   ].map((x,i)=><div key={i} style={{background:x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
                     <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:x.c}}>{x.v}</div>
                     <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
@@ -2259,7 +2259,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,allClients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const view=rentalsView||"aktywne",setView=setRentalsView;
@@ -2573,7 +2573,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
 
           {showEdit&&ef&&<Modal title="Edytuj wypożyczenie" onClose={()=>setShowEdit(false)}>
             <Sel label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...EQUIPMENT.map(x=>({value:x,label:x}))]}/>
-            <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={patients}/>
+            <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
             <div style={{marginBottom:14}}>
@@ -2717,7 +2717,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
         {showAdd&&<Modal title="Nowe wypożyczenie" onClose={()=>setShowAdd(false)}>
           <Sel label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...EQUIPMENT.map(x=>({value:x,label:x}))]}/>
 
-          <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={patients}/>
+          <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))}/>
           <div style={{marginBottom:14}}>
@@ -2949,7 +2949,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
         return Object.entries(map).filter(([,v])=>v>0).map(([k,v])=>({label:k,v,color:colors[k]||"#7A8FA6"}));
       },[periodVisits,periodNonVisitFinances,incVisits]);
 
-      // Pacjenci (źródło: visits)
+      // Pacjenci (wizyty + wypożyczenia + wózki)
       const topPats=useMemo(()=>{
         const map={};const cnt={};
         periodVisits.forEach(v=>{
@@ -2958,8 +2958,15 @@ p{margin:2px 0}.bold7{font-weight:bold}
           cnt[name]=(cnt[name]||0)+1;
           map[name]=(map[name]||0)+(+v.price||0);
         });
+        periodNonVisitFinances.forEach(f=>{
+          const raw=(f.description||"").split(" – ")[1];
+          if(!raw)return;
+          const name=raw.split(" (")[0].trim();
+          if(!name)return;
+          map[name]=(map[name]||0)+(+f.amount||0);
+        });
         return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,v])=>([n,v,cnt[n]||0]));
-      },[periodVisits]);
+      },[periodVisits,periodNonVisitFinances]);
 
       // Lista wpisów: wizyty z visits + reszta z finances
       const listEntries=useMemo(()=>{
@@ -4434,7 +4441,7 @@ Zasady:
       return new Date(y+years,m-1,d).getFullYear()+"-"+String(new Date(y+years,m-1,d).getMonth()+1).padStart(2,"0")+"-"+String(new Date(y+years,m-1,d).getDate()).padStart(2,"0");
     };
 
-    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances,patients,setPatients}) {
+    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances,patients,setPatients,allClients}) {
       const dk = useContext(DarkCtx);
       const demo = useDemo();
       const [showAdd,setShowAdd] = useState(false);
@@ -4526,7 +4533,7 @@ Zasady:
             </div>
           </div>
           {editForm&&<Modal title="Edytuj" onClose={()=>setEditForm(null)}>
-            <PatientPicker label="Klient" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} onSelect={p=>setEditForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={patients||[]}/>
+            <PatientPicker label="Klient" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} onSelect={p=>setEditForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={allClients||patients||[]}/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Inp label="Telefon" value={editForm.phone||""} onChange={v=>setEditForm(f=>({...f,phone:v}))} type="tel"/>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setEditForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
@@ -4602,7 +4609,7 @@ Zasady:
           })}
         </div>
         {showAdd&&<Modal title="Nowy wózek" onClose={()=>setShowAdd(false)}>
-          <PatientPicker label="Klient *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={patients||[]}/>
+          <PatientPicker label="Klient *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={allClients||patients||[]}/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
@@ -4640,6 +4647,17 @@ Zasady:
       const [rentalsView,setRentalsView]=useState("aktywne");
       const goToRental=(id,returnTab="rentals")=>{setDlReturnTab(returnTab);setDlBackLabel(returnTab==="dashboard"?"Pulpit":"Wypożyczalnia");setDlRental(id);setTab("rentals");};
       const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
+      const allClients=useMemo(()=>{
+        const existing=new Set((patients||[]).map(p=>p.name));
+        const extras=[];const seen=new Set();
+        [...(rentals||[]),...(nfzCases||[])].forEach(item=>{
+          const n=item.patientName;
+          if(!n||existing.has(n)||seen.has(n))return;
+          seen.add(n);
+          extras.push({id:'ac-'+n,name:n,phone:item.phone||"",address:item.address||""});
+        });
+        return [...(patients||[]),...extras];
+      },[patients,rentals,nfzCases]);
       const dk=dark;
       const desk=useIsDesktop();
 
@@ -4655,11 +4673,11 @@ Zasady:
       const unpaidCount=(rentals||[]).filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid&&!c.cancelled)).length;
 
       const content = <>
-        {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
-        {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases}/>}
-        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
+        {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
+        {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} allClients={allClients}/>}
+        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock}/>}
-        {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients}/>}
+        {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
       </>;
 
