@@ -2189,7 +2189,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const view=rentalsView||"aktywne",setView=setRentalsView;
@@ -2676,6 +2676,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
             const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:[],status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
+            if(setPatients&&!pat){setPatients(ps=>[...(ps||[]),{id:Date.now()+2,name:form.patientName,phone:form.phone||"",address:form.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}
             setShowAdd(false);setToast("Wypożyczenie dodane");
           }}>Zapisz wypożyczenie</Btn>
         </Modal>}
@@ -4363,7 +4364,7 @@ Zasady:
       return new Date(y+years,m-1,d).getFullYear()+"-"+String(new Date(y+years,m-1,d).getMonth()+1).padStart(2,"0")+"-"+String(new Date(y+years,m-1,d).getDate()).padStart(2,"0");
     };
 
-    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances}) {
+    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances,patients,setPatients}) {
       const dk = useContext(DarkCtx);
       const demo = useDemo();
       const [showAdd,setShowAdd] = useState(false);
@@ -4455,7 +4456,7 @@ Zasady:
             </div>
           </div>
           {editForm&&<Modal title="Edytuj" onClose={()=>setEditForm(null)}>
-            <Inp label="Imię i nazwisko" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
+            <PatientPicker label="Klient" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} onSelect={p=>setEditForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={patients||[]}/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Inp label="Telefon" value={editForm.phone||""} onChange={v=>setEditForm(f=>({...f,phone:v}))} type="tel"/>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setEditForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
@@ -4531,7 +4532,7 @@ Zasady:
           })}
         </div>
         {showAdd&&<Modal title="Nowy wózek" onClose={()=>setShowAdd(false)}>
-          <Inp label="Imię i nazwisko *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} placeholder="Jan Kowalski"/>
+          <PatientPicker label="Klient *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={patients||[]}/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
@@ -4543,7 +4544,7 @@ Zasady:
           <Inp label="Model wózka" value={form.wheelchairModel} onChange={v=>setForm(f=>({...f,wheelchairModel:v}))} placeholder="np. Wózek aktywny X"/>
           <Inp label="Data zamówienia" value={form.orderDate} onChange={v=>setForm(f=>({...f,orderDate:v}))} type="date"/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
-          <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.patientName)return;setNfzCases(cs=>[{...form,id:Date.now()},...(cs||[])]);setForm(emptyNFZ());setShowAdd(false);setToast("Dodano");}}>Dodaj</Btn>
+          <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.patientName)return;setNfzCases(cs=>[{...form,id:Date.now()},...(cs||[])]);if(setPatients&&!(patients||[]).find(p=>p.name===form.patientName)){setPatients(ps=>[...(ps||[]),{id:Date.now()+1,name:form.patientName,phone:form.phone||"",address:form.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}setForm(emptyNFZ());setShowAdd(false);setToast("Dodano");}}>Dodaj</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </div>;
@@ -4586,9 +4587,9 @@ Zasady:
       const content = <>
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
-        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
+        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock}/>}
-        {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances}/>}
+        {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
       </>;
 
