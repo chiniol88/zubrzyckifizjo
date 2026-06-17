@@ -1074,7 +1074,7 @@
       </Card>;
     }
 
-    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals}) {
+    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [selId,setSelId]=useState(null);
@@ -1100,11 +1100,13 @@
 
       const patVisits = pat ? visits.filter(v=>v.patientId===pat.id||(v.patientName===pat.name&&!v.patientId)) : [];
       const patRentals = pat ? rentals.filter(r=>r.patientId===pat.id||r.patientName===pat.name) : [];
-      const history = [...patVisits.map(v=>({...v,_t:"v",_d:v.date||"",_time:v.time||"00:00"})),...patRentals.map(r=>({...r,_t:"r",_d:r.startDate||"",_time:"00:00"}))].sort((a,b)=>(b._d||"").localeCompare(a._d||"")||(b._time||"").localeCompare(a._time||""));
+      const patWozki = pat ? (nfzCases||[]).filter(c=>c.patientId===pat.id||c.patientName===pat.name) : [];
+      const history = [...patVisits.map(v=>({...v,_t:"v",_d:v.date||"",_time:v.time||"00:00"})),...patRentals.map(r=>({...r,_t:"r",_d:r.startDate||"",_time:"00:00"})),...patWozki.map(c=>({...c,_t:"w",_d:c.orderDate||"",_time:"00:00"}))].sort((a,b)=>(b._d||"").localeCompare(a._d||"")||(b._time||"").localeCompare(a._time||""));
 
       const patTotalVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona").reduce((s,v)=>s+(+v.price||0),0) : 0;
       const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+(r.renewable?(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((ss,c)=>ss+c.amount,0):(r.amountPaid||0)),0) : 0;
-      const patTotal = patTotalVisits + patTotalRentals;
+      const patTotalWozki = pat ? patWozki.filter(c=>c.realized).reduce((s,c)=>{const fin=(finances||[]).find(f=>f.sourceId==="wozek-"+c.id);return s+(fin?fin.amount:0);},0) : 0;
+      const patTotal = patTotalVisits + patTotalRentals + patTotalWozki;
       const patDoneVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona") : [];
       const patAvgPrice = patDoneVisits.length ? Math.round(patDoneVisits.reduce((s,v)=>s+(+v.price||0),0)/patDoneVisits.length) : 0;
       const patFirstVisit = patDoneVisits.length ? patDoneVisits.map(v=>v.date).sort()[0] : null;
@@ -1182,8 +1184,8 @@
               </Card>}
               {patTotal>0&&<Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Łącznie zapłacono</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                  {[{l:"Wizyty",v:patTotalVisits,c:"#0A7C7C"},{l:"Wypożyczenia",v:patTotalRentals,c:"#7C6AF4"},{l:"Razem",v:patTotal,c:"#1C2B3A"}].map((x,i)=>(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[{l:"Wizyty",v:patTotalVisits,c:"#0A7C7C"},{l:"Wypożyczenia",v:patTotalRentals,c:"#7C6AF4"},{l:"Wózki",v:patTotalWozki,c:"#F4A261"},{l:"Razem",v:patTotal,c:"#1C2B3A"}].map((x,i)=>(
                     <div key={i} style={{background:"#fff",borderRadius:12,padding:"10px 8px",textAlign:"center",border:"1.5px solid #E4EAF0"}}>
                       <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v} zł</div>
                       <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
@@ -1196,12 +1198,12 @@
                 <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Historia ({history.length})</div>
                 <Btn small onClick={()=>{setVf({...emptyVisit(),patientName:pat.name,patientId:pat.id,price:pat.defaultPrice?String(pat.defaultPrice):"150"});setShowAddV(true);}}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
               </div>
-              <div style={{display:"flex",gap:6,marginBottom:10}}>
-                {[{k:"all",l:"Wszystko"},{k:"v",l:"Wizyty"},{k:"r",l:"Wypożyczenia"}].map(x=><button key={x.k} onClick={()=>setHistFilter(x.k)} style={{padding:"6px 12px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:histFilter===x.k?"#0A7C7C":"#E4EAF0",color:histFilter===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
+              <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+                {[{k:"all",l:"Wszystko"},{k:"v",l:"Wizyty"},{k:"r",l:"Wypożyczenia"},{k:"w",l:"Wózki"}].map(x=><button key={x.k} onClick={()=>setHistFilter(x.k)} style={{padding:"6px 12px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:histFilter===x.k?"#0A7C7C":"#E4EAF0",color:histFilter===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
               </div>
-              {history.filter(item=>histFilter==="all"||(histFilter==="v"&&item._t==="v")||(histFilter==="r"&&item._t==="r")).length===0
+              {history.filter(item=>histFilter==="all"||item._t===histFilter).length===0
                 ?<Empty text="Brak wpisów"/>
-                :history.filter(item=>histFilter==="all"||(histFilter==="v"&&item._t==="v")||(histFilter==="r"&&item._t==="r")).map(item=>
+                :history.filter(item=>histFilter==="all"||item._t===histFilter).map(item=>
                 item._t==="v"
                 ? <Card key={"v"+item.id} onClick={()=>setEditV({...item,price:String(item.price)})}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1210,11 +1212,19 @@
                     </div>
                     {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
                   </Card>
-                : <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
+                : item._t==="r"
+                ? <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div><div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wypożyczenie</div><div style={{fontWeight:600}}>{item.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.startDate}{item.endDate?" → "+item.endDate:""}</div></div>
                       <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{item.amount} zł</div><Badge color={item.status==="zakończone"?"#7A8FA6":"#7C6AF4"}>{item.status}</Badge></div>
                     </div>
+                  </Card>
+                : <Card key={"w"+item.id} style={{background:"#FFF7ED"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div><div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wózek NFZ</div><div style={{fontWeight:600}}>{item.wheelchairModel||"Model nieznany"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.orderDate||"Brak daty"}{item.hasDisabilityCert?" · orzeczenie":""}</div></div>
+                      <Badge color={item.realized?"#3DAA72":"#F4A261"}>{item.realized?"zrealizowany":"oczekuje"}</Badge>
+                    </div>
+                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
                   </Card>
               )}
             </div>
@@ -4586,7 +4596,7 @@ Zasady:
 
       const content = <>
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
-        {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals}/>}
+        {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases}/>}
         {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients}/>}
