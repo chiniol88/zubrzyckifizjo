@@ -1880,10 +1880,7 @@
 
         {/* Wykres miesięczny */}
         <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5}}>Przychód — 12 mies.</div>
-            <div style={{fontSize:10,color:subC}}>kliknij = zmień miesiąc</div>
-          </div>
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Przychód — 12 mies.</div>
           <div style={{overflowX:"auto",paddingBottom:2}}>
             <div style={{display:"flex",alignItems:"flex-end",gap:4,height:88,minWidth:stats.monthlyArr.length*32}}>
               {stats.monthlyArr.map(([m,v])=>{
