@@ -1091,6 +1091,7 @@
       const [sort,setSort]=useState("alpha");
       const [histFilter,setHistFilter]=useState("all");
       const [showArchived,setShowArchived]=useState(false);
+      const [pTab,setPTab]=useState("fizjo");
       const [toast,setToast]=useState(null);
       const [showQuickV,setShowQuickV]=useState(false);
       const [quickV,setQuickV]=useState(null);
@@ -1336,38 +1337,96 @@
       const filtered=patients.filter(p=>(!!p.archived)===showArchived&&(p.name.toLowerCase().includes(sl)||(p.phone||"").replace(/\s/g,"").includes(sn)||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl)));
       const lastVisitDate=p=>visits.filter(v=>v.patientId===p.id).map(v=>v.date).sort((a,b)=>b.localeCompare(a))[0]||"";
       const sorted=[...filtered].sort((a,b)=>sort==="alpha"?a.name.localeCompare(b.name,"pl"):lastVisitDate(b).localeCompare(lastVisitDate(a)));
+
+      const equipClients=useMemo(()=>{
+        const byName={};
+        (rentals||[]).forEach(r=>{
+          if(!r.patientName)return;
+          const n=r.patientName;
+          if(!byName[n])byName[n]={name:n,phone:"",address:"",rc:0,wc:0,lastDate:""};
+          if(r.phone&&!byName[n].phone)byName[n].phone=r.phone;
+          if(r.address&&!byName[n].address)byName[n].address=r.address;
+          byName[n].rc++;
+          if((r.startDate||"")>byName[n].lastDate)byName[n].lastDate=r.startDate||"";
+        });
+        (nfzCases||[]).forEach(c=>{
+          if(!c.patientName)return;
+          const n=c.patientName;
+          if(!byName[n])byName[n]={name:n,phone:"",address:"",rc:0,wc:0,lastDate:""};
+          if(c.phone&&!byName[n].phone)byName[n].phone=c.phone;
+          if(c.address&&!byName[n].address)byName[n].address=c.address;
+          byName[n].wc++;
+          if((c.orderDate||"")>byName[n].lastDate)byName[n].lastDate=c.orderDate||"";
+        });
+        return Object.values(byName).sort((a,b)=>a.name.localeCompare(b.name,"pl"));
+      },[rentals,nfzCases]);
+      const equipFiltered=equipClients.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.phone||"").includes(search));
       return <div>
         <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Pacjenci</div>
             <div style={{fontSize:13,color:"#7A8FA6"}}>{patients.filter(p=>!p.archived).length} aktywnych · {patients.filter(p=>p.archived).length} w archiwum</div>
           </div>
-          <Btn small onClick={()=>setShowAdd(true)}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
+          {pTab==="fizjo"&&<Btn small onClick={()=>setShowAdd(true)}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>}
+        </div>
+        <div style={{display:"flex",gap:6,padding:"0 20px 14px"}}>
+          {[{k:"fizjo",l:"Pacjenci"},{k:"sprzet",l:"Klienci sprzętu"}].map(t=><button key={t.k} onClick={()=>{setPTab(t.k);setSearch("");}} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:pTab===t.k?"#0A7C7C":"#E4EAF0",color:pTab===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>)}
         </div>
         <div style={{padding:"0 20px"}}>
           <Inp value={search} onChange={setSearch} placeholder="🔍 Szukaj..."/>
-          <div style={{display:"flex",gap:6,marginBottom:12}}>
-            {[{k:"alpha",l:"A–Z"},{k:"recent",l:"Ostatnio aktywni"}].map(x=><button key={x.k} onClick={()=>setSort(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:sort===x.k?"#0A7C7C":"#E4EAF0",color:sort===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
-            <button onClick={()=>setShowArchived(a=>!a)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#E4EAF0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit",marginLeft:"auto"}}>📦 {showArchived?"Aktywni":"Archiwum"}</button>
-          </div>
-          {search&&sorted.length===0&&<Empty text="Nie znaleziono pacjenta"/>}
-          {sorted.map((p,pi)=>{const lv=lastVisitDate(p);return(<Card key={p.id} onClick={()=>setSelId(p.id)}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                <Av name={p.name}/>
-                <div>
-                  <div style={{fontWeight:600}}>{maskName(demo,p.name,pi)}</div>
-                  <div style={{fontSize:13,color:"#7A8FA6"}}>{maskPhone(demo,p.phone)}</div>
-                  {sort==="recent"&&lv&&<div style={{fontSize:11,color:"#0A7C7C",marginTop:2}}>ostatnia wizyta: {lv}</div>}
+          {pTab==="fizjo"&&<>
+            <div style={{display:"flex",gap:6,marginBottom:12}}>
+              {[{k:"alpha",l:"A–Z"},{k:"recent",l:"Ostatnio aktywni"}].map(x=><button key={x.k} onClick={()=>setSort(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:sort===x.k?"#0A7C7C":"#E4EAF0",color:sort===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
+              <button onClick={()=>setShowArchived(a=>!a)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#E4EAF0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit",marginLeft:"auto"}}>📦 {showArchived?"Aktywni":"Archiwum"}</button>
+            </div>
+            {search&&sorted.length===0&&<Empty text="Nie znaleziono pacjenta"/>}
+            {sorted.map((p,pi)=>{const lv=lastVisitDate(p);return(<Card key={p.id} onClick={()=>setSelId(p.id)}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                  <Av name={p.name}/>
+                  <div>
+                    <div style={{fontWeight:600}}>{maskName(demo,p.name,pi)}</div>
+                    <div style={{fontSize:13,color:"#7A8FA6"}}>{maskPhone(demo,p.phone)}</div>
+                    {sort==="recent"&&lv&&<div style={{fontSize:11,color:"#0A7C7C",marginTop:2}}>ostatnia wizyta: {lv}</div>}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <button onClick={e=>{e.stopPropagation();setQuickV({...emptyVisit(),patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):"150"});setShowQuickV(true);}} style={{width:30,height:30,borderRadius:10,background:"#0A7C7C",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>
+                  <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
                 </div>
               </div>
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <button onClick={e=>{e.stopPropagation();setQuickV({...emptyVisit(),patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):"150"});setShowQuickV(true);}} style={{width:30,height:30,borderRadius:10,background:"#0A7C7C",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>
-                <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
-              </div>
-            </div>
-            {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #E4EAF0",whiteSpace:"pre-wrap"}}>{p.diagnosis}</div>}
-          </Card>);})}
+              {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #E4EAF0",whiteSpace:"pre-wrap"}}>{p.diagnosis}</div>}
+            </Card>);})}
+          </>}
+          {pTab==="sprzet"&&<>
+            {equipClients.length===0&&<Empty text="Brak klientów sprzętu"/>}
+            {search&&equipFiltered.length===0&&equipClients.length>0&&<Empty text="Nie znaleziono"/>}
+            {equipFiltered.map((c,ci)=>{
+              const inBase=patients.some(p=>p.name===c.name);
+              return <Card key={c.name} onClick={()=>{
+                const ex=patients.find(p=>p.name===c.name);
+                if(ex){setSelId(ex.id);}
+                else{const nid=Date.now()+ci;setPatients(ps=>[...(ps||[]),{id:nid,name:c.name,phone:c.phone||"",address:c.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);setSelId(nid);}
+              }}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                    <Av name={c.name}/>
+                    <div>
+                      <div style={{fontWeight:600}}>{demo?"Klient":c.name}</div>
+                      <div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"***-***-***":c.phone||"Brak telefonu"}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                    <div style={{display:"flex",gap:4}}>
+                      {c.rc>0&&<span style={{fontSize:11,fontWeight:700,background:"#F0EDFF",color:"#7C6AF4",borderRadius:8,padding:"2px 7px"}}>🦾 {c.rc}</span>}
+                      {c.wc>0&&<span style={{fontSize:11,fontWeight:700,background:"#FFF7ED",color:"#F4A261",borderRadius:8,padding:"2px 7px"}}>🦽 {c.wc}</span>}
+                    </div>
+                    {!inBase&&<span style={{fontSize:10,color:"#7A8FA6"}}>kliknij → dodaj profil</span>}
+                  </div>
+                </div>
+              </Card>;
+            })}
+          </>}
         </div>
         {showAdd&&<Modal title="Nowy pacjent" onClose={()=>setShowAdd(false)}>
           <Inp label="Imię i nazwisko *" value={newForm.name} onChange={v=>setNewForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
