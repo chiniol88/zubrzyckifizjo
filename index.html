@@ -229,6 +229,12 @@
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula","Balkonik ortopedyczny"];
+    const calcRentalPaid = r => {
+      if(r.renewable) return (r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
+      const pp=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
+      const ep=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
+      return (pp||(+r.amountPaid||0))+ep;
+    };
     const RENTAL_SOURCES = [
       {value:"reklama",label:"📢 Reklama",color:"#7C6AF4"},
       {value:"slawek",label:"🤝 Sławek",color:"#3DAA72"},
@@ -606,11 +612,9 @@
             if(item._kind==="rental"){const ev=item.ev;const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":"🔄 Opłata";
               const extDue2=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
               const totalAmt2=(+ev.r.amount||0)+extDue2;
-              const paymentsPaid2=(ev.r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
-              const extPaid2=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-              const totalPaid2=(paymentsPaid2||(ev.r.amountPaid||0))+extPaid2;
+              const totalPaid2=calcRentalPaid(ev.r);
               const remaining2=totalAmt2-totalPaid2;
-              const adSub=ev.type==="end"?(remaining2>0?`do zapłaty: ${remaining2} zł`:null):ev.type==="start"?totalAmt2+" zł":null;
+              const adSub=ev.r.renewable?null:ev.type==="end"?(remaining2>0?`do zapłaty: ${remaining2} zł`:null):ev.type==="start"?totalAmt2+" zł":null;
               return <div key={"ad-r"+idx} onClick={()=>setQuickRental(ev.r)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,cursor:"pointer"}}>
               <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
                 <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
@@ -648,9 +652,7 @@
               const color=ev.type==="end"||ev.type==="plannedReturn"?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
               const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
               const totalAmt=(+ev.r.amount||0)+extDue;
-              const paymentsPaid=(ev.r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
-              const extPaid=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-              const totalPaid=(paymentsPaid||(ev.r.amountPaid||0))+extPaid;
+              const totalPaid=calcRentalPaid(ev.r);
               const remaining=totalAmt-totalPaid;
               const endSub=remaining>0?`do zapłaty: ${remaining} zł`:null;
               const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?endSub:ev.type==="plannedReturn"?(remaining>0?`do zapłaty: ${remaining} zł`:null):totalAmt+" zł";
@@ -675,10 +677,8 @@
 
         {quickRental&&(()=>{const r=quickRental;
           const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
-          const totalAmt=(+r.amount||0)+extDue;
-          const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
-          const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-          const totalPaid=(paymentsPaid||(+r.amountPaid||0))+extPaid;
+          const totalAmt=r.renewable?(+r.amount||0):(+r.amount||0)+extDue;
+          const totalPaid=calcRentalPaid(r);
           const remaining=totalAmt-totalPaid;
           const statusColor=r.status==="aktywne"?"#3DAA72":r.status==="zakończone"?"#7A8FA6":"#F4A261";
           return <Modal title="Podgląd wypożyczenia" onClose={()=>setQuickRental(null)}>
@@ -693,9 +693,9 @@
               {r.phone&&<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📞</span><a href={"tel:"+r.phone} style={{fontSize:13,color:"#0A7C7C",textDecoration:"none",fontWeight:600}}>{r.phone}</a></div>}
             </div>
             <div style={{background:dk?"#0F2020":"#EFF6FF",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Kwota całkowita</span><span style={{fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{totalAmt} zł</span></div>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Zapłacono</span><span style={{fontWeight:700,color:"#3DAA72"}}>{totalPaid} zł</span></div>
-              {remaining>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Pozostało</span><span style={{fontWeight:700,color:"#E05C5C"}}>{remaining} zł</span></div>}
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>{r.renewable?"Stawka / mies.":"Kwota całkowita"}</span><span style={{fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{totalAmt} zł</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Wpłacono</span><span style={{fontWeight:700,color:"#3DAA72"}}>{totalPaid} zł</span></div>
+              {!r.renewable&&remaining>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Pozostało</span><span style={{fontWeight:700,color:"#E05C5C"}}>{remaining} zł</span></div>}
             </div>
             {r.notes&&<div style={{fontSize:13,color:"#7A8FA6",marginBottom:12,padding:"8px 12px",background:dk?"#1A3030":"#F7FAFC",borderRadius:10,whiteSpace:"pre-wrap"}}>📝 {r.notes}</div>}
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{setQuickRental(null);onGoToRental(r.id);}}>Otwórz pełny widok →</Btn>
@@ -939,9 +939,7 @@
               {upcoming.map(r=>{const d=dateDiff(today,r.endDate);
                 const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
                 const totalAmt=(+r.amount||0)+extDue;
-                const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
-                const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-                const totalPaid=(paymentsPaid||(r.amountPaid||0))+extPaid;
+                const totalPaid=calcRentalPaid(r);
                 const remaining=totalAmt-totalPaid;
                 return(
                 <Card key={r.id} onClick={()=>goToRental(r.id)}>
@@ -2159,9 +2157,7 @@
       const isZakończone=r.status==="zakończone";
       const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
       const totalAmount=(+r.amount||0)+extDue;
-      const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-      const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
-      const totalPaid=(paymentsPaid||(r.amountPaid||0))+extPaid;
+      const totalPaid=calcRentalPaid(r);
 
       // Zbierz wszystkie dokumenty (z payments + extensions)
       const allDocs=new Set([
@@ -2434,7 +2430,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     // Zapłacono = wpłaty z payments + amountPaid z przedłużeń
                     const paymentsPaid = (r.payments||[]).reduce((s,p)=>s+p.amount,0);
                     const extPaid = (r.extensions||[]).reduce((s,e)=>s+(e.amountPaid||0),0);
-                    const totalPaid = (paymentsPaid||(r.amountPaid||0))+extPaid;
+                    const totalPaid = calcRentalPaid(r);
                     const remaining = totalAmount - totalPaid;
 
                     // Historia wpłat: normalne wpłaty + przedłużenia które mają amountPaid>0
@@ -2556,7 +2552,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   const totalAmount=(+r.amount||0)+extTotal;
                   const paymentsPaid=(r.payments||[]).reduce((s,p)=>s+p.amount,0);
                   const extPaid=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-                  const remaining=totalAmount-((paymentsPaid||(r.amountPaid||0))+extPaid);
+                  const remaining=totalAmount-calcRentalPaid(r);
                   const effectiveCloseDate=closeDate||r.plannedReturn||"";
                   if(r.renewable&&!effectiveCloseDate){alert("Podaj datę zakończenia");return;}
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
@@ -2626,18 +2622,19 @@ p{margin:2px 0}.bold7{font-weight:bold}
             </div>
             {!(ef.endAllDay!==undefined?ef.endAllDay:(ef.allDay||false))&&<TimeSel label="Godzina odbioru" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}</>}
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
-            <Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>
+            {!ef.renewable&&<Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>}
+            {ef.renewable&&<div style={{fontSize:12,color:"#7A8FA6",padding:"10px 14px",background:"#F2F5F7",borderRadius:12,marginBottom:14}}>Płatności zarządzane przez cykle miesięczne</div>}
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
             <Txa label="Notatki" value={ef.notes||""} onChange={v=>setEf(f=>({...f,notes:v}))} rows={2}/>
             <Sel label="Skąd dowiedział się o wypożyczeniu?" value={ef.source||""} onChange={v=>setEf(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
-              const newPaid=Math.min(+(ef.amountPaid||0),raw);
-              const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null};
               const cur=rentals.find(x=>x.id===effectiveDetail);
-              // Jeśli brak wpłat w tablicy payments, a amountPaid > 0 → utwórz wpłatę i wpis finansowy
+              const newPaid=ef.renewable?(cur?.amountPaid||0):Math.min(+(ef.amountPaid||0),raw);
+              const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null};
+              // Dla jednorazowych bez payments: jeśli wpisano zapłacono → utwórz wpłatę i wpis finansowy
               const hasPayments=cur&&(cur.payments||[]).length>0;
-              if(!hasPayments&&newPaid>0){
+              if(!ef.renewable&&!hasPayments&&newPaid>0){
                 const npid=Date.now();
                 const np={id:npid,amount:newPaid,date:u.startDate||todayLocal()};
                 setRentals(rs=>rs.map(x=>x.id===effectiveDetail?{...x,...u,payments:[np]}:x));
