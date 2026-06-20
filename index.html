@@ -1129,7 +1129,7 @@
       const history = [...patVisits.map(v=>({...v,_t:"v",_d:v.date||"",_time:v.time||"00:00"})),...patRentals.map(r=>({...r,_t:"r",_d:r.startDate||"",_time:"00:00"})),...patWozki.map(c=>({...c,_t:"w",_d:c.orderDate||"",_time:"00:00"}))].sort((a,b)=>(b._d||"").localeCompare(a._d||"")||(b._time||"").localeCompare(a._time||""));
 
       const patTotalVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona").reduce((s,v)=>s+(+v.price||0),0) : 0;
-      const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+(r.renewable?(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((ss,c)=>ss+c.amount,0):(r.amountPaid||0)),0) : 0;
+      const patTotalRentals = pat ? patRentals.reduce((s,r)=>s+calcRentalPaid(r),0) : 0;
       const patTotalWozki = pat ? patWozki.filter(c=>c.realized).reduce((s,c)=>{const fin=(finances||[]).find(f=>f.sourceId==="wozek-"+c.id);return s+(fin?fin.amount:0);},0) : 0;
       const patTotal = patTotalVisits + patTotalRentals + patTotalWozki;
       const patDoneVisits = pat ? patVisits.filter(v=>visitStatus(v)==="zakończona") : [];
@@ -1688,7 +1688,7 @@
         return [...RENTAL_SOURCES.map(s=>s.value),""].map(sv=>{
           const rows=base.filter(r=>(r.source||"")===sv);
           const src=RENTAL_SOURCES.find(s=>s.value===sv);
-          return{value:sv,label:src?src.label:"❓ Nieznane",color:src?src.color:"#7A8FA6",cnt:rows.length,rev:rows.reduce((s,r)=>s+(+r.amountPaid||0),0)};
+          return{value:sv,label:src?src.label:"❓ Nieznane",color:src?src.color:"#7A8FA6",cnt:rows.length,rev:rows.reduce((s,r)=>s+calcRentalPaid(r),0)};
         }).filter(x=>x.cnt>0).sort((a,b)=>b.cnt-a.cnt);
       },[rentals,statsYear]);
       const statsTotalCnt=sourceStats.reduce((s,x)=>s+x.cnt,0);
@@ -2340,7 +2340,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 </div>
                 <div style={{display:"flex",gap:6}}>
                   {!demo&&<Btn small variant="secondary" onClick={()=>generateUmowa(r)}>📄 Umowa</Btn>}
-                  <Btn small variant="secondary" onClick={()=>{setEf({...r,amount:String(r.amount),amountPaid:String(r.amountPaid||0)});setShowEdit(true);}}>✏️ Edytuj</Btn>
+                  <Btn small variant="secondary" onClick={()=>{setEf({...r,amount:String(r.amount),amountPaid:String(calcRentalPaid(r))});setShowEdit(true);}}>✏️ Edytuj</Btn>
                 </div>
               </div>
 
@@ -2709,7 +2709,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć to wypożyczenie?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
-              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===effectiveDetail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+c.month));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==effectiveDetail));setConfirmDel(false);close();}}>Usuń</Btn>
+              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===effectiveDetail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+(c.dueDate||c.month)));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==effectiveDetail));setConfirmDel(false);close();}}>Usuń</Btn>
             </div>
           </Modal>}
         </>;
