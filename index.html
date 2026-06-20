@@ -2387,10 +2387,15 @@ p{margin:2px 0}.bold7{font-weight:bold}
                       <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}</div>
                       {(ext.amountDue||ext.amount||0)>0&&<div style={{fontSize:12,marginTop:2}}>
                         <span style={{color:"#7A8FA6"}}>Należne: </span><span style={{fontWeight:600}}>{ext.amountDue||ext.amount} zł</span>
-                        {(ext.amountPaid||0)>0
-                          ? <><span style={{color:"#3DAA72",marginLeft:8}}>✓ Zapłacono: {ext.amountPaid} zł</span>{(ext.amountPaid)<(ext.amountDue||ext.amount||0)&&<span style={{color:"#E05C5C",marginLeft:8}}>Pozostało: {(ext.amountDue||ext.amount||0)-ext.amountPaid} zł</span>}</>
-                          : <span style={{color:"#F4A261",marginLeft:8}}>· do zapłaty</span>
-                        }
+                        {(()=>{
+                          const cd=(+r.amount||0)+(r.extensions||[]).slice(0,i+1).reduce((s,e)=>s+(+e.amountDue||+e.amount||0),0);
+                          const cov=calcRentalPaid(r)>=cd;
+                          return (ext.amountPaid||0)>0
+                            ? <><span style={{color:"#3DAA72",marginLeft:8}}>✓ Zapłacono: {ext.amountPaid} zł</span>{(ext.amountPaid)<(ext.amountDue||ext.amount||0)&&<span style={{color:"#E05C5C",marginLeft:8}}>Pozostało: {(ext.amountDue||ext.amount||0)-ext.amountPaid} zł</span>}</>
+                            : cov
+                              ? <span style={{color:"#3DAA72",marginLeft:8}}>✓ pokryte wpłatą</span>
+                              : <span style={{color:"#F4A261",marginLeft:8}}>· do zapłaty</span>;
+                        })()}
                       </div>}
                       {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic",whiteSpace:"pre-wrap"}}>{ext.notes}</div>}
                     </div>
