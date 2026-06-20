@@ -229,6 +229,7 @@
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula","Balkonik ortopedyczny"];
+    const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
     const calcRentalPaid = r => {
       if(r.renewable) return (r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
       const pp=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
@@ -452,11 +453,12 @@
             if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms)))add(r.plannedReturn,{type:"plannedReturn",r});
           } else {
             (r.cycles||[]).filter(c=>!c.cancelled).forEach(c=>{
-              if(visibleMonths.includes(c.month)){
-                add(r.startDate.slice(0,7)===c.month?r.startDate:c.month+"-01",{type:"cycle",c,r});
+              const cd=c.dueDate||c.month+"-01";
+              if(visibleMonths.includes(cd.slice(0,7))){
+                add(cd,{type:"cycle",c,r});
               }
             });
-            if(visibleMonths.some(ms=>r.startDate.startsWith(ms))&&!(r.cycles||[]).some(c=>c.month===r.startDate.slice(0,7))){
+            if(visibleMonths.some(ms=>r.startDate.startsWith(ms))&&!(r.cycles||[]).some(c=>(c.dueDate||c.month+"-01").startsWith(r.startDate.slice(0,7)))){
               add(r.startDate,{type:"start",r});
             }
             if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms))){
@@ -1294,7 +1296,7 @@
                       const _pr=rentals.filter(r=>r.patientId===_pid||r.patientName===_pn);
                       const _vids=visits.filter(v=>v.patientId===_pid).map(v=>v.id);
                       const _pids=_pr.flatMap(r=>(r.payments||[]).map(p=>p.id));
-                      const _cids=_pr.flatMap(r=>(r.cycles||[]).map(c=>"cycle-"+r.id+"-"+c.month));
+                      const _cids=_pr.flatMap(r=>(r.cycles||[]).map(c=>"cycle-"+r.id+"-"+(c.dueDate||c.month)));
                       const _extPrefixes=_pr.map(r=>"extend-"+r.id+"-");
                       setVisits(vs=>vs.filter(v=>v.patientId!==_pid));
                       setRentals(rs=>rs.filter(r=>r.patientId!==_pid&&r.patientName!==_pn));
@@ -1499,7 +1501,7 @@
         const lastDay=new Date(y,m,0).getDate();
         const day=Math.min(+startDay,lastDay);
         const paidDate=mStr+"-"+String(day).padStart(2,"0");
-        months.push({month:mStr,paidDate});
+        months.push({month:mStr,dueDate:paidDate,paidDate});
         m++;if(m>12){m=1;y++;}
       }
       const [checked,setChecked]=useState(()=>Object.fromEntries(months.map(x=>[x.month,true])));
@@ -1529,11 +1531,11 @@
           })}
         </div>
         <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-          const newCycles=months.map(x=>({month:x.month,amount:+(amounts[x.month]||0),paid:!!checked[x.month],paidDate:checked[x.month]?x.paidDate:null}));
+          const newCycles=months.map(x=>({month:x.month,dueDate:x.dueDate,amount:+(amounts[x.month]||0),paid:!!checked[x.month],paidDate:checked[x.month]?x.paidDate:null}));
           setRentals(rs=>rs.map(rr=>rr.id===r.id?{...rr,cycles:newCycles}:rr));
           const newFinances=months.filter(x=>checked[x.month]&&+(amounts[x.month]||0)>0).map(x=>{
             const label=new Date(x.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-            return {id:Date.now()+Math.random(),sourceId:"cycle-"+r.id+"-"+x.month,date:x.paidDate,type:"przychód",category:"Wypożyczalnia",amount:+(amounts[x.month]||0),description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label};
+            return {id:Date.now()+Math.random(),sourceId:"cycle-"+r.id+"-"+x.dueDate,date:x.paidDate,type:"przychód",category:"Wypożyczalnia",amount:+(amounts[x.month]||0),description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label};
           });
           if(newFinances.length)setFinances(fs=>[...newFinances,...fs]);
         }}>✓ Zatwierdź historię ({months.filter(x=>checked[x.month]).length} mies.)</Btn>
@@ -1543,15 +1545,16 @@
     function CycleRow({r,cycle,setRentals,setFinances}) {
       const [amt,setAmt]=useState(String(cycle.amount||""));
       const [payDate,setPayDate]=useState(todayLocal);
-      const label=new Date(cycle.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-      const sid="cycle-"+r.id+"-"+cycle.month;
+      const dueDt=cycle.dueDate||cycle.month+"-15";
+      const label=new Date(dueDt+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
+      const sid="cycle-"+r.id+"-"+(cycle.dueDate||cycle.month);
       if(cycle.cancelled) return (
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F2F5F7",opacity:.5}}>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
             <div style={{width:8,height:8,borderRadius:"50%",background:"#7A8FA6",flexShrink:0}}/>
             <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",textDecoration:"line-through"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>Anulowany</div></div>
           </div>
-          <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,cancelled:false}:c)}:x))} style={{background:"#F2F5F7",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
+          <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,cancelled:false}:c)}:x))} style={{background:"#F2F5F7",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
         </div>
       );
       if(cycle.paid) return (
@@ -1560,7 +1563,7 @@
             <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
             <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{cycle.amount} zł · {cycle.paidDate}</div></div>
           </div>
-          <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,paid:false,paidDate:null}:c)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
+          <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,paid:false,paidDate:null}:c)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
         </div>
       );
       return (
@@ -1571,8 +1574,8 @@
             <input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
-            <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>c.month===cycle.month?{...c,cancelled:true}:c)}:x))} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
+            <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
+            <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,cancelled:true}:c)}:x))} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
           </div>
         </div>
       );
@@ -2420,7 +2423,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                       ? <HistoryFill r={r} setRentals={setRentals} setFinances={setFinances}/>
                       : <>
                           {(r.cycles||[]).length===0&&<div style={{fontSize:14,color:"#7A8FA6",textAlign:"center",padding:"12px 0"}}>Brak cykli — pojawią się automatycznie</div>}
-                          {[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month)).map(c=><CycleRow key={c.month} r={r} cycle={c} setRentals={setRentals} setFinances={setFinances}/>)}
+                          {[...(r.cycles||[])].sort((a,b)=>(b.dueDate||b.month).localeCompare(a.dueDate||a.month)).map(c=><CycleRow key={c.dueDate||c.month} r={r} cycle={c} setRentals={setRentals} setFinances={setFinances}/>)}
                         </>
                     }
                   </> : (()=>{
@@ -4974,28 +4977,37 @@ Zasady:
     }
 
     function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,rentalsLoaded,financesLoaded}) {
-      // Auto-generate current month cycle — only for rentals that already have cycles (went through HistoryFill)
-      // or are new (startDate is in current month)
+      // Auto-generate next cycle 30 days after the previous one (or on startDate for new rentals)
       useEffect(()=>{
         if(!rentals)return;
-        const cm=todayLocal().slice(0,7);
+        const today=todayLocal();
+        const currMonthStart=today.slice(0,7)+"-01";
         const needsUpdate=rentals.some(r=>{
           if(r.status!=="aktywne"||!r.renewable)return false;
-          if((r.cycles||[]).some(c=>c.month===cm))return false;
-          // Skip if cycles empty AND startDate older than current month — needs HistoryFill first
-          if((r.cycles||[]).length===0&&r.startDate.slice(0,7)<cm)return false;
-          // Skip if plannedReturn is set and is in a past month — rental is effectively done
-          if(r.plannedReturn&&r.plannedReturn.slice(0,7)<cm)return false;
-          return true;
+          const cyc=r.cycles||[];
+          if(cyc.length===0){
+            if(r.startDate<currMonthStart)return false; // HistoryFill handles old rentals
+            return r.startDate<=today;
+          }
+          const last=[...cyc].sort((a,b)=>(b.dueDate||b.month+"-01").localeCompare(a.dueDate||a.month+"-01"))[0];
+          return addDays(last.dueDate||last.month+"-01",30)<=today;
         });
         if(!needsUpdate)return;
         setRentals(rs=>rs.map(r=>{
           if(r.status!=="aktywne"||!r.renewable)return r;
-          if((r.cycles||[]).some(c=>c.month===cm))return r;
-          if((r.cycles||[]).length===0&&r.startDate.slice(0,7)<cm)return r;
-          if(r.plannedReturn&&r.plannedReturn.slice(0,7)<cm)return r;
-          const last=[...(r.cycles||[])].sort((a,b)=>b.month.localeCompare(a.month))[0];
-          return {...r,cycles:[...(r.cycles||[]),{month:cm,amount:last?last.amount:(r.amount||0),paid:false,paidDate:null}]};
+          let cyc=[...(r.cycles||[])];
+          if(cyc.length===0){
+            if(r.startDate<currMonthStart||r.startDate>today)return r;
+            cyc=[{dueDate:r.startDate,month:r.startDate.slice(0,7),amount:+(r.amount||0),paid:false,paidDate:null}];
+          }
+          let last=[...cyc].sort((a,b)=>(b.dueDate||b.month+"-01").localeCompare(a.dueDate||a.month+"-01"))[0];
+          let nd=addDays(last.dueDate||last.month+"-01",30);
+          while(nd<=today){
+            if(cyc.some(c=>(c.dueDate||c.month+"-01")===nd))break;
+            cyc=[...cyc,{dueDate:nd,month:nd.slice(0,7),amount:last.amount,paid:false,paidDate:null}];
+            last=cyc[cyc.length-1];nd=addDays(nd,30);
+          }
+          return cyc.length===(r.cycles||[]).length?r:{...r,cycles:cyc};
         }));
       },[]);
       useEffect(()=>{
@@ -5011,9 +5023,10 @@ Zasady:
           toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:p.date,type:"przychód",category:"Wypożyczalnia",amount:p.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"});
         }));
         rentals.forEach(r=>(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).forEach(c=>{
-          const sid="cycle-"+r.id+"-"+c.month; if(ex.has(sid))return;
-          const label=new Date(c.month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-          toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||c.month+"-15",type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label});
+          const sid="cycle-"+r.id+"-"+(c.dueDate||c.month); if(ex.has(sid))return;
+          const dueDt=c.dueDate||c.month+"-15";
+          const label=new Date(dueDt+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
+          toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:c.paidDate||dueDt,type:"przychód",category:"Wypożyczalnia",amount:c.amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label});
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals,rentalsLoaded,financesLoaded]);
