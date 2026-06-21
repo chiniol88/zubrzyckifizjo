@@ -2932,18 +2932,45 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </div>}
           <Btn disabled={csvRows.length===0} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             const now=Date.now();
-            const existingKeys=new Set(rentals.map(r=>(r.patientName||"")+"|"+(r.startDate||"")));
-            const rowsToAdd=csvRows.filter(row=>!existingKeys.has((row.pacjent||"")+"|"+(row.dataOd||"")));
-            const skipped=csvRows.length-rowsToAdd.length;
-            const newRentals=rowsToAdd.map((row,i)=>{
-              const payId=now+i*100+1;const paid=+row.zaplacono;
-              return{id:now+i*100,patientId:null,patientName:row.pacjent,phone:row.telefon,address:row.adres,equipment:row.sprzet||"",startDate:row.dataOd,endDate:row.dataDo,amount:+row.kwota,amountPaid:paid,payments:paid>0?[{id:payId,amount:paid,date:row.dataOd}]:[],cycles:[],status:"zakończone",renewable:false,startAllDay:true,endAllDay:true,transport:+row.dowoz,source:row.skad,notes:row.notatki};
+            const existingByKey={};
+            rentals.forEach(r=>{const k=(r.patientName||"")+"|"+(r.startDate||"");if(!existingByKey[k])existingByKey[k]=r;});
+            const newRentals=[];
+            const updatedMap={};
+            const financeUpserts=[];
+            csvRows.forEach((row,i)=>{
+              const k=(row.pacjent||"")+"|"+(row.dataOd||"");
+              const paid=+row.zaplacono;
+              const existing=existingByKey[k];
+              if(existing){
+                const payId=(existing.payments&&existing.payments[0]&&existing.payments[0].id)||(now+i*100+1);
+                updatedMap[existing.id]={...existing,
+                  phone:row.telefon||existing.phone,
+                  address:row.adres||existing.address,
+                  equipment:row.sprzet||existing.equipment,
+                  endDate:row.dataDo||existing.endDate,
+                  amount:row.kwota?+row.kwota:existing.amount,
+                  amountPaid:paid||existing.amountPaid,
+                  payments:paid>0?[{id:payId,amount:paid,date:row.dataOd}]:(existing.payments||[]),
+                  transport:row.dowoz?+row.dowoz:existing.transport,
+                  source:row.skad||existing.source,
+                  notes:row.notatki||existing.notes};
+                if(paid>0)financeUpserts.push({sourceId:"payment-"+payId,date:row.dataOd,amount:paid,description:"Wypożyczenie – "+row.pacjent+" (import)"});
+              }else{
+                const payId=now+i*100+1;
+                newRentals.push({id:now+i*100,patientId:null,patientName:row.pacjent,phone:row.telefon,address:row.adres,equipment:row.sprzet||"",startDate:row.dataOd,endDate:row.dataDo,amount:+row.kwota,amountPaid:paid,payments:paid>0?[{id:payId,amount:paid,date:row.dataOd}]:[],cycles:[],status:"zakończone",renewable:false,startAllDay:true,endAllDay:true,transport:+row.dowoz,source:row.skad,notes:row.notatki});
+                if(paid>0)financeUpserts.push({sourceId:"payment-"+payId,date:row.dataOd,amount:paid,description:"Wypożyczenie – "+row.pacjent+" (import)"});
+              }
             });
-            const newFinances=rowsToAdd.flatMap((row,i)=>{const payId=now+i*100+1;const paid=+row.zaplacono;if(paid<=0)return[];return[{id:now+i*100+50,sourceId:"payment-"+payId,date:row.dataOd,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+row.pacjent+" (import)"}];});
-            setRentals(rs=>[...newRentals,...rs]);
-            setFinances(fs=>[...newFinances,...fs]);
+            const updatedCount=Object.keys(updatedMap).length;
+            setRentals(rs=>[...newRentals,...rs.map(r=>updatedMap[r.id]||r)]);
+            setFinances(fs=>{
+              const existingSids=new Set(fs.map(f=>f.sourceId));
+              const merged=fs.map(f=>{const u=financeUpserts.find(x=>x.sourceId===f.sourceId);return u?{...f,date:u.date,amount:u.amount,description:u.description}:f;});
+              const toAdd=financeUpserts.filter(u=>!existingSids.has(u.sourceId)).map((u,i)=>({id:now+90000+i,sourceId:u.sourceId,date:u.date,type:"przychód",category:"Wypożyczalnia",amount:u.amount,description:u.description}));
+              return [...toAdd,...merged];
+            });
             setShowImport(false);setCsvRows([]);setCsvError("");
-            setToast("Zaimportowano "+newRentals.length+(skipped>0?", pominięto "+skipped+" (już istnieją)":"")+" ✅");
+            setToast("Zaimportowano "+newRentals.length+(updatedCount>0?", zaktualizowano "+updatedCount:"")+" ✅");
           }}>Importuj {csvRows.length > 0 ? csvRows.length+" " : ""}wypożyczeń →</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
