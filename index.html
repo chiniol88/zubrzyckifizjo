@@ -1675,7 +1675,7 @@
     }
 
 
-    function RentalStats({rentals,stock,setStock,finances,budget}) {
+    function RentalStats({rentals,stock,setStock,finances,budget,machines}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
@@ -1812,7 +1812,8 @@
       const DURATION_OFF_BY_DEFAULT=["Ambonka Paula","Balkonik ortopedyczny"];
       const getDurationInclude=eq=>(stock&&stock.durationInclude&&stock.durationInclude[eq]!==undefined)?stock.durationInclude[eq]:!DURATION_OFF_BY_DEFAULT.includes(eq);
       const setDurationInclude=(eq,val)=>setStock(s=>({...s,durationInclude:{...(s.durationInclude||{}),[eq]:val}}));
-      const getTotalInvestment=eq=>{const c=getCosts(eq);const qty=getQty(eq);return(+c.purchase||0)*qty+(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0);};
+      const getMachineSrvForEq=eq=>(machines||[]).filter(m=>m.type===eq).flatMap(m=>(m.serviceLog||[]).filter(s=>+s.cost>0).map(s=>({id:"srv-"+s.id,date:s.date,amount:+s.cost,desc:(s.type+(s.notes?" – "+s.notes:""))+" ("+(m.name||m.type)+")",fromService:true})));
+      const getTotalInvestment=eq=>{const c=getCosts(eq);const qty=getQty(eq);const machineSrv=getMachineSrvForEq(eq).reduce((s,x)=>s+x.amount,0);return(+c.purchase||0)*qty+(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+machineSrv;};
       const setPurchase=(eq,val)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,purchase:+val||0}}};});
       const setQtyInStats=(eq,val)=>setStock(s=>({...s,qty:{...(s.qty||{}),[eq]:Math.max(1,+val||1)}}));
       const saveRepair=(eq,rep)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:[...(ex.repairs||[]).filter(r=>r.id!==rep.id),rep]}}};});
@@ -2016,7 +2017,8 @@
             const isOpen=roiEq===eq;
             const c=getCosts(eq);
             const qty=getQty(eq);
-            const repairsTotal=(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0);
+            const machineSrvEntries=getMachineSrvForEq(eq);
+            const repairsTotal=(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+machineSrvEntries.reduce((s,x)=>s+x.amount,0);
             // Szacowanie zwrotu na bazie ostatnich 3 miesięcy (z finansów)
             const last3mStr=new Date(today);last3mStr.setMonth(last3mStr.getMonth()-3);
             const last3mCut=last3mStr.toISOString().slice(0,10);
@@ -2082,14 +2084,17 @@
                     <button onClick={()=>setRepairForm({eq,id:Date.now()+"",date:todayLocal(),amount:"",desc:""})}
                       style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
                   </div>
-                  {(c.repairs||[]).length===0&&<div style={{fontSize:12,color:subC}}>Brak wpisanych napraw</div>}
-                  {(c.repairs||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(rep=><div key={rep.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${borderC}`}}>
+                  {(()=>{const allRep=[...(c.repairs||[]),...machineSrvEntries].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+                  if(allRep.length===0)return<div style={{fontSize:12,color:subC}}>Brak wpisanych napraw</div>;
+                  return allRep.map(rep=><div key={rep.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${borderC}`}}>
                     <div>
                       <div style={{fontSize:13,color:textC,fontWeight:600}}>{demo?"****":rep.amount+" zł"}{rep.desc&&<span style={{fontWeight:400,color:subC}}> · {rep.desc}</span>}</div>
-                      {rep.date&&<div style={{fontSize:11,color:subC}}>{rep.date}</div>}
+                      {rep.date&&<div style={{fontSize:11,color:subC}}>{rep.date}{rep.fromService&&<span style={{marginLeft:6,color:"#0A7C7C",fontSize:10}}>z Serwisu</span>}</div>}
                     </div>
-                    <button onClick={()=>deleteRepair(eq,rep.id)} style={{background:"none",border:"none",color:"#E05C5C",fontSize:18,cursor:"pointer",padding:"2px 6px"}}>×</button>
-                  </div>)}
+                    {rep.fromService
+                      ?<span style={{fontSize:10,color:"#7A8FA6",padding:"2px 8px"}}>🔧</span>
+                      :<button onClick={()=>deleteRepair(eq,rep.id)} style={{background:"none",border:"none",color:"#E05C5C",fontSize:18,cursor:"pointer",padding:"2px 6px"}}>×</button>}
+                  </div>);})()}
                 </div>
               </div>}
             </div>;
@@ -2900,7 +2905,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey,stock,setStock}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey,stock,setStock,machines}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -3072,7 +3077,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
-            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} budget={budget}/>}
+            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} budget={budget} machines={machines}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
@@ -4668,7 +4673,7 @@ Zasady:
 
     // ── SERVICE ───────────────────────────────────────────────────────────────
 
-    function Service({rentals,machines,setMachines}) {
+    function Service({rentals,machines,setMachines,setFinances}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [selId,setSelId]=useState(null);
@@ -4836,7 +4841,11 @@ Zasady:
           <Inp label="Koszt (zł)" value={srvForm.cost} onChange={v=>setSrvForm(f=>({...f,cost:v}))} type="number" placeholder="0"/>
           <Btn onClick={()=>{
             const entry={id:Date.now(),date:srvForm.date,type:srvForm.type,notes:srvForm.notes,cost:+srvForm.cost||0};
+            const mach=(machines||[]).find(m=>m.id===showAddSrv);
             setMachines(ms=>ms.map(m=>m.id===showAddSrv?{...m,lastServiceDate:srvForm.date,serviceLog:[...(m.serviceLog||[]),entry]}:m));
+            if(+srvForm.cost>0&&mach&&setFinances){
+              setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"serwis-"+showAddSrv+"-"+entry.id,date:srvForm.date,type:"koszt",category:"Serwis",amount:+srvForm.cost,description:srvForm.type+(srvForm.notes?" – "+srvForm.notes:"")+" ("+(mach.name||mach.type)+")"},...(fs||[])]);
+            }
             setShowAddSrv(null);
             setToast("Serwis dodany");
           }} style={{width:"100%",justifyContent:"center"}}>Zapisz</Btn>
@@ -4902,9 +4911,9 @@ Zasady:
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} allClients={allClients}/>}
         {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
-        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock}/>}
+        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock} machines={machines}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients}/>}
-        {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines}/>}
+        {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
       </>;
 
