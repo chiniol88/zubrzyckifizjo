@@ -2932,21 +2932,18 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </div>}
           <Btn disabled={csvRows.length===0} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             const now=Date.now();
-            const existingMap={};
-            rentals.forEach(r=>{const k=(r.patientName||"")+"|"+(r.startDate||"");if(!existingMap[k])existingMap[k]=r.id;});
-            const toRemoveIds=new Set();
-            const newRentals=csvRows.map((row,i)=>{
-              const k=(row.pacjent||"")+"|"+(row.dataOd||"");
-              if(existingMap[k])toRemoveIds.add(existingMap[k]);
+            const existingKeys=new Set(rentals.map(r=>(r.patientName||"")+"|"+(r.startDate||"")));
+            const rowsToAdd=csvRows.filter(row=>!existingKeys.has((row.pacjent||"")+"|"+(row.dataOd||"")));
+            const skipped=csvRows.length-rowsToAdd.length;
+            const newRentals=rowsToAdd.map((row,i)=>{
               const payId=now+i*100+1;const paid=+row.zaplacono;
               return{id:now+i*100,patientId:null,patientName:row.pacjent,phone:row.telefon,address:row.adres,equipment:row.sprzet||"",startDate:row.dataOd,endDate:row.dataDo,amount:+row.kwota,amountPaid:paid,payments:paid>0?[{id:payId,amount:paid,date:row.dataOd}]:[],cycles:[],status:"zakończone",renewable:false,startAllDay:true,endAllDay:true,transport:+row.dowoz,source:row.skad,notes:row.notatki};
             });
-            const oldPayIds=new Set(rentals.filter(r=>toRemoveIds.has(r.id)).flatMap(r=>(r.payments||[]).map(p=>"payment-"+p.id)));
-            const newFinances=csvRows.flatMap((row,i)=>{const payId=now+i*100+1;const paid=+row.zaplacono;if(paid<=0)return[];return[{id:now+i*100+50,sourceId:"payment-"+payId,date:row.dataOd,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+row.pacjent+" (import)"}];});
-            setRentals(rs=>[...newRentals,...rs.filter(r=>!toRemoveIds.has(r.id))]);
-            setFinances(fs=>[...newFinances,...fs.filter(f=>!oldPayIds.has(f.sourceId))]);
+            const newFinances=rowsToAdd.flatMap((row,i)=>{const payId=now+i*100+1;const paid=+row.zaplacono;if(paid<=0)return[];return[{id:now+i*100+50,sourceId:"payment-"+payId,date:row.dataOd,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+row.pacjent+" (import)"}];});
+            setRentals(rs=>[...newRentals,...rs]);
+            setFinances(fs=>[...newFinances,...fs]);
             setShowImport(false);setCsvRows([]);setCsvError("");
-            setToast("Zaimportowano "+newRentals.length+(toRemoveIds.size>0?", zastąpiono "+toRemoveIds.size:"")+" ✅");
+            setToast("Zaimportowano "+newRentals.length+(skipped>0?", pominięto "+skipped+" (już istnieją)":"")+" ✅");
           }}>Importuj {csvRows.length > 0 ? csvRows.length+" " : ""}wypożyczeń →</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
