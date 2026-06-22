@@ -2011,6 +2011,10 @@
               })
             }
             {withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:6}}>{withoutSrc} z {periodRentals.length} bez oznaczonego źródła</div>}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:`1px solid ${borderC}`}}>
+              <span style={{fontSize:12,color:textC,fontWeight:600}}>📣 Koszt marketingu (okres)</span>
+              <span style={{fontSize:13,fontWeight:800,color:"#E05C5C"}}>{demo?"****":stats.marketingSpend.toFixed(2)+" zł"}</span>
+            </div>
             <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:`1px solid ${borderC}`,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
               {showRentalList?"▲ Ukryj listę":"▼ Lista wpłat ("+listItems.length+")"}
             </button>
