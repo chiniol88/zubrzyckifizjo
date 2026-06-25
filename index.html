@@ -204,23 +204,37 @@
         return()=>window.removeEventListener("beforeunload",onBeforeUnload);
       },[]);
 
+      // Wspólna funkcja: pobierz dane z serwera i zastosuj lokalnie jeśli inne — ale tylko gdy
+      // nie mamy lokalnej niezapisanej zmiany (nigdy nie nadpisuje czegoś co czeka na zapis)
+      const pullFromServer=React.useCallback(()=>{
+        if(userChanged.current)return;
+        dbGet(key).then(({data:v,ts})=>{
+          if(v===null||userChanged.current)return;
+          try{
+            if(JSON.stringify(v)!==JSON.stringify(stateRef.current)){
+              setState(v);
+              loadedTsRef.current=ts;
+            }
+          }catch{}
+        });
+      },[key]);
+
       // Polling co 30s — synchronizacja między urządzeniami
       useEffect(()=>{
         if(!loaded||!ready)return;
-        const interval=setInterval(()=>{
-          if(userChanged.current)return;
-          dbGet(key).then(({data:v,ts})=>{
-            if(v===null||userChanged.current)return;
-            try{
-              if(JSON.stringify(v)!==JSON.stringify(stateRef.current)){
-                setState(v);
-                loadedTsRef.current=ts;
-              }
-            }catch{}
-          });
-        },30000);
+        const interval=setInterval(pullFromServer,30000);
         return()=>clearInterval(interval);
-      },[loaded,ready]);
+      },[loaded,ready,pullFromServer]);
+
+      // Natychmiastowe odświeżenie po powrocie do karty/apki (nie czekaj do 30s) — ważne przy
+      // używaniu apki na 2 urządzeniach (np. telefon + laptop): po powrocie do urządzenia, które
+      // długo stało w tle, dociągamy najnowsze dane ZANIM zdążysz coś na nim wpisać na nieaktualnej wersji
+      useEffect(()=>{
+        if(!loaded||!ready)return;
+        const onResume=()=>{if(document.visibilityState==="visible")pullFromServer();};
+        document.addEventListener("visibilitychange",onResume);
+        return()=>document.removeEventListener("visibilitychange",onResume);
+      },[loaded,ready,pullFromServer]);
 
       // Wykrywanie konfliktu: gdy karta staje się aktywna, sprawdź czy serwer ma nowsze dane
       useEffect(()=>{
