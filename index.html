@@ -228,7 +228,7 @@
     const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",startAllDay:false,endDate:"",endTime:"10:00",endAllDay:false,renewable:false,amount:"",amountPaid:"",transport:"",notes:"",source:""});
 
     const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
-    const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula","Balkonik ortopedyczny"];
+    const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
     const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
     const calcRentalPaid = r => {
       if(r.renewable) return (r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
@@ -2017,7 +2017,7 @@
             {showRentalList&&<div style={{marginTop:8}}>
               {listItems.map(item=>{
                 const src=RENTAL_SOURCES.find(s=>s.value===item.source);
-                const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL");
+                const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL").replace("Wózek inwalidzki Elite Tim","TIM");
                 const isExt=item.type!=="Wpłata";
                 return <div key={item.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${borderC}`,fontSize:12,gap:6}}>
                   <span style={{color:subC,flexShrink:0,fontSize:11}}>{item.date?.slice(5)}</span>
