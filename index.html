@@ -1777,7 +1777,7 @@
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
         const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
         const durationIncludeMap=(stock&&stock.durationInclude)||{};
-        const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny"];
+        const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
         const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
@@ -1809,7 +1809,7 @@
       const getCosts=eq=>costs[eq]||{purchase:0,repairs:[]};
       const getQty=eq=>(stock&&stock.qty&&stock.qty[eq])||1;
       // domyślnie wyłączone dla krótkoterminowych, włączone dla reszty — można nadpisać ręcznie
-      const DURATION_OFF_BY_DEFAULT=["Ambonka Paula","Balkonik ortopedyczny"];
+      const DURATION_OFF_BY_DEFAULT=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
       const getDurationInclude=eq=>(stock&&stock.durationInclude&&stock.durationInclude[eq]!==undefined)?stock.durationInclude[eq]:!DURATION_OFF_BY_DEFAULT.includes(eq);
       const setDurationInclude=(eq,val)=>setStock(s=>({...s,durationInclude:{...(s.durationInclude||{}),[eq]:val}}));
       const getMachineSrvForEq=eq=>(machines||[]).filter(m=>m.type===eq).flatMap(m=>(m.serviceLog||[]).filter(s=>+s.cost>0).map(s=>({id:"srv-"+s.id,date:s.date,amount:+s.cost,desc:(s.type+(s.notes?" – "+s.notes:""))+" ("+(m.name||m.type)+")",fromService:true})));
