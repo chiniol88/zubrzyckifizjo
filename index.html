@@ -1601,7 +1601,7 @@
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
             <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{cycle.amount} zł · {cycle.paidDate}</div></div>
+            <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{cycle.amount>0?cycle.amount+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate}</div></div>
           </div>
           <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,paid:false,paidDate:null}:c)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
         </div>
@@ -1615,6 +1615,7 @@
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
+            <button onClick={()=>{const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,amount:0,paid:true,paidDate:pd}:c)}:x));}} style={{background:"#FFF3E0",border:"none",borderRadius:12,padding:"10px 12px",fontSize:13,fontWeight:600,color:"#F4A261",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🏥 NFZ (0 zł)</button>
             <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,cancelled:true}:c)}:x))} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
           </div>
         </div>
@@ -2465,6 +2466,13 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{demo?"****":r.transport+" zł"}</div></div>}
                 </div>
+                {r.renewable&&r.transport>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #E4EAF0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                  <div style={{fontSize:13,color:"#7A8FA6"}}>{r.transportPaid?"Transport opłacony "+r.transportPaidDate:"Transport jeszcze nieopłacony"}</div>
+                  {r.transportPaid
+                    ? <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:false,transportPaidDate:null}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="transport-"+r.id));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Anuluj</button>
+                    : <button onClick={()=>{const pd=todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:true,transportPaidDate:pd}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"transport-"+r.id,date:pd,type:"przychód",category:"Wypożyczalnia",amount:+r.transport,description:"Transport – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...fs]);}} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✓ Opłacono</button>
+                  }
+                </div>}
                 {(r.extensions||[]).length>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #E4EAF0"}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia przedłużeń</div>
                   <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #F2F5F7"}}>
