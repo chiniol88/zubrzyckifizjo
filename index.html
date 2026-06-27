@@ -2252,7 +2252,6 @@
       const waitDays=r.reserved&&r.reservedAt?dateDiff(r.reservedAt,today):0;
       const startDl=r.reserved&&r.startDate?dateDiff(today,r.startDate):null;
       const unpaid=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).length;
-      const isZakończone=r.status==="zakończone";
       const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
       const totalAmount=(+r.amount||0)+extDue;
       const totalPaid=calcRentalPaid(r);
@@ -2277,8 +2276,8 @@
           {r.renewable?(unpaid>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ {unpaid} {unpaid===1?"miesiąc":"mies."} do opłacenia</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ wszystko opłacone</span>):(totalAmount-totalPaid)>0?<span style={{color:"#E05C5C",fontWeight:600}}>⚠️ do zapłaty: {demo?"****":totalAmount-totalPaid} zł</span>:<span style={{color:"#3DAA72",fontWeight:600}}>✓ opłacone</span>}
           {!demo&&r.address&&<span>📍 {r.address}</span>}
         </div>
-        {(r.notes||(isZakończone&&(hasReceipt||hasInvoice)))&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
-          {isZakończone&&(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
+        {(r.notes||hasReceipt||hasInvoice)&&<div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",display:"flex",flexDirection:"column",gap:4}}>
+          {(hasReceipt||hasInvoice)&&<div style={{display:"flex",gap:6}}>
             {hasReceipt&&<span style={{fontSize:11,fontWeight:600,color:"#0A7C7C",background:"#E6F4F4",borderRadius:6,padding:"2px 8px"}}>🧾 Paragon</span>}
             {hasInvoice&&<span style={{fontSize:11,fontWeight:600,color:"#7C6AF4",background:"#F0EEFF",borderRadius:6,padding:"2px 8px"}}>📄 Faktura</span>}
           </div>}
