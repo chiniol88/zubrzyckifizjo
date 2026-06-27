@@ -1751,6 +1751,7 @@
         if(sid.startsWith("payment-"))return paymentRentalMap[sid.replace("payment-","")]||null;
         if(sid.startsWith("cycle-")){const r=sid.slice(6);return +r.split("-")[0]||null;}
         if(sid.startsWith("extend-")){const r=sid.slice(7);return +r.split("-")[0]||null;}
+        if(sid.startsWith("transport-"))return +sid.slice(10)||null;
         return null;
       };
 
@@ -3194,6 +3195,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
         else if(sid.startsWith("extend-")){const rest=sid.slice(7);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const eid=+rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,extensions:(r.extensions||[]).map(e=>+e.id===eid?{...e,amountPaid:0,paidDate:null}:e)}));}
         else if(sid.startsWith("cycle-")){const rest=sid.slice(6);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const mo=rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,cycles:(r.cycles||[]).map(c=>c.month===mo?{...c,paid:false,paidDate:null}:c)}));}
         else if(sid.startsWith("wozek-")){const cid=+sid.replace("wozek-","");setNfzCases(cs=>(cs||[]).map(c=>+c.id===cid?{...c,realized:false}:c));}
+        else if(sid.startsWith("transport-")){const rid=+sid.slice(10);setRentals(rs=>rs.map(r=>+r.id===rid?{...r,transportPaid:false,transportPaidDate:null}:r));}
         setFinances(fs=>fs.filter(f=>f.id!==entry.id));
       };
 
