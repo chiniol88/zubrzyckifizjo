@@ -271,10 +271,11 @@
     const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
     const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
     const calcRentalPaid = r => {
-      if(r.renewable) return (r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
+      const tp=r.transportPaid?(+r.transport||0):0;
+      if(r.renewable) return tp+(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
       const pp=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
       const ep=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);
-      return (pp||(+r.amountPaid||0))+ep;
+      return tp+(pp||(+r.amountPaid||0))+ep;
     };
     const RENTAL_SOURCES = [
       {value:"reklama",label:"📢 Reklama",color:"#7C6AF4"},
@@ -2617,7 +2618,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
 
               {r.renewable&&(r.cycles||[]).length>0&&(()=>{
                 const paid=(r.cycles||[]).filter(c=>c.paid);
-                const total=paid.reduce((s,c)=>s+c.amount,0);
+                const total=calcRentalPaid(r);
                 const unpaidN=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).length;
                 return <Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Podsumowanie wypożyczenia</div>
