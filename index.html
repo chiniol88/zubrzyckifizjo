@@ -1768,6 +1768,16 @@
         return rev;
       },[finances,rentalEquipMap,paymentRentalMap]);
 
+      // All-time śr. czas wypożyczenia per sprzęt (zakończone, z datą od i do)
+      const avgDurationByEq=useMemo(()=>{
+        const map={};
+        EQUIPMENT.forEach(eq=>{
+          const finished=rentals.filter(r=>r.equipment===eq&&r.status==="zakończone"&&r.startDate&&r.endDate);
+          map[eq]=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+        });
+        return map;
+      },[rentals]);
+
       // Statystyki miesięczne — konkretny miesiąc kalendarzowy
       const stats=useMemo(()=>{
         const cutStr=selMonth+"-01";
@@ -2099,6 +2109,7 @@
             avgMonthly=Math.round(avgMonthly/3);
             const remaining=investment-earned;
             const monthsLeft=avgMonthly>0&&remaining>0?Math.ceil(remaining/avgMonthly):null;
+            const avgDur=getDurationInclude(eq)?avgDurationByEq[eq]:null;
             return <div key={eq} style={{marginBottom:10,background:dk?"#0F1E1E":"#F8FAFB",borderRadius:12,overflow:"hidden"}}>
               <div onClick={()=>setRoiEq(isOpen?null:eq)} style={{padding:"10px 12px",cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -2120,6 +2131,7 @@
                   {monthsLeft!==null&&remaining>0&&<div style={{fontSize:11,color:"#F4A261",marginTop:3}}>⏳ Zwrot za ~{monthsLeft} mies.</div>}
                   {remaining<=0&&investment>0&&<div style={{fontSize:11,color:"#3DAA72",marginTop:3}}>✅ Zwróciło się w całości!</div>}
                 </>}
+                {avgDur!==null&&<div style={{fontSize:11,color:subC,marginTop:investment>0?3:6}}>⏱ Śr. czas wypożyczenia: {avgDur} dni</div>}
               </div>
               {isOpen&&<div style={{padding:"0 12px 12px",borderTop:`1px solid ${borderC}`}}>
                 <div style={{marginTop:10}}>
