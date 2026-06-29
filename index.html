@@ -1717,7 +1717,7 @@
     }
 
 
-    function RentalStats({rentals,stock,setStock,finances,budget,machines}) {
+    function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
@@ -2247,17 +2247,30 @@
           }
         </div>
 
-        {repairForm&&<Modal title="Naprawa / serwis" onClose={()=>setRepairForm(null)}>
-          <div style={{fontSize:13,fontWeight:600,color:subC,marginBottom:12}}>{repairForm.eq}</div>
-          <Inp label="Kwota (zł)" value={repairForm.amount} onChange={v=>setRepairForm(f=>({...f,amount:v}))} type="number"/>
-          <Inp label="Opis (opcjonalnie)" value={repairForm.desc} onChange={v=>setRepairForm(f=>({...f,desc:v}))}/>
-          <Inp label="Data" value={repairForm.date} onChange={v=>setRepairForm(f=>({...f,date:v}))} type="date"/>
-          <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
-            if(!repairForm.amount)return;
-            saveRepair(repairForm.eq,{id:repairForm.id,date:repairForm.date,amount:+repairForm.amount,desc:repairForm.desc});
-            setRepairForm(null);
-          }}>Zapisz</Btn>
-        </Modal>}
+        {repairForm&&(()=>{
+          const eqMachines=(machines||[]).filter(m=>m.type===repairForm.eq);
+          const targetId=eqMachines.length===1?eqMachines[0].id:repairForm.machineId;
+          return <Modal title="Naprawa / serwis" onClose={()=>setRepairForm(null)}>
+            <div style={{fontSize:13,fontWeight:600,color:subC,marginBottom:12}}>{repairForm.eq}</div>
+            <Inp label="Kwota (zł)" value={repairForm.amount} onChange={v=>setRepairForm(f=>({...f,amount:v}))} type="number"/>
+            <Inp label="Opis (opcjonalnie)" value={repairForm.desc} onChange={v=>setRepairForm(f=>({...f,desc:v}))}/>
+            <Inp label="Data" value={repairForm.date} onChange={v=>setRepairForm(f=>({...f,date:v}))} type="date"/>
+            {eqMachines.length>1&&<Sel label="Maszyna (zakładka Serwis)" value={String(repairForm.machineId||eqMachines[0].id)} onChange={v=>setRepairForm(f=>({...f,machineId:+v}))} options={eqMachines.map(m=>({value:String(m.id),label:m.name||m.type}))}/>}
+            {eqMachines.length===1&&<div style={{fontSize:12,color:subC,marginBottom:10}}>📍 Doda się też do maszyny "{eqMachines[0].name||eqMachines[0].type}" w zakładce Serwis</div>}
+            <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+              if(!repairForm.amount)return;
+              const target=eqMachines.find(m=>m.id===(targetId||eqMachines[0]?.id));
+              if(target){
+                const entry={id:Date.now(),date:repairForm.date,type:"Naprawa",notes:repairForm.desc,cost:+repairForm.amount};
+                setMachines(ms=>ms.map(m=>m.id===target.id?{...m,lastServiceDate:repairForm.date,serviceLog:[...(m.serviceLog||[]),entry]}:m));
+                setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"serwis-"+target.id+"-"+entry.id,date:repairForm.date,type:"koszt",category:"Serwis",amount:+repairForm.amount,description:"Naprawa"+(repairForm.desc?" – "+repairForm.desc:"")+" ("+(target.name||target.type)+")"},...(fs||[])]);
+              }else{
+                saveRepair(repairForm.eq,{id:repairForm.id,date:repairForm.date,amount:+repairForm.amount,desc:repairForm.desc});
+              }
+              setRepairForm(null);
+            }}>Zapisz</Btn>
+          </Modal>;
+        })()}
       </div>;
     }
 
@@ -3052,7 +3065,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey,stock,setStock,machines}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey,stock,setStock,machines,setMachines}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -3265,7 +3278,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
-            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} budget={budget} machines={machines}/>}
+            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
@@ -5127,7 +5140,7 @@ Zasady:
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} allClients={allClients}/>}
         {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
-        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock} machines={machines}/>}
+        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock} machines={machines} setMachines={setMachines}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients}/>}
         {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
