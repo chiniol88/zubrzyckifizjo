@@ -1,6 +1,10 @@
 const { useState, useEffect, useMemo, useContext, createContext, useRef } = React;
 const DarkCtx = createContext(false);
 const DemoCtx = createContext(false);
+const MachinesCtx = createContext(null);
+const FinancesCtx = createContext(null);
+const RentalsCtx = createContext(null);
+const StockCtx = createContext(null);
 const demoName=(name,idx)=>name?`Pacjent ${idx+1}`:"—";
 const demoPhone=()=>"***-***-***";
 const demoAddr=()=>"*** **";

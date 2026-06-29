@@ -206,6 +206,10 @@
       if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
       return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
+      <MachinesCtx.Provider value={{machines,setMachines}}>
+      <FinancesCtx.Provider value={{finances,setFinances}}>
+      <RentalsCtx.Provider value={{rentals,setRentals}}>
+      <StockCtx.Provider value={{stock,setStock}}>
         <div>
           {showConflictBanner&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#E05C5C",zIndex:10000,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
             <span style={{fontWeight:700,fontSize:13,color:"#fff",flex:1}}>⚠️ Inne urządzenie zapisało zmiany. Możesz stracić swoje dane.</span>
@@ -223,5 +227,6 @@
           </div>}
           <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} rentalsLoaded={v3} financesLoaded={v4}/>
         </div>
+      </StockCtx.Provider></RentalsCtx.Provider></FinancesCtx.Provider></MachinesCtx.Provider>
       </DemoCtx.Provider></DarkCtx.Provider>;
     }
