@@ -2937,18 +2937,19 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   const skadMap={"slawek":"slawek","sławek":"slawek","reklama":"reklama","szpital":"szpital","organicznie":"organicznie","organiczne":"organicznie","organic":"organicznie"};
                   for(let i=1;i<rawRows.length;i++){
                     const cells=rawRows[i];
-                    const pacjent=String(cells[0]||"").trim();
-                    if(!pacjent){
-                      if(cells.some(c=>String(c||"").trim()!==""))errs.push("Pominięto wiersz "+(i+1)+" — brak nazwiska pacjenta");
-                      continue;
-                    }
+                    const rowHasData=cells.some(c=>String(c||"").trim()!=="");
+                    if(!rowHasData)continue;
+                    const adres=String(cells[2]||"").trim();
+                    const pacjentRaw=String(cells[0]||"").trim();
+                    const pacjent=pacjentRaw||adres||"(brak danych — wiersz "+(i+1)+")";
+                    if(!pacjentRaw)errs.push("Wiersz "+(i+1)+": brak nazwiska — użyto adresu jako tymczasowej nazwy");
                     const sprzet=String(cells[3]||"").trim();
                     const dataOdRaw=toYMD(cells[4]);
                     const dataOd=/^\d{4}-\d{2}-\d{2}$/.test(dataOdRaw)?dataOdRaw:"";
                     const dataDoRaw=toYMD(cells[5]);
                     const dataDo=/^\d{4}-\d{2}-\d{2}$/.test(dataDoRaw)?dataDoRaw:"";
                     const skadRaw=String(cells[9]||"").trim().toLowerCase();
-                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres:String(cells[2]||"").trim(),sprzet,dataOd,dataDo:dataDo||dataOd,kwota:+(cells[6]||0),zaplacono:+(cells[7]||0),dowoz:+(cells[8]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
+                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres,sprzet,dataOd,dataDo:dataDo||dataOd,kwota:+(cells[6]||0),zaplacono:+(cells[7]||0),dowoz:+(cells[8]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
                   }
                   setCsvRows(rows);setCsvError(errs.length?"⚠️ "+errs.join("\n"):"");
                   if(importRef.current)importRef.current.value="";
@@ -3004,8 +3005,12 @@ p{margin:2px 0}.bold7{font-weight:bold}
             const newRentals=[];
             const updatedMap={};
             const financeUpserts=[];
+            const seenInBatch=new Set();
+            let dupSkipped=0;
             csvRows.forEach((row,i)=>{
               const k=(row.pacjent||"")+"|"+(row.dataOd||"");
+              if(seenInBatch.has(k)){dupSkipped++;return;} // ten sam pacjent+data już w tym imporcie — pomija powtórzony wiersz
+              seenInBatch.add(k);
               const paid=+row.zaplacono;
               const existing=existingByKey[k];
               if(existing){
@@ -3037,7 +3042,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               return [...toAdd,...merged];
             });
             setShowImport(false);setCsvRows([]);setCsvError("");
-            setToast("Zaimportowano "+newRentals.length+(updatedCount>0?", zaktualizowano "+updatedCount:"")+" ✅");
+            setToast("Zaimportowano "+newRentals.length+(updatedCount>0?", zaktualizowano "+updatedCount:"")+(dupSkipped>0?", pominięto "+dupSkipped+" duplikatów":"")+" ✅");
           }}>Importuj {csvRows.length > 0 ? csvRows.length+" " : ""}wypożyczeń →</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
