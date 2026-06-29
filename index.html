@@ -2279,10 +2279,11 @@
       ]);
       const hasReceipt=allDocs.has("receipt");
       const hasInvoice=allDocs.has("invoice");
+      const needsName=r.patientName&&r.address&&r.patientName.trim()===r.address.trim();
 
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2,flexWrap:"wrap"}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment||"❓ Do ustalenia"}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reserved&&<Badge color="#7C6AF4">📋</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}{r.plannedReturn&&<Badge color="#3DAA72">📅 {r.plannedReturn}</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
+          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2,flexWrap:"wrap"}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment||"❓ Do ustalenia"}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reserved&&<Badge color="#7C6AF4">📋</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}{r.plannedReturn&&<Badge color="#3DAA72">📅 {r.plannedReturn}</Badge>}{needsName&&<Badge color="#E05C5C">⚠️ brak nazwiska</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
           {r.status==="aktywne"&&(r.reserved?(startDl!==null?<Badge color={startDl<0?"#E05C5C":startDl===0?"#F4A261":"#7C6AF4"}>{startDl<0?Math.abs(startDl)+"d po term.":startDl===0?"Start dziś!":"za "+startDl+"d"}</Badge>:<Badge color="#F4A261">czeka {waitDays}d</Badge>):(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:dl!==null?<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>:<Badge color="#7A8FA6">brak terminu</Badge>))}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
