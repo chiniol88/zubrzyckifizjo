@@ -2938,7 +2938,10 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   for(let i=1;i<rawRows.length;i++){
                     const cells=rawRows[i];
                     const pacjent=String(cells[0]||"").trim();
-                    if(!pacjent)continue;
+                    if(!pacjent){
+                      if(cells.some(c=>String(c||"").trim()!==""))errs.push("Pominięto wiersz "+(i+1)+" — brak nazwiska pacjenta");
+                      continue;
+                    }
                     const sprzet=String(cells[3]||"").trim();
                     const dataOdRaw=toYMD(cells[4]);
                     const dataOd=/^\d{4}-\d{2}-\d{2}$/.test(dataOdRaw)?dataOdRaw:"";
@@ -2947,7 +2950,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     const skadRaw=String(cells[9]||"").trim().toLowerCase();
                     rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres:String(cells[2]||"").trim(),sprzet,dataOd,dataDo:dataDo||dataOd,kwota:+(cells[6]||0),zaplacono:+(cells[7]||0),dowoz:+(cells[8]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
                   }
-                  setCsvRows(rows);setCsvError(errs.length?errs.join("\n"):"");
+                  setCsvRows(rows);setCsvError(errs.length?"⚠️ "+errs.join("\n"):"");
                   if(importRef.current)importRef.current.value="";
                 }catch(ex){setCsvError("Błąd przetwarzania: "+ex.message);setCsvRows([]);}
               };
@@ -2957,9 +2960,12 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 reader.onload=ev=>{
                   try{
                     const wb=window.XLSX.read(new Uint8Array(ev.target.result),{type:"array",cellDates:false});
-                    const ws=wb.Sheets[wb.SheetNames[0]];
-                    const rawRows=window.XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
-                    processRows(rawRows);
+                    let bodyRows=[];
+                    wb.SheetNames.forEach(sn=>{
+                      const sheetRows=window.XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:""});
+                      if(sheetRows.length>1)bodyRows=bodyRows.concat(sheetRows.slice(1)); // pomija nagłówek KAŻDEJ zakładki
+                    });
+                    processRows([[],...bodyRows]); // sztuczny nagłówek na pozycji 0, dane już bez nagłówków arkuszy
                   }catch(ex){setCsvError("Błąd odczytu Excela: "+ex.message);setCsvRows([]);}
                 };
                 reader.readAsArrayBuffer(f);
