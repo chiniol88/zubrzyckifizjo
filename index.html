@@ -3234,6 +3234,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
         else if(sid.startsWith("cycle-")){const rest=sid.slice(6);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const mo=rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,cycles:(r.cycles||[]).map(c=>c.month===mo?{...c,paid:false,paidDate:null}:c)}));}
         else if(sid.startsWith("wozek-")){const cid=+sid.replace("wozek-","");setNfzCases(cs=>(cs||[]).map(c=>+c.id===cid?{...c,realized:false}:c));}
         else if(sid.startsWith("transport-")){const rid=+sid.slice(10);setRentals(rs=>rs.map(r=>+r.id===rid?{...r,transportPaid:false,transportPaidDate:null}:r));}
+        else if(sid.startsWith("serwis-")){const rest=sid.slice(7);const di=rest.indexOf("-");const mid=+rest.slice(0,di);const eid=+rest.slice(di+1);setMachines(ms=>(ms||[]).map(m=>{if(m.id!==mid)return m;const log=(m.serviceLog||[]).filter(s=>s.id!==eid);const lastServiceDate=log.length>0?log.reduce((a,b)=>(a.date>b.date?a:b)).date:null;return{...m,serviceLog:log,lastServiceDate};}));}
         setFinances(fs=>fs.filter(f=>f.id!==entry.id));
       };
 
@@ -4952,6 +4953,16 @@ Zasady:
         return active[idx]||null;
       };
 
+      const deleteSrvEntry=(machineId,entryId)=>{
+        setMachines(ms=>ms.map(m=>{
+          if(m.id!==machineId)return m;
+          const log=(m.serviceLog||[]).filter(s=>s.id!==entryId);
+          const lastServiceDate=log.length>0?log.reduce((a,b)=>(a.date>b.date?a:b)).date:null;
+          return{...m,serviceLog:log,lastServiceDate};
+        }));
+        setFinances(fs=>fs.filter(f=>f.sourceId!==("serwis-"+machineId+"-"+entryId)));
+      };
+
       const stCol=s=>s==="zaległy"?"#E05C5C":s==="wkrótce"?"#F4A261":s==="ok"?"#3DAA72":"#7A8FA6";
       const stLbl=s=>s==="zaległy"?"zaległy":s==="wkrótce"?"wkrótce":s==="ok"?"OK":"brak danych";
 
@@ -5019,7 +5030,10 @@ Zasady:
                   <div key={s.id} style={{background:bg,borderRadius:8,padding:"8px 10px",marginBottom:6,border:`1px solid ${borderC}`}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div style={{fontSize:13,fontWeight:600,color:textC}}>{s.type}</div>
-                      <div style={{fontSize:11,color:subC}}>{s.date}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{fontSize:11,color:subC}}>{s.date}</div>
+                        <button onClick={e=>{e.stopPropagation();deleteSrvEntry(m.id,s.id);}} style={{background:"none",border:"none",color:"#E05C5C",fontSize:16,cursor:"pointer",padding:"2px 4px",lineHeight:1}}>×</button>
+                      </div>
                     </div>
                     {s.notes&&<div style={{fontSize:12,color:subC,marginTop:2}}>{s.notes}</div>}
                     {+s.cost>0&&<div style={{fontSize:12,color:"#0A7C7C",marginTop:2}}>{s.cost} zł</div>}
