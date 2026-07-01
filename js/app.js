@@ -7,7 +7,7 @@
       return desk;
     }
 
-    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines}) {
+    function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,wealth,setWealth}) {
       const [tab,setTab]=useState(()=>{const h=window.location.hash.replace("#","").split("-")[0];return["dashboard","patients","rentals","finances","nfz","serwis","settings"].includes(h)?h:"dashboard";});
       useEffect(()=>{if(tab!=="finances")window.location.replace("#"+tab);},[tab]);
       const [dlRental,setDlRental]=useState(null);
@@ -52,7 +52,7 @@
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} allClients={allClients}/>}
         {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
-        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock} machines={machines} setMachines={setMachines}/>}
+        {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients}/>}
         {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines} setFinances={setFinances}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
@@ -135,7 +135,7 @@
       </>;
     }
 
-    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,rentalsLoaded,financesLoaded}) {
+    function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,wealth,setWealth,rentalsLoaded,financesLoaded}) {
       // Auto-generate next cycle 30 days after the previous one (or on startDate for new rentals)
       useEffect(()=>{
         if(!rentals)return;
@@ -189,5 +189,5 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals,rentalsLoaded,financesLoaded]);
-      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines}/>;
+      return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth}/>;
     }

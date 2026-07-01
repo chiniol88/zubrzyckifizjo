@@ -141,6 +141,7 @@
       const [settings,setSettings,v8]=usePersistedState("fizjo-settings",{backupReminder:true},unlocked);
       const [budget,setBudget,v10]=usePersistedState("fizjo-budget",{},unlocked);
       const [machines,setMachines,v11]=usePersistedState("fizjo-machines",[],unlocked);
+      const [wealth,setWealth,v12]=usePersistedState("fizjo-wealth",emptyWealth(),unlocked);
       const [dark,setDark]=useState(false);
       const [demo,setDemo]=useState(false);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
@@ -153,7 +154,7 @@
       },[]);
 
       const exportData=()=>{
-        const data={visits,patients,rentals,finances,stock,nfzCases,todos,events,budget,exportedAt:new Date().toISOString()};
+        const data={visits,patients,rentals,finances,stock,nfzCases,todos,events,budget,wealth,exportedAt:new Date().toISOString()};
         const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
         const url=URL.createObjectURL(blob);
         const a=document.createElement("a");
@@ -180,6 +181,7 @@
             if(d.todos)setTodos(d.todos);
             if(d.events)setEvents(d.events);
             if(d.budget)setBudget(d.budget);
+            if(d.wealth)setWealth(d.wealth);
             alert("Import zakończony pomyślnie!");
           }catch(err){alert("Błąd importu: "+err.message);}
         };
@@ -225,7 +227,7 @@
               <button onClick={()=>setShowBackupBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#1C2B3A"}}>×</button>
             </div>
           </div>}
-          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} rentalsLoaded={v3} financesLoaded={v4}/>
+          <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth} rentalsLoaded={v3} financesLoaded={v4}/>
         </div>
       </StockCtx.Provider></RentalsCtx.Provider></FinancesCtx.Provider></MachinesCtx.Provider>
       </DemoCtx.Provider></DarkCtx.Provider>;
