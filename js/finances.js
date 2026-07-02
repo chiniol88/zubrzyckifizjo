@@ -17,6 +17,7 @@
       const statsTotalCnt=sourceStats.reduce((s,x)=>s+x.cnt,0);
       const statsTotalRev=sourceStats.reduce((s,x)=>s+x.rev,0);
       const [showRentalList,setShowRentalList]=useState(false);
+      const [srcTab,setSrcTab]=useState("all");
       const today=todayLocal();
       const borderC=dk?"#2A4040":"#F2F5F7";
       const textC=dk?"#C8E8E8":"#1C2B3A";
@@ -289,37 +290,42 @@
 
         {/* Skąd trafiają klienci — sortowanie po przychodzie */}
         {(()=>{
+          const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
           // Wypożyczenia które wystartowały w miesiącu (do licznika i cntBySource)
-          const periodRentals=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd&&!r.reserved);
+          const periodRentalsAll=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd&&!r.reserved);
           // Lista WSZYSTKICH wpłat w miesiącu (wpłaty + przedłużenia + cykle + legacy)
-          const listItems=[];
+          const listItemsAll=[];
           (finances||[]).forEach(f=>{
             if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
             const rid=getRid(f.sourceId);if(!rid)return;
             const r=rentals.find(x=>x.id===rid);if(!r)return;
             const isExt=(f.sourceId||"").startsWith("extend-");
             const isCycle=(f.sourceId||"").startsWith("cycle-");
-            listItems.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,source:r.source,type:isExt?"↪ Przedłużenie":isCycle?"↻ Cykl":"Wpłata"});
+            listItemsAll.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,source:r.source,type:isExt?"↪ Przedłużenie":isCycle?"↻ Cykl":"Wpłata",cat:SZYNY_EQ.includes(r.equipment)?"szyny":"inne"});
           });
           // legacy — amountPaid bez payments
           rentals.forEach(r=>{
             if((r.payments||[]).length>0||(r.cycles||[]).length>0)return;
             const paid=+r.amountPaid||0;if(!paid)return;
             const d=r.startDate||"";
-            if(d>=stats.cutStr&&d<=stats.cutEnd)listItems.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,source:r.source,type:"Wpłata"});
+            if(d>=stats.cutStr&&d<=stats.cutEnd)listItemsAll.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,source:r.source,type:"Wpłata",cat:SZYNY_EQ.includes(r.equipment)?"szyny":"inne"});
           });
           // wózki — przychód zrealizowany w miesiącu (finances z sourceId "wozek-<id>")
-          const periodWozki=[];
+          const periodWozkiAll=[];
           (finances||[]).forEach(f=>{
             if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
             const sid=f.sourceId||"";if(!sid.startsWith("wozek-"))return;
             const cid=+sid.slice(6);if(!cid)return;
             const cas=(nfzCases||[]).find(x=>x.id===cid);if(!cas)return;
-            listItems.push({key:"w"+f.id,date:f.date,patientName:cas.patientName,equipment:cas.wheelchairModel||"Wózek",amount:+f.amount||0,source:cas.source,type:"🦽 Wózek"});
-            periodWozki.push(cas);
+            listItemsAll.push({key:"w"+f.id,date:f.date,patientName:cas.patientName,equipment:cas.wheelchairModel||"Wózek",amount:+f.amount||0,source:cas.source,type:"🦽 Wózek",cat:"wozki"});
+            periodWozkiAll.push(cas);
           });
-          listItems.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-          if(listItems.length===0&&periodRentals.length===0)return null;
+          listItemsAll.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+          if(listItemsAll.length===0&&periodRentalsAll.length===0)return null;
+          // Filtr wg wybranej zakładki (Wszystko / Szyny / Wózki)
+          const listItems=srcTab==="all"?listItemsAll:listItemsAll.filter(i=>i.cat===srcTab);
+          const periodRentals=srcTab==="wozki"?[]:srcTab==="szyny"?periodRentalsAll.filter(r=>SZYNY_EQ.includes(r.equipment)):periodRentalsAll;
+          const periodWozki=srcTab==="szyny"?[]:periodWozkiAll;
           // Przychód per źródło — budowany z listItems (spójny z listą i sumą totalRevenue)
           const revBySource={};const cntBySource={};const wCntBySource={};
           RENTAL_SOURCES.forEach(s=>{revBySource[s.value]=0;cntBySource[s.value]=0;wCntBySource[s.value]=0;});
@@ -337,9 +343,14 @@
           const topRev=sorted[0]?.rev||1;
           const withoutSrc=listItems.filter(item=>!item.source).length;
           return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:totalRev>0?10:6}}>📢 Skąd trafiają klienci</div>
+            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>📢 Skąd trafiają klienci</div>
+            <div style={{display:"flex",gap:6,marginBottom:12}}>
+              {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"}].map(t=>
+                <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+              )}
+            </div>
             {totalRev===0
-              ?<div style={{fontSize:12,color:subC}}>Brak danych — uzupełnij źródło przy dodawaniu wypożyczeń/wózków</div>
+              ?<div style={{fontSize:12,color:subC}}>Brak danych{srcTab!=="all"?" w tej kategorii":""} — uzupełnij źródło przy dodawaniu {srcTab==="wozki"?"wózków":"wypożyczeń"}</div>
               :sorted.map(s=>{
                 const pct=totalRev>0?Math.round((s.rev/totalRev)*100):0;
                 const barW=Math.round((s.rev/topRev)*100);
@@ -348,7 +359,7 @@
                     <span style={{color:textC,fontWeight:600}}>{s.label}</span>
                     <span style={{flexShrink:0,marginLeft:8,textAlign:"right"}}>
                       <span style={{color:s.color,fontWeight:800,fontSize:13}}>{demo?"****":s.rev.toFixed(2)+" zł"}</span>
-                      <span style={{color:subC,fontWeight:500}}> · {pct}% · {s.cnt} wyp.{s.wCnt?" · 🦽×"+s.wCnt:""}</span>
+                      <span style={{color:subC,fontWeight:500}}> · {pct}% · {srcTab==="wozki"?s.wCnt+" wóz.":s.cnt+" wyp."+(s.wCnt?" · 🦽×"+s.wCnt:"")}</span>
                     </span>
                   </div>
                   <div style={{height:6,borderRadius:3,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
