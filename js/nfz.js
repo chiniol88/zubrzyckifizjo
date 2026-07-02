@@ -108,6 +108,7 @@
             </div>
             <Inp label="Model wózka" value={editForm.wheelchairModel||""} onChange={v=>setEditForm(f=>({...f,wheelchairModel:v}))} placeholder="np. Wózek aktywny X"/>
             <Inp label="Data zamówienia" value={editForm.orderDate||""} onChange={v=>setEditForm(f=>({...f,orderDate:v}))} type="date"/>
+            <Sel label="Skąd dowiedział się o wózku?" value={editForm.source||""} onChange={v=>setEditForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...editForm}:x));setEditForm(null);setToast("Zapisano zmiany");}}>Zapisz zmiany</Btn>
           </Modal>}
@@ -184,6 +185,7 @@
           </div>
           <Inp label="Model wózka" value={form.wheelchairModel} onChange={v=>setForm(f=>({...f,wheelchairModel:v}))} placeholder="np. Wózek aktywny X"/>
           <Inp label="Data zamówienia" value={form.orderDate} onChange={v=>setForm(f=>({...f,orderDate:v}))} type="date"/>
+          <Sel label="Skąd dowiedział się o wózku?" value={form.source||""} onChange={v=>setForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.patientName)return;setNfzCases(cs=>[{...form,id:Date.now()},...(cs||[])]);if(setPatients&&!(patients||[]).find(p=>p.name===form.patientName)){setPatients(ps=>[...(ps||[]),{id:Date.now()+1,name:form.patientName,phone:form.phone||"",address:form.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}setForm(emptyNFZ());setShowAdd(false);setToast("Dodano");}}>Dodaj</Btn>
         </Modal>}

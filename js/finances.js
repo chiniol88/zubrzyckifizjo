@@ -1,4 +1,4 @@
-    function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines}) {
+    function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines,nfzCases}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
@@ -308,25 +308,38 @@
             const d=r.startDate||"";
             if(d>=stats.cutStr&&d<=stats.cutEnd)listItems.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,source:r.source,type:"Wpłata"});
           });
+          // wózki — przychód zrealizowany w miesiącu (finances z sourceId "wozek-<id>")
+          const periodWozki=[];
+          (finances||[]).forEach(f=>{
+            if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
+            const sid=f.sourceId||"";if(!sid.startsWith("wozek-"))return;
+            const cid=+sid.slice(6);if(!cid)return;
+            const cas=(nfzCases||[]).find(x=>x.id===cid);if(!cas)return;
+            listItems.push({key:"w"+f.id,date:f.date,patientName:cas.patientName,equipment:cas.wheelchairModel||"Wózek",amount:+f.amount||0,source:cas.source,type:"🦽 Wózek"});
+            periodWozki.push(cas);
+          });
           listItems.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
           if(listItems.length===0&&periodRentals.length===0)return null;
           // Przychód per źródło — budowany z listItems (spójny z listą i sumą totalRevenue)
-          const revBySource={};const cntBySource={};
-          RENTAL_SOURCES.forEach(s=>{revBySource[s.value]=0;cntBySource[s.value]=0;});
+          const revBySource={};const cntBySource={};const wCntBySource={};
+          RENTAL_SOURCES.forEach(s=>{revBySource[s.value]=0;cntBySource[s.value]=0;wCntBySource[s.value]=0;});
           listItems.forEach(item=>{
             if(item.source&&revBySource.hasOwnProperty(item.source))revBySource[item.source]+=item.amount;
           });
           // Liczba nowych wypożyczeń per źródło (tylko starty w miesiącu)
           periodRentals.forEach(r=>{if(r.source&&cntBySource.hasOwnProperty(r.source))cntBySource[r.source]++;});
+          // Liczba wózków zrealizowanych w miesiącu per źródło
+          const seenWozki=new Set();
+          periodWozki.forEach(cas=>{if(seenWozki.has(cas.id))return;seenWozki.add(cas.id);if(cas.source&&wCntBySource.hasOwnProperty(cas.source))wCntBySource[cas.source]++;});
           const totalRev=listItems.reduce((s,item)=>s+item.amount,0);
           const totalCnt=Object.values(cntBySource).reduce((s,v)=>s+v,0);
-          const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
+          const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0,wCnt:wCntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
           const topRev=sorted[0]?.rev||1;
           const withoutSrc=listItems.filter(item=>!item.source).length;
           return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
             <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:totalRev>0?10:6}}>📢 Skąd trafiają klienci</div>
             {totalRev===0
-              ?<div style={{fontSize:12,color:subC}}>Brak danych — uzupełnij źródło przy dodawaniu wypożyczeń</div>
+              ?<div style={{fontSize:12,color:subC}}>Brak danych — uzupełnij źródło przy dodawaniu wypożyczeń/wózków</div>
               :sorted.map(s=>{
                 const pct=totalRev>0?Math.round((s.rev/totalRev)*100):0;
                 const barW=Math.round((s.rev/topRev)*100);
@@ -335,7 +348,7 @@
                     <span style={{color:textC,fontWeight:600}}>{s.label}</span>
                     <span style={{flexShrink:0,marginLeft:8,textAlign:"right"}}>
                       <span style={{color:s.color,fontWeight:800,fontSize:13}}>{demo?"****":s.rev.toFixed(2)+" zł"}</span>
-                      <span style={{color:subC,fontWeight:500}}> · {pct}% · {s.cnt} wyp.</span>
+                      <span style={{color:subC,fontWeight:500}}> · {pct}% · {s.cnt} wyp.{s.wCnt?" · 🦽×"+s.wCnt:""}</span>
                     </span>
                   </div>
                   <div style={{height:6,borderRadius:3,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
@@ -344,7 +357,7 @@
                 </div>;
               })
             }
-            {withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:6}}>{withoutSrc} z {periodRentals.length} bez oznaczonego źródła</div>}
+            {withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:6}}>{withoutSrc} z {listItems.length} bez oznaczonego źródła</div>}
             <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:`1px solid ${borderC}`,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
               {showRentalList?"▲ Ukryj listę":"▼ Lista wpłat ("+listItems.length+")"}
             </button>
@@ -771,7 +784,7 @@
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
-            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines}/>}
+            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines} nfzCases={nfzCases}/>}
             {viewMode==="wealth"&&<Wealth wealth={wealth} setWealth={setWealth}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>

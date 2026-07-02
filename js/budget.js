@@ -993,4 +993,4 @@
     }
 
 
-    const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:""});
+    const emptyNFZ = () => ({patientName:"",address:"",phone:"",hasDisabilityCert:false,wheelchairModel:"",orderDate:"",notes:"",source:""});
