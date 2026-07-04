@@ -243,7 +243,7 @@
 
         {/* Wykres miesięczny */}
         <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Przychód — 12 mies.</div>
+          <SectionLabel>Przychód — 12 mies.</SectionLabel>
           <div style={{overflowX:"auto",paddingBottom:2}}>
             <div style={{display:"flex",alignItems:"flex-end",gap:4,height:88,minWidth:stats.monthlyArr.length*32}}>
               {stats.monthlyArr.map(([m,v])=>{
@@ -346,7 +346,7 @@
           const topRev=sorted[0]?.rev||1;
           const withoutSrc=listItems.filter(item=>!item.source).length;
           return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>📢 Skąd trafiają klienci</div>
+            <SectionLabel>📢 Skąd trafiają klienci</SectionLabel>
             <div style={{display:"flex",gap:6,marginBottom:12}}>
               {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
                 <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
@@ -395,7 +395,7 @@
 
         {/* ROI per urządzenie */}
         <div style={{marginBottom:12}}>
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>💰 ROI urządzeń (all-time)</div>
+          <SectionLabel>💰 ROI urządzeń (all-time)</SectionLabel>
           {EQUIPMENT.map(eq=>{
             const earned=allTimeRevenue[eq]||0;
             const investment=getTotalInvestment(eq);
@@ -443,7 +443,7 @@
               </div>
               {isOpen&&<div style={{padding:"0 12px 12px",borderTop:`1px solid ${borderC}`}}>
                 <div style={{marginTop:10}}>
-                  <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Koszt zakupu (za 1 szt.)</div>
+                  <SectionLabel style={{marginBottom:6}}>Koszt zakupu (za 1 szt.)</SectionLabel>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <input type="number" value={c.purchase||""} onChange={e=>setPurchase(eq,e.target.value)} placeholder="0 zł"
                       style={{flex:1,padding:"8px 12px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:10,fontSize:14,background:dk?"#1A2A2A":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
@@ -451,7 +451,7 @@
                   </div>
                 </div>
                 <div style={{marginTop:10}}>
-                  <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Liczba sztuk</div>
+                  <SectionLabel style={{marginBottom:6}}>Liczba sztuk</SectionLabel>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <input type="number" min="1" value={qty} onChange={e=>setQtyInStats(eq,e.target.value)}
                       style={{width:80,padding:"8px 12px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:10,fontSize:14,background:dk?"#1A2A2A":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
@@ -459,16 +459,16 @@
                   </div>
                 </div>
                 <div style={{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5}}>Wliczaj do śr. czasu wyp.</span>
+                  <SectionLabel style={{marginBottom:0}}>Wliczaj do śr. czasu wyp.</SectionLabel>
                   <button onClick={()=>setDurationInclude(eq,!getDurationInclude(eq))} style={{padding:"5px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",background:getDurationInclude(eq)?"#0A7C7C":"#E4EAF0",color:getDurationInclude(eq)?"#fff":"#7A8FA6"}}>
                     {getDurationInclude(eq)?"✓ Tak":"✗ Nie"}
                   </button>
                 </div>
                 <div style={{marginTop:12}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                    <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5}}>
+                    <SectionLabel style={{marginBottom:0}}>
                       Naprawy / serwis{repairsTotal>0&&<span style={{color:"#E05C5C",marginLeft:4}}>({repairsTotal} zł)</span>}
-                    </div>
+                    </SectionLabel>
                     <button onClick={()=>setRepairForm({eq,id:Date.now()+"",date:todayLocal(),amount:"",desc:""})}
                       style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
                   </div>
@@ -491,7 +491,7 @@
 
         {/* Nieużywany sprzęt */}
         {stats.idle.length>0&&<div style={{background:bg,borderRadius:14,padding:"14px",border:`1.5px solid ${borderC}`}}>
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>🕐 Nieużywany sprzęt</div>
+          <SectionLabel style={{marginBottom:8}}>🕐 Nieużywany sprzęt</SectionLabel>
           {stats.idle.map(x=><div key={x.eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${borderC}`}}>
             <span style={{fontSize:13,color:textC,fontWeight:500}}>{x.eq}</span>
             <span style={{fontSize:12,color:x.idleDays>90?"#E05C5C":x.idleDays>30?"#F4A261":subC,fontWeight:600}}>{x.idleDays} dni bez wyp.</span>
@@ -807,7 +807,7 @@
             </div>}
 
             {viewMode!=="budget"&&viewMode!=="sprzet"&&<>
-              <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+              <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                   <div>
                     <div style={{fontSize:11,color:sub,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Przychód</div>
@@ -822,8 +822,8 @@
 
               </div>
 
-              {catBreakdown.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-                <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5,marginBottom:12}}>Kategorie</div>
+              {catBreakdown.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
+                <SectionLabel style={{marginBottom:12}}>Kategorie</SectionLabel>
                 {catBreakdown.map(c=>{
                   const pct=inc>0?(c.v/inc*100):0;
                   const isOpen=expandedCat===c.label;
@@ -854,8 +854,8 @@
                 })}
               </div>}
 
-              {topPats.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
-                <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5,marginBottom:12}}>Pacjenci</div>
+              {topPats.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
+                <SectionLabel style={{marginBottom:12}}>Pacjenci</SectionLabel>
                 {visiblePats.map(([name,v,c],i)=>(
                   <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<visiblePats.length-1?`1px solid ${border}`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -871,7 +871,7 @@
                 {topPats.length>5&&<button onClick={()=>setShowAllPats(v=>!v)} style={{width:"100%",marginTop:10,padding:"8px 0",borderRadius:10,border:"none",background:"none",cursor:"pointer",fontWeight:600,fontSize:12,color:"#0A7C7C",fontFamily:"inherit"}}>{showAllPats?"Pokaż mniej ↑":"Pokaż wszystkich ("+topPats.length+") ↓"}</button>}
               </div>}
 
-              <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5,margin:"16px 0 8px"}}>Wpisy</div>
+              <SectionLabel style={{margin:"16px 0 8px"}}>Wpisy</SectionLabel>
               {listEntries.length===0&&<Empty text="Brak przychodów w tym okresie"/>}
               {listEntries.map(f=>(
                 <Card key={f.id} onClick={()=>setEditE({...f,amount:String(f.amount)})}>
@@ -885,7 +885,7 @@
                 </Card>
               ))}
 
-              {viewMode==="year"&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginTop:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              {viewMode==="year"&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginTop:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontSize:12,color:sub,fontWeight:600}}>📣 Koszt marketingu (cały rok)</span>
                 <span style={{fontSize:15,fontWeight:800,color:"#E05C5C"}}>{demo?"****":yearMarketingSpend.toFixed(2)+" zł"}</span>
               </div>}

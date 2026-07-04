@@ -181,7 +181,7 @@
 
       return <>
         <div style={{padding:"0 20px 12px"}}>
-          <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+          <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,overflow:"hidden",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
             <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",justifyContent:"center",alignItems:"center",padding:"13px 16px",cursor:"pointer",position:"relative"}}>
               <span style={{fontSize:13,fontWeight:700,color:dk?"#8ABABA":"#4A6070",textTransform:"uppercase",letterSpacing:.8}}>Stan magazynu</span>
               <span style={{position:"absolute",right:16,fontSize:12,color:dk?"#5A8A8A":"#7A8FA6"}}>{open?"▲":"▼"}</span>
@@ -408,7 +408,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               </div>
 
               <Card style={{marginBottom:10}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Pacjent</div>
+                <SectionLabel>Pacjent</SectionLabel>
                 <div style={{fontWeight:700,fontSize:16,marginBottom:12}}>{demo?"Pacjent":r.patientName}</div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:r.address?10:0}}>
                   <div style={{fontSize:14,color:"#7A8FA6"}}>{maskPhone(demo,r.phone)}</div>
@@ -424,7 +424,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               </Card>
 
               <Card style={{marginBottom:10}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wypożyczenie</div>
+                <SectionLabel>Wypożyczenie</SectionLabel>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
@@ -442,7 +442,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   }
                 </div>}
                 {(r.extensions||[]).length>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #E4EAF0"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia przedłużeń</div>
+                  <SectionLabel style={{marginBottom:8}}>Historia przedłużeń</SectionLabel>
                   <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6,paddingBottom:6,borderBottom:"1px solid #F2F5F7"}}>
                     <div style={{width:3,borderRadius:2,background:"#E4EAF0",alignSelf:"stretch",minHeight:32,marginTop:2,flexShrink:0}}/>
                     <div style={{flex:1}}>
@@ -493,7 +493,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 </div>}
                 <div style={{borderTop:"1px solid #E4EAF0",paddingTop:12}}>
                   {r.renewable ? <>
-                    <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Cykle miesięczne</div>
+                    <SectionLabel>Cykle miesięczne</SectionLabel>
                     {(r.cycles||[]).length===0&&r.startDate<todayLocal().slice(0,7)
                       ? <HistoryFill r={r} setRentals={setRentals} setFinances={setFinances}/>
                       : <>
@@ -523,7 +523,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     ].sort((a,b)=>b.date.localeCompare(a.date));
 
                     return <>
-                      <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Płatność</div>
+                      <SectionLabel>Płatność</SectionLabel>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
                         {[{l:"Łącznie",v:demo?"****":totalAmount+" zł",c:"#1C2B3A"},{l:"Zapłacono",v:demo?"****":totalPaid+" zł",c:"#3DAA72"},{l:"Pozostało",v:demo?"****":remaining+" zł",c:remaining>0?"#E05C5C":"#3DAA72"}].map((x,i)=>(
                           <div key={i} style={{background:x.c==="#1C2B3A"?"#F2F5F7":x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c==="#1C2B3A"?"#E4EAF0":x.c+"30"}`}}>
@@ -534,7 +534,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                       </div>
                       <PaymentForm rentalId={r.id} rentalAmount={totalAmount} amountPaid={totalPaid} patientName={r.patientName} equipment={r.equipment} setRentals={setRentals} setFinances={setFinances}/>
                       {allPayments.length>0&&<div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #E4EAF0"}}>
-                        <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia wpłat</div>
+                        <SectionLabel style={{marginBottom:8}}>Historia wpłat</SectionLabel>
                         {allPayments.map(p=>(
                           <div key={p.id} style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
                             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
