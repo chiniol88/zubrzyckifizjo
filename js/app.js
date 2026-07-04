@@ -138,7 +138,7 @@
     function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,wealth,setWealth,rentalsLoaded,financesLoaded}) {
       // Auto-generate next cycle 30 days after the previous one (or on startDate for new rentals)
       useEffect(()=>{
-        if(!rentals)return;
+        if(!rentalsLoaded||!rentals)return;
         const today=todayLocal();
         const currMonthStart=today.slice(0,7)+"-01";
         const needsUpdate=rentals.some(r=>{
@@ -168,7 +168,7 @@
           }
           return cyc.length===(r.cycles||[]).length?r:{...r,cycles:cyc};
         }));
-      },[]);
+      },[rentalsLoaded,rentals]);
       useEffect(()=>{
         if(!rentalsLoaded||!financesLoaded||!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];
