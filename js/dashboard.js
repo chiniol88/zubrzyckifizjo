@@ -115,7 +115,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
       </div>
     </div>
 
-    <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+    <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
         {DOW.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i>=5?(dk?"#F4A261":"#D0622A"):"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
       </div>
@@ -151,7 +151,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
       </div>
     </div>
 
-    {openDay&&<div style={{marginTop:8,background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}}>
+    {openDay&&<div style={{marginTop:8,background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
         <div style={{display:"flex",gap:6}}>
@@ -418,11 +418,18 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
 
   return <>
     <div>
-      <div style={{padding:"28px 20px 16px"}}>
-        <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>{dk?"🌙 Pulpit":"Pulpit"}</div>
-        <div style={{fontSize:13,color:"#7A8FA6",marginTop:4,display:"flex",justifyContent:"space-between"}}>
-          <span>{new Date(today+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</span>
-          <span style={{fontWeight:600,color:"#0A7C7C"}}><ClockDisplay/></span>
+      <div style={{padding:"28px 20px 18px"}}>
+        <div style={{fontSize:13,color:"#7A8FA6",textTransform:"capitalize"}}>{new Date(today+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginTop:2}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>{dk?"🌙 Cześć, Patryk":"Cześć, Patryk"}</div>
+          <span style={{fontWeight:600,color:"#0A7C7C",fontSize:14}}><ClockDisplay/></span>
+        </div>
+      </div>
+      <div style={{padding:"0 20px 16px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
+          <StatCard label="Wizyty dziś" value={todayV.length}/>
+          <StatCard label="Przychód w tym mies." value={demo?"****":Math.round((finances||[]).filter(f=>f.type==="przychód"&&(f.date||"").startsWith(today.slice(0,7))).reduce((s,f)=>s+(+f.amount||0),0))+" zł"}/>
+          <StatCard label="Aktywne wypożyczenia" value={rentals.filter(r=>r.status==="aktywne").length}/>
         </div>
       </div>
       <div style={{padding:"0 20px 12px"}}>
@@ -431,7 +438,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
           {searchQ&&<button onClick={()=>setSearchQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",fontSize:16,cursor:"pointer",color:"#7A8FA6"}}>✕</button>}
         </div>
         {searchResults&&searchResults.length===0&&<div style={{padding:"10px 4px",fontSize:13,color:"#7A8FA6"}}>Brak wyników</div>}
-        {searchResults&&searchResults.length>0&&<div style={{background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 2px 12px rgba(0,0,0,.08)",marginTop:6,overflow:"hidden"}}>
+        {searchResults&&searchResults.length>0&&<div style={{background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:dk?"0 4px 20px rgba(0,0,0,.3)":"0 4px 20px rgba(16,40,40,.1)",marginTop:6,overflow:"hidden"}}>
           {searchResults.map((r,i)=><div key={i} onClick={()=>{
             if(r.kind==="rental") goToRental(r.item.id);
             else if(r.kind==="visit") setEditV(r.item);
@@ -446,10 +453,10 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
         </div>}
       </div>
       <div style={{padding:"0 20px 4px"}}>
-        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden",marginBottom:10}}>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden",marginBottom:10}}>
           <div onClick={()=>setTodoOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",cursor:"pointer"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Do zrobienia</span>
+              <SectionLabel style={{marginBottom:0}}>Do zrobienia</SectionLabel>
               {(todos||[]).filter(t=>!t.done).length>0&&<span style={{background:"#0A7C7C",color:"#fff",borderRadius:20,fontSize:11,fontWeight:700,padding:"1px 7px"}}>{(todos||[]).filter(t=>!t.done).length}</span>}
             </div>
             <span style={{fontSize:11,color:"#7A8FA6"}}>{todoOpen?"▲":"▼"}</span>
