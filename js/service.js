@@ -126,7 +126,7 @@
                 {m.notes&&<div style={{fontSize:12,color:subC}}>{m.notes}</div>}
               </div>}
 
-              <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>Historia serwisów</div>
+              <SectionLabel style={{marginBottom:8}}>Historia serwisów</SectionLabel>
               {(m.serviceLog||[]).length===0
                 ?<div style={{fontSize:12,color:subC,marginBottom:10}}>Brak wpisów</div>
                 :(m.serviceLog||[]).slice().sort((a,b)=>b.date.localeCompare(a.date)).map(s=>(

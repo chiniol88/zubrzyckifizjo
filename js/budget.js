@@ -659,9 +659,9 @@
         </div>
 
         {/* PANEL B — ANALIZA KOSZTÓW STAŁYCH */}
-        <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+        <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden"}}>
           <div onClick={()=>setShowAnalysis(v=>!v)} style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
-            <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>📊 Analiza kosztów stałych</span>
+            <SectionLabel style={{marginBottom:0}}>📊 Analiza kosztów stałych</SectionLabel>
             <span style={{fontSize:12,color:sub}}>{showAnalysis?"▲":"▼"}</span>
           </div>
           {showAnalysis&&(()=>{const maxRecExp=Math.max(...analysisData.map(x=>x.mRecExp),1);return <div style={{borderTop:`1px solid ${border}`}}>
@@ -686,9 +686,9 @@
         </div>
 
         {/* LISTA CYKLICZNYCH */}
-        {showRecurringList&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+        {showRecurringList&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Cykliczne ({(budget.recurring||[]).length})</span>
+            <SectionLabel style={{marginBottom:0}}>Cykliczne ({(budget.recurring||[]).length})</SectionLabel>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:todayLocal()});setShowRecurring("income");}} style={{padding:"4px 10px",borderRadius:8,border:"none",background:"#3DAA72",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Przychód</button>
               <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:todayLocal()});setShowRecurring("expense");}} style={{padding:"4px 10px",borderRadius:8,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>+ Koszt</button>
@@ -743,7 +743,7 @@
                 </div>;
               })}
               <div style={{padding:"8px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:dk?"#0F1F1F":typ==="income"?"#E8F7F0":"#FEF0F0"}}>
-                <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Suma miesięczna</span>
+                <SectionLabel style={{marginBottom:0}}>Suma miesięczna</SectionLabel>
                 <span style={{fontSize:14,fontWeight:800,color:col}}>{demo?"****":totalActiveSum.toFixed(2)} zł</span>
               </div>
             </div>;
@@ -751,9 +751,9 @@
         </div>}
 
         {/* ROK */}
-        {showCompare&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+        {showCompare&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Porównaj miesiące</div>
+            <SectionLabel style={{marginBottom:0}}>Porównaj miesiące</SectionLabel>
             <select value={safeCompareMonth} onChange={e=>setCompareMonth(e.target.value)}
               style={{padding:"5px 10px",borderRadius:8,border:`1px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}>
               {monthsList.filter(m=>m!==selMonth).map(m=><option key={m} value={m}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</option>)}
@@ -801,8 +801,8 @@
           })()}
         </div>}
 
-        {showYear&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
-          <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Rok {selMonth.slice(0,4)}</div>
+        {showYear&&<div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden"}}>
+          <SectionLabel style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,marginBottom:0}}>Rok {selMonth.slice(0,4)}</SectionLabel>
           {yearMonths.map(m=>{
             const md=(budget.months||{})[m]||{income:[],expenses:[]};
             let prac=0;
@@ -832,11 +832,11 @@
 
         <div style={{display:desk?"grid":"block",gridTemplateColumns:desk?"1fr 1fr":"unset",gap:desk?16:0,alignItems:"start"}}>
         {/* PRZYCHODY */}
-        <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+        <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div>
-                <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Przychody</span>
+                <SectionLabel style={{marginBottom:0}}>Przychody</SectionLabel>
                 {diffInc!==null&&<span style={{marginLeft:6,background:diffInc>=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 6px",fontSize:10,fontWeight:700,color:diffInc>=0?"#3DAA72":"#E05C5C"}}>{diffInc>=0?"+":""}{diffInc}%</span>}
               </div>
               <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#3DAA72",whiteSpace:"nowrap"}}>{demo?"****":totalInc.toFixed(2)} zł</span>
@@ -858,11 +858,11 @@
         </div>
 
         {/* KOSZTY */}
-        <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
+        <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden"}}>
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div>
-                <span style={{fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Koszty</span>
+                <SectionLabel style={{marginBottom:0}}>Koszty</SectionLabel>
                 {diffExp!==null&&<span style={{marginLeft:6,background:diffExp<=0?"#3DAA7220":"#E05C5C20",borderRadius:6,padding:"2px 6px",fontSize:10,fontWeight:700,color:diffExp<=0?"#3DAA72":"#E05C5C"}}>{diffExp>=0?"+":""}{diffExp}%</span>}
               </div>
               <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#E05C5C",whiteSpace:"nowrap"}}>{demo?"****":totalExp.toFixed(2)} zł</span>
@@ -887,8 +887,8 @@
             ...(monthData.expenses||[]).map(e=>({...e,type:"expense",date:e.date||selMonth+"-01"})),
           ].sort((a,b)=>b.date.localeCompare(a.date)||(a.type==="income"?-1:1));
           if(!allEntries.length)return null;
-          return <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:"0 1px 4px rgba(0,0,0,.06)",overflow:"hidden"}}>
-            <div style={{padding:"10px 16px",borderBottom:`1px solid ${border}`,fontSize:11,fontWeight:700,color:sub,textTransform:"uppercase",letterSpacing:.5}}>Wszystkie wpisy</div>
+          return <div style={{background:bg2,borderRadius:16,marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",overflow:"hidden"}}>
+            <SectionLabel style={{padding:"10px 16px",borderBottom:`1px solid ${border}`,marginBottom:0}}>Wszystkie wpisy</SectionLabel>
             {allEntries.map((e,i)=>{
               const isPrac=String(e.id).startsWith("prac-");
               const isRec=String(e.id).startsWith("rec-");

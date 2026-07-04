@@ -47,7 +47,7 @@
                 <Btn small variant="secondary" onClick={()=>setEditForm({...cas})}>✏️ Edytuj</Btn>
               </div>
               <Card style={{marginBottom:10}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Dane pacjenta</div>
+                <SectionLabel>Dane pacjenta</SectionLabel>
                 <div style={{display:"grid",gap:10}}>
                   {cas.phone&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,color:dk?"#C8E8E8":"#1C2B3A"}}>{maskPhone(demo,cas.phone)}</span>
@@ -69,7 +69,7 @@
                 </div>
               </Card>
               {(cas.wheelchairModel||cas.orderDate)&&<Card style={{marginBottom:10}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Wózek</div>
+                <SectionLabel>Wózek</SectionLabel>
                 {cas.wheelchairModel&&<div style={{marginBottom:6}}><span style={{fontSize:12,color:"#7A8FA6"}}>Model: </span><span style={{fontWeight:600,fontSize:14}}>{cas.wheelchairModel}</span></div>}
                 {cas.orderDate&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                   <div><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>
