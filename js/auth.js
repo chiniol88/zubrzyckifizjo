@@ -22,7 +22,7 @@
       return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
         <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Ustaw nowe hasło</div>
-        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:"0 4px 20px rgba(0,0,0,.1)"}}>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:dk?"0 4px 24px rgba(0,0,0,.3)":"0 4px 24px rgba(16,40,40,.08)"}}>
           {status==="done"
             ? <div style={{textAlign:"center"}}>
                 <div style={{fontSize:40,marginBottom:12}}>✅</div>
@@ -60,7 +60,7 @@
       return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
         <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Zaloguj się aby kontynuować</div>
-        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:"0 4px 20px rgba(0,0,0,.1)"}}>
+        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:dk?"0 4px 24px rgba(0,0,0,.3)":"0 4px 24px rgba(16,40,40,.08)"}}>
           <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
             onKeyDown={e=>e.key==="Enter"&&check()}
             autoFocus placeholder="Email" style={inputStyle}/>
