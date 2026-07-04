@@ -425,13 +425,6 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
           <span style={{fontWeight:600,color:"#0A7C7C",fontSize:14}}><ClockDisplay/></span>
         </div>
       </div>
-      <div style={{padding:"0 20px 16px"}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}>
-          <StatCard label="Wizyty dziś" value={todayV.length}/>
-          <StatCard label="Przychód w tym mies." value={demo?"****":Math.round((finances||[]).filter(f=>f.type==="przychód"&&(f.date||"").startsWith(today.slice(0,7))).reduce((s,f)=>s+(+f.amount||0),0))+" zł"}/>
-          <StatCard label="Aktywne wypożyczenia" value={rentals.filter(r=>r.status==="aktywne").length}/>
-        </div>
-      </div>
       <div style={{padding:"0 20px 12px"}}>
         <div style={{position:"relative"}}>
           <input value={searchQ} onChange={e=>setSearchQ(e.target.value)} placeholder="🔍 Szukaj wizyt, sprzętu, pacjentów..." style={{width:"100%",boxSizing:"border-box",padding:"10px 14px",borderRadius:12,border:"1.5px solid "+(dk?"#2A4040":"#E4EAF0"),background:dk?"#1A2A2A":"#F7FAFA",fontSize:14,color:dk?"#E0F0F0":"#1A2E35",fontFamily:"inherit",outline:"none"}}/>
