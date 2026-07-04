@@ -102,7 +102,7 @@
           </div>
           {/* Main content */}
           <div style={{marginLeft:230,flex:1,minWidth:0,minHeight:"100vh",background:dk?"#0A1A1A":"#EAEFF4"}}>
-            <div style={{maxWidth:860,margin:"0 auto",minHeight:"100vh",background:dk?"#0F1F1F":"#F2F5F7",boxShadow:"0 0 40px rgba(0,0,0,.08)"}}>
+            <div style={{maxWidth:860,margin:"0 auto",minHeight:"100vh",background:dk?"#0F1F1F":"#F2F5F7",boxShadow:dk?"0 0 40px rgba(0,0,0,.18)":"0 0 40px rgba(16,40,40,.05)"}}>
               {content}
             </div>
           </div>

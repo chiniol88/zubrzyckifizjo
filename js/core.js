@@ -279,12 +279,40 @@ const Ico = ({d,s=20,c="#1C2B3A",f="none"}) => <svg width={s} height={s} viewBox
 const Btn = ({children,onClick,variant="primary",small,disabled,style={}}) => {
   const dk=useContext(DarkCtx);
   const v={primary:{background:"#0A7C7C",color:"#fff"},secondary:{background:dk?"#1E3A3A":"#E6F4F4",color:"#0A7C7C"},orange:{background:"#F4A261",color:"#fff"},danger:{background:dk?"#3A1C1C":"#FEE2E2",color:"#E05C5C"}};
-  return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"10px 18px":"14px 22px",fontSize:small?14:16,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,opacity:disabled?.5:1,fontFamily:"inherit",...style}}>{children}</button>;
+  return <button onClick={onClick} disabled={disabled} style={{...v[variant],border:"none",borderRadius:12,padding:small?"10px 18px":"14px 22px",fontSize:small?14:16,fontWeight:600,cursor:disabled?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:6,opacity:disabled?.5:1,fontFamily:"inherit",transition:"opacity .15s, transform .1s",...style}}>{children}</button>;
 };
 const Card = ({children,onClick,style={}}) => {
   const dk=useContext(DarkCtx);
-  return <div onClick={onClick} style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"16px 18px",marginBottom:10,boxShadow:"0 1px 4px rgba(0,0,0,.06)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
+  return <div onClick={onClick} style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"18px 20px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",border:dk?"1px solid #1E3232":"1px solid rgba(16,40,40,.04)",cursor:onClick?"pointer":"default",...style}}>{children}</div>;
 };
 const Badge = ({children,color="#0A7C7C"}) => <span style={{background:color+"28",color,borderRadius:8,padding:"4px 10px",fontSize:12,fontWeight:700}}>{children}</span>;
 const Empty = ({text}) => <div style={{textAlign:"center",padding:"40px 20px",color:"#7A8FA6",fontSize:14}}>{text}</div>;
 const Av = ({name}) => { const i=(name||"?").split(" ").slice(0,2).map(w=>w[0]).join("").toUpperCase(); return <div style={{width:44,height:44,borderRadius:12,background:"#E6F4F4",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:15,color:"#0A7C7C",flexShrink:0}}>{i}</div>; };
+
+// Etykieta nagłówka sekcji — zastępuje powtarzany wszędzie inline styl
+const SectionLabel = ({children,style={}}) => {
+  const dk=useContext(DarkCtx);
+  return <div style={{fontSize:11,fontWeight:700,color:dk?"#5A8A8A":"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10,...style}}>{children}</div>;
+};
+
+// Karta metryki (etykieta + duża wartość), do rzędów statystyk
+const StatCard = ({label,value,accent,style={}}) => {
+  const dk=useContext(DarkCtx);
+  return <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:"16px 18px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",border:dk?"1px solid #1E3232":"1px solid rgba(16,40,40,.04)",...style}}>
+    <div style={{fontSize:12,color:dk?"#7AA8A8":"#7A8FA6",marginBottom:6,fontWeight:600}}>{label}</div>
+    <div style={{fontSize:22,fontWeight:700,color:accent||(dk?"#E8F5F5":"#1C2B3A")}}>{value}</div>
+  </div>;
+};
+
+// Wiersz listy: ikona w kolorowym kółku + tytuł + podtytuł + treść na końcu
+const ListRow = ({icon,iconBg,iconColor,title,subtitle,trailing,onClick,last,style={}}) => {
+  const dk=useContext(DarkCtx);
+  return <div onClick={onClick} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 2px",borderBottom:last?"none":`1px solid ${dk?"#20302E":"#F0F3F5"}`,cursor:onClick?"pointer":"default",...style}}>
+    {icon&&<div style={{width:34,height:34,borderRadius:10,background:iconBg||(dk?"#1E3A3A":"#E6F4F4"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16,color:iconColor||"#0A7C7C"}}>{icon}</div>}
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontSize:14,color:dk?"#E8F5F5":"#1C2B3A",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{title}</div>
+      {subtitle&&<div style={{fontSize:12,marginTop:2,color:dk?"#6A9A9A":"#7A8FA6"}}>{subtitle}</div>}
+    </div>
+    {trailing&&<div style={{flexShrink:0}}>{trailing}</div>}
+  </div>;
+};
