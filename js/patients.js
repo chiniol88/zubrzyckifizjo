@@ -171,7 +171,7 @@
               {pat.birthday&&<BirthdayCard birthday={pat.birthday} dk={dk}/>}
 
               {(patDoneVisits.length>0||patRentals.length>0||patWozki.length>0)&&<Card style={{marginBottom:10,background:dk?"#1A2A2A":"#F7FAFA",border:"1.5px solid #E4EAF0"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Statystyki</div>
+                <SectionLabel>Statystyki</SectionLabel>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                   {[
                     patDoneVisits.length>0?{l:"Wizyty",v:patDoneVisits.length,c:"#0A7C7C"}:{l:"Wypożyczenia",v:patRentals.length,c:"#7C6AF4"},
