@@ -248,6 +248,8 @@ const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",star
 const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
 const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
+const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"Wózki"},{key:"balkoniki",label:"Balkoniki"}];
+const getActiveEquipmentNames = stock => ((stock&&stock.equipment&&stock.equipment.length) ? [...new Set([...EQUIPMENT,...stock.equipment.map(e=>e.name)])].filter(n=>{const e=(stock.equipment||[]).find(x=>x.name===n);return !e||!e.hidden;}) : EQUIPMENT);
 const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
 const parseCycleSourceId = sid => { const rest=sid.slice(6); const di=rest.indexOf("-"); return {rentalId:+rest.slice(0,di), cycleKey:rest.slice(di+1)}; };
 const calcRentalPaid = r => {

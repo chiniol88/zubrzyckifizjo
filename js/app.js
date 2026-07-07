@@ -54,7 +54,7 @@
         {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={settings.anthropicKey||""} stock={stock} setStock={setStock} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} allClients={allClients}/>}
-        {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines} setFinances={setFinances}/>}
+        {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines} setFinances={setFinances} stock={stock}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
       </>;
 

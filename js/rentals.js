@@ -144,9 +144,16 @@
       const [open,setOpen]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
       const [draft,setDraft]=useState({});
+      const [addForm,setAddForm]=useState(null); // {category,name,addedDate}
 
       // normalizuj stock do nowego formatu jeśli stary
       const qty = stock && stock.qty ? stock.qty : (stock||{});
+      const catalog = (stock&&stock.equipment)||[];
+      const addedDate=(stock&&stock.addedDate)||{};
+      const activeNames = getActiveEquipmentNames(stock);
+      const hiddenNames = catalog.filter(e=>e.hidden).map(e=>e.name);
+      const categoryOf = name => { const e=catalog.find(x=>x.name===name); return e?e.category:null; };
+      const unassignedNames = activeNames.filter(n=>!categoryOf(n));
 
       const activeCount=useMemo(()=>{
         const m={};
@@ -158,29 +165,74 @@
 
       const summary=useMemo(()=>{
         let free=0,warn=0,occupied=0;
-        EQUIPMENT.forEach(eq=>{const tot=total(eq),fr=tot-(activeCount[eq]||0);if(fr===0)occupied++;else if(fr===1&&tot>1)warn++;else free++;});
+        activeNames.forEach(eq=>{const tot=total(eq),fr=tot-(activeCount[eq]||0);if(fr===0)occupied++;else if(fr===1&&tot>1)warn++;else free++;});
         return {free,warn,occupied};
-      },[activeCount,qty]);
-
-      const addedDate=(stock&&stock.addedDate)||{};
+      },[activeCount,qty,stock]);
 
       const saveStock=()=>{
         const today=todayLocal();
         const prevQty=qty;
         const history=[...((stock&&stock.history)||[])];
         // dla każdego eq które się zmieniło — dodaj wpis historii
-        EQUIPMENT.forEach(eq=>{
+        activeNames.forEach(eq=>{
           const newQty=+draft[eq]||1;
           const oldQty=prevQty[eq]||1;
           if(newQty!==oldQty){
             history.push({eq,qty:newQty,from:today});
           }
         });
-        const newQty=Object.fromEntries(EQUIPMENT.map(eq=>[eq,+draft[eq]||1]));
-        const newAddedDate=Object.fromEntries(EQUIPMENT.map(eq=>[eq,draft["added_"+eq]||""]).filter(([,v])=>v));
+        const newQty={...qty,...Object.fromEntries(activeNames.map(eq=>[eq,+draft[eq]||1]))};
+        const newAddedDate={...addedDate,...Object.fromEntries(activeNames.map(eq=>[eq,draft["added_"+eq]||""]).filter(([,v])=>v))};
         setStock({...(stock||{}),qty:newQty,history,addedDate:newAddedDate});
         setShowEdit(false);
       };
+
+      const openEdit=()=>{
+        setDraft(Object.fromEntries([...activeNames.map(eq=>[eq,String(qty[eq]||1)]),...activeNames.map(eq=>["added_"+eq,addedDate[eq]||""])]));
+        setShowEdit(true);
+      };
+
+      const addEquipment=category=>{
+        if(!addForm||!addForm.name.trim())return;
+        const name=addForm.name.trim();
+        setStock(s=>({...(s||{}),equipment:[...(((s||{}).equipment)||[]),{name,category,hidden:false}],addedDate:{...(((s||{}).addedDate)||{}),[name]:addForm.addedDate||""},qty:{...(((s||{}).qty)||{}),[name]:1}}));
+        setDraft(d=>({...d,[name]:"1",["added_"+name]:addForm.addedDate||""}));
+        setAddForm(null);
+      };
+      const assignCategory=(name,category)=>{
+        setStock(s=>{
+          const cat=[...(((s||{}).equipment)||[])];
+          const idx=cat.findIndex(x=>x.name===name);
+          if(idx>=0) cat[idx]={...cat[idx],category};
+          else cat.push({name,category,hidden:false});
+          return {...(s||{}),equipment:cat};
+        });
+      };
+      const archiveEquipment=name=>{
+        setStock(s=>{
+          const cat=[...(((s||{}).equipment)||[])];
+          const idx=cat.findIndex(x=>x.name===name);
+          if(idx>=0) cat[idx]={...cat[idx],hidden:true};
+          else cat.push({name,category:categoryOf(name),hidden:true});
+          return {...(s||{}),equipment:cat};
+        });
+      };
+      const restoreEquipment=name=>{
+        setStock(s=>({...(s||{}),equipment:(((s||{}).equipment)||[]).map(x=>x.name===name?{...x,hidden:false}:x)}));
+      };
+
+      const EqRow=({eq})=><div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+            <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
+            <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+            <button onClick={()=>archiveEquipment(eq)} title="Archiwizuj" style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,padding:"0 2px"}}>🗑</button>
+          </div>
+        </div>
+        <Inp label="Data dodania do magazynu (opcjonalnie)" value={draft["added_"+eq]||""} onChange={v=>setDraft(d=>({...d,["added_"+eq]:v}))} type="date"/>
+      </div>;
 
       return <>
         <div style={{padding:"0 20px 12px"}}>
@@ -190,30 +242,54 @@
               <span style={{position:"absolute",right:16,fontSize:12,color:dk?"#5A8A8A":"#7A8FA6"}}>{open?"▲":"▼"}</span>
             </div>
             {open&&<div style={{borderTop:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,padding:"12px 16px 14px"}}>
-              {EQUIPMENT.map(eq=>{
+              {activeNames.map(eq=>{
                 const active=activeCount[eq]||0,tot=total(eq),fr=tot-active;
                 return <div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
                   <span style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</span>
                   <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{fr}/{tot}</span>
                 </div>;
               })}
-              <button onClick={e=>{e.stopPropagation();setDraft(Object.fromEntries([...EQUIPMENT.map(eq=>[eq,String(qty[eq]||1)]),...EQUIPMENT.map(eq=>["added_"+eq,addedDate[eq]||""])]));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Edytuj stany magazynowe</button>
+              <button onClick={e=>{e.stopPropagation();openEdit();}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Zarządzaj sprzętem</button>
             </div>}
           </div>
         </div>
-        {showEdit&&<Modal title="Edytuj stany magazynowe" onClose={()=>setShowEdit(false)}>
-          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Podaj ile sztuk każdego sprzętu posiadasz łącznie oraz od kiedy jest w magazynie (do poprawnego liczenia obłożenia sprzętu). Zmiany ilości są zapisywane z datą dzisiejszą i uwzględniane w statystykach historycznych.</div>
-          {EQUIPMENT.map(eq=><div key={eq} style={{marginBottom:14,paddingBottom:14,borderBottom:"1px solid #E4EAF0"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-                <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
-                <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+        {showEdit&&<Modal title="Zarządzaj sprzętem" onClose={()=>setShowEdit(false)}>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Dodawaj i edytuj sprzęt w grupach, podaj ile sztuk posiadasz i od kiedy dany sprzęt jest w magazynie (do poprawnego liczenia obłożenia).</div>
+          {EQUIPMENT_GROUPS.map(g=>{
+            const names=activeNames.filter(n=>categoryOf(n)===g.key);
+            return <div key={g.key} style={{marginBottom:18}}>
+              <SectionLabel>{g.label}</SectionLabel>
+              {names.length===0&&<div style={{fontSize:12,color:"#7A8FA6",marginBottom:8}}>Brak sprzętu w tej grupie</div>}
+              {names.map(eq=><EqRow key={eq} eq={eq}/>)}
+              {addForm&&addForm.category===g.key
+                ? <div style={{marginBottom:10,padding:10,background:dk?"#0F1F1F":"#F7F9FB",borderRadius:10}}>
+                    <Inp label="Nazwa sprzętu" value={addForm.name} onChange={v=>setAddForm(f=>({...f,name:v}))} placeholder="np. Wózek Vermeiren V200"/>
+                    <Inp label="Data dodania do magazynu" value={addForm.addedDate} onChange={v=>setAddForm(f=>({...f,addedDate:v}))} type="date"/>
+                    <div style={{display:"flex",gap:8}}>
+                      <Btn small style={{flex:1,justifyContent:"center"}} onClick={()=>addEquipment(g.key)}>Dodaj</Btn>
+                      <Btn small variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setAddForm(null)}>Anuluj</Btn>
+                    </div>
+                  </div>
+                : <button onClick={()=>setAddForm({category:g.key,name:"",addedDate:todayLocal()})} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>+ Dodaj sprzęt</button>
+              }
+            </div>;
+          })}
+          {unassignedNames.length>0&&<div style={{marginBottom:18}}>
+            <SectionLabel>Nieprzypisane</SectionLabel>
+            {unassignedNames.map(eq=><div key={eq}>
+              <EqRow eq={eq}/>
+              <div style={{display:"flex",gap:6,marginBottom:14,marginTop:-4}}>
+                {EQUIPMENT_GROUPS.map(g=><button key={g.key} onClick={()=>assignCategory(eq,g.key)} style={{flex:1,padding:"6px 4px",borderRadius:8,border:"1px solid #E4EAF0",background:"none",color:"#0A7C7C",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>→ {g.label}</button>)}
               </div>
-            </div>
-            <Inp label="Data dodania do magazynu (opcjonalnie)" value={draft["added_"+eq]||""} onChange={v=>setDraft(d=>({...d,["added_"+eq]:v}))} type="date"/>
-          </div>)}
+            </div>)}
+          </div>}
+          {hiddenNames.length>0&&<div style={{marginBottom:8}}>
+            <SectionLabel>Zarchiwizowany sprzęt</SectionLabel>
+            {hiddenNames.map(eq=><div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #F2F5F7"}}>
+              <span style={{fontSize:13,color:"#7A8FA6"}}>{eq}</span>
+              <button onClick={()=>restoreEquipment(eq)} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
+            </div>)}
+          </div>}
           <Btn style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={saveStock}>Zapisz stany</Btn>
         </Modal>}
       </>;
@@ -379,6 +455,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [csvRows,setCsvRows]=useState([]);
       const [csvError,setCsvError]=useState("");
       const importRef=useRef(null);
+      const activeEq=getActiveEquipmentNames(stock);
 
       const effectiveDetail = detail !== null ? detail : (initialDetail ?? null);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
@@ -685,7 +762,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </div>
 
           {showEdit&&ef&&<Modal title="Edytuj wypożyczenie" onClose={()=>setShowEdit(false)}>
-            <Sel label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...EQUIPMENT.map(x=>({value:x,label:x}))]}/>
+            <Sel label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
             <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
@@ -829,7 +906,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
         {showAdd&&<Modal title="Nowe wypożyczenie" onClose={()=>setShowAdd(false)}>
-          <Sel label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...EQUIPMENT.map(x=>({value:x,label:x}))]}/>
+          <Sel label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x}))]}/>
 
           <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>

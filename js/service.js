@@ -1,6 +1,6 @@
     // ── SERVICE ───────────────────────────────────────────────────────────────
 
-    function Service({rentals,machines,setMachines,setFinances}) {
+    function Service({rentals,machines,setMachines,setFinances,stock}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [selId,setSelId]=useState(null);
@@ -13,8 +13,9 @@
       const borderC=dk?"#1A3030":"#E4EAF0";
       const textC=dk?"#E8F5F5":"#1C2B3A";
       const subC=dk?"#5A8A8A":"#7A8FA6";
+      const activeEq=getActiveEquipmentNames(stock);
 
-      const emptyMachine=()=>({type:EQUIPMENT[0],name:"",serialNo:"",purchaseDate:"",lastServiceDate:"",servicePeriodDays:365,notes:""});
+      const emptyMachine=()=>({type:activeEq[0],name:"",serialNo:"",purchaseDate:"",lastServiceDate:"",servicePeriodDays:365,notes:""});
       const emptySrv=()=>({date:today,type:"Przegląd",notes:"",cost:""});
       const [form,setForm]=useState(emptyMachine);
       const [srvForm,setSrvForm]=useState(emptySrv);
@@ -155,7 +156,7 @@
         <Btn onClick={()=>{setForm(emptyMachine());setShowAdd(true);}} style={{width:"100%",justifyContent:"center",marginTop:4}}>+ Dodaj maszynę</Btn>
 
         {(showAdd||editId!==null)&&<Modal title={editId!==null?"Edytuj maszynę":"Nowa maszyna"} onClose={()=>{setShowAdd(false);setEditId(null);}}>
-          <Sel label="Typ sprzętu" value={form.type} onChange={v=>setForm(f=>({...f,type:v}))} options={EQUIPMENT.map(e=>({value:e,label:e}))}/>
+          <Sel label="Typ sprzętu" value={form.type} onChange={v=>setForm(f=>({...f,type:v}))} options={activeEq.map(e=>({value:e,label:e}))}/>
           <Inp label="Nazwa własna (np. CPM #1)" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="CPM #1"/>
           <Inp label="Numer seryjny" value={form.serialNo} onChange={v=>setForm(f=>({...f,serialNo:v}))} placeholder="opcjonalnie"/>
           <Inp label="Data zakupu" value={form.purchaseDate} onChange={v=>setForm(f=>({...f,purchaseDate:v}))} type="date"/>
