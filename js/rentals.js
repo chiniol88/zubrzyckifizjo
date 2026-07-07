@@ -377,15 +377,15 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const effectiveDetail = detail !== null ? detail : (initialDetail ?? null);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
 
-      const cnt={aktywne:rentals.filter(r=>r.status==="aktywne"&&!r.renewable).length,odnawialne:rentals.filter(r=>r.status==="aktywne"&&r.renewable).length,zakończone:rentals.filter(r=>r.status==="zakończone").length};
+      const cnt={aktywne:rentals.filter(r=>r.status==="aktywne"&&!r.renewable&&!r.reserved).length,odnawialne:rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved).length,oczekujace:rentals.filter(r=>r.status==="aktywne"&&r.reserved).length,zakończone:rentals.filter(r=>r.status==="zakończone").length};
       const cntZakOkres=rentals.filter(r=>r.status==="zakończone"&&!r.renewable).length;
       const cntZakCykl=rentals.filter(r=>r.status==="zakończone"&&r.renewable).length;
       const zakBase=rentals.filter(r=>r.status==="zakończone");
       const zakFiltered=zakSubView==="cykliczne"?zakBase.filter(r=>r.renewable):zakSubView==="okresowe"?zakBase.filter(r=>!r.renewable):zakBase;
-      const filt=view==="aktywne"?[
-        ...rentals.filter(r=>r.status==="aktywne"&&!r.renewable&&r.reserved).sort((a,b)=>(a.startDate||"9999").localeCompare(b.startDate||"9999")),
-        ...rentals.filter(r=>r.status==="aktywne"&&!r.renewable&&!r.reserved).sort((a,b)=>(a.endDate||"9999-99-99").localeCompare(b.endDate||"9999-99-99"))
-      ]:view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable):zakFiltered.slice().sort((a,b)=>(b.endDate||b.startDate||"").localeCompare(a.endDate||a.startDate||""));
+      const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable&&!r.reserved).sort((a,b)=>(a.endDate||"9999-99-99").localeCompare(b.endDate||"9999-99-99"))
+      :view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved)
+      :view==="oczekujace"?rentals.filter(r=>r.status==="aktywne"&&r.reserved).sort((a,b)=>(a.startDate||"9999").localeCompare(b.startDate||"9999"))
+      :zakFiltered.slice().sort((a,b)=>(b.endDate||b.startDate||"").localeCompare(a.endDate||a.startDate||""));
 
       if(effectiveDetail!==null) {
         const r=rentals.find(x=>x.id===effectiveDetail);
@@ -792,7 +792,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
 
       return <div>
         <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-          <div style={{minWidth:0}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800}}>Wypożyczalnia</div><div style={{fontSize:13,color:"#7A8FA6"}}>{cnt.aktywne+cnt.odnawialne} aktywnych</div></div>
+          <div style={{minWidth:0}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800}}>Wypożyczalnia</div><div style={{fontSize:13,color:"#7A8FA6"}}>{cnt.aktywne+cnt.odnawialne+cnt.oczekujace} aktywnych</div></div>
           <div style={{display:"flex",gap:6,flexShrink:0}}>
             <button onClick={()=>{setCsvRows([]);setCsvError("");setShowImport(true);}} style={{height:34,padding:"0 12px",borderRadius:20,border:"1.5px solid #0A7C7C",background:"transparent",color:"#0A7C7C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 Import</button>
             <button title="Usuń duplikaty" onClick={()=>{
@@ -809,7 +809,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </div>
         </div>
         <div style={{display:"flex",gap:6,padding:"0 20px 16px"}}>
-          {[{k:"aktywne",l:`Szyny CPM (${cnt.aktywne})`},{k:"odnawialne",l:`🔄 Odn. (${cnt.odnawialne})`},{k:"zakończone",l:`Zakończone (${cnt.zakończone})`}].map(x=>
+          {[{k:"aktywne",l:`Szyny CPM (${cnt.aktywne})`},{k:"odnawialne",l:`🔄 Odn. (${cnt.odnawialne})`},{k:"oczekujace",l:`📋 Oczek. (${cnt.oczekujace})`},{k:"zakończone",l:`Zakończone (${cnt.zakończone})`}].map(x=>
             <button key={x.k} onClick={()=>setView(x.k)} style={{flex:1,padding:"8px 6px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,whiteSpace:"nowrap",background:view===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:view===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit",textAlign:"center"}}>{x.l}</button>
           )}
         </div>
