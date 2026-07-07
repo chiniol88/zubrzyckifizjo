@@ -246,7 +246,8 @@ const emptyVisit = () => ({date:todayLocal(),time:"15:00",type:"Rehabilitacja do
 const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",startDate:todayLocal(),startTime:"10:00",startAllDay:false,endDate:"",endTime:"10:00",endAllDay:false,renewable:false,amount:"",amountPaid:"",transport:"",notes:"",source:""});
 
 const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
-const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
+const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
+const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
 const calcRentalPaid = r => {
   const tp=r.transportPaid?(+r.transport||0):0;

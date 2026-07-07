@@ -809,7 +809,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </div>
         </div>
         <div style={{display:"flex",gap:6,padding:"0 20px 16px"}}>
-          {[{k:"aktywne",l:`Aktywne (${cnt.aktywne})`},{k:"odnawialne",l:`🔄 Odn. (${cnt.odnawialne})`},{k:"zakończone",l:`Zakończone (${cnt.zakończone})`}].map(x=>
+          {[{k:"aktywne",l:`Szyny CPM (${cnt.aktywne})`},{k:"odnawialne",l:`🔄 Odn. (${cnt.odnawialne})`},{k:"zakończone",l:`Zakończone (${cnt.zakończone})`}].map(x=>
             <button key={x.k} onClick={()=>setView(x.k)} style={{flex:1,padding:"8px 6px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,whiteSpace:"nowrap",background:view===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:view===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit",textAlign:"center"}}>{x.l}</button>
           )}
         </div>

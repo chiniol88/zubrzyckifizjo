@@ -169,6 +169,13 @@
           return cyc.length===(r.cycles||[]).length?r:{...r,cycles:cyc};
         }));
       },[rentalsLoaded,rentals]);
+      // Jednorazowe aktywne wypożyczenia wózków → przełącz na odnawialne (cykliczne)
+      useEffect(()=>{
+        if(!rentalsLoaded||!rentals)return;
+        const needsMigration=rentals.some(r=>r.status==="aktywne"&&!r.renewable&&WOZEK_EQUIPMENT.includes(r.equipment));
+        if(!needsMigration)return;
+        setRentals(rs=>rs.map(r=>(r.status==="aktywne"&&!r.renewable&&WOZEK_EQUIPMENT.includes(r.equipment))?{...r,renewable:true}:r));
+      },[rentalsLoaded,rentals]);
       useEffect(()=>{
         if(!rentalsLoaded||!financesLoaded||!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];

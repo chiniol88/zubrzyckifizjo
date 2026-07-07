@@ -291,9 +291,8 @@
         {/* Skąd trafiają klienci — sortowanie po przychodzie */}
         {(()=>{
           const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
-          const WOZEK_EQ="Wózek inwalidzki Elite Tim";
           const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
-          const catOf=eq=>SZYNY_EQ.includes(eq)?"szyny":eq===WOZEK_EQ?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
+          const catOf=eq=>SZYNY_EQ.includes(eq)?"szyny":WOZEK_EQUIPMENT.includes(eq)?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
           // Wypożyczenia które wystartowały w miesiącu (do licznika i cntBySource)
           const periodRentalsAll=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd&&!r.reserved);
           // Lista WSZYSTKICH wpłat w miesiącu (wpłaty + przedłużenia + cykle + legacy)
