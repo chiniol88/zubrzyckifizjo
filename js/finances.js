@@ -749,7 +749,7 @@
         if(sid.startsWith("visit-")){const vid=+sid.replace("visit-","");setVisits(vs=>vs.filter(v=>+v.id!==vid));}
         else if(sid.startsWith("payment-")){const pid=+sid.replace("payment-","");setRentals(rs=>rs.map(r=>{const found=(r.payments||[]).find(p=>+p.id===pid);if(!found)return r;const newPmts=(r.payments||[]).filter(p=>+p.id!==pid);return{...r,payments:newPmts,amountPaid:newPmts.reduce((s,p)=>s+(+p.amount||0),0)};}));}
         else if(sid.startsWith("extend-")){const rest=sid.slice(7);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const eid=+rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,extensions:(r.extensions||[]).map(e=>+e.id===eid?{...e,amountPaid:0,paidDate:null}:e)}));}
-        else if(sid.startsWith("cycle-")){const rest=sid.slice(6);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const mo=rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,cycles:(r.cycles||[]).map(c=>c.month===mo?{...c,paid:false,paidDate:null}:c)}));}
+        else if(sid.startsWith("cycle-")){const {rentalId,cycleKey}=parseCycleSourceId(sid);setRentals(rs=>rs.map(r=>+r.id!==rentalId?r:{...r,cycles:(r.cycles||[]).map(c=>(c.dueDate||c.month)===cycleKey?{...c,paid:false,paidDate:null}:c)}));}
         else if(sid.startsWith("wozek-")){const cid=+sid.replace("wozek-","");setNfzCases(cs=>(cs||[]).map(c=>+c.id===cid?{...c,realized:false}:c));}
         else if(sid.startsWith("transport-")){const rid=+sid.slice(10);setRentals(rs=>rs.map(r=>+r.id===rid?{...r,transportPaid:false,transportPaidDate:null}:r));}
         else if(sid.startsWith("serwis-")){const rest=sid.slice(7);const di=rest.indexOf("-");const mid=+rest.slice(0,di);const eid=+rest.slice(di+1);setMachines(ms=>(ms||[]).map(m=>{if(m.id!==mid)return m;const log=(m.serviceLog||[]).filter(s=>s.id!==eid);const lastServiceDate=log.length>0?log.reduce((a,b)=>(a.date>b.date?a:b)).date:null;return{...m,serviceLog:log,lastServiceDate};}));}
@@ -906,7 +906,14 @@
           <Inp label="Kwota (zł)" value={editE.amount} onChange={v=>setEditE(f=>({...f,amount:v}))} type="number"/>
           <Inp label="Opis" value={editE.description||""} onChange={v=>setEditE(f=>({...f,description:v}))}/>
           <Inp label="Data" value={editE.date} onChange={v=>setEditE(f=>({...f,date:v}))} type="date"/>
-          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setFinances(fs=>fs.map(f=>f.id===editE.id?{...f,...editE,amount:+editE.amount}:f));setEditE(null);setToast("Zmiany zapisane");}}>Zapisz zmiany</Btn>
+          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{
+            setFinances(fs=>fs.map(f=>f.id===editE.id?{...f,...editE,amount:+editE.amount}:f));
+            if((editE.sourceId||"").startsWith("cycle-")){
+              const {rentalId,cycleKey}=parseCycleSourceId(editE.sourceId);
+              setRentals(rs=>rs.map(r=>+r.id!==rentalId?r:{...r,cycles:(r.cycles||[]).map(c=>(c.dueDate||c.month)===cycleKey?{...c,amount:+editE.amount,paidDate:editE.date}:c)}));
+            }
+            setEditE(null);setToast("Zmiany zapisane");
+          }}>Zapisz zmiany</Btn>
           <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{deleteWithSource(editE);setEditE(null);}}>🗑️ Usuń wpis</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}

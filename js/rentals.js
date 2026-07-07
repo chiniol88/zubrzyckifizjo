@@ -639,7 +639,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.cancelled||c.month<=endMonth)):x.cycles
                   }:x));
                   if(endMonth){
-                    const toRemove=new Set((r.cycles||[]).filter(c=>!c.paid&&c.month>endMonth).map(c=>"cycle-"+r.id+"-"+c.month));
+                    const toRemove=new Set((r.cycles||[]).filter(c=>!c.paid&&c.month>endMonth).map(c=>"cycle-"+r.id+"-"+(c.dueDate||c.month)));
                     if(toRemove.size>0)setFinances(fs=>fs.filter(f=>!toRemove.has(f.sourceId)));
                   }
                   close();

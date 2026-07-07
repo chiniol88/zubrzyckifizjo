@@ -249,6 +249,7 @@ const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","
 const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
+const parseCycleSourceId = sid => { const rest=sid.slice(6); const di=rest.indexOf("-"); return {rentalId:+rest.slice(0,di), cycleKey:rest.slice(di+1)}; };
 const calcRentalPaid = r => {
   const tp=r.transportPaid?(+r.transport||0):0;
   if(r.renewable) return tp+(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
