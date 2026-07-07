@@ -155,19 +155,22 @@
       const deleteRepair=(eq,id)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});
 
       // Yield / obłożenie sprzętu — % dni w roku gdy dana szyna była wypożyczona
+      // (licząc od daty dodania sprzętu do magazynu, jeśli podana — żeby nie liczyć dni sprzed zakupu)
       const yieldStats=useMemo(()=>{
         const yStart=statsYear+"-01-01";
         const yEnd=statsYear+"-12-31";
         const cutEnd=today<yEnd?today:yEnd;
-        const daysInYear=Math.round((new Date(yEnd)-new Date(yStart))/86400000)+1;
-        const elapsedDays=Math.max(1,Math.min(daysInYear,Math.round((new Date(cutEnd)-new Date(yStart))/86400000)+1));
         return EQUIPMENT.map(eq=>{
           const qty=getQty(eq);
+          const added=(stock&&stock.addedDate&&stock.addedDate[eq])||"";
+          const eqStart=added>yStart?added:yStart;
+          if(eqStart>cutEnd)return{eq,qty,rentedDays:0,idleDays:0,totalSlots:0,pct:0};
+          const elapsedDays=Math.round((new Date(cutEnd)-new Date(eqStart))/86400000)+1;
           let rentedDays=0;
           rentals.filter(r=>r.equipment===eq).forEach(r=>{
             const s=r.startDate||"";if(!s)return;
             const e=r.endDate||(r.status==="aktywne"?today:s);
-            const clipS=s<yStart?yStart:s;
+            const clipS=s<eqStart?eqStart:s;
             const clipE=e>cutEnd?cutEnd:e;
             if(clipS>clipE)return;
             rentedDays+=Math.round((new Date(clipE)-new Date(clipS))/86400000)+1;

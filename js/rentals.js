@@ -162,6 +162,8 @@
         return {free,warn,occupied};
       },[activeCount,qty]);
 
+      const addedDate=(stock&&stock.addedDate)||{};
+
       const saveStock=()=>{
         const today=todayLocal();
         const prevQty=qty;
@@ -175,7 +177,8 @@
           }
         });
         const newQty=Object.fromEntries(EQUIPMENT.map(eq=>[eq,+draft[eq]||1]));
-        setStock({qty:newQty,history});
+        const newAddedDate=Object.fromEntries(EQUIPMENT.map(eq=>[eq,draft["added_"+eq]||""]).filter(([,v])=>v));
+        setStock({...(stock||{}),qty:newQty,history,addedDate:newAddedDate});
         setShowEdit(false);
       };
 
@@ -194,19 +197,22 @@
                   <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{fr}/{tot}</span>
                 </div>;
               })}
-              <button onClick={e=>{e.stopPropagation();setDraft(Object.fromEntries(EQUIPMENT.map(eq=>[eq,String(qty[eq]||1)])));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Edytuj stany magazynowe</button>
+              <button onClick={e=>{e.stopPropagation();setDraft(Object.fromEntries([...EQUIPMENT.map(eq=>[eq,String(qty[eq]||1)]),...EQUIPMENT.map(eq=>["added_"+eq,addedDate[eq]||""])]));setShowEdit(true);}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Edytuj stany magazynowe</button>
             </div>}
           </div>
         </div>
         {showEdit&&<Modal title="Edytuj stany magazynowe" onClose={()=>setShowEdit(false)}>
-          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Podaj ile sztuk każdego sprzętu posiadasz łącznie. Zmiany są zapisywane z datą dzisiejszą i uwzględniane w statystykach historycznych.</div>
-          {EQUIPMENT.map(eq=><div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-            <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-              <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
-              <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Podaj ile sztuk każdego sprzętu posiadasz łącznie oraz od kiedy jest w magazynie (do poprawnego liczenia obłożenia sprzętu). Zmiany ilości są zapisywane z datą dzisiejszą i uwzględniane w statystykach historycznych.</div>
+          {EQUIPMENT.map(eq=><div key={eq} style={{marginBottom:14,paddingBottom:14,borderBottom:"1px solid #E4EAF0"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
+                <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+              </div>
             </div>
+            <Inp label="Data dodania do magazynu (opcjonalnie)" value={draft["added_"+eq]||""} onChange={v=>setDraft(d=>({...d,["added_"+eq]:v}))} type="date"/>
           </div>)}
           <Btn style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={saveStock}>Zapisz stany</Btn>
         </Modal>}
