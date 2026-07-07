@@ -242,11 +242,18 @@
               <span style={{position:"absolute",right:16,fontSize:12,color:dk?"#5A8A8A":"#7A8FA6"}}>{open?"▲":"▼"}</span>
             </div>
             {open&&<div style={{borderTop:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,padding:"12px 16px 14px"}}>
-              {activeNames.map(eq=>{
-                const active=activeCount[eq]||0,tot=total(eq),fr=tot-active;
-                return <div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
-                  <span style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</span>
-                  <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{fr}/{tot}</span>
+              {[...EQUIPMENT_GROUPS,{key:null,label:"Nieprzypisane"}].map(g=>{
+                const names=activeNames.filter(n=>categoryOf(n)===g.key);
+                if(names.length===0)return null;
+                return <div key={g.key||"none"} style={{marginBottom:10}}>
+                  <SectionLabel style={{marginBottom:4}}>{g.label}</SectionLabel>
+                  {names.map(eq=>{
+                    const active=activeCount[eq]||0,tot=total(eq),fr=tot-active;
+                    return <div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+                      <span style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{fr}/{tot}</span>
+                    </div>;
+                  })}
                 </div>;
               })}
               <button onClick={e=>{e.stopPropagation();openEdit();}} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Zarządzaj sprzętem</button>
