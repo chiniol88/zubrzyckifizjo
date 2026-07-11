@@ -98,11 +98,21 @@
         if(n>0&&!window.confirm(`Ta kategoria jest użyta w ${n} pozycjach w historii snapshotów. Usunąć mimo to? (te pozycje zostaną, ale bez przypisanej kategorii)`))return;
         setWealth(w=>({...w,categories:{...w.categories,[kind]:w.categories[kind].filter(c=>c.id!==id)}}));
       };
+      const moveCat=(kind,id,dir)=>{
+        setWealth(w=>{
+          const arr=[...(w.categories[kind]||[])];
+          const idx=arr.findIndex(c=>c.id===id);
+          const newIdx=idx+dir;
+          if(idx<0||newIdx<0||newIdx>=arr.length)return w;
+          [arr[idx],arr[newIdx]]=[arr[newIdx],arr[idx]];
+          return {...w,categories:{...w.categories,[kind]:arr}};
+        });
+      };
 
       const Section=({kind,label,color})=>(
         <div style={{marginBottom:20}}>
           <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{label}</div>
-          {(wealth.categories[kind]||[]).map(c=>(
+          {(wealth.categories[kind]||[]).map((c,i,arr)=>(
             <div key={c.id} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",border:`1px solid ${border}`,borderRadius:10,marginBottom:6,background:dk?"#0F1F1F":"#F7F9FB"}}>
               {editCat&&editCat.kind===kind&&editCat.id===c.id
                 ?<>
@@ -113,6 +123,10 @@
                   <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button>
                 </>
                 :<>
+                  <div style={{display:"flex",flexDirection:"column",flexShrink:0}}>
+                    <button onClick={()=>moveCat(kind,c.id,-1)} disabled={i===0} style={{background:"none",border:"none",color:i===0?(dk?"#1E3030":"#DCE3E9"):sub,cursor:i===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"2px 3px"}}>▲</button>
+                    <button onClick={()=>moveCat(kind,c.id,1)} disabled={i===arr.length-1} style={{background:"none",border:"none",color:i===arr.length-1?(dk?"#1E3030":"#DCE3E9"):sub,cursor:i===arr.length-1?"default":"pointer",fontSize:10,lineHeight:1,padding:"2px 3px"}}>▼</button>
+                  </div>
                   <span style={{flex:1,fontSize:14,fontWeight:600,color:textC}}>{c.name}</span>
                   <button onClick={()=>setEditCat({kind,id:c.id,value:c.name})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:13}}>✏️</button>
                   <button onClick={()=>delCat(kind,c.id)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,lineHeight:1}}>×</button>
