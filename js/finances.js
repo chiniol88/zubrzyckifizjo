@@ -118,24 +118,7 @@
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
 
         // ── MARKETING ───────────────────────────────────────────────────────────
-        const mktgCat=(stock&&stock.marketingCat)||"";
-        const mktgSub=(stock&&stock.marketingSub)||"";
-        const matchCat=(cat,sub)=>{
-          if(mktgCat)return cat===mktgCat&&(!mktgSub||sub===mktgSub);
-          return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";
-        };
-        let marketingSpend=0;
-        const mData=(budget&&budget.months&&budget.months[selMonth])||{};
-        (mData.expenses||[]).forEach(e=>{if(matchCat(e.cat,e.subcat))marketingSpend+=(+e.amount||0);});
-        ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&matchCat(r.cat,r.subcat)).forEach(r=>{
-          const rStart=(r.startMonth||"0000-00").slice(0,7);
-          const rEnd=(r.endMonth||"9999-99").slice(0,7);
-          if(selMonth>=rStart&&selMonth<=rEnd){
-            const ov=((budget.months||{})[selMonth]||{}).recurringOverrides||{};
-            const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
-            marketingSpend+=amt*(r.cycle==="weekly"?4:1);
-          }
-        });
+        const marketingSpend=marketingSpendForMonth(budget,stock,selMonth);
 
         return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,cutEnd,avgDuration,marketingSpend};
       },[rentals,finances,selMonth,today,rentalEquipMap,paymentRentalMap,stock,budget]);
@@ -717,31 +700,13 @@
         return map;
       },[listEntries]);
 
-      // Koszt marketingu w całym roku (suma po miesiącach, ta sama reguła dopasowania co w zakładce Sprzęt)
+      // Koszt marketingu w całym roku / w wybranym miesiącu (ta sama reguła dopasowania co w zakładce Sprzęt)
       const yearMarketingSpend=useMemo(()=>{
-        const mktgCat=(stock&&stock.marketingCat)||"";
-        const mktgSub=(stock&&stock.marketingSub)||"";
-        const matchCat=(cat,sub)=>{
-          if(mktgCat)return cat===mktgCat&&(!mktgSub||sub===mktgSub);
-          return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";
-        };
         let total=0;
-        for(let m=1;m<=12;m++){
-          const ym=year+"-"+String(m).padStart(2,"0");
-          const mData=(budget&&budget.months&&budget.months[ym])||{};
-          (mData.expenses||[]).forEach(e=>{if(matchCat(e.cat,e.subcat))total+=(+e.amount||0);});
-          ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&matchCat(r.cat,r.subcat)).forEach(r=>{
-            const rStart=(r.startMonth||"0000-00").slice(0,7);
-            const rEnd=(r.endMonth||"9999-99").slice(0,7);
-            if(ym>=rStart&&ym<=rEnd){
-              const ov=((budget.months||{})[ym]||{}).recurringOverrides||{};
-              const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
-              total+=amt*(r.cycle==="weekly"?4:1);
-            }
-          });
-        }
+        for(let m=1;m<=12;m++)total+=marketingSpendForMonth(budget,stock,year+"-"+String(m).padStart(2,"0"));
         return total;
       },[year,budget,stock]);
+      const monthMarketingSpend=useMemo(()=>marketingSpendForMonth(budget,stock,month),[month,budget,stock]);
 
       const months=useMemo(()=>{const c=todayLocal().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
       const years=useMemo(()=>{const c=todayLocal().slice(0,4),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,4));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
@@ -821,7 +786,10 @@
                     <div style={{fontSize:10,color:sub}}>vs poprz.</div>
                   </div>}
                 </div>
-
+                {(viewMode==="month"||viewMode==="year")&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:`1px solid ${border}`}}>
+                  <span style={{fontSize:12,color:sub,fontWeight:600}}>📣 Koszt marketingu ({viewMode==="month"?"ten miesiąc":"cały rok"})</span>
+                  <span style={{fontSize:14,fontWeight:800,color:"#E05C5C"}}>{demo?"****":(viewMode==="month"?monthMarketingSpend:yearMarketingSpend).toFixed(2)+" zł"}</span>
+                </div>}
               </div>
 
               {catBreakdown.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
@@ -886,11 +854,6 @@
                   </div>
                 </Card>
               ))}
-
-              {viewMode==="year"&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginTop:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:12,color:sub,fontWeight:600}}>📣 Koszt marketingu (cały rok)</span>
-                <span style={{fontSize:15,fontWeight:800,color:"#E05C5C"}}>{demo?"****":yearMarketingSpend.toFixed(2)+" zł"}</span>
-              </div>}
             </>}
 
           </div>

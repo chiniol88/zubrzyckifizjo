@@ -252,6 +252,27 @@ const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"WÃ
 const getActiveEquipmentNames = stock => ((stock&&stock.equipment&&stock.equipment.length) ? [...new Set([...EQUIPMENT,...stock.equipment.map(e=>e.name)])].filter(n=>{const e=(stock.equipment||[]).find(x=>x.name===n);return !e||!e.hidden;}) : EQUIPMENT);
 const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
 const parseCycleSourceId = sid => { const rest=sid.slice(6); const di=rest.indexOf("-"); return {rentalId:+rest.slice(0,di), cycleKey:rest.slice(di+1)}; };
+const marketingSpendForMonth = (budget, stock, ym) => {
+  const mktgCat=(stock&&stock.marketingCat)||"";
+  const mktgSub=(stock&&stock.marketingSub)||"";
+  const matchCat=(cat,sub)=>{
+    if(mktgCat)return cat===mktgCat&&(!mktgSub||sub===mktgSub);
+    return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";
+  };
+  let total=0;
+  const mData=(budget&&budget.months&&budget.months[ym])||{};
+  (mData.expenses||[]).forEach(e=>{if(matchCat(e.cat,e.subcat))total+=(+e.amount||0);});
+  ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&matchCat(r.cat,r.subcat)).forEach(r=>{
+    const rStart=(r.startMonth||"0000-00").slice(0,7);
+    const rEnd=(r.endMonth||"9999-99").slice(0,7);
+    if(ym>=rStart&&ym<=rEnd){
+      const ov=((budget.months||{})[ym]||{}).recurringOverrides||{};
+      const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
+      total+=amt*(r.cycle==="weekly"?4:1);
+    }
+  });
+  return total;
+};
 const calcRentalPaid = r => {
   const tp=r.transportPaid?(+r.transport||0):0;
   if(r.renewable) return tp+(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
