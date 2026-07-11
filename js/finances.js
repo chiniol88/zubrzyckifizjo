@@ -573,7 +573,6 @@
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
-      const [editE,setEditE]=useState(null);
       const [viewMode,setViewMode]=useState(()=>{const h=window.location.hash.replace("#","").split("-");return h[1]||"month";});
       useEffect(()=>{window.location.replace("#finances-"+viewMode);},[viewMode]);
       const [month,setMonth]=useState(()=>todayLocal().slice(0,7));
@@ -582,123 +581,11 @@
       const [rangeFrom,setRangeFrom]=useState(()=>todayLocal().slice(0,7)+"-01");
       const [rangeTo,setRangeTo]=useState(()=>todayLocal());
       const [toast,setToast]=useState(null);
-      const [showAllPats,setShowAllPats]=useState(false);
-      const [expandedCat,setExpandedCat]=useState(null);
       const cats=["Wizyta","Wypożyczalnia","Wózek","Inne"];
       const ef=()=>({date:todayLocal(),category:"Wizyta",amount:"",description:""});
       const [form,setForm]=useState(ef);
 
       const weekEnd=useMemo(()=>{const d=new Date(weekStart+"T12:00:00");d.setDate(d.getDate()+6);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");},[weekStart]);
-
-      // visitMap: sourceId -> actual visit date
-      const visitMap=useMemo(()=>{
-        const m={};
-        (visits||[]).forEach(v=>{if(v.id)m["visit-"+v.id]=v.date;});
-        return m;
-      },[visits]);
-
-      const inPeriod=(date)=>{
-        if(!date)return false;
-        if(viewMode==="month")return date.startsWith(month);
-        if(viewMode==="week")return date>=weekStart&&date<=weekEnd;
-        if(viewMode==="range")return date>=rangeFrom&&date<=rangeTo;
-        return date.startsWith(year);
-      };
-      const inPrevPeriod=(date)=>{
-        if(!date)return false;
-        if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()-1);return date.startsWith(d.toISOString().slice(0,7));}
-        if(viewMode==="week"){const ps=new Date(weekStart);ps.setDate(ps.getDate()-7);const pe=new Date(weekEnd);pe.setDate(pe.getDate()-7);return date>=ps.toISOString().slice(0,10)&&date<=pe.toISOString().slice(0,10);}
-        if(viewMode==="range")return false;
-        return date.startsWith(String(+year-1));
-      };
-
-      const inc=useMemo(()=>finances.filter(f=>{
-        if(f.type!=="przychód")return false;
-        const d=(f.sourceId||"").startsWith("visit-")?(visitMap[f.sourceId]||f.date):f.date;
-        return inPeriod(d);
-      }).reduce((s,f)=>s+(+f.amount||0),0),[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
-      const prevInc=useMemo(()=>finances.filter(f=>{
-        if(f.type!=="przychód")return false;
-        const d=(f.sourceId||"").startsWith("visit-")?(visitMap[f.sourceId]||f.date):f.date;
-        return inPrevPeriod(d);
-      }).reduce((s,f)=>s+(+f.amount||0),0),[finances,visits,visitMap,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
-      const diff=prevInc>0?Math.round((inc-prevInc)/prevInc*100):null; // prevInc still from finances for comparison
-      // ── SPÓJNA LOGIKA FILTROWANIA ────────────────────────────────────────────
-      // Reguła: dla wpisów visit-* data = visits[id].date (aktualna data wizyty)
-      //         dla reszty (payment, cycle, extend, wozek) = f.date z finances
-      // visitMap już zbudowany wyżej
-
-      // Wizyty w okresie (źródło: visits)
-      const periodVisits=useMemo(()=>(visits||[]).filter(v=>inPeriod(v.date)&&v.status!=="anulowana"&&visitStatus(v)==="zakończona"),[visits,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
-      const visitCount=periodVisits.length;
-      const visitAvg=visitCount>0?periodVisits.reduce((s,v)=>s+(+v.price||0),0)/visitCount:0;
-
-      // Finanse nie-wizytowe w okresie (payment, cycle, extend, wozek, ręczne)
-      const periodNonVisitFinances=useMemo(()=>finances.filter(f=>{
-        if(f.type!=="przychód")return false;
-        if((f.sourceId||"").startsWith("visit-"))return false; // wizyty liczymy z visits
-        return inPeriod(f.date);
-      }),[finances,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
-
-      // Łączny przychód: wizyty (z visits.price) + reszta (z finances)
-      // inc już wyliczony wyżej przez finances — nadpisujemy spójnie
-      const incVisits=periodVisits.reduce((s,v)=>s+(+v.price||0),0);
-      const incOther=periodNonVisitFinances.reduce((s,f)=>s+(+f.amount||0),0);
-      const incTotal=incVisits+incOther;
-
-      // Kategorie
-      const catBreakdown=useMemo(()=>{
-        const map={Wizyta:incVisits,Wypożyczalnia:0,Wózek:0,Inne:0};
-        periodNonVisitFinances.forEach(f=>{
-          const c=f.category||"Inne";
-          if(map[c]!==undefined)map[c]+=+f.amount||0;
-          else map["Inne"]+=+f.amount||0;
-        });
-        const colors={Wizyta:"#0A7C7C",Wypożyczalnia:"#2E86AB",Wózek:"#7B4FBF",Inne:"#7A8FA6"};
-        return Object.entries(map).filter(([,v])=>v>0).map(([k,v])=>({label:k,v,color:colors[k]||"#7A8FA6"}));
-      },[periodVisits,periodNonVisitFinances,incVisits]);
-
-      // Pacjenci (wizyty + wypożyczenia + wózki)
-      const topPats=useMemo(()=>{
-        const map={};const cnt={};
-        periodVisits.forEach(v=>{
-          const name=v.patientName||"Nieznany";
-          if(name==="Nieznany")return;
-          cnt[name]=(cnt[name]||0)+1;
-          map[name]=(map[name]||0)+(+v.price||0);
-        });
-        periodNonVisitFinances.forEach(f=>{
-          const raw=(f.description||"").split(" – ")[1];
-          if(!raw)return;
-          const name=raw.split(" (")[0].trim();
-          if(!name)return;
-          map[name]=(map[name]||0)+(+f.amount||0);
-        });
-        return Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([n,v])=>([n,v,cnt[n]||0]));
-      },[periodVisits,periodNonVisitFinances]);
-      const visiblePats=showAllPats?topPats:topPats.slice(0,5);
-
-      // Lista wpisów: wizyty z visits + reszta z finances
-      const listEntries=useMemo(()=>{
-        const visitRows=periodVisits.map(v=>({
-          id:"v-"+v.id,sourceId:"visit-"+v.id,date:v.date,
-          category:"Wizyta",amount:v.price||0,
-          description:"Wizyta – "+v.patientName,type:"przychód"
-        }));
-        const otherRows=periodNonVisitFinances;
-        return [...visitRows,...otherRows].sort((a,b)=>b.date.localeCompare(a.date));
-      },[periodVisits,periodNonVisitFinances]);
-
-      // Wpisy pogrupowane po kategorii (do rozwijanej listy w karcie "Kategorie"), już sort. po dacie (najnowsze pierwsze)
-      const catEntries=useMemo(()=>{
-        const known=new Set(["Wizyta","Wypożyczalnia","Wózek"]);
-        const map={};
-        listEntries.forEach(f=>{
-          const c=known.has(f.category)?f.category:"Inne";
-          (map[c]=map[c]||[]).push(f);
-        });
-        return map;
-      },[listEntries]);
 
       // Koszt marketingu w całym roku / w wybranym miesiącu (ta sama reguła dopasowania co w zakładce Sprzęt)
       const yearMarketingSpend=useMemo(()=>{
@@ -711,23 +598,9 @@
       const months=useMemo(()=>{const c=todayLocal().slice(0,7),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,7));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
       const years=useMemo(()=>{const c=todayLocal().slice(0,4),s=new Set([c]);finances.forEach(f=>{if(f.date)s.add(f.date.slice(0,4));});return Array.from(s).sort((a,b)=>b.localeCompare(a));},[finances]);
 
-      const deleteWithSource=(entry)=>{
-        const sid=entry.sourceId;
-        if(!sid){setFinances(fs=>fs.filter(f=>f.id!==entry.id));return;}
-        if(sid.startsWith("visit-")){const vid=+sid.replace("visit-","");setVisits(vs=>vs.filter(v=>+v.id!==vid));}
-        else if(sid.startsWith("payment-")){const pid=+sid.replace("payment-","");setRentals(rs=>rs.map(r=>{const found=(r.payments||[]).find(p=>+p.id===pid);if(!found)return r;const newPmts=(r.payments||[]).filter(p=>+p.id!==pid);return{...r,payments:newPmts,amountPaid:newPmts.reduce((s,p)=>s+(+p.amount||0),0)};}));}
-        else if(sid.startsWith("extend-")){const rest=sid.slice(7);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const eid=+rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,extensions:(r.extensions||[]).map(e=>+e.id===eid?{...e,amountPaid:0,paidDate:null}:e)}));}
-        else if(sid.startsWith("cycle-")){const {rentalId,cycleKey}=parseCycleSourceId(sid);setRentals(rs=>rs.map(r=>+r.id!==rentalId?r:{...r,cycles:(r.cycles||[]).map(c=>(c.dueDate||c.month)===cycleKey?{...c,paid:false,paidDate:null}:c)}));}
-        else if(sid.startsWith("wozek-")){const cid=+sid.replace("wozek-","");setNfzCases(cs=>(cs||[]).map(c=>+c.id===cid?{...c,realized:false}:c));}
-        else if(sid.startsWith("transport-")){const rid=+sid.slice(10);setRentals(rs=>rs.map(r=>+r.id===rid?{...r,transportPaid:false,transportPaidDate:null}:r));}
-        else if(sid.startsWith("serwis-")){const rest=sid.slice(7);const di=rest.indexOf("-");const mid=+rest.slice(0,di);const eid=+rest.slice(di+1);setMachines(ms=>(ms||[]).map(m=>{if(m.id!==mid)return m;const log=(m.serviceLog||[]).filter(s=>s.id!==eid);const lastServiceDate=log.length>0?log.reduce((a,b)=>(a.date>b.date?a:b)).date:null;return{...m,serviceLog:log,lastServiceDate};}));}
-        setFinances(fs=>fs.filter(f=>f.id!==entry.id));
-      };
-
       const bg2=dk?"#1A2A2A":"#fff";
       const border=dk?"#2A4040":"#E4EAF0";
       const sub="#7A8FA6";
-      const catColors={Wizyta:"#0A7C7C",Wypożyczalnia:"#2E86AB",Wózek:"#7B4FBF",Inne:"#7A8FA6"};
 
       return <>
         <div>
@@ -773,88 +646,10 @@
               <input type="date" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
             </div>}
 
-            {viewMode!=="budget"&&viewMode!=="sprzet"&&<>
-              <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-                  <div>
-                    <div style={{fontSize:11,color:sub,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Przychód</div>
-                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:28,color:"#3DAA72",lineHeight:1}}>{demo?"****":incTotal.toFixed(2)} zł</div>
-                    {visitCount>0&&<div style={{fontSize:12,color:sub,marginTop:6}}>{visitCount} {visitCount===1?"wizyta":visitCount<5?"wizyty":"wizyt"} · śr. <b style={{color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"**":Math.round(visitAvg)} zł</b></div>}
-                  </div>
-                  {diff!==null&&<div style={{background:diff>=0?"#3DAA7220":"#E05C5C20",borderRadius:10,padding:"6px 10px",textAlign:"center"}}>
-                    <div style={{fontWeight:700,fontSize:14,color:diff>=0?"#3DAA72":"#E05C5C"}}>{diff>=0?"+":""}{diff}%</div>
-                    <div style={{fontSize:10,color:sub}}>vs poprz.</div>
-                  </div>}
-                </div>
-                {(viewMode==="month"||viewMode==="year")&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:10,paddingTop:10,borderTop:`1px solid ${border}`}}>
-                  <span style={{fontSize:12,color:sub,fontWeight:600}}>📣 Koszt marketingu ({viewMode==="month"?"ten miesiąc":"cały rok"})</span>
-                  <span style={{fontSize:14,fontWeight:800,color:"#E05C5C"}}>{demo?"****":(viewMode==="month"?monthMarketingSpend:yearMarketingSpend).toFixed(2)+" zł"}</span>
-                </div>}
-              </div>
-
-              {catBreakdown.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
-                <SectionLabel style={{marginBottom:12}}>Kategorie</SectionLabel>
-                {catBreakdown.map(c=>{
-                  const pct=inc>0?(c.v/inc*100):0;
-                  const isOpen=expandedCat===c.label;
-                  const entries=catEntries[c.label]||[];
-                  return <div key={c.label} style={{marginBottom:10}}>
-                    <div onClick={()=>setExpandedCat(isOpen?null:c.label)} style={{cursor:"pointer"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                        <span style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{c.label} <span style={{color:sub,fontSize:10}}>{isOpen?"▲":"▼"}</span></span>
-                        <span style={{fontSize:13,color:sub}}>{demo?"****":c.v.toFixed(2)} zł <span style={{color:c.color,fontWeight:700}}>({pct.toFixed(0)}%)</span></span>
-                      </div>
-                      <div style={{height:7,borderRadius:4,background:dk?"#2A4040":"#F0F4F8"}}>
-                        <div style={{height:"100%",width:pct+"%",background:c.color,borderRadius:4,transition:"width .3s"}}/>
-                      </div>
-                    </div>
-                    {isOpen&&<div style={{marginTop:8,paddingLeft:2}}>
-                      {entries.length===0&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak wpisów</div>}
-                      {entries.map((f,i)=>(
-                        <div key={f.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:i<entries.length-1?`1px solid ${border}`:"none"}}>
-                          <div style={{minWidth:0,flex:1,paddingRight:8}}>
-                            <div style={{fontSize:12,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{demo?c.label:(f.description||f.category)}</div>
-                            <div style={{fontSize:11,color:sub}}>{f.date}</div>
-                          </div>
-                          <span style={{fontSize:12,fontWeight:700,color:"#3DAA72",flexShrink:0}}>+{demo?"****":(+f.amount).toFixed(2)} zł</span>
-                        </div>
-                      ))}
-                    </div>}
-                  </div>;
-                })}
-              </div>}
-
-              {topPats.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
-                <SectionLabel style={{marginBottom:12}}>Pacjenci</SectionLabel>
-                {visiblePats.map(([name,v,c],i)=>(
-                  <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<visiblePats.length-1?`1px solid ${border}`:"none"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{width:22,height:22,borderRadius:7,background:"#0A7C7C20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#0A7C7C"}}>{i+1}</div>
-                      <div>
-                        <div style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"Pacjent "+String.fromCharCode(65+i):name}</div>
-                        <div style={{fontSize:11,color:sub}}>{c} {c===1?"wizyta":c<5?"wizyty":"wizyt"}</div>
-                      </div>
-                    </div>
-                    <span style={{fontSize:13,fontWeight:700,color:"#3DAA72"}}>{demo?"****":v.toFixed(2)} zł</span>
-                  </div>
-                ))}
-                {topPats.length>5&&<button onClick={()=>setShowAllPats(v=>!v)} style={{width:"100%",marginTop:10,padding:"8px 0",borderRadius:10,border:"none",background:"none",cursor:"pointer",fontWeight:600,fontSize:12,color:"#0A7C7C",fontFamily:"inherit"}}>{showAllPats?"Pokaż mniej ↑":"Pokaż wszystkich ("+topPats.length+") ↓"}</button>}
-              </div>}
-
-              <SectionLabel style={{margin:"16px 0 8px"}}>Wpisy</SectionLabel>
-              {listEntries.length===0&&<Empty text="Brak przychodów w tym okresie"/>}
-              {listEntries.map(f=>(
-                <Card key={f.id} onClick={()=>setEditE({...f,amount:String(f.amount)})}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div style={{minWidth:0,flex:1}}>
-                      <div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{demo?f.category:f.description||f.category}</div>
-                      <div style={{fontSize:12,color:sub,marginTop:2,display:"flex",alignItems:"center",gap:6}}>{f.date} · <Badge color={catColors[f.category]||"#7A8FA6"}>{f.category}</Badge></div>
-                    </div>
-                    <span style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:16,color:"#3DAA72",marginLeft:8,flexShrink:0}}>+{demo?"****":f.amount} zł</span>
-                  </div>
-                </Card>
-              ))}
-            </>}
+            {(viewMode==="month"||viewMode==="year")&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:12,color:sub,fontWeight:600}}>📣 Koszt marketingu ({viewMode==="month"?"ten miesiąc":"cały rok"})</span>
+              <span style={{fontSize:14,fontWeight:800,color:"#E05C5C"}}>{demo?"****":(viewMode==="month"?monthMarketingSpend:yearMarketingSpend).toFixed(2)+" zł"}</span>
+            </div>}
 
           </div>
         </div>
@@ -865,22 +660,6 @@
           <Inp label="Opis" value={form.description} onChange={v=>setForm(f=>({...f,description:v}))} placeholder="np. wizyta u Jana Kowalskiego"/>
           <Inp label="Data" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>
           <Btn disabled={!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.amount)return;setFinances(fs=>[{...form,id:Date.now(),type:"przychód",amount:+form.amount},...fs]);setForm(ef());setShowAdd(false);setToast("Wpis dodany");}}>Zapisz</Btn>
-        </Modal>}
-
-        {editE&&<Modal title="Edytuj wpis" onClose={()=>setEditE(null)}>
-          <Sel label="Kategoria" value={editE.category||"Wizyta"} onChange={v=>setEditE(f=>({...f,category:v}))} options={cats.map(c=>({value:c,label:c}))}/>
-          <Inp label="Kwota (zł)" value={editE.amount} onChange={v=>setEditE(f=>({...f,amount:v}))} type="number"/>
-          <Inp label="Opis" value={editE.description||""} onChange={v=>setEditE(f=>({...f,description:v}))}/>
-          <Inp label="Data" value={editE.date} onChange={v=>setEditE(f=>({...f,date:v}))} type="date"/>
-          <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{
-            setFinances(fs=>fs.map(f=>f.id===editE.id?{...f,...editE,amount:+editE.amount}:f));
-            if((editE.sourceId||"").startsWith("cycle-")){
-              const {rentalId,cycleKey}=parseCycleSourceId(editE.sourceId);
-              setRentals(rs=>rs.map(r=>+r.id!==rentalId?r:{...r,cycles:(r.cycles||[]).map(c=>(c.dueDate||c.month)===cycleKey?{...c,amount:+editE.amount,paidDate:editE.date}:c)}));
-            }
-            setEditE(null);setToast("Zmiany zapisane");
-          }}>Zapisz zmiany</Btn>
-          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{deleteWithSource(editE);setEditE(null);}}>🗑️ Usuń wpis</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </>;
