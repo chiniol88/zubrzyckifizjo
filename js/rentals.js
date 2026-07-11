@@ -221,6 +221,16 @@
         setStock(s=>({...(s||{}),equipment:(((s||{}).equipment)||[]).map(x=>x.name===name?{...x,hidden:false}:x)}));
       };
 
+      const GROUP_COLORS={szyny:"#0A7C7C",wozki:"#7C6AF4",balkoniki:"#F4A261"};
+      const GroupHeader=({groupKey,label})=>{
+        const color=GROUP_COLORS[groupKey]||"#7A8FA6";
+        return <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,marginTop:2}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:color,flexShrink:0}}/>
+          <div style={{fontSize:14,fontWeight:800,color,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{label}</div>
+          <div style={{flex:1,height:1,background:dk?"#2A4040":"#E4EAF0"}}/>
+        </div>;
+      };
+
       const EqRow=({eq})=><div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
@@ -245,8 +255,8 @@
               {[...EQUIPMENT_GROUPS,{key:null,label:"Nieprzypisane"}].map(g=>{
                 const names=activeNames.filter(n=>categoryOf(n)===g.key);
                 if(names.length===0)return null;
-                return <div key={g.key||"none"} style={{marginBottom:10}}>
-                  <SectionLabel style={{marginBottom:4}}>{g.label}</SectionLabel>
+                return <div key={g.key||"none"} style={{marginBottom:14}}>
+                  <GroupHeader groupKey={g.key} label={g.label}/>
                   {names.map(eq=>{
                     const active=activeCount[eq]||0,tot=total(eq),fr=tot-active;
                     return <div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
@@ -265,7 +275,7 @@
           {EQUIPMENT_GROUPS.map(g=>{
             const names=activeNames.filter(n=>categoryOf(n)===g.key);
             return <div key={g.key} style={{marginBottom:18}}>
-              <SectionLabel>{g.label}</SectionLabel>
+              <GroupHeader groupKey={g.key} label={g.label}/>
               {names.length===0&&<div style={{fontSize:12,color:"#7A8FA6",marginBottom:8}}>Brak sprzętu w tej grupie</div>}
               {names.map(eq=><EqRow key={eq} eq={eq}/>)}
               {addForm&&addForm.category===g.key
@@ -282,7 +292,7 @@
             </div>;
           })}
           {unassignedNames.length>0&&<div style={{marginBottom:18}}>
-            <SectionLabel>Nieprzypisane</SectionLabel>
+            <GroupHeader groupKey={null} label="Nieprzypisane"/>
             {unassignedNames.map(eq=><div key={eq}>
               <EqRow eq={eq}/>
               <div style={{display:"flex",gap:6,marginBottom:14,marginTop:-4}}>
@@ -291,7 +301,7 @@
             </div>)}
           </div>}
           {hiddenNames.length>0&&<div style={{marginBottom:8}}>
-            <SectionLabel>Zarchiwizowany sprzęt</SectionLabel>
+            <GroupHeader groupKey={null} label="Zarchiwizowany sprzęt"/>
             {hiddenNames.map(eq=><div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #F2F5F7"}}>
               <span style={{fontSize:13,color:"#7A8FA6"}}>{eq}</span>
               <button onClick={()=>restoreEquipment(eq)} style={{background:"none",border:"none",fontSize:12,color:"#0A7C7C",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
