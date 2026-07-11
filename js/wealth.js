@@ -173,6 +173,9 @@
 
       const setRate=(cur,val)=>setDraft(d=>({...d,exchangeRates:{...(d.exchangeRates||{}),[cur]:val}}));
 
+      const sortedAssets=useMemo(()=>[...draft.assets].sort((a,b)=>(+b.amount||0)-(+a.amount||0)),[draft.assets]);
+      const sortedLiabilities=useMemo(()=>[...draft.liabilities].sort((a,b)=>(+b.amount||0)-(+a.amount||0)),[draft.liabilities]);
+
       const save=()=>{
         if(!draft.date)return;
         const clean={
@@ -201,7 +204,7 @@
         <Txa label="Notatka (opcjonalnie)" value={draft.note} onChange={v=>setDraft(d=>({...d,note:v}))} rows={2} placeholder="np. po sprzedaży auta"/>
 
         <div style={{fontSize:12,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5,margin:"16px 0 8px"}}>Aktywa</div>
-        {draft.assets.map(a=>(
+        {sortedAssets.map(a=>(
           <div key={a.id} style={{border:`1px solid ${border}`,borderRadius:10,padding:8,marginBottom:8}}>
             <div style={rowStyle}>
               <select value={a.categoryId} onChange={e=>updAsset(a.id,{categoryId:e.target.value})} style={{...selStyle,flex:"1 1 140px"}}>
@@ -231,7 +234,7 @@
         </div>}
 
         <div style={{fontSize:12,fontWeight:700,color:"#E05C5C",textTransform:"uppercase",letterSpacing:.5,margin:"16px 0 8px"}}>Zobowiązania</div>
-        {draft.liabilities.map(l=>(
+        {sortedLiabilities.map(l=>(
           <div key={l.id} style={{border:`1px solid ${border}`,borderRadius:10,padding:8,marginBottom:8}}>
             <div style={rowStyle}>
               <select value={l.categoryId} onChange={e=>updLiab(l.id,{categoryId:e.target.value})} style={{...selStyle,flex:"1 1 140px"}}>
