@@ -773,7 +773,7 @@
               <input type="date" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
             </div>}
 
-            {viewMode!=="budget"&&viewMode!=="sprzet"&&<>
+            {viewMode!=="budget"&&viewMode!=="sprzet"&&viewMode!=="wealth"&&<>
               <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                   <div>
