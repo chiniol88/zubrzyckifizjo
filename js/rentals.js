@@ -154,7 +154,7 @@
       const totalWidth=(stock&&stock.totalWidth)||{};
       const activeNames = getActiveEquipmentNames(stock);
       const hiddenNames = catalog.filter(e=>e.hidden).map(e=>e.name);
-      const categoryOf = name => { const e=catalog.find(x=>x.name===name); return e?e.category:null; };
+      const categoryOf = name => { const matches=catalog.filter(x=>x.name===name); return matches.length?matches[matches.length-1].category:null; };
       const unassignedNames = activeNames.filter(n=>!categoryOf(n));
 
       const activeCount=useMemo(()=>{
@@ -204,8 +204,17 @@
       const addEquipment=category=>{
         if(!addForm||!addForm.name.trim())return;
         const name=addForm.name.trim();
-        setStock(s=>({...(s||{}),equipment:[...(((s||{}).equipment)||[]),{name,category,hidden:false}],addedDate:{...(((s||{}).addedDate)||{}),[name]:addForm.addedDate||""},qty:{...(((s||{}).qty)||{}),[name]:1}}));
-        setDraft(d=>({...d,[name]:"1",["added_"+name]:addForm.addedDate||""}));
+        setStock(s=>{
+          const cur=s||{};
+          const cat=[...(cur.equipment||[])];
+          const idx=cat.findIndex(x=>x.name===name);
+          if(idx>=0) cat[idx]={...cat[idx],category,hidden:false};
+          else cat.push({name,category,hidden:false});
+          return {...cur,equipment:cat,
+            addedDate:{...(cur.addedDate||{}),[name]:(cur.addedDate||{})[name]||addForm.addedDate||""},
+            qty:{...(cur.qty||{}),[name]:(cur.qty||{})[name]||1}};
+        });
+        setDraft(d=>({...d,[name]:String(qty[name]||1),["added_"+name]:addedDate[name]||addForm.addedDate||""}));
         setAddForm(null);
       };
       const assignCategory=(name,category)=>{
@@ -294,7 +303,14 @@
             return <div key={g.key} style={{marginBottom:18}}>
               <GroupHeader groupKey={g.key} label={g.label}/>
               {names.length===0&&<div style={{fontSize:12,color:"#7A8FA6",marginBottom:8}}>Brak sprzętu w tej grupie</div>}
-              {names.map(eq=><EqRow key={eq} eq={eq} showDims={g.key==="wozki"}/>)}
+              {names.map(eq=><div key={eq}>
+                <EqRow eq={eq} showDims={g.key==="wozki"}/>
+                <div style={{display:"flex",gap:6,marginBottom:14,marginTop:-4}}>
+                  {EQUIPMENT_GROUPS.filter(og=>og.key!==g.key).map(og=>
+                    <button key={og.key} onClick={()=>assignCategory(eq,og.key)} style={{flex:1,padding:"6px 4px",borderRadius:8,border:"1px solid #E4EAF0",background:"none",color:"#0A7C7C",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>→ {og.label}</button>
+                  )}
+                </div>
+              </div>)}
               {addForm&&addForm.category===g.key
                 ? <div style={{marginBottom:10,padding:10,background:dk?"#0F1F1F":"#F7F9FB",borderRadius:10}}>
                     <Inp label="Nazwa sprzętu" value={addForm.name} onChange={v=>setAddForm(f=>({...f,name:v}))} placeholder="np. Wózek Vermeiren V200"/>
