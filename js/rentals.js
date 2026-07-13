@@ -150,6 +150,8 @@
       const qty = stock && stock.qty ? stock.qty : (stock||{});
       const catalog = (stock&&stock.equipment)||[];
       const addedDate=(stock&&stock.addedDate)||{};
+      const seatWidth=(stock&&stock.seatWidth)||{};
+      const totalWidth=(stock&&stock.totalWidth)||{};
       const activeNames = getActiveEquipmentNames(stock);
       const hiddenNames = catalog.filter(e=>e.hidden).map(e=>e.name);
       const categoryOf = name => { const e=catalog.find(x=>x.name===name); return e?e.category:null; };
@@ -183,12 +185,19 @@
         });
         const newQty={...qty,...Object.fromEntries(activeNames.map(eq=>[eq,+draft[eq]||1]))};
         const newAddedDate={...addedDate,...Object.fromEntries(activeNames.map(eq=>[eq,draft["added_"+eq]||""]).filter(([,v])=>v))};
-        setStock({...(stock||{}),qty:newQty,history,addedDate:newAddedDate});
+        const newSeatWidth={...seatWidth,...Object.fromEntries(activeNames.map(eq=>[eq,draft["seat_"+eq]||""]).filter(([,v])=>v))};
+        const newTotalWidth={...totalWidth,...Object.fromEntries(activeNames.map(eq=>[eq,draft["total_"+eq]||""]).filter(([,v])=>v))};
+        setStock({...(stock||{}),qty:newQty,history,addedDate:newAddedDate,seatWidth:newSeatWidth,totalWidth:newTotalWidth});
         setShowEdit(false);
       };
 
       const openEdit=()=>{
-        setDraft(Object.fromEntries([...activeNames.map(eq=>[eq,String(qty[eq]||1)]),...activeNames.map(eq=>["added_"+eq,addedDate[eq]||""])]));
+        setDraft(Object.fromEntries([
+          ...activeNames.map(eq=>[eq,String(qty[eq]||1)]),
+          ...activeNames.map(eq=>["added_"+eq,addedDate[eq]||""]),
+          ...activeNames.map(eq=>["seat_"+eq,seatWidth[eq]||""]),
+          ...activeNames.map(eq=>["total_"+eq,totalWidth[eq]||""]),
+        ]));
         setShowEdit(true);
       };
 
@@ -231,7 +240,7 @@
         </div>;
       };
 
-      const EqRow=({eq})=><div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
+      const EqRow=({eq,showDims})=><div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
           <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -242,6 +251,10 @@
           </div>
         </div>
         <Inp label="Data dodania do magazynu (opcjonalnie)" value={draft["added_"+eq]||""} onChange={v=>setDraft(d=>({...d,["added_"+eq]:v}))} type="date"/>
+        {showDims&&<div style={{display:"flex",gap:8}}>
+          <div style={{flex:1}}><Inp label="Szerokość siedziska (cm)" value={draft["seat_"+eq]||""} onChange={v=>setDraft(d=>({...d,["seat_"+eq]:v}))} type="number" placeholder="np. 45"/></div>
+          <div style={{flex:1}}><Inp label="Szerokość całkowita (cm)" value={draft["total_"+eq]||""} onChange={v=>setDraft(d=>({...d,["total_"+eq]:v}))} type="number" placeholder="np. 62"/></div>
+        </div>}
       </div>;
 
       return <>
@@ -259,9 +272,13 @@
                   <GroupHeader groupKey={g.key} label={g.label}/>
                   {names.map(eq=>{
                     const active=activeCount[eq]||0,tot=total(eq),fr=tot-active;
+                    const sw=seatWidth[eq],tw=totalWidth[eq];
                     return <div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
-                      <span style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</span>
-                      <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A"}}>{fr}/{tot}</span>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</div>
+                        {g.key==="wozki"&&(sw||tw)&&<div style={{fontSize:11,color:"#7A8FA6",marginTop:1}}>{sw?`siedzisko ${sw} cm`:""}{sw&&tw?" · ":""}{tw?`całk. ${tw} cm`:""}</div>}
+                      </div>
+                      <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A",flexShrink:0,marginLeft:8}}>{fr}/{tot}</span>
                     </div>;
                   })}
                 </div>;
@@ -277,7 +294,7 @@
             return <div key={g.key} style={{marginBottom:18}}>
               <GroupHeader groupKey={g.key} label={g.label}/>
               {names.length===0&&<div style={{fontSize:12,color:"#7A8FA6",marginBottom:8}}>Brak sprzętu w tej grupie</div>}
-              {names.map(eq=><EqRow key={eq} eq={eq}/>)}
+              {names.map(eq=><EqRow key={eq} eq={eq} showDims={g.key==="wozki"}/>)}
               {addForm&&addForm.category===g.key
                 ? <div style={{marginBottom:10,padding:10,background:dk?"#0F1F1F":"#F7F9FB",borderRadius:10}}>
                     <Inp label="Nazwa sprzętu" value={addForm.name} onChange={v=>setAddForm(f=>({...f,name:v}))} placeholder="np. Wózek Vermeiren V200"/>
