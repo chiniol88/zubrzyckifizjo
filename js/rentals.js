@@ -139,6 +139,25 @@
       return result;
     }
 
+    function EqRow({eq,showDims,draft,setDraft,archiveEquipment}) {
+      return <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+            <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
+            <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+            <button onClick={()=>archiveEquipment(eq)} title="Archiwizuj" style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,padding:"0 2px"}}>🗑</button>
+          </div>
+        </div>
+        <Inp label="Data dodania do magazynu (opcjonalnie)" value={draft["added_"+eq]||""} onChange={v=>setDraft(d=>({...d,["added_"+eq]:v}))} type="date"/>
+        {showDims&&<div style={{display:"flex",gap:8}}>
+          <div style={{flex:1}}><Inp label="Szerokość siedziska (cm)" value={draft["seat_"+eq]||""} onChange={v=>setDraft(d=>({...d,["seat_"+eq]:v}))} type="number" placeholder="np. 45"/></div>
+          <div style={{flex:1}}><Inp label="Szerokość całkowita (cm)" value={draft["total_"+eq]||""} onChange={v=>setDraft(d=>({...d,["total_"+eq]:v}))} type="number" placeholder="np. 62"/></div>
+        </div>}
+      </div>;
+    }
+
     function StockPanel({rentals,stock,setStock}) {
       const dk=useContext(DarkCtx);
       const [open,setOpen]=useState(false);
@@ -249,23 +268,6 @@
         </div>;
       };
 
-      const EqRow=({eq,showDims})=><div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-            <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
-            <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #E4EAF0",background:"#F2F5F7",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-            <button onClick={()=>archiveEquipment(eq)} title="Archiwizuj" style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,padding:"0 2px"}}>🗑</button>
-          </div>
-        </div>
-        <Inp label="Data dodania do magazynu (opcjonalnie)" value={draft["added_"+eq]||""} onChange={v=>setDraft(d=>({...d,["added_"+eq]:v}))} type="date"/>
-        {showDims&&<div style={{display:"flex",gap:8}}>
-          <div style={{flex:1}}><Inp label="Szerokość siedziska (cm)" value={draft["seat_"+eq]||""} onChange={v=>setDraft(d=>({...d,["seat_"+eq]:v}))} type="number" placeholder="np. 45"/></div>
-          <div style={{flex:1}}><Inp label="Szerokość całkowita (cm)" value={draft["total_"+eq]||""} onChange={v=>setDraft(d=>({...d,["total_"+eq]:v}))} type="number" placeholder="np. 62"/></div>
-        </div>}
-      </div>;
-
       return <>
         <div style={{padding:"0 20px 12px"}}>
           <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,overflow:"hidden",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
@@ -304,7 +306,7 @@
               <GroupHeader groupKey={g.key} label={g.label}/>
               {names.length===0&&<div style={{fontSize:12,color:"#7A8FA6",marginBottom:8}}>Brak sprzętu w tej grupie</div>}
               {names.map(eq=><div key={eq}>
-                <EqRow eq={eq} showDims={g.key==="wozki"}/>
+                <EqRow eq={eq} showDims={g.key==="wozki"} draft={draft} setDraft={setDraft} archiveEquipment={archiveEquipment}/>
                 <div style={{display:"flex",gap:6,marginBottom:14,marginTop:-4}}>
                   {EQUIPMENT_GROUPS.filter(og=>og.key!==g.key).map(og=>
                     <button key={og.key} onClick={()=>assignCategory(eq,og.key)} style={{flex:1,padding:"6px 4px",borderRadius:8,border:"1px solid #E4EAF0",background:"none",color:"#0A7C7C",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>→ {og.label}</button>
@@ -327,7 +329,7 @@
           {unassignedNames.length>0&&<div style={{marginBottom:18}}>
             <GroupHeader groupKey={null} label="Nieprzypisane"/>
             {unassignedNames.map(eq=><div key={eq}>
-              <EqRow eq={eq}/>
+              <EqRow eq={eq} draft={draft} setDraft={setDraft} archiveEquipment={archiveEquipment}/>
               <div style={{display:"flex",gap:6,marginBottom:14,marginTop:-4}}>
                 {EQUIPMENT_GROUPS.map(g=><button key={g.key} onClick={()=>assignCategory(eq,g.key)} style={{flex:1,padding:"6px 4px",borderRadius:8,border:"1px solid #E4EAF0",background:"none",color:"#0A7C7C",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>→ {g.label}</button>)}
               </div>
