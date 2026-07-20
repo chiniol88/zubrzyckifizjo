@@ -5,15 +5,19 @@
       const [roiEq,setRoiEq]=useState(null);
       const [repairForm,setRepairForm]=useState(null);
       const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
+      const [srcYearTab,setSrcYearTab]=useState("all");
+      const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
+      const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
+      const catOf=eq=>SZYNY_EQ.includes(eq)?"szyny":WOZEK_EQUIPMENT.includes(eq)?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
       const sourceStats=useMemo(()=>{
         const yr=String(statsYear);
-        const base=rentals.filter(r=>r.status==="zakończone"&&(r.startDate||"").startsWith(yr));
+        const base=rentals.filter(r=>r.status==="zakończone"&&(r.startDate||"").startsWith(yr)&&(srcYearTab==="all"||catOf(r.equipment)===srcYearTab));
         return [...RENTAL_SOURCES.map(s=>s.value),""].map(sv=>{
           const rows=base.filter(r=>(r.source||"")===sv);
           const src=RENTAL_SOURCES.find(s=>s.value===sv);
           return{value:sv,label:src?src.label:"❓ Nieznane",color:src?src.color:"#7A8FA6",cnt:rows.length,rev:rows.reduce((s,r)=>s+calcRentalPaid(r),0)};
         }).filter(x=>x.cnt>0).sort((a,b)=>b.cnt-a.cnt);
-      },[rentals,statsYear]);
+      },[rentals,statsYear,srcYearTab]);
       const statsTotalCnt=sourceStats.reduce((s,x)=>s+x.cnt,0);
       const statsTotalRev=sourceStats.reduce((s,x)=>s+x.rev,0);
       const [showRentalList,setShowRentalList]=useState(false);
@@ -276,9 +280,6 @@
 
         {/* Skąd trafiają klienci — sortowanie po przychodzie */}
         {(()=>{
-          const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
-          const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
-          const catOf=eq=>SZYNY_EQ.includes(eq)?"szyny":WOZEK_EQUIPMENT.includes(eq)?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
           // Wypożyczenia które wystartowały w miesiącu (do licznika i cntBySource)
           const periodRentalsAll=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd&&!r.reserved);
           // Lista WSZYSTKICH wpłat w miesiącu (wpłaty + przedłużenia + cykle + legacy)
@@ -517,8 +518,13 @@
               <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
             </div>
           </div>
+          <div style={{display:"flex",gap:6,marginBottom:12}}>
+            {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
+              <button key={t.k} onClick={()=>setSrcYearTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcYearTab===t.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:srcYearTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+            )}
+          </div>
           {statsTotalCnt===0
-            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń w {statsYear} r.</div>
+            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń{srcYearTab!=="all"?" w tej kategorii":""} w {statsYear} r.</div>
             :<>
               {sourceStats.map(x=>{
                 const pct=statsTotalCnt>0?Math.round(x.cnt/statsTotalCnt*100):0;
