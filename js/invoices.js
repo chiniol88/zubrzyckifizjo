@@ -1,10 +1,34 @@
     // ── FAKTURY ───────────────────────────────────────────────────────────────
-    function InvoiceRow({row,onChange,onDelete}) {
-      return <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-        <input value={row.name} onChange={e=>onChange({...row,name:e.target.value})} placeholder="Nazwa faktury" style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
-        <input type="number" value={row.amount} onChange={e=>onChange({...row,amount:e.target.value})} placeholder="0" style={{width:90,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit",textAlign:"right"}}/>
-        <span style={{fontSize:13,color:"#7A8FA6",flexShrink:0}}>zł</span>
-        <button onClick={onDelete} style={{background:"none",border:"none",color:"#E05C5C",fontSize:20,cursor:"pointer",padding:"0 2px",flexShrink:0,lineHeight:1}}>×</button>
+    const INVOICE_PCT_PRESETS=[100,75,50,25];
+
+    function InvoiceRow({row,onChange,onDelete,onMoveNext}) {
+      const [customPct,setCustomPct]=useState(false);
+      const pct=row.percent===undefined||row.percent===null||row.percent===""?100:+row.percent;
+      const counted=(+row.amount||0)*(pct/100);
+      return <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
+        <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+          <input value={row.name} onChange={e=>onChange({...row,name:e.target.value})} placeholder="Nazwa faktury" style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
+          <input type="number" value={row.amount} onChange={e=>onChange({...row,amount:e.target.value})} placeholder="0" style={{width:90,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit",textAlign:"right"}}/>
+          <span style={{fontSize:13,color:"#7A8FA6",flexShrink:0}}>zł</span>
+          <button onClick={onDelete} style={{background:"none",border:"none",color:"#E05C5C",fontSize:20,cursor:"pointer",padding:"0 2px",flexShrink:0,lineHeight:1}}>×</button>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {!customPct
+            ? <select value={pct} onChange={e=>{if(e.target.value==="custom"){setCustomPct(true);}else{onChange({...row,percent:+e.target.value});}}}
+                style={{padding:"3px 6px",borderRadius:8,border:"1px solid #E4EAF0",background:"#fff",fontSize:11,fontWeight:600,color:pct!==100?"#F4A261":"#B8C4CC",fontFamily:"inherit",cursor:"pointer"}}>
+                {INVOICE_PCT_PRESETS.map(p=><option key={p} value={p}>{p}% wliczane</option>)}
+                {!INVOICE_PCT_PRESETS.includes(pct)&&<option value={pct}>{pct}% wliczane</option>}
+                <option value="custom">inny %...</option>
+              </select>
+            : <div style={{display:"flex",alignItems:"center",gap:4}}>
+                <input type="number" autoFocus value={row.percent??""} onChange={e=>onChange({...row,percent:e.target.value})} placeholder="np. 60" style={{width:52,padding:"3px 6px",borderRadius:8,border:"1px solid #E4EAF0",fontSize:11,fontFamily:"inherit",textAlign:"center"}}/>
+                <span style={{fontSize:11,color:"#7A8FA6"}}>%</span>
+                <button onClick={()=>setCustomPct(false)} style={{background:"none",border:"none",color:"#3DAA72",fontSize:15,cursor:"pointer",padding:"0 2px",lineHeight:1}}>✓</button>
+              </div>
+          }
+          {pct!==100&&<span style={{fontSize:11,color:"#7A8FA6"}}>→ {counted.toFixed(2)} zł do kosztów</span>}
+          <button onClick={onMoveNext} style={{marginLeft:"auto",background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#0A7C7C",whiteSpace:"nowrap"}}>→ następny miesiąc</button>
+        </div>
       </div>;
     }
 
@@ -12,40 +36,61 @@
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
+      const [toast,setToast]=useState(null);
       const borderC=dk?"#2A4040":"#F2F5F7";
       const textC=dk?"#C8E8E8":"#1C2B3A";
       const subC="#7A8FA6";
       const bg=dk?"#1A2A2A":"#fff";
 
       const rows=(invoices&&invoices[selMonth])||[];
-      const total=rows.reduce((s,r)=>s+(+r.amount||0),0);
+      const pctOf=r=>r.percent===undefined||r.percent===null||r.percent===""?100:+r.percent;
+      const total=rows.reduce((s,r)=>s+(+r.amount||0)*(pctOf(r)/100),0);
+      const rawTotal=rows.reduce((s,r)=>s+(+r.amount||0),0);
+      const hasPartial=rows.some(r=>pctOf(r)!==100);
 
-      const updateRows=newRows=>setInvoices(inv=>({...(inv||{}),[selMonth]:newRows}));
-      const addRow=()=>updateRows([...rows,{id:Date.now()+Math.random(),name:"",amount:""}]);
-      const changeRow=(id,patch)=>updateRows(rows.map(r=>r.id===id?patch:r));
-      const deleteRow=id=>updateRows(rows.filter(r=>r.id!==id));
+      const monthKey=d=>d.toISOString().slice(0,7);
+      const monthLabel=k=>new Date(k+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
+
+      const updateRows=(month,newRows)=>setInvoices(inv=>({...(inv||{}),[month]:newRows}));
+      const addRow=()=>updateRows(selMonth,[...rows,{id:Date.now()+Math.random(),name:"",amount:""}]);
+      const changeRow=(id,patch)=>updateRows(selMonth,rows.map(r=>r.id===id?patch:r));
+      const deleteRow=id=>updateRows(selMonth,rows.filter(r=>r.id!==id));
+      const moveToNextMonth=id=>{
+        const row=rows.find(r=>r.id===id);
+        if(!row)return;
+        const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);
+        const nextMonth=monthKey(d);
+        setInvoices(inv=>{
+          const cur=(inv&&inv[selMonth])||[];
+          const nextRows=(inv&&inv[nextMonth])||[];
+          return {...(inv||{}),[selMonth]:cur.filter(r=>r.id!==id),[nextMonth]:[...nextRows,row]};
+        });
+        setToast("Przeniesiono do: "+monthLabel(nextMonth));
+      };
 
       return <div style={{padding:"0 20px 24px"}}>
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(monthKey(d));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
           <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:textC,fontFamily:"'Syne',sans-serif",textTransform:"capitalize"}}>
-            {new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}
+            {monthLabel(selMonth)}
           </div>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);setSelMonth(monthKey(d));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
 
         <div style={{background:bg,borderRadius:14,padding:"14px 16px",border:`1.5px solid ${borderC}`,marginBottom:14,textAlign:"center"}}>
           <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Suma miesiąca</div>
           <div style={{fontSize:26,fontWeight:800,color:"#0A7C7C",fontFamily:"'Syne',sans-serif"}}>{demo?"****":total.toFixed(2)+" zł"}</div>
+          {hasPartial&&<div style={{fontSize:12,color:subC,marginTop:4}}>{demo?"****":"z faktur łącznie: "+rawTotal.toFixed(2)+" zł"}</div>}
         </div>
 
         <div style={{background:bg,borderRadius:14,padding:"14px",border:`1.5px solid ${borderC}`}}>
           <SectionLabel>Faktury</SectionLabel>
           {rows.length===0
             ?<Empty text="Brak faktur w tym miesiącu"/>
-            :rows.map(r=><InvoiceRow key={r.id} row={r} onChange={patch=>changeRow(r.id,patch)} onDelete={()=>deleteRow(r.id)}/>)
+            :rows.map(r=><InvoiceRow key={r.id} row={r} onChange={patch=>changeRow(r.id,patch)} onDelete={()=>deleteRow(r.id)} onMoveNext={()=>moveToNextMonth(r.id)}/>)
           }
           <button onClick={addRow} style={{marginTop:4,width:"100%",padding:"10px",borderRadius:10,border:`1.5px dashed ${borderC}`,background:"none",color:"#0A7C7C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj fakturę</button>
         </div>
+        {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </div>;
     }
