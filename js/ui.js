@@ -28,6 +28,32 @@ function Modal({title,onClose,children}) {
   </div>;
 }
 
+function ContactSyncModal({items,onConfirm,onClose}) {
+  const [checked,setChecked]=useState(()=>items.map(()=>true));
+  const grouped={};
+  items.forEach((it,i)=>{(grouped[it.field]=grouped[it.field]||[]).push({...it,_i:i});});
+  return <Modal title="Zaktualizować też w innych miejscach?" onClose={onClose}>
+    <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Tu jest zapisana inna wartość. Odznacz to, co ma zostać bez zmian.</div>
+    {Object.entries(grouped).map(([field,rows])=>
+      <div key={field} style={{marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{(CONTACT_FIELDS[field]||field)+" → "+rows[0].value}</div>
+        {rows.map(it=>
+          <div key={it._i} onClick={()=>setChecked(c=>c.map((v,i)=>i===it._i?!v:v))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #F2F5F7",cursor:"pointer"}}>
+            <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked[it._i]?"#3DAA72":"#E4EAF0"}`,background:checked[it._i]?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              {checked[it._i]&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:14,fontWeight:600}}>{it.label}</div>
+              <div style={{fontSize:12,color:"#7A8FA6"}}>było: {it.oldValue}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+    <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>onConfirm(items.filter((_,i)=>checked[i]))}>Zapisz zaznaczone</Btn>
+  </Modal>;
+}
+
 function Inp({label,value,onChange,type="text",placeholder=""}) {
   const dk=useContext(DarkCtx);
   const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};

@@ -51,7 +51,7 @@
       </Card>;
     }
 
-    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,allClients}) {
+    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,setNfzCases,allClients}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [selId,setSelId]=useState(null);
@@ -72,6 +72,7 @@
       const [toast,setToast]=useState(null);
       const [showQuickV,setShowQuickV]=useState(false);
       const [quickV,setQuickV]=useState(null);
+      const [contactSyncPending,setContactSyncPending]=useState(null);
 
       const equipClients=useMemo(()=>{
         const byName={};
@@ -244,17 +245,22 @@
               ? <>
                   <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{
                     const _pid=editForm.id;
-                    const _old=patients.find(p=>p.id===_pid)?.name||editForm.name;
+                    const orig=patients.find(p=>p.id===_pid);
+                    const _old=orig?.name||editForm.name;
                     const _new=editForm.name||_old;
                     setPatients(ps=>ps.map(p=>p.id===_pid?{...p,...editForm}:p));
                     if(_new!==_old){
                       setVisits(vs=>vs.map(v=>v.patientId===_pid?{...v,patientName:_new}:v));
                       setFinances(fs=>fs.map(f=>f.description?{...f,description:f.description.split(_old).join(_new)}:f));
                     }
-                    setRentals(rs=>rs.map(r=>{
-                      if(r.patientId!==_pid&&r.patientName!==_old) return r;
-                      return {...r,patientName:_new,phone:editForm.phone,address:editForm.address,patientId:_pid};
-                    }));
+                    // dowiąż patientId + zaktualizuj nazwę wszędzie, gdzie ta osoba jest rozpoznana (po ID lub starej nazwie)
+                    setRentals(rs=>rs.map(r=>(r.patientId===_pid||r.patientName===_old)?{...r,patientName:_new,patientId:_pid}:r));
+                    if(setNfzCases)setNfzCases(cs=>(cs||[]).map(c=>(c.patientId===_pid||c.patientName===_old)?{...c,patientName:_new,patientId:_pid}:c));
+                    const pending=syncContactOnSave(
+                      {kind:"patient",id:_pid,patientId:_pid,patientName:_new,original:{phone:orig?.phone||"",address:orig?.address||""},updated:{phone:editForm.phone||"",address:editForm.address||""}},
+                      {patients,setPatients,rentals,setRentals,nfzCases,setNfzCases}
+                    );
+                    if(pending.length)setContactSyncPending(pending);
                     setShowEdit(false);
                     setEditForm(null);
                     setToast("Zapisano zmiany");
@@ -328,6 +334,7 @@
                 setConfirmDelV(null);setEditV(null);}}>Usuń</Btn>
             </div>
           </Modal>}
+          {contactSyncPending&&<ContactSyncModal items={contactSyncPending} onClose={()=>setContactSyncPending(null)} onConfirm={items=>{applyContactUpdates(items,{setPatients,setRentals,setNfzCases});setContactSyncPending(null);}}/>}
           {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
         </>;
       }

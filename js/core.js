@@ -287,6 +287,60 @@ const RENTAL_SOURCES = [
   {value:"organicznie",label:"🌱 Organicznie",color:"#F4A261"},
 ];
 
+// ── SYNC KONTAKTU (telefon/adres tej samej osoby: Pacjenci/Wypożyczenia/Wózki NFZ) ─
+const CONTACT_FIELDS = {phone:"Telefon",address:"Adres"};
+
+// Wszystkie miejsca (poza edytowanym rekordem) należące do tej samej osoby —
+// po patientId gdy znane, inaczej po dokładnej zgodności imienia i nazwiska.
+function findContactRefs(patientId, patientName, {patients, rentals, nfzCases}, exclude) {
+  const belongs = (pid, name) => (patientId && pid===patientId) || name===patientName;
+  const refs = [];
+  (patients||[]).forEach(p=>{
+    if(exclude.kind==="patient"&&p.id===exclude.id) return;
+    if(!belongs(p.id,p.name)) return;
+    refs.push({kind:"patient",id:p.id,label:p.name,phone:p.phone||"",address:p.address||""});
+  });
+  (rentals||[]).forEach(r=>{
+    if(exclude.kind==="rental"&&r.id===exclude.id) return;
+    if(!belongs(r.patientId,r.patientName)) return;
+    refs.push({kind:"rental",id:r.id,label:"Wypożyczenie – "+(r.equipment||"❓")+" ("+(r.startDate||"?")+")",phone:r.phone||"",address:r.address||""});
+  });
+  (nfzCases||[]).forEach(c=>{
+    if(exclude.kind==="nfz"&&c.id===exclude.id) return;
+    if(!belongs(c.patientId,c.patientName)) return;
+    refs.push({kind:"nfz",id:c.id,label:"Wózek NFZ – "+(c.wheelchairModel||"❓")+" ("+(c.orderDate||"?")+")",phone:c.phone||"",address:c.address||""});
+  });
+  return refs;
+}
+
+// Uruchamiane przy zapisie edycji telefonu/adresu w dowolnym z 3 miejsc.
+// Puste pola gdzie indziej wypełnia OD RAZU (efekt uboczny). Zwraca listę
+// pozycji z INNĄ wartością — do pokazania w ContactSyncModal, nic tam nie zmienia.
+function syncContactOnSave({kind,id,patientId,patientName,original,updated}, collections) {
+  const exclude = {kind,id};
+  const toFill = [], toConfirm = [];
+  Object.keys(CONTACT_FIELDS).forEach(field=>{
+    const oldVal=original[field]||"", newVal=updated[field]||"";
+    if(!newVal||newVal===oldVal) return;
+    findContactRefs(patientId,patientName,collections,exclude).forEach(ref=>{
+      const cur=ref[field]||"";
+      if(cur===newVal) return;
+      if(!cur) toFill.push({...ref,field,value:newVal});
+      else toConfirm.push({...ref,field,value:newVal,oldValue:cur});
+    });
+  });
+  if(toFill.length) applyContactUpdates(toFill,collections);
+  return toConfirm;
+}
+
+function applyContactUpdates(items, {setPatients,setRentals,setNfzCases}) {
+  const patch = {patient:{},rental:{},nfz:{}};
+  items.forEach(it=>{patch[it.kind][it.id]={...patch[it.kind][it.id],[it.field]:it.value};});
+  if(Object.keys(patch.patient).length&&setPatients) setPatients(ps=>ps.map(p=>patch.patient[p.id]?{...p,...patch.patient[p.id]}:p));
+  if(Object.keys(patch.rental).length&&setRentals) setRentals(rs=>rs.map(r=>patch.rental[r.id]?{...r,...patch.rental[r.id]}:r));
+  if(Object.keys(patch.nfz).length&&setNfzCases) setNfzCases(cs=>cs.map(c=>patch.nfz[c.id]?{...c,...patch.nfz[c.id]}:c));
+}
+
 // ── UI ────────────────────────────────────────────────────────────────────
 const I = {
   home:"M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",

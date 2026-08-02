@@ -499,7 +499,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,allClients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const view=rentalsView||"aktywne",setView=setRentalsView;
@@ -517,6 +517,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [showImport,setShowImport]=useState(false);
       const [csvRows,setCsvRows]=useState([]);
       const [csvError,setCsvError]=useState("");
+      const [contactSyncPending,setContactSyncPending]=useState(null);
       const importRef=useRef(null);
       const activeEq=getActiveEquipmentNames(stock);
 
@@ -875,6 +876,11 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 if(isExtension) return{...f,description:"Przedłużenie – "+u.patientName+" ("+u.equipment+")"};
                 return f;
               }));
+              const pending=syncContactOnSave(
+                {kind:"rental",id:effectiveDetail,patientId:u.patientId,patientName:u.patientName,original:{phone:cur?.phone||"",address:cur?.address||""},updated:{phone:u.phone||"",address:u.address||""}},
+                {patients,setPatients,rentals,setRentals,nfzCases,setNfzCases}
+              );
+              if(pending.length)setContactSyncPending(pending);
               setShowEdit(false);setToast("Zmiany zapisane");
             }}>Zapisz zmiany</Btn>
           </Modal>}
@@ -933,6 +939,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===effectiveDetail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+(c.dueDate||c.month)));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==effectiveDetail));setConfirmDel(false);close();}}>Usuń</Btn>
             </div>
           </Modal>}
+          {contactSyncPending&&<ContactSyncModal items={contactSyncPending} onClose={()=>setContactSyncPending(null)} onConfirm={items=>{applyContactUpdates(items,{setPatients,setRentals,setNfzCases});setContactSyncPending(null);}}/>}
         </>;
       }
 

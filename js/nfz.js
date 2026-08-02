@@ -5,7 +5,7 @@
       return new Date(y+years,m-1,d).getFullYear()+"-"+String(new Date(y+years,m-1,d).getMonth()+1).padStart(2,"0")+"-"+String(new Date(y+years,m-1,d).getDate()).padStart(2,"0");
     };
 
-    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances,patients,setPatients,allClients}) {
+    function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances,patients,setPatients,rentals,setRentals,allClients}) {
       const dk = useContext(DarkCtx);
       const demo = useDemo();
       const [showAdd,setShowAdd] = useState(false);
@@ -17,6 +17,7 @@
       const [tab,setTab] = useState("orzeczenie");
       const [payModal,setPayModal] = useState(null); // {casId, date, name}
       const [payAmount,setPayAmount] = useState("");
+      const [contactSyncPending,setContactSyncPending] = useState(null);
 
       useEffect(()=>{if(initialSel!=null){setSelId(initialSel);}}, [initialSel]);
       const closeDetail=()=>{setSelId(null);if(onSelCleared)onSelCleared();};
@@ -110,8 +111,18 @@
             <Inp label="Data zamówienia" value={editForm.orderDate||""} onChange={v=>setEditForm(f=>({...f,orderDate:v}))} type="date"/>
             <Sel label="Skąd dowiedział się o wózku?" value={editForm.source||""} onChange={v=>setEditForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
-            <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...editForm}:x));setEditForm(null);setToast("Zapisano zmiany");}}>Zapisz zmiany</Btn>
+            <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+              const orig=cases.find(x=>x.id===selId);
+              setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...editForm}:x));
+              const pending=syncContactOnSave(
+                {kind:"nfz",id:selId,patientId:editForm.patientId||null,patientName:editForm.patientName,original:{phone:orig?.phone||"",address:orig?.address||""},updated:{phone:editForm.phone||"",address:editForm.address||""}},
+                {patients,setPatients,rentals,setRentals,nfzCases,setNfzCases}
+              );
+              if(pending.length)setContactSyncPending(pending);
+              setEditForm(null);setToast("Zapisano zmiany");
+            }}>Zapisz zmiany</Btn>
           </Modal>}
+          {contactSyncPending&&<ContactSyncModal items={contactSyncPending} onClose={()=>setContactSyncPending(null)} onConfirm={items=>{applyContactUpdates(items,{setPatients,setRentals,setNfzCases});setContactSyncPending(null);}}/>}
           {confirmDel&&<Modal title="Usuń" onClose={()=>setConfirmDel(false)}>
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć tę pozycję?</div>
             <div style={{display:"flex",gap:10}}>
