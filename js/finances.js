@@ -575,7 +575,7 @@
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey,stock,setStock,machines,setMachines,wealth,setWealth}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey,stock,setStock,machines,setMachines,wealth,setWealth,invoices,setInvoices}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -739,7 +739,7 @@
         <div>
           <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Finanse</div>
-            {viewMode!=="sprzet"&&viewMode!=="wealth"&&<Btn small onClick={()=>{setForm(ef());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Dodaj</Btn>}
+            {viewMode!=="sprzet"&&viewMode!=="wealth"&&viewMode!=="faktury"&&<Btn small onClick={()=>{setForm(ef());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Dodaj</Btn>}
           </div>
           <div style={{padding:"0 20px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8}}>
@@ -749,7 +749,7 @@
                 )}
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
-                {[{k:"budget",l:"🏠",t:"Dom"},{k:"sprzet",l:"📦",t:"Sprzęt"},{k:"wealth",l:"💼",t:"Majątek"}].map(x=>
+                {[{k:"budget",l:"🏠",t:"Dom"},{k:"sprzet",l:"📦",t:"Sprzęt"},{k:"wealth",l:"💼",t:"Majątek"},{k:"faktury",l:"🧾",t:"Faktury"}].map(x=>
                   <button key={x.k} onClick={()=>setViewMode(x.k)} title={x.t} style={{width:36,height:34,borderRadius:10,border:`1.5px solid ${viewMode===x.k?"#0A7C7C":border}`,cursor:"pointer",fontSize:16,background:viewMode===x.k?(dk?"#0A3030":"#E6F4F4"):dk?"#1A2A2A":"#fff",color:viewMode===x.k?"#0A7C7C":sub,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{x.l}</button>
                 )}
               </div>
@@ -773,13 +773,14 @@
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
             {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines} nfzCases={nfzCases}/>}
             {viewMode==="wealth"&&<Wealth wealth={wealth} setWealth={setWealth}/>}
+            {viewMode==="faktury"&&<Invoices invoices={invoices} setInvoices={setInvoices}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
               <input type="date" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
             </div>}
 
-            {viewMode!=="budget"&&viewMode!=="sprzet"&&viewMode!=="wealth"&&<>
+            {viewMode!=="budget"&&viewMode!=="sprzet"&&viewMode!=="wealth"&&viewMode!=="faktury"&&<>
               <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
                   <div>
