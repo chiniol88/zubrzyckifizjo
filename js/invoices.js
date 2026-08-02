@@ -1,12 +1,16 @@
     // ── FAKTURY ───────────────────────────────────────────────────────────────
     const INVOICE_PCT_PRESETS=[100,75,50,25];
 
-    function InvoiceRow({row,onChange,onDelete,onMoveNext}) {
+    function InvoiceRow({row,onChange,onDelete,onCopyNext,onMoveUp,onMoveDown,canMoveUp,canMoveDown}) {
       const [customPct,setCustomPct]=useState(false);
       const pct=row.percent===undefined||row.percent===null||row.percent===""?100:+row.percent;
       const counted=(+row.amount||0)*(pct/100);
       return <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #E4EAF0"}}>
         <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+          <div style={{display:"flex",flexDirection:"column",gap:1,flexShrink:0}}>
+            <button onClick={onMoveUp} disabled={!canMoveUp} style={{width:20,height:16,padding:0,border:"none",background:"none",cursor:canMoveUp?"pointer":"default",color:canMoveUp?"#7A8FA6":"#D8E0E6",fontSize:10,lineHeight:1,fontFamily:"inherit"}}>▲</button>
+            <button onClick={onMoveDown} disabled={!canMoveDown} style={{width:20,height:16,padding:0,border:"none",background:"none",cursor:canMoveDown?"pointer":"default",color:canMoveDown?"#7A8FA6":"#D8E0E6",fontSize:10,lineHeight:1,fontFamily:"inherit"}}>▼</button>
+          </div>
           <input value={row.name} onChange={e=>onChange({...row,name:e.target.value})} placeholder="Nazwa faktury" style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
           <input type="number" value={row.amount} onChange={e=>onChange({...row,amount:e.target.value})} placeholder="0" style={{width:90,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit",textAlign:"right"}}/>
           <span style={{fontSize:13,color:"#7A8FA6",flexShrink:0}}>zł</span>
@@ -27,7 +31,7 @@
               </div>
           }
           {pct!==100&&<span style={{fontSize:11,color:"#7A8FA6"}}>→ {counted.toFixed(2)} zł do kosztów</span>}
-          <button onClick={onMoveNext} style={{marginLeft:"auto",background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#0A7C7C",whiteSpace:"nowrap"}}>→ następny miesiąc</button>
+          <button onClick={onCopyNext} style={{marginLeft:"auto",background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:"#0A7C7C",whiteSpace:"nowrap"}}>+ do następnego miesiąca</button>
         </div>
       </div>;
     }
@@ -55,17 +59,25 @@
       const addRow=()=>updateRows(selMonth,[...rows,{id:Date.now()+Math.random(),name:"",amount:""}]);
       const changeRow=(id,patch)=>updateRows(selMonth,rows.map(r=>r.id===id?patch:r));
       const deleteRow=id=>updateRows(selMonth,rows.filter(r=>r.id!==id));
-      const moveToNextMonth=id=>{
+      const moveRow=(id,dir)=>{
+        const idx=rows.findIndex(r=>r.id===id);
+        const newIdx=idx+dir;
+        if(idx<0||newIdx<0||newIdx>=rows.length)return;
+        const newRows=[...rows];
+        [newRows[idx],newRows[newIdx]]=[newRows[newIdx],newRows[idx]];
+        updateRows(selMonth,newRows);
+      };
+      const copyToNextMonth=id=>{
         const row=rows.find(r=>r.id===id);
         if(!row)return;
         const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);
         const nextMonth=monthKey(d);
+        const copy={...row,id:Date.now()+Math.random()};
         setInvoices(inv=>{
-          const cur=(inv&&inv[selMonth])||[];
           const nextRows=(inv&&inv[nextMonth])||[];
-          return {...(inv||{}),[selMonth]:cur.filter(r=>r.id!==id),[nextMonth]:[...nextRows,row]};
+          return {...(inv||{}),[nextMonth]:[...nextRows,copy]};
         });
-        setToast("Przeniesiono do: "+monthLabel(nextMonth));
+        setToast("Skopiowano do: "+monthLabel(nextMonth));
       };
 
       return <div style={{padding:"0 20px 24px"}}>
@@ -87,7 +99,7 @@
           <SectionLabel>Faktury</SectionLabel>
           {rows.length===0
             ?<Empty text="Brak faktur w tym miesiącu"/>
-            :rows.map(r=><InvoiceRow key={r.id} row={r} onChange={patch=>changeRow(r.id,patch)} onDelete={()=>deleteRow(r.id)} onMoveNext={()=>moveToNextMonth(r.id)}/>)
+            :rows.map((r,i)=><InvoiceRow key={r.id} row={r} onChange={patch=>changeRow(r.id,patch)} onDelete={()=>deleteRow(r.id)} onCopyNext={()=>copyToNextMonth(r.id)} onMoveUp={()=>moveRow(r.id,-1)} onMoveDown={()=>moveRow(r.id,1)} canMoveUp={i>0} canMoveDown={i<rows.length-1}/>)
           }
           <button onClick={addRow} style={{marginTop:4,width:"100%",padding:"10px",borderRadius:10,border:`1.5px dashed ${borderC}`,background:"none",color:"#0A7C7C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj fakturę</button>
         </div>
