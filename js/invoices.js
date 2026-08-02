@@ -41,6 +41,7 @@
       const demo=useDemo();
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
       const [toast,setToast]=useState(null);
+      const [confirmDel,setConfirmDel]=useState(null);
       const borderC=dk?"#2A4040":"#F2F5F7";
       const textC=dk?"#C8E8E8":"#1C2B3A";
       const subC="#7A8FA6";
@@ -99,10 +100,17 @@
           <SectionLabel>Faktury</SectionLabel>
           {rows.length===0
             ?<Empty text="Brak faktur w tym miesiącu"/>
-            :rows.map((r,i)=><InvoiceRow key={r.id} row={r} onChange={patch=>changeRow(r.id,patch)} onDelete={()=>deleteRow(r.id)} onCopyNext={()=>copyToNextMonth(r.id)} onMoveUp={()=>moveRow(r.id,-1)} onMoveDown={()=>moveRow(r.id,1)} canMoveUp={i>0} canMoveDown={i<rows.length-1}/>)
+            :rows.map((r,i)=><InvoiceRow key={r.id} row={r} onChange={patch=>changeRow(r.id,patch)} onDelete={()=>setConfirmDel({id:r.id,name:r.name})} onCopyNext={()=>copyToNextMonth(r.id)} onMoveUp={()=>moveRow(r.id,-1)} onMoveDown={()=>moveRow(r.id,1)} canMoveUp={i>0} canMoveDown={i<rows.length-1}/>)
           }
           <button onClick={addRow} style={{marginTop:4,width:"100%",padding:"10px",borderRadius:10,border:`1.5px dashed ${borderC}`,background:"none",color:"#0A7C7C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj fakturę</button>
         </div>
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
+        {confirmDel&&<Modal title="Usuń fakturę" onClose={()=>setConfirmDel(null)}>
+          <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć fakturę{confirmDel.name?" „"+confirmDel.name+"”":""}?</div>
+          <div style={{display:"flex",gap:10}}>
+            <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(null)}>Anuluj</Btn>
+            <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{deleteRow(confirmDel.id);setConfirmDel(null);}}>Usuń</Btn>
+          </div>
+        </Modal>}
       </div>;
     }
