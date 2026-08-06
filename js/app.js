@@ -142,7 +142,7 @@
         const today=todayLocal();
         const currMonthStart=today.slice(0,7)+"-01";
         const needsUpdate=rentals.some(r=>{
-          if(r.status!=="aktywne"||!r.renewable)return false;
+          if(r.status!=="aktywne"||!r.renewable||r.cyclesAutoPaused)return false;
           const cyc=r.cycles||[];
           if(cyc.length===0){
             if(r.startDate<currMonthStart)return false; // HistoryFill handles old rentals
@@ -153,7 +153,7 @@
         });
         if(!needsUpdate)return;
         setRentals(rs=>rs.map(r=>{
-          if(r.status!=="aktywne"||!r.renewable)return r;
+          if(r.status!=="aktywne"||!r.renewable||r.cyclesAutoPaused)return r;
           let cyc=[...(r.cycles||[])];
           if(cyc.length===0){
             if(r.startDate<currMonthStart||r.startDate>today)return r;

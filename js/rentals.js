@@ -81,30 +81,104 @@
     }
 
     function CycleRow({r,cycle,setRentals,setFinances}) {
+      const key=cycle.dueDate||cycle.month;
       const [amt,setAmt]=useState(String(cycle.amount||""));
       const [payDate,setPayDate]=useState(todayLocal);
+      const [editDate,setEditDate]=useState(false);
+      const [newDate,setNewDate]=useState("");
+      const [editAmt,setEditAmt]=useState(false);
+      const [paidAmtDraft,setPaidAmtDraft]=useState(String(cycle.amount||""));
+      const [confirmDel,setConfirmDel]=useState(false);
       const dueDt=cycle.dueDate||cycle.month+"-15";
       const label=new Date(dueDt+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
-      const sid="cycle-"+r.id+"-"+(cycle.dueDate||cycle.month);
+      const sid="cycle-"+r.id+"-"+key;
+
+      const updateCycle=patch=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===key?{...c,...patch}:c)}:x));
+
+      const saveDate=()=>{
+        if(!newDate||newDate===key){setEditDate(false);return;}
+        const conflict=(r.cycles||[]).some(c=>(c.dueDate||c.month)!==key&&(c.dueDate||c.month)===newDate);
+        if(conflict){alert("Ten termin już istnieje w tym wypożyczeniu.");return;}
+        updateCycle({dueDate:newDate,month:newDate.slice(0,7)});
+        if(cycle.paid){
+          const newSid="cycle-"+r.id+"-"+newDate;
+          setFinances(fs=>fs.map(f=>f.sourceId===sid?{...f,sourceId:newSid}:f));
+        }
+        setEditDate(false);
+      };
+
+      const doDelete=()=>{
+        setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).filter(c=>(c.dueDate||c.month)!==key)}:x));
+        setFinances(fs=>fs.filter(f=>f.sourceId!==sid));
+        setConfirmDel(false);
+      };
+
+      const noteUi=<input value={cycle.note||""} onChange={e=>updateCycle({note:e.target.value})} placeholder="Notatka (opcjonalnie)..." style={{width:"100%",marginTop:6,padding:"7px 10px",border:"1.5px solid #E4EAF0",borderRadius:10,fontSize:12,outline:"none",background:"#FAFCFD",fontFamily:"inherit",boxSizing:"border-box"}}/>;
+
+      const dateEditUi=editDate&&<div style={{display:"flex",gap:6,alignItems:"center",marginTop:6}}>
+        <input type="date" autoFocus value={newDate} onChange={e=>setNewDate(e.target.value)} style={{flex:1,padding:"7px 10px",border:"1.5px solid #E4EAF0",borderRadius:10,fontSize:13,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
+        <button onClick={saveDate} style={{background:"#0A7C7C",border:"none",borderRadius:8,padding:"7px 10px",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+        <button onClick={()=>setEditDate(false)} style={{background:"#F2F5F7",border:"none",borderRadius:8,padding:"7px 10px",color:"#7A8FA6",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+      </div>;
+
+      const smallActions=<div style={{display:"flex",gap:14,marginTop:8}}>
+        <button onClick={()=>{setNewDate(dueDt);setEditDate(v=>!v);}} style={{background:"none",border:"none",padding:0,fontSize:11,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>✏️ zmień datę</button>
+        <button onClick={()=>setConfirmDel(true)} style={{background:"none",border:"none",padding:0,fontSize:11,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑 usuń okres</button>
+      </div>;
+
+      const confirmDelUi=confirmDel&&<Modal title="Usuń okres" onClose={()=>setConfirmDel(false)}>
+        <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć okres „{label}”?{cycle.paid?" Powiązana wpłata w Finansach też zniknie.":""}</div>
+        <div style={{display:"flex",gap:10}}>
+          <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
+          <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={doDelete}>Usuń</Btn>
+        </div>
+      </Modal>;
+
       if(cycle.cancelled) return (
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #F2F5F7",opacity:.5}}>
-          <div style={{display:"flex",gap:12,alignItems:"center"}}>
-            <div style={{width:8,height:8,borderRadius:"50%",background:"#7A8FA6",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",textDecoration:"line-through"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>Anulowany</div></div>
+        <div style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7",opacity:.5}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:"#7A8FA6",flexShrink:0}}/>
+              <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",textDecoration:"line-through"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>Anulowany</div></div>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <button onClick={()=>updateCycle({cancelled:false})} style={{background:"#F2F5F7",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
+              <button onClick={()=>setConfirmDel(true)} style={{background:"none",border:"none",color:"#E05C5C",fontSize:16,cursor:"pointer",padding:"0 2px"}}>🗑</button>
+            </div>
           </div>
-          <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,cancelled:false}:c)}:x))} style={{background:"#F2F5F7",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
+          {confirmDelUi}
         </div>
       );
       if(cycle.paid) {
-        const toggleDoc=k=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,doc:c.doc===k?null:k}:c)}:x));
+        const toggleDoc=k=>updateCycle({doc:cycle.doc===k?null:k});
+        const savePaidAmount=()=>{
+          const v=+paidAmtDraft||0;
+          updateCycle({amount:v});
+          setFinances(fs=>{
+            const exists=fs.some(f=>f.sourceId===sid);
+            if(v<=0)return fs.filter(f=>f.sourceId!==sid);
+            if(exists)return fs.map(f=>f.sourceId===sid?{...f,amount:v}:f);
+            return [{id:Date.now()+Math.random(),sourceId:sid,date:cycle.paidDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs];
+          });
+          setEditAmt(false);
+        };
         return (
           <div style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <div style={{display:"flex",gap:12,alignItems:"center"}}>
                 <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
-                <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{cycle.amount>0?cycle.amount+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate}</div></div>
+                <div>
+                  <div style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{label}</div>
+                  {!editAmt
+                    ? <div onClick={()=>{setPaidAmtDraft(String(cycle.amount||""));setEditAmt(true);}} style={{fontSize:12,color:"#7A8FA6",cursor:"pointer"}}>{cycle.amount>0?cycle.amount+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate} ✏️</div>
+                    : <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
+                        <input type="number" autoFocus value={paidAmtDraft} onChange={e=>setPaidAmtDraft(e.target.value)} style={{width:80,padding:"5px 8px",border:"1.5px solid #E4EAF0",borderRadius:8,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+                        <button onClick={savePaidAmount} style={{background:"#0A7C7C",border:"none",borderRadius:6,padding:"4px 8px",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
+                      </div>
+                  }
+                </div>
               </div>
-              <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,paid:false,paidDate:null}:c)}:x));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
+              <button onClick={()=>{updateCycle({paid:false,paidDate:null});setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
             </div>
             <div style={{display:"flex",gap:8}}>
               {[{k:"receipt",l:"🧾 Paragon"},{k:"invoice",l:"📄 Faktura"}].map(opt=>{
@@ -112,6 +186,10 @@
                 return <button key={opt.k} onClick={()=>toggleDoc(opt.k)} style={{flex:1,padding:"7px 8px",borderRadius:10,fontFamily:"inherit",fontSize:12,fontWeight:600,cursor:"pointer",border:`1.5px solid ${ac?"#0A7C7C":"#E4EAF0"}`,background:ac?"#E6F4F4":"#fff",color:ac?"#0A7C7C":"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>{ac&&<span style={{fontSize:10}}>✓</span>}{opt.l}</button>;
               })}
             </div>
+            {noteUi}
+            {dateEditUi}
+            {smallActions}
+            {confirmDelUi}
           </div>
         );
       }
@@ -123,10 +201,14 @@
             <input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
-            <button onClick={()=>{const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,amount:0,paid:true,paidDate:pd}:c)}:x));}} style={{background:"#FFF3E0",border:"none",borderRadius:12,padding:"10px 12px",fontSize:13,fontWeight:600,color:"#F4A261",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🏥 NFZ (0 zł)</button>
-            <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===(cycle.dueDate||cycle.month)?{...c,cancelled:true}:c)}:x))} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
+            <button onClick={()=>{const v=+amt;if(!v)return;const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===key?{...c,amount:v,paid:true,paidDate:pd}:c)}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);}} style={{flex:1,background:"#0A7C7C",color:"#fff",border:"none",borderRadius:12,padding:"10px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓ Opłać</button>
+            <button onClick={()=>{const pd=payDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===key?{...c,amount:0,paid:true,paidDate:pd}:c)}:x));}} style={{background:"#FFF3E0",border:"none",borderRadius:12,padding:"10px 12px",fontSize:13,fontWeight:600,color:"#F4A261",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🏥 NFZ (0 zł)</button>
+            <button onClick={()=>updateCycle({cancelled:true})} style={{background:"#FEE2E2",border:"none",borderRadius:12,padding:"10px 14px",fontSize:14,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
           </div>
+          {noteUi}
+          {dateEditUi}
+          {smallActions}
+          {confirmDelUi}
         </div>
       );
     }
@@ -518,6 +600,8 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [csvRows,setCsvRows]=useState([]);
       const [csvError,setCsvError]=useState("");
       const [contactSyncPending,setContactSyncPending]=useState(null);
+      const [showAddCycle,setShowAddCycle]=useState(false);
+      const [addCycleForm,setAddCycleForm]=useState({date:"",amount:"",paid:false,payDate:"",note:""});
       const importRef=useRef(null);
       const activeEq=getActiveEquipmentNames(stock);
 
@@ -640,7 +724,10 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 </div>}
                 <div style={{borderTop:"1px solid #E4EAF0",paddingTop:12}}>
                   {r.renewable ? <>
-                    <SectionLabel>Cykle miesięczne</SectionLabel>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                      <SectionLabel style={{marginBottom:0}}>Cykle miesięczne</SectionLabel>
+                      <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cyclesAutoPaused:!x.cyclesAutoPaused}:x))} style={{padding:"4px 10px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:700,fontSize:11,fontFamily:"inherit",background:r.cyclesAutoPaused?"#FEE2E2":"#E6F4F4",color:r.cyclesAutoPaused?"#E05C5C":"#0A7C7C",whiteSpace:"nowrap"}}>{r.cyclesAutoPaused?"⏸ Auto wyłączone":"▶ Auto włączone"}</button>
+                    </div>
                     {(r.cycles||[]).length===0&&r.startDate<todayLocal().slice(0,7)
                       ? <HistoryFill r={r} setRentals={setRentals} setFinances={setFinances}/>
                       : <>
@@ -648,6 +735,16 @@ p{margin:2px 0}.bold7{font-weight:bold}
                           {[...(r.cycles||[])].sort((a,b)=>(b.dueDate||b.month).localeCompare(a.dueDate||a.month)).map(c=><CycleRow key={c.dueDate||c.month} r={r} cycle={c} setRentals={setRentals} setFinances={setFinances}/>)}
                         </>
                     }
+                    <button onClick={()=>{
+                      const cyc=r.cycles||[];
+                      let nextDate=r.startDate;
+                      if(cyc.length>0){
+                        const last=[...cyc].sort((a,b)=>(b.dueDate||b.month+"-01").localeCompare(a.dueDate||a.month+"-01"))[0];
+                        nextDate=addDays(last.dueDate||last.month+"-01",30);
+                      }
+                      setAddCycleForm({date:nextDate,amount:String(r.amount||""),paid:false,payDate:todayLocal(),note:""});
+                      setShowAddCycle(true);
+                    }} style={{marginTop:8,width:"100%",padding:"10px",borderRadius:10,border:"1.5px dashed #E4EAF0",background:"none",color:"#0A7C7C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj okres</button>
                   </> : (()=>{
                     // Łączna należność = oryginał + amountDue ze wszystkich przedłużeń
                     const extDue = (r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||+e.amount||0),0);
@@ -940,6 +1037,34 @@ p{margin:2px 0}.bold7{font-weight:bold}
             </div>
           </Modal>}
           {contactSyncPending&&<ContactSyncModal items={contactSyncPending} onClose={()=>setContactSyncPending(null)} onConfirm={items=>{applyContactUpdates(items,{setPatients,setRentals,setNfzCases});setContactSyncPending(null);}}/>}
+          {showAddCycle&&<Modal title="Dodaj okres" onClose={()=>setShowAddCycle(false)}>
+            <Inp label="Data okresu" value={addCycleForm.date} onChange={v=>setAddCycleForm(f=>({...f,date:v}))} type="date"/>
+            <Inp label="Kwota (zł)" value={addCycleForm.amount} onChange={v=>setAddCycleForm(f=>({...f,amount:v}))} type="number"/>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setAddCycleForm(f=>({...f,paid:!f.paid,payDate:f.payDate||todayLocal()}))}>
+              <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${addCycleForm.paid?"#3DAA72":"#E4EAF0"}`,background:addCycleForm.paid?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {addCycleForm.paid&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
+              </div>
+              <span style={{fontSize:14,fontWeight:500}}>Już opłacone</span>
+            </div>
+            {addCycleForm.paid&&<Inp label="Data wpłaty" value={addCycleForm.payDate||todayLocal()} onChange={v=>setAddCycleForm(f=>({...f,payDate:v}))} type="date"/>}
+            <Txa label="Notatka (opcjonalnie)" value={addCycleForm.note||""} onChange={v=>setAddCycleForm(f=>({...f,note:v}))} rows={2}/>
+            <Btn disabled={!addCycleForm.date} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+              const d=addCycleForm.date;
+              if(!d)return;
+              const conflict=(r.cycles||[]).some(c=>(c.dueDate||c.month)===d);
+              if(conflict){alert("Ten termin już istnieje w tym wypożyczeniu.");return;}
+              const amount=+addCycleForm.amount||0;
+              const label=new Date(d+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
+              const nc={dueDate:d,month:d.slice(0,7),amount,paid:!!addCycleForm.paid,paidDate:addCycleForm.paid?(addCycleForm.payDate||todayLocal()):null,note:addCycleForm.note||""};
+              setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:[...(x.cycles||[]),nc]}:x));
+              if(addCycleForm.paid&&amount>0){
+                setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"cycle-"+r.id+"-"+d,date:addCycleForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs]);
+              }
+              setShowAddCycle(false);
+              setAddCycleForm({date:"",amount:"",paid:false,payDate:"",note:""});
+              setToast("Okres dodany");
+            }}>Zapisz okres</Btn>
+          </Modal>}
         </>;
       }
 
