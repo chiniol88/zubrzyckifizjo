@@ -614,7 +614,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const zakBase=rentals.filter(r=>r.status==="zakończone");
       const zakFiltered=zakSubView==="cykliczne"?zakBase.filter(r=>r.renewable):zakSubView==="okresowe"?zakBase.filter(r=>!r.renewable):zakBase;
       const filt=view==="aktywne"?rentals.filter(r=>r.status==="aktywne"&&!r.renewable&&!r.reserved).sort((a,b)=>(a.endDate||"9999-99-99").localeCompare(b.endDate||"9999-99-99"))
-      :view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved)
+      :view==="odnawialne"?rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved).sort((a,b)=>(b.startDate||"").localeCompare(a.startDate||""))
       :view==="oczekujace"?rentals.filter(r=>r.status==="aktywne"&&r.reserved).sort((a,b)=>(a.startDate||"9999").localeCompare(b.startDate||"9999"))
       :zakFiltered.slice().sort((a,b)=>(b.endDate||b.startDate||"").localeCompare(a.endDate||a.startDate||""));
 
