@@ -27,10 +27,7 @@
 
       const withCert  = cases.filter(c=>c.hasDisabilityCert);
       const withoutCert = cases.filter(c=>!c.hasDisabilityCert);
-      const sortByNext = arr => [...arr].sort((a,b)=>{
-        const na=nextOrderDate(a)||"9999", nb=nextOrderDate(b)||"9999";
-        return na.localeCompare(nb);
-      });
+      const sortByNext = arr => [...arr].sort((a,b)=>(b.orderDate||"").localeCompare(a.orderDate||""));
 
       if (selId !== null) {
         const cas = cases.find(c => c.id === selId);
