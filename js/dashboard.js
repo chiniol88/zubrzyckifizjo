@@ -42,10 +42,23 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms))){
           add(r.plannedReturn,{type:"plannedReturn",r});
         }
+        if(r.status==="aktywne"){
+          const activeCycles=(r.cycles||[]).filter(c=>!c.cancelled);
+          const lastCycle=activeCycles.length?activeCycles.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a):null;
+          const lastDue=lastCycle?(lastCycle.dueDate||lastCycle.month+"-01"):null;
+          if(!lastCycle||lastDue<today){
+            const base=lastDue||r.startDate;
+            const steps=Math.max(1,Math.ceil(dateDiff(base,today)/30));
+            const nextDue=addDays(base,steps*30);
+            if(visibleMonths.includes(nextDue.slice(0,7))){
+              add(nextDue,{type:"cycleEnd",r});
+            }
+          }
+        }
       }
     });
     return m;
-  },[rentals,monthStr,prevMonthStr,nextMonthStr]);
+  },[rentals,monthStr,prevMonthStr,nextMonthStr,today]);
 
   const visitsByDay=useMemo(()=>{
     const m={};
@@ -228,14 +241,14 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           </div>
         </div>;}
         if(item._kind==="rental"){const ev=item.ev;
-          const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":"🔄 Opłata";
+          const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":(ev.type==="cycle"||ev.type==="cycleEnd")?"🔁 Koniec cyklu":"🔄 Opłata";
           const color=ev.type==="end"||ev.type==="plannedReturn"?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
           const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
           const totalAmt=(+ev.r.amount||0)+extDue;
           const totalPaid=calcRentalPaid(ev.r);
           const remaining=totalAmt-totalPaid;
           const endSub=remaining>0?`do zapłaty: ${remaining} zł`:null;
-          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="end"?endSub:ev.type==="plannedReturn"?(remaining>0?`do zapłaty: ${remaining} zł`:null):totalAmt+" zł";
+          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cycleEnd"?"zbliża się koniec okresu":ev.type==="end"?endSub:ev.type==="plannedReturn"?(remaining>0?`do zapłaty: ${remaining} zł`:null):totalAmt+" zł";
           const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?(ev.r.plannedReturnTime||"10:00"):""):"";
 
           const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
