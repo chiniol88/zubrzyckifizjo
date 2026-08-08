@@ -283,6 +283,7 @@
                       setVisits(vs=>vs.filter(v=>v.patientId!==_pid));
                       setRentals(rs=>rs.filter(r=>r.patientId!==_pid&&r.patientName!==_pn));
                       setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)&&!_cids.some(cid=>f.sourceId===cid)&&!_extPrefixes.some(pfx=>f.sourceId&&f.sourceId.startsWith(pfx))));
+                      if(setNfzCases)setNfzCases(cs=>(cs||[]).filter(c=>c.patientId!==_pid&&c.patientName!==_pn));
                       setPatients(ps=>ps.filter(p=>p.id!==_pid));
                       setShowEdit(false);
                       setEditForm(null);
