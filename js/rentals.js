@@ -91,7 +91,7 @@
       const [confirmDel,setConfirmDel]=useState(false);
       const dueDt=cycle.dueDate||cycle.month+"-15";
       const label=new Date(dueDt+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
-      const periodEndDt=addDays(dueDt,30);
+      const periodEndDt=addDays(dueDt,29);
       const sameYear=dueDt.slice(0,4)===periodEndDt.slice(0,4);
       const fmtPeriodD=(d,withYear)=>new Date(d+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",...(withYear?{year:"numeric"}:{})});
       const rangeLabel=fmtPeriodD(dueDt,!sameYear)+" – "+fmtPeriodD(periodEndDt,true);
