@@ -1,3 +1,13 @@
+function nextCycleEnd(r, today) {
+  const activeCycles=(r.cycles||[]).filter(c=>!c.cancelled);
+  const lastCycle=activeCycles.length?activeCycles.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a):null;
+  const lastDue=lastCycle?(lastCycle.dueDate||lastCycle.month+"-01"):null;
+  if(lastCycle&&lastDue>=today) return {date:lastDue,cycle:lastCycle};
+  const base=lastDue||r.startDate;
+  const steps=Math.max(1,Math.ceil(dateDiff(base,today)/30));
+  return {date:addDays(base,steps*30),cycle:null};
+}
+
 function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents,patients}) {
   const dk=useContext(DarkCtx);
   const demo=useDemo();
@@ -43,16 +53,9 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           add(r.plannedReturn,{type:"plannedReturn",r});
         }
         if(r.status==="aktywne"){
-          const activeCycles=(r.cycles||[]).filter(c=>!c.cancelled);
-          const lastCycle=activeCycles.length?activeCycles.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a):null;
-          const lastDue=lastCycle?(lastCycle.dueDate||lastCycle.month+"-01"):null;
-          if(!lastCycle||lastDue<today){
-            const base=lastDue||r.startDate;
-            const steps=Math.max(1,Math.ceil(dateDiff(base,today)/30));
-            const nextDue=addDays(base,steps*30);
-            if(visibleMonths.includes(nextDue.slice(0,7))){
-              add(nextDue,{type:"cycleEnd",r});
-            }
+          const nce=nextCycleEnd(r,today);
+          if(!nce.cycle&&visibleMonths.includes(nce.date.slice(0,7))){
+            add(nce.date,{type:"cycleEnd",r});
           }
         }
       }
@@ -325,7 +328,11 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
   const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
   const upcoming = rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable&&!r.reserved).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
   const reservedRentals = rentals.filter(r=>r.status==="aktywne"&&r.reserved).sort((a,b)=>(a.startDate||"9999").localeCompare(b.startDate||"9999"));
-  const unpaidCycles = rentals.filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid&&!c.cancelled));
+  const upcomingCycles = useMemo(()=>rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved).map(r=>{
+    const unpaidReal=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).sort((a,b)=>(a.dueDate||a.month+"-01").localeCompare(b.dueDate||b.month+"-01"))[0];
+    if(unpaidReal) return {r,date:unpaidReal.dueDate||unpaidReal.month+"-01",cycle:unpaidReal};
+    return {r,...nextCycleEnd(r,today)};
+  }).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5),[rentals,today]);
 
   const wózkiReminders = useMemo(()=>{
     if(!nfzCases) return [];
@@ -503,7 +510,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
           onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
           onGoToRental={goToRental}
         />
-        {(upcoming.length>0||wózkiReminders.length>0||unpaidCycles.length>0||birthdayReminders.length>0||reservedRentals.length>0)&&<>
+        {(upcoming.length>0||wózkiReminders.length>0||upcomingCycles.length>0||birthdayReminders.length>0||reservedRentals.length>0)&&<>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Nadchodzące</div>
           {reservedRentals.map(r=>{
             const startDl=r.startDate?dateDiff(today,r.startDate):null;
@@ -558,11 +565,14 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
               </div>
             </Card>;
           })}
-          {unpaidCycles.map(r=>{const n=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).length;return(
-            <Card key={r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #E05C5C"}}>
+          {upcomingCycles.map(({r,date,cycle})=>{const d=dateDiff(today,date);const unpaid=!cycle||!cycle.paid;return(
+            <Card key={"cyc-"+r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #7C6AF4"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontWeight:600}}>{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{r.patientName}</div></div>
-                <Badge color="#E05C5C">{n} {n===1?"miesiąc":"mies."}</Badge>
+                <div><div style={{fontWeight:600}}>🔁 {r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                  <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
+                  {unpaid&&<Badge color="#E05C5C">do opłacenia</Badge>}
+                </div>
               </div>
             </Card>
           );})}
