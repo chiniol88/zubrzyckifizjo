@@ -539,14 +539,14 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
             const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
             const totalAmt=(+r.amount||0)+extDue;
             const totalPaid=calcRentalPaid(r);
-            const remaining=totalAmt-totalPaid;
+            const remaining=kind==="szyny"?totalAmt-totalPaid:(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
             return(
             <Card key={kind+"-"+r.id} onClick={()=>goToRental(r.id)} style={kind==="cykl"?{borderLeft:"3px solid #7C6AF4"}:undefined}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div><div style={{fontWeight:600}}>{kind==="cykl"?"🔁 ":""}{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                   <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
-                  {kind==="szyny"&&remaining>0&&<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>}
+                  {remaining>0&&<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>}
                 </div>
               </div>
             </Card>
