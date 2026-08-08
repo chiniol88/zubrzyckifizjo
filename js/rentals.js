@@ -91,6 +91,11 @@
       const [confirmDel,setConfirmDel]=useState(false);
       const dueDt=cycle.dueDate||cycle.month+"-15";
       const label=new Date(dueDt+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
+      const periodEndDt=addDays(dueDt,29);
+      const sameYear=dueDt.slice(0,4)===periodEndDt.slice(0,4);
+      const fmtPeriodD=(d,withYear)=>new Date(d+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",...(withYear?{year:"numeric"}:{})});
+      const rangeLabel=fmtPeriodD(dueDt,!sameYear)+" – "+fmtPeriodD(periodEndDt,true);
+      const periodCaption=<div style={{fontSize:10,color:"#7A8FA6",fontWeight:700,textTransform:"uppercase",letterSpacing:.4,marginBottom:2}}>Okres rozliczeniowy</div>;
       const sid="cycle-"+r.id+"-"+key;
 
       const updateCycle=patch=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).map(c=>(c.dueDate||c.month)===key?{...c,...patch}:c)}:x));
@@ -127,7 +132,7 @@
       </div>;
 
       const confirmDelUi=confirmDel&&<Modal title="Usuń okres" onClose={()=>setConfirmDel(false)}>
-        <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć okres „{label}”?{cycle.paid?" Powiązana wpłata w Finansach też zniknie.":""}</div>
+        <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć okres „{rangeLabel}”?{cycle.paid?" Powiązana wpłata w Finansach też zniknie.":""}</div>
         <div style={{display:"flex",gap:10}}>
           <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
           <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={doDelete}>Usuń</Btn>
@@ -139,7 +144,7 @@
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{display:"flex",gap:12,alignItems:"center"}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:"#7A8FA6",flexShrink:0}}/>
-              <div><div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",textDecoration:"line-through"}}>{label}</div><div style={{fontSize:12,color:"#7A8FA6"}}>Anulowany</div></div>
+              <div><div style={{fontWeight:600,fontSize:14,textDecoration:"line-through"}}>{rangeLabel}</div><div style={{fontSize:12,color:"#7A8FA6"}}>Anulowany</div></div>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               <button onClick={()=>updateCycle({cancelled:false})} style={{background:"#F2F5F7",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
@@ -168,7 +173,8 @@
               <div style={{display:"flex",gap:12,alignItems:"center"}}>
                 <div style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
                 <div>
-                  <div style={{fontWeight:600,fontSize:14,textTransform:"capitalize"}}>{label}</div>
+                  {periodCaption}
+                  <div style={{fontWeight:600,fontSize:14}}>{rangeLabel}</div>
                   {!editAmt
                     ? <div onClick={()=>{setPaidAmtDraft(String(cycle.amount||""));setEditAmt(true);}} style={{fontSize:12,color:"#7A8FA6",cursor:"pointer"}}>{cycle.amount>0?cycle.amount+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate} ✏️</div>
                     : <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
@@ -195,7 +201,10 @@
       }
       return (
         <div style={{padding:"10px 0",borderBottom:"1px solid #F2F5F7"}}>
-          <div style={{fontWeight:600,fontSize:14,textTransform:"capitalize",marginBottom:8,color:"#E05C5C"}}>⚠️ {label}</div>
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:10,color:"#E05C5C",fontWeight:700,textTransform:"uppercase",letterSpacing:.4,marginBottom:2}}>⚠️ Okres rozliczeniowy — do opłacenia</div>
+            <div style={{fontWeight:600,fontSize:14,color:"#E05C5C"}}>{rangeLabel}</div>
+          </div>
           <div style={{display:"flex",gap:8,marginBottom:6}}>
             <input type="number" value={amt} onChange={e=>setAmt(e.target.value)} placeholder="Kwota..." style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
             <input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} style={{flex:1,padding:"10px 14px",border:"1.5px solid #E4EAF0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
