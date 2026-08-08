@@ -326,13 +326,12 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
   const [toast,setToast]=useState(null);
 
   const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
-  const upcoming = rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable&&!r.reserved).sort((a,b)=>a.endDate.localeCompare(b.endDate)).slice(0,5);
   const reservedRentals = rentals.filter(r=>r.status==="aktywne"&&r.reserved).sort((a,b)=>(a.startDate||"9999").localeCompare(b.startDate||"9999"));
-  const upcomingCycles = useMemo(()=>rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved).map(r=>{
-    const unpaidReal=(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).sort((a,b)=>(a.dueDate||a.month+"-01").localeCompare(b.dueDate||b.month+"-01"))[0];
-    if(unpaidReal) return {r,date:unpaidReal.dueDate||unpaidReal.month+"-01",cycle:unpaidReal};
-    return {r,...nextCycleEnd(r,today)};
-  }).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5),[rentals,today]);
+  const upcoming = useMemo(()=>{
+    const szyny=rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable&&!r.reserved).map(r=>({kind:"szyny",r,date:r.endDate}));
+    const cykle=rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved).map(r=>({kind:"cykl",r,date:nextCycleEnd(r,today).date}));
+    return [...szyny,...cykle].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+  },[rentals,today]);
 
   const wózkiReminders = useMemo(()=>{
     if(!nfzCases) return [];
@@ -510,7 +509,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
           onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
           onGoToRental={goToRental}
         />
-        {(upcoming.length>0||wózkiReminders.length>0||upcomingCycles.length>0||birthdayReminders.length>0||reservedRentals.length>0)&&<>
+        {(upcoming.length>0||wózkiReminders.length>0||birthdayReminders.length>0||reservedRentals.length>0)&&<>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Nadchodzące</div>
           {reservedRentals.map(r=>{
             const startDl=r.startDate?dateDiff(today,r.startDate):null;
@@ -536,18 +535,18 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
               <Badge color={p._days===0?"#F4A261":p._days<=3?"#F4A261":"#3DAA72"}>{p._days===0?"Dziś!":p._days===1?"Jutro":"Za "+p._days+" dni"}</Badge>
             </div>
           </Card>)}
-          {upcoming.map(r=>{const d=dateDiff(today,r.endDate);
+          {upcoming.map(({kind,r,date})=>{const d=dateDiff(today,date);
             const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
             const totalAmt=(+r.amount||0)+extDue;
             const totalPaid=calcRentalPaid(r);
             const remaining=totalAmt-totalPaid;
             return(
-            <Card key={r.id} onClick={()=>goToRental(r.id)}>
+            <Card key={kind+"-"+r.id} onClick={()=>goToRental(r.id)} style={kind==="cykl"?{borderLeft:"3px solid #7C6AF4"}:undefined}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontWeight:600}}>{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {r.endDate}</div></div>
+                <div><div style={{fontWeight:600}}>{kind==="cykl"?"🔁 ":""}{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                   <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
-                  {remaining>0&&<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>}
+                  {kind==="szyny"&&remaining>0&&<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>}
                 </div>
               </div>
             </Card>
@@ -565,17 +564,6 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
               </div>
             </Card>;
           })}
-          {upcomingCycles.map(({r,date,cycle})=>{const d=dateDiff(today,date);const unpaid=!cycle||!cycle.paid;return(
-            <Card key={"cyc-"+r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #7C6AF4"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontWeight:600}}>🔁 {r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                  <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
-                  {unpaid&&<Badge color="#E05C5C">do opłacenia</Badge>}
-                </div>
-              </div>
-            </Card>
-          );})}
         </>}
       </div>
     </div>
