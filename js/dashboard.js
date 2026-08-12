@@ -37,7 +37,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
       if(r.status==="zakończone"&&!visibleMonths.some(ms=>r.startDate.startsWith(ms))&&!visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))return;
       if(!r.renewable){
         if(visibleMonths.some(ms=>(r.startDate||"").startsWith(ms)))add(r.startDate,{type:"start",r});
-        if(visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))add(r.endDate,{type:"end",r});
+        if(!r.plannedReturn&&visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))add(r.endDate,{type:"end",r});
         if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms)))add(r.plannedReturn,{type:"plannedReturn",r});
       } else {
         (r.cycles||[]).filter(c=>!c.cancelled).forEach(c=>{
@@ -52,7 +52,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms))){
           add(r.plannedReturn,{type:"plannedReturn",r});
         }
-        if(r.status==="aktywne"){
+        if(r.status==="aktywne"&&!r.plannedReturn){
           const nce=nextCycleEnd(r,today);
           if(!nce.cycle&&visibleMonths.includes(nce.date.slice(0,7))){
             add(nce.date,{type:"cycleEnd",r});
@@ -328,9 +328,10 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
   const todayV = visits.filter(v=>v.date===today).sort((a,b)=>(a.time||"").localeCompare(b.time||""));
   const reservedRentals = rentals.filter(r=>r.status==="aktywne"&&r.reserved).sort((a,b)=>(a.startDate||"9999").localeCompare(b.startDate||"9999"));
   const upcoming = useMemo(()=>{
-    const szyny=rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable&&!r.reserved).map(r=>({kind:"szyny",r,date:r.endDate}));
-    const cykle=rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved).map(r=>({kind:"cykl",r,date:nextCycleEnd(r,today).date}));
-    return [...szyny,...cykle].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+    const planned=rentals.filter(r=>r.status==="aktywne"&&r.plannedReturn&&!r.reserved).map(r=>({kind:"return",r,date:r.plannedReturn}));
+    const szyny=rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable&&!r.reserved&&!r.plannedReturn).map(r=>({kind:"szyny",r,date:r.endDate}));
+    const cykle=rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved&&!r.plannedReturn).map(r=>({kind:"cykl",r,date:nextCycleEnd(r,today).date}));
+    return [...planned,...szyny,...cykle].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
   },[rentals,today]);
 
   const wózkiReminders = useMemo(()=>{
@@ -539,11 +540,12 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
             const extDue=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
             const totalAmt=(+r.amount||0)+extDue;
             const totalPaid=calcRentalPaid(r);
-            const remaining=kind==="szyny"?totalAmt-totalPaid:(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
+            const remaining=r.renewable?(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0):totalAmt-totalPaid;
+            const icon=kind==="return"?"🔙 ":kind==="cykl"?"🔁 ":"";
             return(
-            <Card key={kind+"-"+r.id} onClick={()=>goToRental(r.id)} style={kind==="cykl"?{borderLeft:"3px solid #7C6AF4"}:undefined}>
+            <Card key={kind+"-"+r.id} onClick={()=>goToRental(r.id)} style={kind!=="szyny"?{borderLeft:"3px solid #7C6AF4"}:undefined}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontWeight:600}}>{kind==="cykl"?"🔁 ":""}{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
+                <div><div style={{fontWeight:600}}>{icon}{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                   <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
                   {remaining>0&&<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>}
