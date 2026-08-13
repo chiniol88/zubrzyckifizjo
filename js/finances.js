@@ -9,7 +9,11 @@
       const equipmentAll=getActiveEquipmentNames(stock);
       const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
       const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
-      const catOf=eq=>SZYNY_EQ.includes(eq)?"szyny":WOZEK_EQUIPMENT.includes(eq)?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
+      const catOf=eq=>{
+        const entry=((stock&&stock.equipment)||[]).find(e=>e.name===eq);
+        if(entry&&entry.category)return entry.category;
+        return SZYNY_EQ.includes(eq)?"szyny":WOZEK_EQUIPMENT.includes(eq)?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
+      };
       const sourceStats=useMemo(()=>{
         const yr=String(statsYear);
         const base=rentals.filter(r=>r.status==="zakończone"&&(r.startDate||"").startsWith(yr)&&(srcYearTab==="all"||catOf(r.equipment)===srcYearTab));
