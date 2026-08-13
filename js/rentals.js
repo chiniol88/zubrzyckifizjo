@@ -611,8 +611,15 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [contactSyncPending,setContactSyncPending]=useState(null);
       const [showAddCycle,setShowAddCycle]=useState(false);
       const [addCycleForm,setAddCycleForm]=useState({date:"",amount:"",paid:false,payDate:"",note:""});
+      const [transportPayDate,setTransportPayDate]=useState(todayLocal);
       const importRef=useRef(null);
       const activeEq=getActiveEquipmentNames(stock);
+      const eqSub=name=>{
+        const sw=(stock&&stock.seatWidth&&stock.seatWidth[name])||"";
+        const tw=(stock&&stock.totalWidth&&stock.totalWidth[name])||"";
+        if(!sw&&!tw)return "";
+        return (sw?`siedzisko ${sw} cm`:"")+(sw&&tw?" · ":"")+(tw?`całk. ${tw} cm`:"");
+      };
 
       const effectiveDetail = detail !== null ? detail : (initialDetail ?? null);
       const close=()=>{setDetail(null);if(onDetailClosed)onDetailClosed();};
@@ -674,12 +681,15 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{demo?"****":r.transport+" zł"}</div></div>}
                 </div>
-                {r.renewable&&r.transport>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #E4EAF0",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                  <div style={{fontSize:13,color:"#7A8FA6"}}>{r.transportPaid?"Transport opłacony "+r.transportPaidDate:"Transport jeszcze nieopłacony"}</div>
-                  {r.transportPaid
-                    ? <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:false,transportPaidDate:null}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="transport-"+r.id));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Anuluj</button>
-                    : <button onClick={()=>{const pd=todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:true,transportPaidDate:pd}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"transport-"+r.id,date:pd,type:"przychód",category:"Wypożyczalnia",amount:+r.transport,description:"Transport – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...fs]);}} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✓ Opłacono</button>
-                  }
+                {r.renewable&&r.transport>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #E4EAF0"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{fontSize:13,color:"#7A8FA6"}}>{r.transportPaid?"Transport opłacony "+r.transportPaidDate:"Transport jeszcze nieopłacony"}</div>
+                    {r.transportPaid
+                      ? <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:false,transportPaidDate:null}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="transport-"+r.id));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Anuluj</button>
+                      : <button onClick={()=>{const pd=transportPayDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:true,transportPaidDate:pd}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"transport-"+r.id,date:pd,type:"przychód",category:"Wypożyczalnia",amount:+r.transport,description:"Transport – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...fs]);}} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✓ Opłacono</button>
+                    }
+                  </div>
+                  {!r.transportPaid&&<input type="date" value={transportPayDate} onChange={e=>setTransportPayDate(e.target.value)} style={{marginTop:6,width:"100%",padding:"7px 10px",border:"1.5px solid #E4EAF0",borderRadius:10,fontSize:13,outline:"none",background:"#FAFCFD",fontFamily:"inherit",boxSizing:"border-box"}}/>}
                 </div>}
                 {(r.extensions||[]).length>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #E4EAF0"}}>
                   <SectionLabel style={{marginBottom:8}}>Historia przedłużeń</SectionLabel>
@@ -932,7 +942,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </div>
 
           {showEdit&&ef&&<Modal title="Edytuj wypożyczenie" onClose={()=>setShowEdit(false)}>
-            <Sel label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
+            <EquipmentPicker label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
             <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
@@ -1110,7 +1120,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
         {showAdd&&<Modal title="Nowe wypożyczenie" onClose={()=>setShowAdd(false)}>
-          <Sel label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x}))]}/>
+          <EquipmentPicker label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)}))]}/>
 
           <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
