@@ -6,6 +6,7 @@
       const [repairForm,setRepairForm]=useState(null);
       const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
       const [srcYearTab,setSrcYearTab]=useState("all");
+      const equipmentAll=getActiveEquipmentNames(stock);
       const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
       const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
       const catOf=eq=>SZYNY_EQ.includes(eq)?"szyny":WOZEK_EQUIPMENT.includes(eq)?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
@@ -44,7 +45,7 @@
 
       // All-time przychód per sprzęt — z RZECZYWISTYCH wpłat w finansach
       const allTimeRevenue=useMemo(()=>{
-        const rev={};EQUIPMENT.forEach(eq=>rev[eq]=0);
+        const rev={};equipmentAll.forEach(eq=>rev[eq]=0);
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód")return;
           const rid=getRid(f.sourceId);if(!rid)return;
@@ -52,17 +53,17 @@
           if(eq&&rev.hasOwnProperty(eq))rev[eq]+=(+f.amount||0);
         });
         return rev;
-      },[finances,rentalEquipMap,paymentRentalMap]);
+      },[finances,rentalEquipMap,paymentRentalMap,stock]);
 
       // All-time śr. czas wypożyczenia per sprzęt (zakończone, z datą od i do)
       const avgDurationByEq=useMemo(()=>{
         const map={};
-        EQUIPMENT.forEach(eq=>{
+        equipmentAll.forEach(eq=>{
           const finished=rentals.filter(r=>r.equipment===eq&&r.status==="zakończone"&&r.startDate&&r.endDate);
           map[eq]=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
         });
         return map;
-      },[rentals]);
+      },[rentals,stock]);
 
       // Statystyki miesięczne — konkretny miesiąc kalendarzowy
       const stats=useMemo(()=>{
@@ -114,7 +115,7 @@
         const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
-        const idle=EQUIPMENT.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
+        const idle=equipmentAll.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
         const durationIncludeMap=(stock&&stock.durationInclude)||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
@@ -147,7 +148,7 @@
         const yStart=statsYear+"-01-01";
         const yEnd=statsYear+"-12-31";
         const cutEnd=today<yEnd?today:yEnd;
-        return EQUIPMENT.map(eq=>{
+        return equipmentAll.map(eq=>{
           const qty=getQty(eq);
           const added=(stock&&stock.addedDate&&stock.addedDate[eq])||"";
           const eqStart=added>yStart?added:yStart;
@@ -169,7 +170,7 @@
         }).filter(x=>x.rentedDays>0||x.qty>1);
       },[rentals,statsYear,stock,today]);
 
-      const allTimeTotal=EQUIPMENT.reduce((s,eq)=>s+(allTimeRevenue[eq]||0),0);
+      const allTimeTotal=equipmentAll.reduce((s,eq)=>s+(allTimeRevenue[eq]||0),0);
       // Kategorie z budżetu do pickera marketingu
       const mktgCat=(stock&&stock.marketingCat)||"";
       const mktgSub=(stock&&stock.marketingSub)||"";
@@ -382,7 +383,7 @@
         {/* ROI per urządzenie */}
         <div style={{marginBottom:12}}>
           <SectionLabel>💰 ROI urządzeń (all-time)</SectionLabel>
-          {EQUIPMENT.map(eq=>{
+          {equipmentAll.map(eq=>{
             const earned=allTimeRevenue[eq]||0;
             const investment=getTotalInvestment(eq);
             const roi=investment>0?Math.round((earned/investment)*100):null;
