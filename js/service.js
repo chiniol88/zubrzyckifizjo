@@ -72,8 +72,10 @@
 
       const needSrv=(machines||[]).filter(m=>["zaległy","wkrótce"].includes(getStatus(m))).length;
       const occupied=(machines||[]).filter(m=>getMachineLoc(m)).length;
-      const total=(machines||[]).length;
+      const total=(machines||[]).filter(m=>!m.archived).length;
+      const archivedCount=(machines||[]).filter(m=>m.archived).length;
       const [toast,setToast]=useState(null);
+      const [showArchived,setShowArchived]=useState(false);
 
       return <div style={{padding:"0 0 80px"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
@@ -85,12 +87,14 @@
           ))}
         </div>
 
-        {total===0&&<Card style={{textAlign:"center",color:subC,padding:28}}>
+        {archivedCount>0&&<button onClick={()=>setShowArchived(a=>!a)} style={{display:"block",marginLeft:"auto",marginBottom:10,padding:"6px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#E4EAF0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit"}}>📦 {showArchived?"Aktywne":"Archiwum ("+archivedCount+")"}</button>}
+
+        {total===0&&!showArchived&&<Card style={{textAlign:"center",color:subC,padding:28}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Brak maszyn</div>
           <div style={{fontSize:12}}>Dodaj swój sprzęt żeby śledzić serwisy i lokalizację</div>
         </Card>}
 
-        {(machines||[]).map(m=>{
+        {(machines||[]).filter(m=>!!m.archived===showArchived).map(m=>{
           const status=getStatus(m);
           const loc=getMachineLoc(m);
           const daysLeft=getDaysLeft(m);
@@ -144,11 +148,14 @@
                   </div>
               ))}
 
-              <div style={{display:"flex",gap:8,marginTop:8}}>
-                <Btn small onClick={()=>{setSrvForm(emptySrv());setShowAddSrv(m.id);}} style={{flex:1,justifyContent:"center"}}>+ Serwis</Btn>
-                <Btn small variant="secondary" onClick={()=>{setEditId(m.id);setForm({type:m.type,name:m.name||"",serialNo:m.serialNo||"",purchaseDate:m.purchaseDate||"",lastServiceDate:m.lastServiceDate||"",servicePeriodDays:String(m.servicePeriodDays||365),notes:m.notes||""});}} style={{flex:1,justifyContent:"center"}}>Edytuj</Btn>
-                <Btn small variant="danger" onClick={()=>setConfirmDel(m.id)} style={{justifyContent:"center"}}>Usuń</Btn>
-              </div>
+              {m.archived
+                ? <Btn small style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={()=>{setMachines(ms=>ms.map(x=>x.id===m.id?{...x,archived:false}:x));setSelId(null);setToast("Przywrócono maszynę");}}>📦 Przywróć maszynę</Btn>
+                : <div style={{display:"flex",gap:8,marginTop:8}}>
+                    <Btn small onClick={()=>{setSrvForm(emptySrv());setShowAddSrv(m.id);}} style={{flex:1,justifyContent:"center"}}>+ Serwis</Btn>
+                    <Btn small variant="secondary" onClick={()=>{setEditId(m.id);setForm({type:m.type,name:m.name||"",serialNo:m.serialNo||"",purchaseDate:m.purchaseDate||"",lastServiceDate:m.lastServiceDate||"",servicePeriodDays:String(m.servicePeriodDays||365),notes:m.notes||""});}} style={{flex:1,justifyContent:"center"}}>Edytuj</Btn>
+                    <Btn small variant="danger" onClick={()=>setConfirmDel(m.id)} style={{justifyContent:"center"}}>Usuń</Btn>
+                  </div>
+              }
             </div>}
           </Card>;
         })}
@@ -192,11 +199,11 @@
           }} style={{width:"100%",justifyContent:"center"}}>Zapisz</Btn>
         </Modal>}
 
-        {confirmDel&&<Modal title="Usuń maszynę?" onClose={()=>setConfirmDel(null)}>
-          <div style={{fontSize:14,color:subC,marginBottom:16}}>Usunięcie maszyny nie usuwa historii wypożyczeń.</div>
+        {confirmDel&&<Modal title="Usunąć maszynę?" onClose={()=>setConfirmDel(null)}>
+          <div style={{fontSize:14,color:subC,marginBottom:16}}>Maszyna zniknie z listy, ale nic się nie skasuje — historia serwisów i koszty zostają, a maszynę można w każdej chwili przywrócić z Archiwum.</div>
           <div style={{display:"flex",gap:10}}>
             <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(null)}>Anuluj</Btn>
-            <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setMachines(ms=>ms.filter(x=>x.id!==confirmDel));setSelId(null);setConfirmDel(null);}}>Usuń</Btn>
+            <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{setMachines(ms=>ms.map(x=>x.id===confirmDel?{...x,archived:true}:x));setSelId(null);setConfirmDel(null);setToast("Zarchiwizowano maszynę");}}>Usuń</Btn>
           </div>
         </Modal>}
 

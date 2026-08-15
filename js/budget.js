@@ -213,6 +213,29 @@
       const [showAdd,setShowAdd]=useState(null); // "income"|"expense"
       const [editItem,setEditItem]=useState(null);
       const [form,setForm]=useState({cat:"",subcat:"",desc:"",amount:""});
+      const [invoiceBusy,setInvoiceBusy]=useState(false);
+      const [invoiceErr,setInvoiceErr]=useState("");
+      const invoiceInputRef=useRef(null);
+      const handleInvoiceFile=async(e)=>{
+        const file=e.target.files&&e.target.files[0];
+        e.target.value="";
+        if(!file)return;
+        setInvoiceBusy(true);setInvoiceErr("");
+        try{
+          const {amount,currency,date,name}=await parseInvoicePdf(file);
+          if(currency!=="PLN"){setInvoiceErr("Faktura w "+currency+" — wpisz kwotę w PLN ręcznie");}
+          const c=expCats[0];
+          setForm({cat:c?c.name:"",subcat:"",desc:name,amount:amount!=null?String(amount):"",date:date||(selMonth===todayLocal().slice(0,7)?todayLocal():selMonth+"-01")});
+          setShowAdd("expense");
+        }catch(err){
+          setInvoiceErr("Nie udało się odczytać PDF-a — wpisz dane ręcznie");
+          const c=expCats[0];
+          setForm({cat:c?c.name:"",subcat:"",desc:file.name.replace(/\.pdf$/i,""),amount:"",date:selMonth===todayLocal().slice(0,7)?todayLocal():selMonth+"-01"});
+          setShowAdd("expense");
+        }finally{
+          setInvoiceBusy(false);
+        }
+      };
       // cat manager state
       const [editCat,setEditCat]=useState(null); // {type, catIdx, field:"name"|"sub", subIdx, value}
       const [newCatName,setNewCatName]=useState({income:"",expense:""});
@@ -220,8 +243,10 @@
       const [newCatType,setNewCatType]=useState("expense");
 
       // Normalize cats on read
-      const incCats=useMemo(()=>normCats(budget.incomeCategories||[{name:"Wynagrodzenie",subs:[]},{name:"Inne",subs:[]}]).slice().sort((a,b)=>a.name.localeCompare(b.name,"pl")),[budget]);
-      const expCats=useMemo(()=>normCats(budget.expenseCategories||[{name:"Mieszkanie",subs:[]},{name:"Jedzenie",subs:[]},{name:"Transport",subs:[]},{name:"Inne",subs:[]}]).slice().sort((a,b)=>a.name.localeCompare(b.name,"pl")),[budget]);
+      const rawIncCats=useMemo(()=>normCats(budget.incomeCategories||[{name:"Wynagrodzenie",subs:[]},{name:"Inne",subs:[]}]),[budget]);
+      const rawExpCats=useMemo(()=>normCats(budget.expenseCategories||[{name:"Mieszkanie",subs:[]},{name:"Jedzenie",subs:[]},{name:"Transport",subs:[]},{name:"Inne",subs:[]}]),[budget]);
+      const incCats=useMemo(()=>rawIncCats.slice().sort((a,b)=>a.name.localeCompare(b.name,"pl")),[rawIncCats]);
+      const expCats=useMemo(()=>rawExpCats.slice().sort((a,b)=>a.name.localeCompare(b.name,"pl")),[rawExpCats]);
 
       const monthData=useMemo(()=>(budget.months||{})[selMonth]||{income:[],expenses:[]},[budget,selMonth]);
 
@@ -266,7 +291,20 @@
         setCats(type,cats=>[...cats,{name:name.trim(),subs:[]}]);
       };
       const delCat=(type,catIdx)=>{
-        setCats(type,cats=>cats.filter((_,i)=>i!==catIdx));
+        const key=type==="income"?"incomeCategories":"expenseCategories";
+        const mkey=type==="income"?"income":"expenses";
+        setBudget(b=>{
+          const cats=normCats(b[key]||[]);
+          const delName=cats[catIdx].name;
+          const fallback=cats.find((c,i)=>i!==catIdx&&c.name==="Inne")?"Inne":(cats.find((_,i)=>i!==catIdx)||{}).name||"Inne";
+          const newCats=cats.filter((_,i)=>i!==catIdx);
+          const months={};
+          Object.entries(b.months||{}).forEach(([m,md])=>{
+            months[m]={...md,[mkey]:(md[mkey]||[]).map(it=>it.cat===delName?{...it,cat:fallback,subcat:""}:it)};
+          });
+          const recurring=(b.recurring||[]).map(r=>(r.type===type&&r.cat===delName)?{...r,cat:fallback,subcat:""}:r);
+          return {...b,[key]:newCats,months,recurring};
+        });
       };
       const moveCat=(type,idx,dir)=>{
         setCats(type,cats=>{
@@ -869,8 +907,11 @@
             </div>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>{const c=expCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:"",date:selMonth===todayLocal().slice(0,7)?todayLocal():selMonth+"-01"});setShowAdd("expense");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#E05C5C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+              <button disabled={invoiceBusy} onClick={()=>invoiceInputRef.current&&invoiceInputRef.current.click()} style={{padding:"8px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:13,cursor:invoiceBusy?"default":"pointer",fontFamily:"inherit",opacity:invoiceBusy?.6:1}}>{invoiceBusy?"…":"📄 Faktura"}</button>
+              <input ref={invoiceInputRef} type="file" accept="application/pdf" onChange={handleInvoiceFile} style={{display:"none"}}/>
               <button onClick={()=>{const c=expCats[0];setRForm({type:"expense",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("expense");}} style={{padding:"8px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>↻</button>
             </div>
+            {invoiceErr&&<div style={{marginTop:6,fontSize:11,color:"#E05C5C"}}>{invoiceErr}</div>}
           </div>
           {renderItems("expense",expCats,"#E05C5C")}
           {(monthData.expenses||[]).length===0&&recurringExp.length===0&&<div style={{padding:16,textAlign:"center",color:sub,fontSize:13}}>Brak kosztów</div>}
@@ -986,8 +1027,8 @@
         />}
 
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>
-          <CatMgrSection type="income" cats={incCats} color="#3DAA72" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} addCat={addCat}/>
-          <CatMgrSection type="expense" cats={expCats} color="#E05C5C" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} addCat={addCat}/>
+          <CatMgrSection type="income" cats={rawIncCats} color="#3DAA72" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} addCat={addCat}/>
+          <CatMgrSection type="expense" cats={rawExpCats} color="#E05C5C" border={border} sub={sub} dk={dk} editCat={editCat} setEditCat={setEditCat} moveCat={moveCat} renameCat={renameCat} delCat={delCat} addSub={addSub} moveSub={moveSub} renameSub={renameSub} delSub={delSub} addCat={addCat}/>
         </Modal>}
       </div>;
     }

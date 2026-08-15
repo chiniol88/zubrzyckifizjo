@@ -155,7 +155,7 @@
       },[]);
 
       const exportData=()=>{
-        const data={visits,patients,rentals,finances,stock,nfzCases,todos,events,budget,wealth,invoices,exportedAt:new Date().toISOString()};
+        const data={visits,patients,rentals,finances,stock,nfzCases,todos,events,budget,wealth,invoices,machines,exportedAt:new Date().toISOString()};
         const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
         const url=URL.createObjectURL(blob);
         const a=document.createElement("a");
@@ -184,6 +184,7 @@
             if(d.budget)setBudget(d.budget);
             if(d.wealth)setWealth(d.wealth);
             if(d.invoices)setInvoices(d.invoices);
+            if(d.machines)setMachines(d.machines);
             alert("Import zakończony pomyślnie!");
           }catch(err){alert("Błąd importu: "+err.message);}
         };
