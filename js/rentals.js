@@ -1052,7 +1052,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć to wypożyczenie?</div>
             <div style={{display:"flex",gap:10}}>
               <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDel(false)}>Anuluj</Btn>
-              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===effectiveDetail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+(c.dueDate||c.month)));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==effectiveDetail));setConfirmDel(false);close();}}>Usuń</Btn>
+              <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{const cur=rentals.find(x=>x.id===effectiveDetail);if(cur){const pids=new Set((cur.payments||[]).map(p=>"payment-"+p.id));const cids=new Set((cur.cycles||[]).map(c=>"cycle-"+cur.id+"-"+(c.dueDate||c.month)));setFinances(fs=>fs.filter(f=>!pids.has(f.sourceId)&&!cids.has(f.sourceId)&&f.sourceId!=="transport-"+cur.id&&!(f.sourceId&&f.sourceId.startsWith("extend-"+cur.id+"-"))));}setRentals(rs=>rs.filter(x=>x.id!==effectiveDetail));setConfirmDel(false);close();}}>Usuń</Btn>
             </div>
           </Modal>}
           {contactSyncPending&&<ContactSyncModal items={contactSyncPending} onClose={()=>setContactSyncPending(null)} onConfirm={items=>{applyContactUpdates(items,{setPatients,setRentals,setNfzCases});setContactSyncPending(null);}}/>}

@@ -280,9 +280,11 @@
                       const _pids=_pr.flatMap(r=>(r.payments||[]).map(p=>p.id));
                       const _cids=_pr.flatMap(r=>(r.cycles||[]).map(c=>"cycle-"+r.id+"-"+(c.dueDate||c.month)));
                       const _extPrefixes=_pr.map(r=>"extend-"+r.id+"-");
+                      const _transportIds=new Set(_pr.filter(r=>r.transport>0).map(r=>"transport-"+r.id));
+                      const _nfzIds=(nfzCases||[]).filter(c=>c.patientId===_pid||c.patientName===_pn).map(c=>"wozek-"+c.id);
                       setVisits(vs=>vs.filter(v=>v.patientId!==_pid));
                       setRentals(rs=>rs.filter(r=>r.patientId!==_pid&&r.patientName!==_pn));
-                      setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)&&!_cids.some(cid=>f.sourceId===cid)&&!_extPrefixes.some(pfx=>f.sourceId&&f.sourceId.startsWith(pfx))));
+                      setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)&&!_cids.some(cid=>f.sourceId===cid)&&!_transportIds.has(f.sourceId)&&!_nfzIds.includes(f.sourceId)&&!_extPrefixes.some(pfx=>f.sourceId&&f.sourceId.startsWith(pfx))));
                       if(setNfzCases)setNfzCases(cs=>(cs||[]).filter(c=>c.patientId!==_pid&&c.patientName!==_pn));
                       setPatients(ps=>ps.filter(p=>p.id!==_pid));
                       setShowEdit(false);
