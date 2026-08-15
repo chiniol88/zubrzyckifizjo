@@ -1092,16 +1092,6 @@ p{margin:2px 0}.bold7{font-weight:bold}
           <div style={{minWidth:0}}><div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800}}>Wypożyczalnia</div><div style={{fontSize:13,color:"#7A8FA6"}}>{cnt.aktywne+cnt.odnawialne+cnt.oczekujace} aktywnych</div></div>
           <div style={{display:"flex",gap:6,flexShrink:0}}>
             <button onClick={()=>{setCsvRows([]);setCsvError("");setShowImport(true);}} style={{height:34,padding:"0 12px",borderRadius:20,border:"1.5px solid #0A7C7C",background:"transparent",color:"#0A7C7C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>📥 Import</button>
-            <button title="Usuń duplikaty" onClick={()=>{
-              const seen=new Set();const toRemove=[];
-              [...rentals].sort((a,b)=>a.id-b.id).forEach(r=>{const k=(r.patientName||"")+"|"+(r.startDate||"");if(seen.has(k))toRemove.push(r.id);else seen.add(k);});
-              if(toRemove.length===0){setToast("Brak duplikatów ✅");return;}
-              const rem=new Set(toRemove);
-              const srcIds=new Set(rentals.filter(r=>rem.has(r.id)).flatMap(r=>(r.payments||[]).map(p=>"payment-"+p.id)));
-              setRentals(rs=>rs.filter(r=>!rem.has(r.id)));
-              setFinances(fs=>fs.filter(f=>!srcIds.has(f.sourceId)));
-              setToast("Usunięto "+toRemove.length+" duplikatów ✅");
-            }} style={{height:34,padding:"0 10px",borderRadius:20,border:"1.5px solid #E05C5C",background:"transparent",color:"#E05C5C",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🗑 Duplikaty</button>
             <Btn small onClick={()=>{setForm(emptyRental());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowe</Btn>
           </div>
         </div>
