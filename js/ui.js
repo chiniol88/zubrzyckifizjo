@@ -116,16 +116,19 @@ function EquipmentPicker({label,value,onChange,options}) {
   const current=options.find(o=>o.value===value);
   return <div style={{marginBottom:14,position:"relative"}}>
     {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
-    <div onClick={()=>setOpen(o=>!o)} tabIndex={0} onBlur={()=>setTimeout(()=>setOpen(false),150)}
+    <div onClick={()=>setOpen(o=>!o)}
       style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",boxSizing:"border-box"}}>
       <span>{current?current.label:"—"}</span><span style={{color:"#7A8FA6",fontSize:12}}>▾</span>
     </div>
-    {open&&<div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden",maxHeight:280,overflowY:"auto"}}>
-      {options.map(o=><div key={o.value} onPointerDown={e=>{e.preventDefault();onChange(o.value);setOpen(false);}} style={{padding:"10px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
-        <div style={{fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>{o.label}</div>
-        {o.sub&&<div style={{fontSize:11,color:"#7A8FA6",marginTop:1}}>{o.sub}</div>}
-      </div>)}
-    </div>}
+    {open&&<>
+      <div onClick={()=>setOpen(false)} style={{position:"fixed",inset:0,zIndex:190}}/>
+      <div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden",maxHeight:280,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+        {options.map(o=><div key={o.value} onClick={()=>{onChange(o.value);setOpen(false);}} style={{padding:"10px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+          <div style={{fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>{o.label}</div>
+          {o.sub&&<div style={{fontSize:11,color:"#7A8FA6",marginTop:1}}>{o.sub}</div>}
+        </div>)}
+      </div>
+    </>}
   </div>;
 }
 function ClockDisplay() {

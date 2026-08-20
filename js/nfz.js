@@ -73,7 +73,7 @@
                   <div><span style={{fontSize:12,color:"#7A8FA6"}}>Data zamówienia: </span><span style={{fontWeight:600,fontSize:14}}>{cas.orderDate}</span></div>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     {cas.realized&&<span style={{fontSize:12,color:"#3DAA72",fontWeight:600}}>✓ Zrealizowano</span>}
-                    <div onClick={()=>{if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate,name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));setToast("Cofnięto realizację");}}}
+                    <div onClick={()=>{if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate,name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="wozek-"+cas.id));setToast("Cofnięto realizację");}}}
                       style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#E4EAF0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
                       {cas.realized&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
                     </div>
@@ -168,7 +168,7 @@
                   </div>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,paddingLeft:10}}>
-                  <div onClick={e=>{e.stopPropagation();if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate||"",name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));}}}
+                  <div onClick={e=>{e.stopPropagation();if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate||"",name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="wozek-"+cas.id));}}}
                     style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#E4EAF0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
                     {cas.realized&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
                   </div>
