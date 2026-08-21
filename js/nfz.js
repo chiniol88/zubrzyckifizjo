@@ -15,6 +15,7 @@
       const [confirmDel,setConfirmDel] = useState(false);
       const [toast,setToast] = useState(null);
       const [sortMode,setSortMode] = useState("newest");
+      const [filterMode,setFilterMode] = useState("pending");
       const [payModal,setPayModal] = useState(null); // {casId, date, name}
       const [payAmount,setPayAmount] = useState("");
       const [contactSyncPending,setContactSyncPending] = useState(null);
@@ -151,17 +152,24 @@
         </>;
       }
 
-      const listItems = sortCases(cases);
+      const pendingCount = cases.filter(c=>!c.realized).length;
+      const filtered = filterMode==="pending" ? cases.filter(c=>!c.realized) : cases;
+      const listItems = sortCases(filtered);
       return <div>
         <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wózki</div>
           <Btn small onClick={()=>{setForm(emptyNFZ());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
         </div>
+        <div style={{display:"flex",gap:6,padding:"0 20px 10px"}}>
+          {[{k:"pending",l:`Do realizacji (${pendingCount})`},{k:"all",l:`Wszystkie (${cases.length})`}].map(t=>
+            <button key={t.k} onClick={()=>setFilterMode(t.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,whiteSpace:"nowrap",background:filterMode===t.k?"#0A7C7C":"#E4EAF0",color:filterMode===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>
+          )}
+        </div>
         <div style={{padding:"0 20px 14px"}}>
           <Sel label="" value={sortMode} onChange={setSortMode} options={SORT_OPTIONS}/>
         </div>
         <div style={{padding:"0 20px"}}>
-          {listItems.length===0&&<Empty text="Brak wpisów"/>}
+          {listItems.length===0&&<Empty text={filterMode==="pending"?"Brak spraw do realizacji 🎉":"Brak wpisów"}/>}
           {listItems.map(cas=>{
             const nd=nextOrderDate(cas);
             const dl=nd?dateDiff(today,nd):null;
