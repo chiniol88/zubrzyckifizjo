@@ -14,7 +14,7 @@
       const [editForm,setEditForm] = useState(null);
       const [confirmDel,setConfirmDel] = useState(false);
       const [toast,setToast] = useState(null);
-      const [tab,setTab] = useState("orzeczenie");
+      const [sortMode,setSortMode] = useState("newest");
       const [payModal,setPayModal] = useState(null); // {casId, date, name}
       const [payAmount,setPayAmount] = useState("");
       const [contactSyncPending,setContactSyncPending] = useState(null);
@@ -25,9 +25,19 @@
       const cases = nfzCases || [];
       const today = todayLocal();
 
-      const withCert  = cases.filter(c=>c.hasDisabilityCert);
-      const withoutCert = cases.filter(c=>!c.hasDisabilityCert);
-      const sortByNext = arr => [...arr].sort((a,b)=>(b.orderDate||"").localeCompare(a.orderDate||""));
+      const SORT_OPTIONS = [
+        {value:"newest",label:"Najnowsze zlecenia"},
+        {value:"oldest",label:"Najstarsze zlecenia"},
+        {value:"az",label:"Alfabetycznie (A-Z)"},
+        {value:"next",label:"Najbliższy termin"},
+      ];
+      const sortCases = arr => {
+        const a=[...arr];
+        if(sortMode==="oldest") return a.sort((x,y)=>(x.orderDate||"").localeCompare(y.orderDate||""));
+        if(sortMode==="az") return a.sort((x,y)=>(x.patientName||"").localeCompare(y.patientName||"","pl"));
+        if(sortMode==="next") return a.sort((x,y)=>{const nx=nextOrderDate(x)||"9999",ny=nextOrderDate(y)||"9999";return nx.localeCompare(ny);});
+        return a.sort((x,y)=>(y.orderDate||"").localeCompare(x.orderDate||""));
+      };
 
       if (selId !== null) {
         const cas = cases.find(c => c.id === selId);
@@ -141,16 +151,14 @@
         </>;
       }
 
-      const listItems = sortByNext(tab==="orzeczenie" ? withCert : withoutCert);
+      const listItems = sortCases(cases);
       return <div>
         <div style={{padding:"28px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Wózki</div>
           <Btn small onClick={()=>{setForm(emptyNFZ());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>
         </div>
-        <div style={{display:"flex",gap:6,padding:"0 20px 14px"}}>
-          {[{k:"orzeczenie",l:`Z orzeczeniem (${withCert.length})`},{k:"bez",l:`Bez orzeczenia (${withoutCert.length})`}].map(t=>
-            <button key={t.k} onClick={()=>setTab(t.k)} style={{padding:"8px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:tab===t.k?"#0A7C7C":"#E4EAF0",color:tab===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>
-          )}
+        <div style={{padding:"0 20px 14px"}}>
+          <Sel label="" value={sortMode} onChange={setSortMode} options={SORT_OPTIONS}/>
         </div>
         <div style={{padding:"0 20px"}}>
           {listItems.length===0&&<Empty text="Brak wpisów"/>}
@@ -160,7 +168,10 @@
             return <Card key={cas.id} onClick={()=>setSelId(cas.id)}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{flex:1}}>
-                  <div style={{fontWeight:700,fontSize:15,marginBottom:3}}>{demo?"Pacjent":cas.patientName}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                    <div style={{fontWeight:700,fontSize:15}}>{demo?"Pacjent":cas.patientName}</div>
+                    {cas.hasDisabilityCert&&<Badge color="#7C6AF4">🪪 Orzeczenie</Badge>}
+                  </div>
                   <div style={{fontSize:13,color:"#7A8FA6",display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
                     {cas.wheelchairModel&&<span>🦽 {cas.wheelchairModel}</span>}
                     {cas.orderDate&&<span>📅 {cas.orderDate}</span>}
