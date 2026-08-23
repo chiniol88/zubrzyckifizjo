@@ -6,14 +6,14 @@
       const mmdd=hasYear?value.slice(5):value;
       const mm=mmdd?mmdd.slice(0,2):"";
       const dd=mmdd?mmdd.slice(3):"";
-      const sel=(extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
+      const sel=(extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
       const months=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
       const setMM=(v)=>{const d=dd||"01";knowYear?onChange(value.slice(0,5)+v+"-"+d):onChange(v+"-"+d);};
       const setDD=(v)=>{knowYear?onChange(value.slice(0,8)+v):onChange(mm?mm+"-"+v:"");};
       const setYear=(v)=>{if(mm&&dd)onChange(v+"-"+mm+"-"+dd);};
       const toggleKnowYear=(checked)=>{if(checked){onChange(mm&&dd?todayLocal().slice(0,4)+"-"+mm+"-"+dd:"");}else{onChange(mm&&dd?mm+"-"+dd:"");}};
       return <div style={{marginBottom:14}}>
-        <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Data urodzin</div>
+        <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Data urodzin</div>
         <div style={{display:"flex",gap:8,marginBottom:8}}>
           <select value={mm} onChange={e=>setMM(e.target.value)} style={{...sel(),flex:2}}>
             <option value="">Miesiąc</option>
@@ -132,8 +132,8 @@
         const maps=pat.address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pat.address)}`:null;
         return <>
           <div>
-            <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
-              <Ico d={I.back} s={18} c="#0A7C7C"/> Pacjenci
+            <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#3E6FB0",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
+              <Ico d={I.back} s={18} c="#3E6FB0"/> Pacjenci
             </button>
             <div style={{padding:"16px 20px 0"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -148,8 +148,8 @@
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:pat.address?10:0}}>
                   <div style={{fontSize:14,color:"#7A8FA6"}}>{pat.phone||"Brak telefonu"}</div>
                   {pat.phone&&<div style={{display:"flex",gap:6}}>
-                    <a href={`tel:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>
-                    <a href={`sms:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#0A7C7C"/> SMS</Btn></a>
+                    <a href={`tel:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#3E6FB0"/> Zadzwoń</Btn></a>
+                    <a href={`sms:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#3E6FB0"/> SMS</Btn></a>
                   </div>}
                 </div>
                 {pat.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -171,11 +171,11 @@
               </Card>}
               {pat.birthday&&<BirthdayCard birthday={pat.birthday} dk={dk}/>}
 
-              {(patDoneVisits.length>0||patRentals.length>0||patWozki.length>0)&&<Card style={{marginBottom:10,background:dk?"#1A2A2A":"#F7FAFA",border:"1.5px solid #E4EAF0"}}>
+              {(patDoneVisits.length>0||patRentals.length>0||patWozki.length>0)&&<Card style={{marginBottom:10,background:dk?"#18202F":"#F4F7FC",border:"1.5px solid #D9E2F0"}}>
                 <SectionLabel>Statystyki</SectionLabel>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                   {[
-                    patDoneVisits.length>0?{l:"Wizyty",v:patDoneVisits.length,c:"#0A7C7C"}:{l:"Wypożyczenia",v:patRentals.length,c:"#7C6AF4"},
+                    patDoneVisits.length>0?{l:"Wizyty",v:patDoneVisits.length,c:"#3E6FB0"}:{l:"Wypożyczenia",v:patRentals.length,c:"#7C6AF4"},
                     patDoneVisits.length>0?{l:"Śr. cena",v:patAvgPrice+" zł",c:"#7C6AF4"}:{l:"Wózki NFZ",v:patWozki.length,c:"#F4A261"},
                     {l:"Klient od",v:patSinceMonths<1?"<1 mies.":patSinceMonths<12?patSinceMonths+" mies.":(patSinceMonths/12).toFixed(1).replace(".0","")+" lat",c:"#F4A261"},
                   ].map((x,i)=><div key={i} style={{background:x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
@@ -184,11 +184,11 @@
                   </div>)}
                 </div>
               </Card>}
-              {patTotal>0&&<Card style={{marginBottom:10,background:"#E6F4F4",border:"1.5px solid #0A7C7C30"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Łącznie zapłacono</div>
+              {patTotal>0&&<Card style={{marginBottom:10,background:"#E1E9F5",border:"1.5px solid #3E6FB030"}}>
+                <div style={{fontSize:11,fontWeight:700,color:"#3E6FB0",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Łącznie zapłacono</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {[{l:"Wizyty",v:patTotalVisits,c:"#0A7C7C"},{l:"Wypożyczenia",v:patTotalRentals,c:"#7C6AF4"},{l:"Wózki",v:patTotalWozki,c:"#F4A261"},{l:"Razem",v:patTotal,c:"#1C2B3A"}].map((x,i)=>(
-                    <div key={i} style={{background:"#fff",borderRadius:12,padding:"10px 8px",textAlign:"center",border:"1.5px solid #E4EAF0"}}>
+                  {[{l:"Wizyty",v:patTotalVisits,c:"#3E6FB0"},{l:"Wypożyczenia",v:patTotalRentals,c:"#7C6AF4"},{l:"Wózki",v:patTotalWozki,c:"#F4A261"},{l:"Razem",v:patTotal,c:"#1C2B3A"}].map((x,i)=>(
+                    <div key={i} style={{background:"#fff",borderRadius:12,padding:"10px 8px",textAlign:"center",border:"1.5px solid #D9E2F0"}}>
                       <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v} zł</div>
                       <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
                     </div>
@@ -201,7 +201,7 @@
                 <Btn small onClick={()=>{setVf({...emptyVisit(),patientName:pat.name,patientId:pat.id,price:pat.defaultPrice?String(pat.defaultPrice):"150"});setShowAddV(true);}}><Ico d={I.plus} s={15} c="#fff"/> Wizyta</Btn>
               </div>
               <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-                {[{k:"all",l:"Wszystko"},{k:"v",l:"Wizyty"},{k:"r",l:"Wypożyczenia"},{k:"w",l:"Wózki"}].map(x=><button key={x.k} onClick={()=>setHistFilter(x.k)} style={{padding:"6px 12px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:histFilter===x.k?"#0A7C7C":"#E4EAF0",color:histFilter===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
+                {[{k:"all",l:"Wszystko"},{k:"v",l:"Wizyty"},{k:"r",l:"Wypożyczenia"},{k:"w",l:"Wózki"}].map(x=><button key={x.k} onClick={()=>setHistFilter(x.k)} style={{padding:"6px 12px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:histFilter===x.k?"#3E6FB0":"#D9E2F0",color:histFilter===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
               </div>
               {history.filter(item=>histFilter==="all"||item._t===histFilter).length===0
                 ?<Empty text="Brak wpisów"/>
@@ -209,10 +209,10 @@
                 item._t==="v"
                 ? <Card key={"v"+item.id} onClick={()=>setEditV({...item,price:String(item.price)})}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div><div style={{fontSize:11,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div><div style={{fontWeight:600}}>{item.date} · {item.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div></div>
-                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{item.price} zł</div><Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#0A7C7C"}>{visitStatus(item)}</Badge></div>
+                      <div><div style={{fontSize:11,fontWeight:700,color:"#3E6FB0",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div><div style={{fontWeight:600}}>{item.date} · {item.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div></div>
+                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{item.price} zł</div><Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(item)}</Badge></div>
                     </div>
-                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
+                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
                   </Card>
                 : item._t==="r"
                 ? <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
@@ -226,7 +226,7 @@
                       <div><div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wózek NFZ</div><div style={{fontWeight:600}}>{item.wheelchairModel||"Model nieznany"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.orderDate||"Brak daty"}{item.hasDisabilityCert?" · orzeczenie":""}</div></div>
                       <Badge color={item.realized?"#3DAA72":"#F4A261"}>{item.realized?"zrealizowany":"oczekuje"}</Badge>
                     </div>
-                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #F2F5F7",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
+                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
                   </Card>
               )}
             </div>
@@ -358,14 +358,14 @@
           {pTab==="fizjo"&&<Btn small onClick={()=>setShowAdd(true)}><Ico d={I.plus} s={16} c="#fff"/> Nowy</Btn>}
         </div>
         <div style={{display:"flex",gap:6,padding:"0 20px 14px"}}>
-          {[{k:"fizjo",l:"Pacjenci"},{k:"sprzet",l:"Klienci sprzętu"}].map(t=><button key={t.k} onClick={()=>{setPTab(t.k);setSearch("");}} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:pTab===t.k?"#0A7C7C":"#E4EAF0",color:pTab===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>)}
+          {[{k:"fizjo",l:"Pacjenci"},{k:"sprzet",l:"Klienci sprzętu"}].map(t=><button key={t.k} onClick={()=>{setPTab(t.k);setSearch("");}} style={{padding:"8px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,background:pTab===t.k?"#3E6FB0":"#D9E2F0",color:pTab===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>)}
         </div>
         <div style={{padding:"0 20px"}}>
           <Inp value={search} onChange={setSearch} placeholder="🔍 Szukaj..."/>
           {pTab==="fizjo"&&<>
             <div style={{display:"flex",gap:6,marginBottom:12}}>
-              {[{k:"alpha",l:"A–Z"},{k:"recent",l:"Ostatnio aktywni"}].map(x=><button key={x.k} onClick={()=>setSort(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:sort===x.k?"#0A7C7C":"#E4EAF0",color:sort===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
-              <button onClick={()=>setShowArchived(a=>!a)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#E4EAF0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit",marginLeft:"auto"}}>📦 {showArchived?"Aktywni":"Archiwum"}</button>
+              {[{k:"alpha",l:"A–Z"},{k:"recent",l:"Ostatnio aktywni"}].map(x=><button key={x.k} onClick={()=>setSort(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:sort===x.k?"#3E6FB0":"#D9E2F0",color:sort===x.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{x.l}</button>)}
+              <button onClick={()=>setShowArchived(a=>!a)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#D9E2F0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit",marginLeft:"auto"}}>📦 {showArchived?"Aktywni":"Archiwum"}</button>
             </div>
             {search&&sorted.length===0&&<Empty text="Nie znaleziono pacjenta"/>}
             {sorted.map((p,pi)=>{const lv=lastVisitDate(p);return(<Card key={p.id} onClick={()=>setSelId(p.id)}>
@@ -375,15 +375,15 @@
                   <div>
                     <div style={{fontWeight:600}}>{maskName(demo,p.name,pi)}</div>
                     <div style={{fontSize:13,color:"#7A8FA6"}}>{maskPhone(demo,p.phone)}</div>
-                    {sort==="recent"&&lv&&<div style={{fontSize:11,color:"#0A7C7C",marginTop:2}}>ostatnia wizyta: {lv}</div>}
+                    {sort==="recent"&&lv&&<div style={{fontSize:11,color:"#3E6FB0",marginTop:2}}>ostatnia wizyta: {lv}</div>}
                   </div>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <button onClick={e=>{e.stopPropagation();setQuickV({...emptyVisit(),patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):"150"});setShowQuickV(true);}} style={{width:30,height:30,borderRadius:10,background:"#0A7C7C",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>
+                  <button onClick={e=>{e.stopPropagation();setQuickV({...emptyVisit(),patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):"150"});setShowQuickV(true);}} style={{width:30,height:30,borderRadius:10,background:"#3E6FB0",border:"none",color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>
                   <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
                 </div>
               </div>
-              {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #E4EAF0",whiteSpace:"pre-wrap"}}>{p.diagnosis}</div>}
+              {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #D9E2F0",whiteSpace:"pre-wrap"}}>{p.diagnosis}</div>}
             </Card>);})}
           </>}
           {pTab==="sprzet"&&<>

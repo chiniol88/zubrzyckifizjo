@@ -47,8 +47,8 @@
         const daysLeft = nd ? dateDiff(today, nd) : null;
         return <>
           <div>
-            <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#0A7C7C",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
-              <Ico d={I.back} s={18} c="#0A7C7C"/> Wózki
+            <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#3E6FB0",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
+              <Ico d={I.back} s={18} c="#3E6FB0"/> Wózki
             </button>
             <div style={{padding:"16px 20px 0"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -61,8 +61,8 @@
                   {cas.phone&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:14,color:dk?"#C8E8E8":"#1C2B3A"}}>{maskPhone(demo,cas.phone)}</span>
                     {!demo&&<div style={{display:"flex",gap:6}}>
-                      <a href={`tel:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#0A7C7C"/> Zadzwoń</Btn></a>
-                      <a href={`sms:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#0A7C7C"/> SMS</Btn></a>
+                      <a href={`tel:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#3E6FB0"/> Zadzwoń</Btn></a>
+                      <a href={`sms:${cas.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#3E6FB0"/> SMS</Btn></a>
                     </div>}
                   </div>}
                   {cas.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -70,7 +70,7 @@
                     {!demo&&<a href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(cas.address)}`} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">🗺️ Trasa</Btn></a>}
                   </div>}
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${cas.hasDisabilityCert?"#3DAA72":"#E4EAF0"}`,background:cas.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <div style={{width:18,height:18,borderRadius:5,border:`2px solid ${cas.hasDisabilityCert?"#3DAA72":"#D9E2F0"}`,background:cas.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                       {cas.hasDisabilityCert&&<span style={{color:"#fff",fontSize:11}}>✓</span>}
                     </div>
                     <span style={{fontSize:14,color:dk?"#C8E8E8":"#1C2B3A"}}>Orzeczenie o niepełnosprawności (stopień znaczny)</span>
@@ -85,12 +85,12 @@
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     {cas.realized&&<span style={{fontSize:12,color:"#3DAA72",fontWeight:600}}>✓ Zrealizowano</span>}
                     <div onClick={()=>{if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate,name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="wozek-"+cas.id));setToast("Cofnięto realizację");}}}
-                      style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#E4EAF0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
+                      style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#D9E2F0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
                       {cas.realized&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
                     </div>
                   </div>
                 </div>}
-                {nd&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #E4EAF0"}}>
+                {nd&&<div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #D9E2F0"}}>
                   <div style={{fontSize:12,color:"#7A8FA6",marginBottom:4}}>Kolejne zamówienie możliwe od:</div>
                   <div style={{fontWeight:700,fontSize:15}}>{nd}</div>
                   <div style={{fontSize:13,marginTop:4,color:daysLeft<=0?"#3DAA72":daysLeft<=30?"#F4A261":"#7A8FA6"}}>
@@ -110,7 +110,7 @@
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Inp label="Telefon" value={editForm.phone||""} onChange={v=>setEditForm(f=>({...f,phone:v}))} type="tel"/>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setEditForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
-              <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${editForm.hasDisabilityCert?"#3DAA72":"#E4EAF0"}`,background:editForm.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${editForm.hasDisabilityCert?"#3DAA72":"#D9E2F0"}`,background:editForm.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 {editForm.hasDisabilityCert&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
               </div>
               <span style={{fontSize:14,fontWeight:500}}>Orzeczenie o niepełnosprawności (stopień znaczny)</span>
@@ -165,7 +165,7 @@
         </div>
         <div style={{display:"flex",gap:6,padding:"0 20px 10px"}}>
           {[{k:"pending",l:`Do realizacji (${pendingCount})`},{k:"all",l:`Wszystkie (${cases.length})`}].map(t=>
-            <button key={t.k} onClick={()=>setFilterMode(t.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,whiteSpace:"nowrap",background:filterMode===t.k?"#0A7C7C":"#E4EAF0",color:filterMode===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>
+            <button key={t.k} onClick={()=>setFilterMode(t.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,whiteSpace:"nowrap",background:filterMode===t.k?"#3E6FB0":"#D9E2F0",color:filterMode===t.k?"#fff":"#7A8FA6",fontFamily:"inherit"}}>{t.l}</button>
           )}
         </div>
         <div style={{padding:"0 20px 14px"}}>
@@ -191,7 +191,7 @@
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0,paddingLeft:10}}>
                   <div onClick={e=>{e.stopPropagation();if(!cas.realized){setPayModal({casId:cas.id,date:cas.orderDate||"",name:cas.patientName});setPayAmount("");}else{setNfzCases(cs=>cs.map(x=>x.id===cas.id?{...x,realized:false}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="wozek-"+cas.id));}}}
-                    style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#E4EAF0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+                    style={{width:24,height:24,borderRadius:7,border:`2px solid ${cas.realized?"#3DAA72":"#D9E2F0"}`,background:cas.realized?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
                     {cas.realized&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
                   </div>
                   <div style={{textAlign:"right"}}>
@@ -208,7 +208,7 @@
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
-            <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${form.hasDisabilityCert?"#3DAA72":"#E4EAF0"}`,background:form.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${form.hasDisabilityCert?"#3DAA72":"#D9E2F0"}`,background:form.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               {form.hasDisabilityCert&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
             </div>
             <span style={{fontSize:14,fontWeight:500}}>Orzeczenie o niepełnosprawności (stopień znaczny)</span>

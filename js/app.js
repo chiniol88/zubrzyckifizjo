@@ -59,11 +59,11 @@
       </>;
 
       if(desk) {
-        const sb=dk?"#0A1818":"#0F2A2A";
-        const sbHov=dk?"#1A3030":"#163333";
-        const sbAct="#0A7C7C";
-        return <div style={{display:"flex",minHeight:"100vh",background:dk?"#0A1A1A":"#EAEFF4",color:dk?"#E8F5F5":"#1C2B3A"}}>
-          {(isSaving||saveError)&&<div style={{position:"fixed",bottom:16,right:16,zIndex:200,background:saveError?"#E05C5C":"#0A7C7C",color:"#fff",borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:6,boxShadow:"0 4px 16px rgba(0,0,0,.18)"}}>
+        const sb=dk?"#0A1220":"#0E1B30";
+        const sbHov=dk?"#1A2840":"#1B2C4A";
+        const sbAct="#3E6FB0";
+        return <div style={{display:"flex",minHeight:"100vh",background:dk?"#0E141F":"#E4E9F2",color:dk?"#E8F5F5":"#1C2B3A"}}>
+          {(isSaving||saveError)&&<div style={{position:"fixed",bottom:16,right:16,zIndex:200,background:saveError?"#E05C5C":"#3E6FB0",color:"#fff",borderRadius:10,padding:"8px 14px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:6,boxShadow:"0 4px 16px rgba(0,0,0,.18)"}}>
             <div style={{width:7,height:7,borderRadius:"50%",background:"#fff",opacity:.85,animation:saveError?"none":"spin .8s linear infinite"}}/>
             {saveError?"⚠ Brak połączenia — próbuję dalej zapisać":"Zapisywanie…"}
           </div>}
@@ -72,12 +72,12 @@
             {/* Logo */}
             <div style={{padding:"20px 14px 20px"}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
-                <div style={{width:34,height:34,borderRadius:10,background:"#0A7C7C",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                <div style={{width:34,height:34,borderRadius:10,background:"#3E6FB0",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                 </div>
                 <div style={{minWidth:0}}>
                   <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:13,color:"#E8F5F5",letterSpacing:0}}>ZubrzyckiFizjo</div>
-                  <div style={{fontSize:11,color:"#5A9A9A",fontWeight:500}}>Panel fizjoterapeuty</div>
+                  <div style={{fontSize:11,color:"#6B84AC",fontWeight:500}}>Panel fizjoterapeuty</div>
                 </div>
               </div>
             </div>
@@ -85,11 +85,11 @@
             <nav style={{flex:1,padding:"0 10px",display:"flex",flexDirection:"column",gap:2}}>
               {TABS.map(t=>{
                 const active=tab===t.id;
-                return <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderRadius:12,border:"none",cursor:"pointer",background:active?sbAct:sbHov+"00",fontFamily:"inherit",fontWeight:600,fontSize:14,color:active?"#fff":"#7ABABA",textAlign:"left",width:"100%",transition:"background .15s",WebkitUserSelect:"none"}}
+                return <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderRadius:12,border:"none",cursor:"pointer",background:active?sbAct:sbHov+"00",fontFamily:"inherit",fontWeight:600,fontSize:14,color:active?"#fff":"#7A93B8",textAlign:"left",width:"100%",transition:"background .15s",WebkitUserSelect:"none"}}
                   onMouseEnter={e=>{if(!active)e.currentTarget.style.background=sbHov;}}
                   onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}>
                   <div style={{width:32,height:32,borderRadius:9,background:active?"rgba(255,255,255,.18)":"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <Ico d={t.i} s={17} c={active?"#fff":"#5A9A9A"}/>
+                    <Ico d={t.i} s={17} c={active?"#fff":"#6B84AC"}/>
                   </div>
                   {t.l}
                 </button>;
@@ -101,8 +101,8 @@
             </div>
           </div>
           {/* Main content */}
-          <div style={{marginLeft:230,flex:1,minWidth:0,minHeight:"100vh",background:dk?"#0A1A1A":"#EAEFF4"}}>
-            <div style={{maxWidth:860,margin:"0 auto",minHeight:"100vh",background:dk?"#0F1F1F":"#F2F5F7",boxShadow:dk?"0 0 40px rgba(0,0,0,.18)":"0 0 40px rgba(16,40,40,.05)"}}>
+          <div style={{marginLeft:230,flex:1,minWidth:0,minHeight:"100vh",background:dk?"#0E141F":"#E4E9F2"}}>
+            <div style={{maxWidth:860,margin:"0 auto",minHeight:"100vh",background:dk?"#111826":"#EFF3FA",boxShadow:dk?"0 0 40px rgba(0,0,0,.18)":"0 0 40px rgba(16,40,40,.05)"}}>
               {content}
             </div>
           </div>
@@ -111,12 +111,12 @@
 
       // Mobile layout
       return <>
-        <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0A1A1A":"#F2F5F7",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A",overflowX:"hidden"}}>
+        <div style={{maxWidth:480,margin:"0 auto",background:dk?"#0E141F":"#EFF3FA",minHeight:"100vh",color:dk?"#E8F5F5":"#1C2B3A",overflowX:"hidden"}}>
           <div style={{paddingBottom:80,minHeight:"100vh"}}>
             {content}
           </div>
-          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#0F1F1F":"#fff",borderTop:`1px solid ${dk?"#1A3030":"#E4EAF0"}`,display:"flex",flexDirection:"column",padding:"0 0 16px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
-            <div style={{height:(isSaving||saveError)?22:0,overflow:"hidden",transition:"height .2s",background:saveError?"#E05C5C":"#0A7C7C",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:dk?"#111826":"#fff",borderTop:`1px solid ${dk?"#1A2840":"#D9E2F0"}`,display:"flex",flexDirection:"column",padding:"0 0 16px",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)"}}>
+            <div style={{height:(isSaving||saveError)?22:0,overflow:"hidden",transition:"height .2s",background:saveError?"#E05C5C":"#3E6FB0",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:"#fff",opacity:.8,animation:saveError?"none":"spin .8s linear infinite"}}/>
               <span style={{fontSize:11,fontWeight:600,color:"#fff",letterSpacing:.3}}>{saveError?"⚠ Brak połączenia — próbuję dalej zapisać":"Zapisywanie…"}</span>
             </div>
@@ -125,8 +125,8 @@
               return <button key={t.id}
                 onClick={()=>setTab(t.id)}
                 style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"4px 0",fontFamily:"inherit",userSelect:"none",WebkitUserSelect:"none"}}>
-                <div style={{width:40,height:40,borderRadius:12,background:tab===t.id?"#0A7C7C":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={20} c={tab===t.id?"#fff":dk?"#5A8A8A":"#4A6070"}/></div>
-                <span style={{fontSize:12,fontWeight:600,color:tab===t.id?"#0A7C7C":dk?"#5A8A8A":"#4A6070"}}>{t.l}</span>
+                <div style={{width:40,height:40,borderRadius:12,background:tab===t.id?"#3E6FB0":"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}><Ico d={t.i} s={20} c={tab===t.id?"#fff":dk?"#6B84AC":"#3E5578"}/></div>
+                <span style={{fontSize:12,fontWeight:600,color:tab===t.id?"#3E6FB0":dk?"#6B84AC":"#3E5578"}}>{t.l}</span>
               </button>;
             })}
             </div>

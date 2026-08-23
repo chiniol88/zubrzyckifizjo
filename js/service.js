@@ -9,10 +9,10 @@
       const [editId,setEditId]=useState(null);
       const [confirmDel,setConfirmDel]=useState(null);
       const today=todayLocal();
-      const bg=dk?"#0F1F1F":"#F7FAFA";
-      const borderC=dk?"#1A3030":"#E4EAF0";
+      const bg=dk?"#111826":"#F4F7FC";
+      const borderC=dk?"#1A2840":"#D9E2F0";
       const textC=dk?"#E8F5F5":"#1C2B3A";
-      const subC=dk?"#5A8A8A":"#7A8FA6";
+      const subC=dk?"#6B84AC":"#7A8FA6";
       const activeEq=getActiveEquipmentNames(stock);
 
       const emptyMachine=()=>({type:activeEq[0],name:"",serialNo:"",purchaseDate:"",lastServiceDate:"",servicePeriodDays:365,notes:""});
@@ -79,7 +79,7 @@
 
       return <div style={{padding:"0 0 80px"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
-          {[{l:"Maszyn",v:total,c:"#0A7C7C"},{l:"U klientów",v:occupied,c:"#2E86AB"},{l:"Serwis",v:needSrv,c:needSrv>0?"#E05C5C":"#3DAA72"}].map((x,i)=>(
+          {[{l:"Maszyn",v:total,c:"#3E6FB0"},{l:"U klientów",v:occupied,c:"#2E86AB"},{l:"Serwis",v:needSrv,c:needSrv>0?"#E05C5C":"#3DAA72"}].map((x,i)=>(
             <div key={i} style={{background:x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
               <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:22,color:x.c}}>{demo?"?":x.v}</div>
               <div style={{fontSize:10,color:subC,marginTop:2}}>{x.l}</div>
@@ -87,7 +87,7 @@
           ))}
         </div>
 
-        {archivedCount>0&&<button onClick={()=>setShowArchived(a=>!a)} style={{display:"block",marginLeft:"auto",marginBottom:10,padding:"6px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#E4EAF0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit"}}>📦 {showArchived?"Aktywne":"Archiwum ("+archivedCount+")"}</button>}
+        {archivedCount>0&&<button onClick={()=>setShowArchived(a=>!a)} style={{display:"block",marginLeft:"auto",marginBottom:10,padding:"6px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:showArchived?"#7A8FA6":"#D9E2F0",color:showArchived?"#fff":"#7A8FA6",fontFamily:"inherit"}}>📦 {showArchived?"Aktywne":"Archiwum ("+archivedCount+")"}</button>}
 
         {total===0&&!showArchived&&<Card style={{textAlign:"center",color:subC,padding:28}}>
           <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Brak maszyn</div>
@@ -108,7 +108,7 @@
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontWeight:700,fontSize:14,color:textC}}>{m.name||m.type}</div>
                   <div style={{fontSize:12,color:subC,marginTop:1}}>
-                    {loc?<span style={{color:"#0A7C7C"}}>u {demo?"[klient]":loc.patientName} · zwrot {loc.endDate||"?"}</span>:<span>Wolny</span>}
+                    {loc?<span style={{color:"#3E6FB0"}}>u {demo?"[klient]":loc.patientName} · zwrot {loc.endDate||"?"}</span>:<span>Wolny</span>}
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
@@ -124,7 +124,7 @@
               </div>}
             </div>
 
-            {isSel&&<div style={{borderTop:`1px solid ${borderC}`,padding:"12px 14px",background:dk?"#0A1818":"#FAFCFC"}}>
+            {isSel&&<div style={{borderTop:`1px solid ${borderC}`,padding:"12px 14px",background:dk?"#0A1220":"#FAFCFC"}}>
               {(m.serialNo||m.purchaseDate||m.notes)&&<div style={{marginBottom:10}}>
                 {m.serialNo&&<div style={{fontSize:12,color:subC,marginBottom:2}}>S/N: {m.serialNo}</div>}
                 {m.purchaseDate&&<div style={{fontSize:12,color:subC,marginBottom:2}}>Zakup: {m.purchaseDate}</div>}
@@ -144,7 +144,7 @@
                       </div>
                     </div>
                     {s.notes&&<div style={{fontSize:12,color:subC,marginTop:2}}>{s.notes}</div>}
-                    {+s.cost>0&&<div style={{fontSize:12,color:"#0A7C7C",marginTop:2}}>{s.cost} zł</div>}
+                    {+s.cost>0&&<div style={{fontSize:12,color:"#3E6FB0",marginTop:2}}>{s.cost} zł</div>}
                   </div>
               ))}
 

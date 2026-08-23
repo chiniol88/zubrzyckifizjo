@@ -18,22 +18,22 @@
           else{const d=await r.json();setError(d.message||"Błąd");setStatus(null);}
         }catch{setError("Błąd połączenia");setStatus(null);}
       };
-      const inputStyle={width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10};
-      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
-        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
+      const inputStyle={width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10};
+      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0E141F":"#EFF3FA",padding:24}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#3E6FB0",marginBottom:8}}>ZubrzyckiFizjo</div>
         <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Ustaw nowe hasło</div>
-        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:dk?"0 4px 24px rgba(0,0,0,.3)":"0 4px 24px rgba(16,40,40,.08)"}}>
+        <div style={{background:dk?"#18202F":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:dk?"0 4px 24px rgba(0,0,0,.3)":"0 4px 24px rgba(16,40,40,.08)"}}>
           {status==="done"
             ? <div style={{textAlign:"center"}}>
                 <div style={{fontSize:40,marginBottom:12}}>✅</div>
                 <div style={{fontWeight:700,fontSize:16,color:dk?"#E8F5F5":"#1C2B3A",marginBottom:8}}>Hasło zmienione!</div>
-                <button onClick={()=>{_supaToken=null;sessionStorage.removeItem("fizjo-token");sessionStorage.removeItem("fizjo-refresh");window.location.href=window.location.pathname;}} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Zaloguj się</button>
+                <button onClick={()=>{_supaToken=null;sessionStorage.removeItem("fizjo-token");sessionStorage.removeItem("fizjo-refresh");window.location.href=window.location.pathname;}} style={{width:"100%",padding:"13px",borderRadius:12,background:"#3E6FB0",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Zaloguj się</button>
               </div>
             : <>
                 <input type="password" value={pwd} onChange={e=>{setPwd(e.target.value);setError("");}} placeholder="Nowe hasło" style={inputStyle}/>
                 <input type="password" value={pwd2} onChange={e=>{setPwd2(e.target.value);setError("");}} onKeyDown={e=>e.key==="Enter"&&handleSave()} placeholder="Powtórz hasło" style={{...inputStyle,marginBottom:error?6:16}}/>
                 {error&&<div style={{fontSize:13,color:"#E05C5C",marginBottom:10}}>{error}</div>}
-                <button onClick={handleSave} disabled={status==="saving"||!pwd||!pwd2} style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:status==="saving"?"wait":"pointer",fontFamily:"inherit",opacity:status==="saving"?0.7:1}}>
+                <button onClick={handleSave} disabled={status==="saving"||!pwd||!pwd2} style={{width:"100%",padding:"13px",borderRadius:12,background:"#3E6FB0",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:status==="saving"?"wait":"pointer",fontFamily:"inherit",opacity:status==="saving"?0.7:1}}>
                   {status==="saving"?"Zapisywanie...":"Zapisz hasło"}
                 </button>
               </>
@@ -56,11 +56,11 @@
         if(res.ok){onUnlock();}
         else{setError(res.error);setPwd("");}
       };
-      const inputStyle={width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10};
-      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0A1A1A":"#F2F5F7",padding:24}}>
-        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#0A7C7C",marginBottom:8}}>ZubrzyckiFizjo</div>
+      const inputStyle={width:"100%",padding:"13px 16px",borderRadius:12,border:`1.5px solid ${error?"#E05C5C":dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:16,fontFamily:"inherit",boxSizing:"border-box",marginBottom:10};
+      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:dk?"#0E141F":"#EFF3FA",padding:24}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#3E6FB0",marginBottom:8}}>ZubrzyckiFizjo</div>
         <div style={{fontSize:14,color:"#7A8FA6",marginBottom:32}}>Zaloguj się aby kontynuować</div>
-        <div style={{background:dk?"#1A2A2A":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:dk?"0 4px 24px rgba(0,0,0,.3)":"0 4px 24px rgba(16,40,40,.08)"}}>
+        <div style={{background:dk?"#18202F":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:320,boxShadow:dk?"0 4px 24px rgba(0,0,0,.3)":"0 4px 24px rgba(16,40,40,.08)"}}>
           <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
             onKeyDown={e=>e.key==="Enter"&&check()}
             autoFocus placeholder="Email" style={inputStyle}/>
@@ -69,7 +69,7 @@
             placeholder="Hasło" style={inputStyle}/>
           {error&&<div style={{fontSize:13,color:"#E05C5C",marginBottom:10}}>{error}</div>}
           <button onClick={check} disabled={loading||!email||!pwd}
-            style={{width:"100%",padding:"13px",borderRadius:12,background:"#0A7C7C",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:loading?"wait":"pointer",fontFamily:"inherit",opacity:loading?0.7:1}}>
+            style={{width:"100%",padding:"13px",borderRadius:12,background:"#3E6FB0",color:"#fff",border:"none",fontSize:16,fontWeight:700,cursor:loading?"wait":"pointer",fontFamily:"inherit",opacity:loading?0.7:1}}>
             {loading?"Logowanie...":"Zaloguj się"}
           </button>
         </div>
@@ -206,10 +206,10 @@
         return()=>clearInterval(id);
       },[settings]);
 
-      if(!authChecked)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div></div>;
+      if(!authChecked)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div></div>;
       if(isRecovery)return<DarkCtx.Provider value={dark}><PasswordResetScreen/></DarkCtx.Provider>;
       if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
-      if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#0A7C7C",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
+      if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
       return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
       <MachinesCtx.Provider value={{machines,setMachines}}>
       <FinancesCtx.Provider value={{finances,setFinances}}>

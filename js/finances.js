@@ -28,10 +28,10 @@
       const [showRentalList,setShowRentalList]=useState(false);
       const [srcTab,setSrcTab]=useState("all");
       const today=todayLocal();
-      const borderC=dk?"#2A4040":"#F2F5F7";
+      const borderC=dk?"#2A3A56":"#EFF3FA";
       const textC=dk?"#C8E8E8":"#1C2B3A";
       const subC="#7A8FA6";
-      const bg=dk?"#1A2A2A":"#fff";
+      const bg=dk?"#18202F":"#fff";
 
       // Mapa: rentalId → sprzęt
       const rentalEquipMap=useMemo(()=>{const m={};rentals.forEach(r=>{if(r.equipment)m[r.id]=r.equipment;});return m;},[rentals]);
@@ -201,7 +201,7 @@
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
           {[
             {l:"Przychód (okres)",v:demo?"****":stats.totalRevenue.toFixed(2)+" zł",c:"#3DAA72"},
-            {l:"Aktywnych teraz",v:rentals.filter(r=>r.status==="aktywne").length,c:"#0A7C7C"},
+            {l:"Aktywnych teraz",v:rentals.filter(r=>r.status==="aktywne").length,c:"#3E6FB0"},
             {l:"Wypożyczeń (okres)",v:stats.totalCount,c:"#F4A261"},
             {l:"Śr. czas wyp. (okres)",v:stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych",c:"#2E86AB"},
           ].map((k,i)=>
@@ -246,11 +246,11 @@
                 const isSel=m===selMonth;
                 const isToday=m===today.slice(0,7);
                 const barH=Math.max(3,Math.round(pct*0.68));
-                const barCol=isSel?"#0A7C7C":isToday?(dk?"#2E86AB":"#5BA3C9"):dk?"#2A5A5A":"#B8D8D8";
+                const barCol=isSel?"#3E6FB0":isToday?(dk?"#2E86AB":"#5BA3C9"):dk?"#2A5A5A":"#B8D8D8";
                 return <div key={m} onClick={()=>setSelMonth(m)} style={{minWidth:28,flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"}}>
-                  <div style={{fontSize:9,color:isSel?"#0A7C7C":subC,fontWeight:isSel?700:600,minHeight:12,textAlign:"center"}}>{demo?"?":v>0?(v>=1000?(v/1000).toFixed(1)+"k":v)+" zł":""}</div>
+                  <div style={{fontSize:9,color:isSel?"#3E6FB0":subC,fontWeight:isSel?700:600,minHeight:12,textAlign:"center"}}>{demo?"?":v>0?(v>=1000?(v/1000).toFixed(1)+"k":v)+" zł":""}</div>
                   <div style={{width:"100%",height:barH+"px",borderRadius:4,background:barCol,transition:"height .3s,background .15s"}}/>
-                  <div style={{fontSize:8,color:isSel?"#0A7C7C":subC,fontWeight:isSel?700:400}}>{m.slice(5)}</div>
+                  <div style={{fontSize:8,color:isSel?"#3E6FB0":subC,fontWeight:isSel?700:400}}>{m.slice(5)}</div>
                 </div>;
               })}
             </div>
@@ -269,11 +269,11 @@
             return <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
               <div style={tileStyle}>
                 <div style={{fontSize:10,color:subC,marginBottom:2}}>Najlepszy</div>
-                <div style={{fontWeight:700,fontSize:13,color:"#0A7C7C"}}>{demo?"???":bestLabel+" · "+(best[1]>=1000?(best[1]/1000).toFixed(1)+"k":best[1])+" zł"}</div>
+                <div style={{fontWeight:700,fontSize:13,color:"#3E6FB0"}}>{demo?"???":bestLabel+" · "+(best[1]>=1000?(best[1]/1000).toFixed(1)+"k":best[1])+" zł"}</div>
               </div>
               <div style={tileStyle}>
                 <div style={{fontSize:10,color:subC,marginBottom:2}}>Śr. miesięczna</div>
-                <div style={{fontWeight:700,fontSize:13,color:"#0A7C7C"}}>{demo?"???":avg+" zł"}</div>
+                <div style={{fontWeight:700,fontSize:13,color:"#3E6FB0"}}>{demo?"???":avg+" zł"}</div>
               </div>
               {diff!==null&&<div style={{...tileStyle,background:diff>=0?(dk?"#0A2A1A":"#E8F7ED"):(dk?"#2A0A0A":"#FEE8E8")}}>
                 <div style={{fontSize:10,color:subC,marginBottom:2}}>vs poprzedni</div>
@@ -340,7 +340,7 @@
             <SectionLabel>📢 Skąd trafiają klienci</SectionLabel>
             <div style={{display:"flex",gap:6,marginBottom:12}}>
               {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
-                <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+                <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
               )}
             </div>
             {totalRev===0
@@ -356,7 +356,7 @@
                       <span style={{color:subC,fontWeight:500}}> · {pct}% · {srcTab==="wozki"?(s.cnt+s.wCnt)+" wóz.":s.cnt+" wyp."+(s.wCnt?" · 🦽×"+s.wCnt:"")}</span>
                     </span>
                   </div>
-                  <div style={{height:6,borderRadius:3,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
+                  <div style={{height:6,borderRadius:3,background:dk?"#1E2F4A":"#D9E2F0",overflow:"hidden"}}>
                     <div style={{height:"100%",width:barW+"%",background:s.color,borderRadius:3,transition:"width .5s"}}/>
                   </div>
                 </div>;
@@ -420,7 +420,7 @@
                   </div>
                 </div>
                 {investment>0&&<>
-                  <div style={{height:7,borderRadius:4,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden",marginBottom:4}}>
+                  <div style={{height:7,borderRadius:4,background:dk?"#1E2F4A":"#D9E2F0",overflow:"hidden",marginBottom:4}}>
                     <div style={{height:"100%",width:Math.min(100,roi||0)+"%",background:(roi||0)>=100?"#3DAA72":(roi||0)>=50?"#F4A261":"#E05C5C",borderRadius:4,transition:"width .5s"}}/>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:subC}}>
@@ -437,7 +437,7 @@
                   <SectionLabel style={{marginBottom:6}}>Koszt zakupu (za 1 szt.)</SectionLabel>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <input type="number" value={c.purchase||""} onChange={e=>setPurchase(eq,e.target.value)} placeholder="0 zł"
-                      style={{flex:1,padding:"8px 12px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:10,fontSize:14,background:dk?"#1A2A2A":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
+                      style={{flex:1,padding:"8px 12px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:10,fontSize:14,background:dk?"#18202F":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
                     <span style={{fontSize:13,color:subC}}>zł</span>
                   </div>
                 </div>
@@ -445,13 +445,13 @@
                   <SectionLabel style={{marginBottom:6}}>Liczba sztuk</SectionLabel>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <input type="number" min="1" value={qty} onChange={e=>setQtyInStats(eq,e.target.value)}
-                      style={{width:80,padding:"8px 12px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:10,fontSize:14,background:dk?"#1A2A2A":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
+                      style={{width:80,padding:"8px 12px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:10,fontSize:14,background:dk?"#18202F":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
                     <span style={{fontSize:12,color:subC}}>szt. → łączny koszt: <b style={{color:textC}}>{(+c.purchase||0)*qty} zł</b></span>
                   </div>
                 </div>
                 <div style={{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <SectionLabel style={{marginBottom:0}}>Wliczaj do śr. czasu wyp.</SectionLabel>
-                  <button onClick={()=>setDurationInclude(eq,!getDurationInclude(eq))} style={{padding:"5px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",background:getDurationInclude(eq)?"#0A7C7C":"#E4EAF0",color:getDurationInclude(eq)?"#fff":"#7A8FA6"}}>
+                  <button onClick={()=>setDurationInclude(eq,!getDurationInclude(eq))} style={{padding:"5px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",background:getDurationInclude(eq)?"#3E6FB0":"#D9E2F0",color:getDurationInclude(eq)?"#fff":"#7A8FA6"}}>
                     {getDurationInclude(eq)?"✓ Tak":"✗ Nie"}
                   </button>
                 </div>
@@ -461,14 +461,14 @@
                       Naprawy / serwis{repairsTotal>0&&<span style={{color:"#E05C5C",marginLeft:4}}>({repairsTotal} zł)</span>}
                     </SectionLabel>
                     <button onClick={()=>setRepairForm({eq,id:Date.now()+"",date:todayLocal(),amount:"",desc:""})}
-                      style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+                      style={{background:"#E1E9F5",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
                   </div>
                   {(()=>{const allRep=[...(c.repairs||[]),...machineSrvEntries].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
                   if(allRep.length===0)return<div style={{fontSize:12,color:subC}}>Brak wpisanych napraw</div>;
                   return allRep.map(rep=><div key={rep.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${borderC}`}}>
                     <div>
                       <div style={{fontSize:13,color:textC,fontWeight:600}}>{demo?"****":rep.amount+" zł"}{rep.desc&&<span style={{fontWeight:400,color:subC}}> · {rep.desc}</span>}</div>
-                      {rep.date&&<div style={{fontSize:11,color:subC}}>{rep.date}{rep.fromService&&<span style={{marginLeft:6,color:"#0A7C7C",fontSize:10}}>z Serwisu</span>}</div>}
+                      {rep.date&&<div style={{fontSize:11,color:subC}}>{rep.date}{rep.fromService&&<span style={{marginLeft:6,color:"#3E6FB0",fontSize:10}}>z Serwisu</span>}</div>}
                     </div>
                     {rep.fromService
                       ?<span style={{fontSize:10,color:"#7A8FA6",padding:"2px 8px"}}>🔧</span>
@@ -494,9 +494,9 @@
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
             <div style={{fontWeight:700,fontSize:14,color:textC}}>📈 Obłożenie sprzętu (yield)</div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>‹</button>
+              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>‹</button>
               <span style={{fontWeight:700,fontSize:15,minWidth:40,textAlign:"center",color:textC}}>{statsYear}</span>
-              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
+              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
             </div>
           </div>
           {yieldStats.length===0
@@ -507,7 +507,7 @@
                   <span style={{fontSize:13,fontWeight:600,color:textC,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.eq}{x.qty>1&&<span style={{color:subC,fontWeight:400}}> ({x.qty} szt.)</span>}</span>
                   <span style={{fontSize:12,color:subC,flexShrink:0,marginLeft:8}}>{x.rentedDays}/{x.totalSlots} dni · <span style={{fontWeight:700,color:x.pct>=70?"#3DAA72":x.pct>=40?"#F4A261":"#E05C5C"}}>{x.pct}%</span></span>
                 </div>
-                <div style={{height:6,borderRadius:4,background:dk?"#1E3A3A":"#F2F5F7",overflow:"hidden"}}>
+                <div style={{height:6,borderRadius:4,background:dk?"#1E2F4A":"#EFF3FA",overflow:"hidden"}}>
                   <div style={{height:"100%",width:Math.min(100,x.pct)+"%",background:x.pct>=70?"#3DAA72":x.pct>=40?"#F4A261":"#E05C5C",borderRadius:4,transition:"width .3s"}}/>
                 </div>
               </div>
@@ -518,14 +518,14 @@
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
             <div style={{fontWeight:700,fontSize:14,color:textC}}>📊 Źródła pacjentów</div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>‹</button>
+              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>‹</button>
               <span style={{fontWeight:700,fontSize:15,minWidth:40,textAlign:"center",color:textC}}>{statsYear}</span>
-              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E3A3A":"#F2F5F7",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
+              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
             </div>
           </div>
           <div style={{display:"flex",gap:6,marginBottom:12}}>
             {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
-              <button key={t.k} onClick={()=>setSrcYearTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcYearTab===t.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:srcYearTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+              <button key={t.k} onClick={()=>setSrcYearTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcYearTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcYearTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
             )}
           </div>
           {statsTotalCnt===0
@@ -538,7 +538,7 @@
                     <span style={{fontSize:13,fontWeight:600,color:textC}}>{x.label}</span>
                     <span style={{fontSize:12,color:subC}}>{x.cnt} wypożyczeń · <span style={{color:"#3DAA72",fontWeight:600}}>{demo?"****":x.rev.toLocaleString("pl-PL")+" zł"}</span> · {pct}%</span>
                   </div>
-                  <div style={{height:6,borderRadius:4,background:dk?"#1E3A3A":"#F2F5F7",overflow:"hidden"}}>
+                  <div style={{height:6,borderRadius:4,background:dk?"#1E2F4A":"#EFF3FA",overflow:"hidden"}}>
                     <div style={{height:"100%",width:pct+"%",background:x.color,borderRadius:4,transition:"width .3s"}}/>
                   </div>
                 </div>;
@@ -665,7 +665,7 @@
           if(map[c]!==undefined)map[c]+=+f.amount||0;
           else map["Inne"]+=+f.amount||0;
         });
-        const colors={Wizyta:"#0A7C7C",Wypożyczalnia:"#2E86AB",Wózek:"#7B4FBF",Inne:"#7A8FA6"};
+        const colors={Wizyta:"#3E6FB0",Wypożyczalnia:"#2E86AB",Wózek:"#7B4FBF",Inne:"#7A8FA6"};
         return Object.entries(map).filter(([,v])=>v>0).map(([k,v])=>({label:k,v,color:colors[k]||"#7A8FA6"}));
       },[periodVisits,periodNonVisitFinances,incVisits]);
 
@@ -735,10 +735,10 @@
         setFinances(fs=>fs.filter(f=>f.id!==entry.id));
       };
 
-      const bg2=dk?"#1A2A2A":"#fff";
-      const border=dk?"#2A4040":"#E4EAF0";
+      const bg2=dk?"#18202F":"#fff";
+      const border=dk?"#2A3A56":"#D9E2F0";
       const sub="#7A8FA6";
-      const catColors={Wizyta:"#0A7C7C",Wypożyczalnia:"#2E86AB",Wózek:"#7B4FBF",Inne:"#7A8FA6"};
+      const catColors={Wizyta:"#3E6FB0",Wypożyczalnia:"#2E86AB",Wózek:"#7B4FBF",Inne:"#7A8FA6"};
 
       return <>
         <div>
@@ -750,12 +750,12 @@
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8}}>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {[{k:"week",l:"Tydzień"},{k:"month",l:"Miesiąc"},{k:"year",l:"Rok"},{k:"range",l:"Zakres"}].map(x=>
-                  <button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:viewMode===x.k?"#0A7C7C":dk?"#1E3A3A":"#E4EAF0",color:viewMode===x.k?"#fff":dk?"#5A8A8A":"#4A6070",fontFamily:"inherit"}}>{x.l}</button>
+                  <button key={x.k} onClick={()=>setViewMode(x.k)} style={{padding:"7px 14px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:600,fontSize:13,whiteSpace:"nowrap",background:viewMode===x.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:viewMode===x.k?"#fff":dk?"#6B84AC":"#3E5578",fontFamily:"inherit"}}>{x.l}</button>
                 )}
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
                 {[{k:"budget",l:"🏠",t:"Dom"},{k:"sprzet",l:"📦",t:"Sprzęt"},{k:"wealth",l:"💼",t:"Majątek"},{k:"faktury",l:"🧾",t:"Faktury"}].map(x=>
-                  <button key={x.k} onClick={()=>setViewMode(x.k)} title={x.t} style={{width:36,height:34,borderRadius:10,border:`1.5px solid ${viewMode===x.k?"#0A7C7C":border}`,cursor:"pointer",fontSize:16,background:viewMode===x.k?(dk?"#0A3030":"#E6F4F4"):dk?"#1A2A2A":"#fff",color:viewMode===x.k?"#0A7C7C":sub,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{x.l}</button>
+                  <button key={x.k} onClick={()=>setViewMode(x.k)} title={x.t} style={{width:36,height:34,borderRadius:10,border:`1.5px solid ${viewMode===x.k?"#3E6FB0":border}`,cursor:"pointer",fontSize:16,background:viewMode===x.k?(dk?"#0A3030":"#E1E9F5"):dk?"#18202F":"#fff",color:viewMode===x.k?"#3E6FB0":sub,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{x.l}</button>
                 )}
               </div>
             </div>
@@ -765,7 +765,7 @@
                 if(viewMode==="week"){const d=new Date(weekStart);d.setDate(d.getDate()-7);setWeekStart(d.toISOString().slice(0,10));}
                 else if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()-1);setMonth(d.toISOString().slice(0,7));}
                 else setYear(String(+year-1));
-              }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>‹</button>
+              }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#18202F":"#EFF3FA",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>‹</button>
               <div style={{flex:1,textAlign:"center",fontWeight:600,fontSize:13,color:dk?"#C8E8E8":"#1C2B3A",textTransform:"capitalize"}}>
                 {viewMode==="week"?weekStart+" – "+weekEnd:viewMode==="month"?new Date(month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"}):year}
               </div>
@@ -773,16 +773,16 @@
                 if(viewMode==="week"){const d=new Date(weekStart);d.setDate(d.getDate()+7);setWeekStart(d.toISOString().slice(0,10));}
                 else if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()+1);setMonth(d.toISOString().slice(0,7));}
                 else setYear(String(+year+1));
-              }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#1A2A2A":"#F2F5F7",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
+              }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#18202F":"#EFF3FA",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
             {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines} nfzCases={nfzCases}/>}
             {viewMode==="wealth"&&<Wealth wealth={wealth} setWealth={setWealth}/>}
             {viewMode==="faktury"&&<Invoices invoices={invoices} setInvoices={setInvoices}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-              <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+              <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
               <span style={{color:sub,fontWeight:600}}>—</span>
-              <input type="date" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+              <input type="date" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
             </div>}
 
             {viewMode!=="budget"&&viewMode!=="sprzet"&&viewMode!=="wealth"&&viewMode!=="faktury"&&<>
@@ -816,7 +816,7 @@
                         <span style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{c.label} <span style={{color:sub,fontSize:10}}>{isOpen?"▲":"▼"}</span></span>
                         <span style={{fontSize:13,color:sub}}>{demo?"****":c.v.toFixed(2)} zł <span style={{color:c.color,fontWeight:700}}>({pct.toFixed(0)}%)</span></span>
                       </div>
-                      <div style={{height:7,borderRadius:4,background:dk?"#2A4040":"#F0F4F8"}}>
+                      <div style={{height:7,borderRadius:4,background:dk?"#2A3A56":"#F0F4F8"}}>
                         <div style={{height:"100%",width:pct+"%",background:c.color,borderRadius:4,transition:"width .3s"}}/>
                       </div>
                     </div>
@@ -841,7 +841,7 @@
                 {visiblePats.map(([name,v,c],i)=>(
                   <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:i<visiblePats.length-1?`1px solid ${border}`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{width:22,height:22,borderRadius:7,background:"#0A7C7C20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#0A7C7C"}}>{i+1}</div>
+                      <div style={{width:22,height:22,borderRadius:7,background:"#3E6FB020",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#3E6FB0"}}>{i+1}</div>
                       <div>
                         <div style={{fontSize:13,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{demo?"Pacjent "+String.fromCharCode(65+i):name}</div>
                         <div style={{fontSize:11,color:sub}}>{c} {c===1?"wizyta":c<5?"wizyty":"wizyt"}</div>
@@ -850,7 +850,7 @@
                     <span style={{fontSize:13,fontWeight:700,color:"#3DAA72"}}>{demo?"****":v.toFixed(2)} zł</span>
                   </div>
                 ))}
-                {topPats.length>5&&<button onClick={()=>setShowAllPats(v=>!v)} style={{width:"100%",marginTop:10,padding:"8px 0",borderRadius:10,border:"none",background:"none",cursor:"pointer",fontWeight:600,fontSize:12,color:"#0A7C7C",fontFamily:"inherit"}}>{showAllPats?"Pokaż mniej ↑":"Pokaż wszystkich ("+topPats.length+") ↓"}</button>}
+                {topPats.length>5&&<button onClick={()=>setShowAllPats(v=>!v)} style={{width:"100%",marginTop:10,padding:"8px 0",borderRadius:10,border:"none",background:"none",cursor:"pointer",fontWeight:600,fontSize:12,color:"#3E6FB0",fontFamily:"inherit"}}>{showAllPats?"Pokaż mniej ↑":"Pokaż wszystkich ("+topPats.length+") ↓"}</button>}
               </div>}
 
               <SectionLabel style={{margin:"16px 0 8px"}}>Wpisy</SectionLabel>
@@ -903,8 +903,8 @@
     // ── RECEIPT SCANNER ───────────────────────────────────────────────────────
     function ReceiptScanner({onClose,onConfirm,expCats,incCats,memory,setMemory,selMonth,existingExpenses,anthropicKey}) {
       const dk=useContext(DarkCtx);
-      const bg2=dk?"#1A2A2A":"#fff";
-      const border=dk?"#2A4040":"#E4EAF0";
+      const bg2=dk?"#18202F":"#fff";
+      const border=dk?"#2A3A56":"#D9E2F0";
       const sub="#7A8FA6";
 
       const [images,setImages]=useState([]); // base64 strings
@@ -1104,15 +1104,15 @@ Zasady:
         return opts;
       };
 
-      const inputStyle={padding:"6px 10px",borderRadius:8,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",width:"100%"};
+      const inputStyle={padding:"6px 10px",borderRadius:8,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",width:"100%"};
 
       return <Modal title="📷 Skanuj paragon" onClose={onClose}>
         {step==="upload"&&<>
           <div style={{marginBottom:12}}>
             <div style={{fontSize:13,color:sub,marginBottom:10}}>Dodaj zdjęcie(a) paragonu. Możesz dodać kilka dla długich paragonów.</div>
-            <label style={{display:"block",border:`2px dashed ${border}`,borderRadius:12,padding:"20px",textAlign:"center",cursor:"pointer",background:dk?"#0F1F1F":"#F7FAFA"}}>
+            <label style={{display:"block",border:`2px dashed ${border}`,borderRadius:12,padding:"20px",textAlign:"center",cursor:"pointer",background:dk?"#111826":"#F4F7FC"}}>
               <div style={{fontSize:24,marginBottom:4}}>📷</div>
-              <div style={{fontSize:13,fontWeight:600,color:"#0A7C7C"}}>Dodaj zdjęcie</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#3E6FB0"}}>Dodaj zdjęcie</div>
               <div style={{fontSize:11,color:sub,marginTop:2}}>lub kilka zdjęć naraz</div>
               <input type="file" accept="image/*" multiple onChange={addImage} style={{display:"none"}}/>
             </label>
@@ -1154,10 +1154,10 @@ Zasady:
           <div style={{marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
               <div style={{fontSize:11,color:sub,fontWeight:600}}>POZYCJE ({items.length})</div>
-              <button onClick={addItem} style={{background:"#0A7C7C",color:"#fff",border:"none",borderRadius:8,padding:"4px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+              <button onClick={addItem} style={{background:"#3E6FB0",color:"#fff",border:"none",borderRadius:8,padding:"4px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
             </div>
             {items.map(item=>(
-              <div key={item.id} style={{background:item.unreadable?(dk?"#2A1A1A":"#FFF5F5"):(item.cat?( dk?"#0F1F1F":"#F7FAF9"):(dk?"#1A1A2A":"#F5F5FF")),borderRadius:10,padding:"10px 12px",marginBottom:6,border:`1px solid ${item.unreadable?"#E05C5C":item.cat?border:"#A78BFA"}`}}>
+              <div key={item.id} style={{background:item.unreadable?(dk?"#2A1A1A":"#FFF5F5"):(item.cat?( dk?"#111826":"#F7FAF9"):(dk?"#1A1A2A":"#F5F5FF")),borderRadius:10,padding:"10px 12px",marginBottom:6,border:`1px solid ${item.unreadable?"#E05C5C":item.cat?border:"#A78BFA"}`}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
                   <div style={{flex:1}}>
                     <input value={item.name} onChange={e=>updateItem(item.id,"name",e.target.value)} style={{width:"100%",padding:"4px 8px",borderRadius:7,border:`1px solid ${border}`,background:"transparent",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontWeight:600,fontFamily:"inherit"}}/>
@@ -1166,7 +1166,7 @@ Zasady:
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:4}}>
                     <input type="number" value={item.amount||""} onChange={e=>updateItem(item.id,"amount",+e.target.value)} placeholder="0.00"
-                      style={{width:75,padding:"4px 8px",borderRadius:7,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",textAlign:"right"}}/>
+                      style={{width:75,padding:"4px 8px",borderRadius:7,border:`1.5px solid ${border}`,background:dk?"#111826":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",textAlign:"right"}}/>
                     <button onClick={()=>removeItem(item.id)} style={{width:26,height:26,borderRadius:7,background:"#FEE2E2",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>
                   </div>
                 </div>
@@ -1180,7 +1180,7 @@ Zasady:
             ))}
           </div>
 
-          <div style={{background:dk?"#1A2A2A":"#F0F9F5",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+          <div style={{background:dk?"#18202F":"#F0F9F5",borderRadius:10,padding:"12px 14px",marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
               <span style={{fontSize:13,color:sub}}>Suma pozycji:</span>
               <span style={{fontWeight:700,fontSize:13,color:dk?"#E8F5F5":"#1C2B3A"}}>{itemsSum.toFixed(2)} zł</span>

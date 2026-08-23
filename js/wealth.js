@@ -76,7 +76,7 @@
 
     function WealthCategoriesModal({wealth,setWealth,onClose}) {
       const dk=useContext(DarkCtx);
-      const border=dk?"#2A4040":"#E4EAF0";
+      const border=dk?"#2A3A56":"#D9E2F0";
       const sub="#7A8FA6";
       const textC=dk?"#E8F5F5":"#1C2B3A";
       const [editCat,setEditCat]=useState(null); // {kind,id,value}
@@ -113,12 +113,12 @@
         <div style={{marginBottom:20}}>
           <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{label}</div>
           {(wealth.categories[kind]||[]).map((c,i,arr)=>(
-            <div key={c.id} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",border:`1px solid ${border}`,borderRadius:10,marginBottom:6,background:dk?"#0F1F1F":"#F7F9FB"}}>
+            <div key={c.id} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 10px",border:`1px solid ${border}`,borderRadius:10,marginBottom:6,background:dk?"#111826":"#F7F9FB"}}>
               {editCat&&editCat.kind===kind&&editCat.id===c.id
                 ?<>
                   <input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
                     onKeyDown={e=>e.key==="Enter"&&renameCat(kind,c.id,editCat.value)}
-                    style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:textC,fontSize:14,fontFamily:"inherit"}}/>
+                    style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1.5px solid ${color}`,background:dk?"#111826":"#fff",color:textC,fontSize:14,fontFamily:"inherit"}}/>
                   <button onClick={()=>renameCat(kind,c.id,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
                   <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button>
                 </>
@@ -137,7 +137,7 @@
           <div style={{display:"flex",gap:8,marginTop:8}}>
             <input ref={el=>nameRefs.current[kind]=el} defaultValue=""
               onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addCat(kind,e.target.value);e.target.value="";}}}
-              placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:textC,fontSize:14,fontFamily:"inherit"}}/>
+              placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:textC,fontSize:14,fontFamily:"inherit"}}/>
             <button onClick={()=>{const el=nameRefs.current[kind];if(el&&el.value.trim()){addCat(kind,el.value);el.value="";}}} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
           </div>
         </div>
@@ -151,7 +151,7 @@
 
     function WealthSnapshotForm({wealth,setWealth,initial,onClose}) {
       const dk=useContext(DarkCtx);
-      const border=dk?"#2A4040":"#E4EAF0";
+      const border=dk?"#2A3A56":"#D9E2F0";
       const sub="#7A8FA6";
       const textC=dk?"#E8F5F5":"#1C2B3A";
       const [draft,setDraft]=useState(initial);
@@ -196,8 +196,8 @@
       };
 
       const rowStyle={display:"flex",gap:6,marginBottom:8,alignItems:"center",flexWrap:"wrap"};
-      const selStyle={padding:"9px 10px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:textC,fontSize:13,fontFamily:"inherit"};
-      const inpStyle={padding:"9px 10px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:textC,fontSize:13,fontFamily:"inherit"};
+      const selStyle={padding:"9px 10px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:textC,fontSize:13,fontFamily:"inherit"};
+      const inpStyle={padding:"9px 10px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:textC,fontSize:13,fontFamily:"inherit"};
 
       return <Modal title={isEdit?"Edytuj snapshot":"Nowy snapshot"} onClose={onClose}>
         <Inp label="Data" value={draft.date} onChange={v=>setDraft(d=>({...d,date:v}))} type="date"/>
@@ -253,7 +253,7 @@
         <div style={{background:dk?"#0F1E1E":"#F8FAFB",borderRadius:12,padding:"12px 14px",marginBottom:16}}>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:sub,marginBottom:4}}><span>Suma aktywów</span><span style={{color:"#3DAA72",fontWeight:700}}>{totals.assetsTotal.toFixed(2)} zł</span></div>
           <div style={{display:"flex",justifyContent:"space-between",fontSize:13,color:sub,marginBottom:8}}><span>Suma zobowiązań</span><span style={{color:"#E05C5C",fontWeight:700}}>{totals.liabTotal.toFixed(2)} zł</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:800,paddingTop:8,borderTop:`1px solid ${border}`}}><span style={{color:textC,fontFamily:"'Syne',sans-serif"}}>Majątek netto</span><span style={{color:totals.net>=0?"#0A7C7C":"#E05C5C",fontFamily:"'Syne',sans-serif"}}>{totals.net.toFixed(2)} zł</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:800,paddingTop:8,borderTop:`1px solid ${border}`}}><span style={{color:textC,fontFamily:"'Syne',sans-serif"}}>Majątek netto</span><span style={{color:totals.net>=0?"#3E6FB0":"#E05C5C",fontFamily:"'Syne',sans-serif"}}>{totals.net.toFixed(2)} zł</span></div>
         </div>
 
         {!confirmDel
@@ -275,10 +275,10 @@
     function Wealth({wealth,setWealth}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
-      const border=dk?"#2A4040":"#F2F5F7";
+      const border=dk?"#2A3A56":"#EFF3FA";
       const textC=dk?"#C8E8E8":"#1C2B3A";
       const sub="#7A8FA6";
-      const bg=dk?"#1A2A2A":"#fff";
+      const bg=dk?"#18202F":"#fff";
       const [view,setView]=useState("dashboard"); // dashboard | history
       const [showForm,setShowForm]=useState(null);
       const [showCats,setShowCats]=useState(false);
@@ -300,7 +300,7 @@
       },[latest,wealth.categories]);
 
       const maxTrend=Math.max(...snapshots.map(s=>wealthSnapshotTotals(s).net),1);
-      const palette=["#0A7C7C","#3DAA72","#2E86AB","#F4A261","#7C6AF4","#E05C5C","#7A8FA6"];
+      const palette=["#3E6FB0","#3DAA72","#2E86AB","#F4A261","#7C6AF4","#E05C5C","#7A8FA6"];
 
       if(snapshots.length===0){
         return <div style={{padding:"0 20px 24px"}}>
@@ -317,7 +317,7 @@
       return <div style={{padding:"0 20px 24px"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
           {[
-            {l:"Majątek netto",v:demo?"****":latestTotals.net.toFixed(2)+" zł",c:latestTotals.net>=0?"#0A7C7C":"#E05C5C"},
+            {l:"Majątek netto",v:demo?"****":latestTotals.net.toFixed(2)+" zł",c:latestTotals.net>=0?"#3E6FB0":"#E05C5C"},
             {l:"Aktywa",v:demo?"****":latestTotals.assetsTotal.toFixed(2)+" zł",c:"#3DAA72"},
             {l:"Zobowiązania",v:demo?"****":latestTotals.liabTotal.toFixed(2)+" zł",c:"#E05C5C"},
             {l:"Ostatni snapshot",v:latest.date,c:"#2E86AB"},
@@ -346,10 +346,10 @@
             <button key={b.label} onClick={b.onClick} style={{
               display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
               gap:3,padding:"10px 4px",borderRadius:12,cursor:"pointer",fontFamily:"inherit",
-              background:dk?"#1A2A2A":"#fff",border:`1.5px solid ${border}`,boxShadow:"0 1px 3px rgba(0,0,0,.06)"
+              background:dk?"#18202F":"#fff",border:`1.5px solid ${border}`,boxShadow:"0 1px 3px rgba(0,0,0,.06)"
             }}>
               <span style={{fontSize:18,lineHeight:1}}>{b.icon}</span>
-              <span style={{fontSize:10,fontWeight:600,color:dk?"#7ABABA":"#4A6070",whiteSpace:"nowrap"}}>{b.label}</span>
+              <span style={{fontSize:10,fontWeight:600,color:dk?"#7A93B8":"#3E5578",whiteSpace:"nowrap"}}>{b.label}</span>
             </button>
           ))}
         </div>
@@ -365,9 +365,9 @@
                   const barH=Math.max(3,Math.round(pct*0.8));
                   const isLatest=s.id===latest.id;
                   return <div key={s.id} onClick={()=>setShowForm(s)} style={{minWidth:36,flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"}}>
-                    <div style={{fontSize:9,color:isLatest?"#0A7C7C":sub,fontWeight:isLatest?700:600,minHeight:12,textAlign:"center"}}>{demo?"?":(Math.abs(net)>=1000?(net/1000).toFixed(1)+"k":net.toFixed(0))}</div>
-                    <div style={{width:"100%",height:barH+"px",borderRadius:4,background:net<0?"#E05C5C":isLatest?"#0A7C7C":dk?"#2A5A5A":"#B8D8D8",transition:"height .3s"}}/>
-                    <div style={{fontSize:8,color:isLatest?"#0A7C7C":sub,fontWeight:isLatest?700:400}}>{s.date.slice(5)}</div>
+                    <div style={{fontSize:9,color:isLatest?"#3E6FB0":sub,fontWeight:isLatest?700:600,minHeight:12,textAlign:"center"}}>{demo?"?":(Math.abs(net)>=1000?(net/1000).toFixed(1)+"k":net.toFixed(0))}</div>
+                    <div style={{width:"100%",height:barH+"px",borderRadius:4,background:net<0?"#E05C5C":isLatest?"#3E6FB0":dk?"#2A5A5A":"#B8D8D8",transition:"height .3s"}}/>
+                    <div style={{fontSize:8,color:isLatest?"#3E6FB0":sub,fontWeight:isLatest?700:400}}>{s.date.slice(5)}</div>
                   </div>;
                 })}
               </div>
@@ -383,7 +383,7 @@
                   <span style={{color:textC,fontWeight:600}}>{a.name}</span>
                   <span><span style={{color,fontWeight:800,fontSize:13}}>{demo?"****":a.v.toFixed(0)+" zł"}</span><span style={{color:sub}}> · {a.pct}%</span></span>
                 </div>
-                <div style={{height:6,borderRadius:3,background:dk?"#1E3A3A":"#E4EAF0",overflow:"hidden"}}>
+                <div style={{height:6,borderRadius:3,background:dk?"#1E2F4A":"#D9E2F0",overflow:"hidden"}}>
                   <div style={{height:"100%",width:a.pct+"%",background:color,borderRadius:3,transition:"width .5s"}}/>
                 </div>
               </div>;
@@ -404,7 +404,7 @@
                   {s.note&&<div style={{fontSize:12,color:sub,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.note}</div>}
                 </div>
                 <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
-                  <div style={{fontWeight:800,fontSize:15,color:t.net>=0?"#0A7C7C":"#E05C5C",fontFamily:"'Syne',sans-serif"}}>{demo?"****":t.net.toFixed(2)+" zł"}</div>
+                  <div style={{fontWeight:800,fontSize:15,color:t.net>=0?"#3E6FB0":"#E05C5C",fontFamily:"'Syne',sans-serif"}}>{demo?"****":t.net.toFixed(2)+" zł"}</div>
                   {pdiff!==null&&<div style={{fontSize:11,color:pdiff>=0?"#3DAA72":"#E05C5C",marginTop:2}}>{pdiff>=0?"▲":"▼"} {demo?"**":Math.abs(pdiff).toFixed(0)+" zł"}</div>}
                 </div>
               </div>

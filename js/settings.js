@@ -5,7 +5,7 @@
       const upd=(id,field,val)=>setLinks(ls=>ls.map(l=>l.id===id?{...l,[field]:val}:l));
       const blur=(newLinks)=>saveToSettings(newLinks);
       const del=(id)=>{const newLinks=links.filter(l=>l.id!==id);setLinks(newLinks);saveToSettings(newLinks);};
-      const inp=(extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
+      const inp=(extra={})=>({padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",outline:"none",...extra});
       return <div style={{paddingTop:8,paddingBottom:4}}>
         {links.length===0&&<div style={{fontSize:13,color:sub,padding:"8px 0 12px"}}>Brak linków — dodaj pierwszy poniżej.</div>}
         {links.map((l,i)=><div key={l.id} style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
@@ -15,7 +15,7 @@
           {l.url&&<a href={l.url} target="_blank" rel="noreferrer" style={{fontSize:18,textDecoration:"none"}}>🔗</a>}
           <button onClick={()=>del(l.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#E05C5C",padding:"0 2px",flexShrink:0}}>×</button>
         </div>)}
-        <button onClick={add} style={{background:dk?"#1E3A3A":"#F2F5F7",border:"none",borderRadius:10,padding:"9px 16px",fontSize:13,fontWeight:600,color:"#0A7C7C",cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left"}}>+ Dodaj kolejny</button>
+        <button onClick={add} style={{background:dk?"#1E2F4A":"#EFF3FA",border:"none",borderRadius:10,padding:"9px 16px",fontSize:13,fontWeight:600,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit",width:"100%",textAlign:"left"}}>+ Dodaj kolejny</button>
       </div>;
     }
 
@@ -102,19 +102,19 @@
         {done&&<div style={{fontSize:13,color:"#3DAA72",marginBottom:8,fontWeight:600}}>✓ Import zakończony pomyślnie!</div>}
         <textarea value={csv} onChange={e=>{setCsv(e.target.value);setParsed(null);setDone(false);}} rows={6}
           placeholder={"Jan Kowalski\t600123456\tCPM Artromot K1\t01.03.2024\t14.03.2024\t420\t420"}
-          style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}
+          style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}
         />
         <div style={{display:"flex",gap:8,marginTop:8}}>
-          <button onClick={parseRows} disabled={!csv.trim()} style={{flex:1,padding:"9px",borderRadius:10,background:"#E6F4F4",border:"none",fontWeight:700,fontSize:13,color:"#0A7C7C",cursor:csv.trim()?"pointer":"default",fontFamily:"inherit"}}>
+          <button onClick={parseRows} disabled={!csv.trim()} style={{flex:1,padding:"9px",borderRadius:10,background:"#E1E9F5",border:"none",fontWeight:700,fontSize:13,color:"#3E6FB0",cursor:csv.trim()?"pointer":"default",fontFamily:"inherit"}}>
             Podgląd ({rowCount} {rowCount===1?"wiersz":rowCount<5?"wiersze":"wierszy"})
           </button>
-          {parsed&&parsed.length>0&&<button onClick={doImport} style={{flex:1,padding:"9px",borderRadius:10,background:"#0A7C7C",border:"none",fontWeight:700,fontSize:13,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
+          {parsed&&parsed.length>0&&<button onClick={doImport} style={{flex:1,padding:"9px",borderRadius:10,background:"#3E6FB0",border:"none",fontWeight:700,fontSize:13,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
             Importuj {parsed.length} →
           </button>}
         </div>
         {parsed&&parsed.length>0&&<div style={{marginTop:12,overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr>{["Pacjent","Sprzęt","Od","Do","Kwota","Zapłacono"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 6px",color:sub,fontWeight:700,borderBottom:`1px solid ${dk?"#2A4040":"#E4EAF0"}`}}>{h}</th>)}</tr></thead>
+            <thead><tr>{["Pacjent","Sprzęt","Od","Do","Kwota","Zapłacono"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 6px",color:sub,fontWeight:700,borderBottom:`1px solid ${dk?"#2A3A56":"#D9E2F0"}`}}>{h}</th>)}</tr></thead>
             <tbody>
               {parsed.slice(0,6).map((r,i)=><tr key={i}>
                 <td style={{padding:"4px 6px",color:txt}}>{r.patientName||"—"}</td>
@@ -133,12 +133,12 @@
 
     function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,setRentals,setFinances}) {
       const dk=dark;
-      const bg=dk?"#0F1F1F":"#fff";
-      const sec=dk?"#0A1A1A":"#F2F5F7";
+      const bg=dk?"#111826":"#fff";
+      const sec=dk?"#0E141F":"#EFF3FA";
       const txt=dk?"#E8F5F5":"#1C2B3A";
       const sub="#7A8FA6";
-      const Row=({label,children})=><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}><span style={{fontSize:14,color:txt}}>{label}</span>{children}</div>;
-      const Toggle=({val,onToggle})=><div onClick={onToggle} style={{width:44,height:24,borderRadius:12,background:val?"#0A7C7C":"#D0DCE8",cursor:"pointer",position:"relative",transition:"background 0.2s"}}><div style={{position:"absolute",top:3,left:val?23:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/></div>;
+      const Row=({label,children})=><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:`1px solid ${dk?"#1A2840":"#F0F4F8"}`}}><span style={{fontSize:14,color:txt}}>{label}</span>{children}</div>;
+      const Toggle=({val,onToggle})=><div onClick={onToggle} style={{width:44,height:24,borderRadius:12,background:val?"#3E6FB0":"#D0DCE8",cursor:"pointer",position:"relative",transition:"background 0.2s"}}><div style={{position:"absolute",top:3,left:val?23:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left 0.2s",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}}/></div>;
       const Sec=({title,children})=><div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}><div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>{title}</div>{children}</div>;
       return <div style={{padding:"16px 12px 20px",background:sec,minHeight:"100vh"}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:txt,marginBottom:16}}>Ustawienia</div>
@@ -158,10 +158,10 @@
         </Sec>
         <Sec title="DANE">
           <Row label="Eksport kopii zapasowej">
-            <button onClick={exportData} style={{background:"#0A7C7C",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>⬇️ Pobierz JSON</button>
+            <button onClick={exportData} style={{background:"#3E6FB0",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>⬇️ Pobierz JSON</button>
           </Row>
           <Row label="Importuj kopię zapasową">
-            <label style={{background:"#E6F4F4",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#0A7C7C",cursor:"pointer"}}>
+            <label style={{background:"#E1E9F5",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,color:"#3E6FB0",cursor:"pointer"}}>
               ⬆️ Wgraj JSON
               <input type="file" accept=".json" onChange={importData} style={{display:"none"}}/>
             </label>
@@ -171,7 +171,7 @@
           </Row>
         </Sec>
         <Sec title="INTEGRACJE">
-          <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A3030":"#F0F4F8"}`}}>
+          <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A2840":"#F0F4F8"}`}}>
             <div style={{fontSize:14,color:txt,marginBottom:8}}>Klucz API Anthropic</div>
             <div style={{fontSize:12,color:sub,marginBottom:8}}>Wymagany do skanowania paragonów. Wygeneruj na console.anthropic.com</div>
             <input
@@ -179,12 +179,12 @@
               value={settings.anthropicKey||""}
               onChange={e=>setSettings(s=>({...s,anthropicKey:e.target.value}))}
               placeholder="sk-ant-..."
-              style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
+              style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
             />
             {settings.anthropicKey&&<div style={{fontSize:12,color:"#3DAA72",marginTop:6}}>✓ Klucz zapisany</div>}
           </div>
         </Sec>
-        <Sec title="LINKI — MEDIA SPOŁECZNOŚCIOWE"><SocialLinks settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A4040":"#E4EAF0"}/></Sec>
+        <Sec title="LINKI — MEDIA SPOŁECZNOŚCIOWE"><SocialLinks settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A3A56":"#D9E2F0"}/></Sec>
         <Sec title="INFORMACJE">
           <Row label="Wersja aplikacji"><span style={{fontSize:13,color:sub}}>ZubrzyckiFizjo 1.0</span></Row>
         </Sec>

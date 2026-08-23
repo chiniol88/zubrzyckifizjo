@@ -18,10 +18,10 @@ function Modal({title,onClose,children}) {
     if(scrollRef.current)scrollRef.current.scrollTop=scrollPos.current;
   });
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-    <div ref={scrollRef} style={{background:dk?"#0F1F1F":"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
+    <div ref={scrollRef} style={{background:dk?"#111826":"#fff",borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto",padding:"20px 20px 40px"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div style={{fontFamily:"'Syne',sans-serif",fontSize:19,fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{title}</div>
-        <button onClick={onClose} style={{background:dk?"#1A2A2A":"#F2F5F7",border:"none",borderRadius:10,width:32,height:32,cursor:"pointer",fontSize:18,color:"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+        <button onClick={onClose} style={{background:dk?"#18202F":"#EFF3FA",border:"none",borderRadius:10,width:32,height:32,cursor:"pointer",fontSize:18,color:"#7A8FA6",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
       </div>
       {children}
     </div>
@@ -36,10 +36,10 @@ function ContactSyncModal({items,onConfirm,onClose}) {
     <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Tu jest zapisana inna wartość. Odznacz to, co ma zostać bez zmian.</div>
     {Object.entries(grouped).map(([field,rows])=>
       <div key={field} style={{marginBottom:16}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#0A7C7C",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{(CONTACT_FIELDS[field]||field)+" → "+rows[0].value}</div>
+        <div style={{fontSize:12,fontWeight:700,color:"#3E6FB0",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{(CONTACT_FIELDS[field]||field)+" → "+rows[0].value}</div>
         {rows.map(it=>
-          <div key={it._i} onClick={()=>setChecked(c=>c.map((v,i)=>i===it._i?!v:v))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #F2F5F7",cursor:"pointer"}}>
-            <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked[it._i]?"#3DAA72":"#E4EAF0"}`,background:checked[it._i]?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <div key={it._i} onClick={()=>setChecked(c=>c.map((v,i)=>i===it._i?!v:v))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid #EFF3FA",cursor:"pointer"}}>
+            <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${checked[it._i]?"#3DAA72":"#D9E2F0"}`,background:checked[it._i]?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               {checked[it._i]&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
             </div>
             <div style={{flex:1}}>
@@ -56,9 +56,9 @@ function ContactSyncModal({items,onConfirm,onClose}) {
 
 function Inp({label,value,onChange,type="text",placeholder=""}) {
   const dk=useContext(DarkCtx);
-  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
   return <div style={{marginBottom:14}}>
-    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
     <div style={{display:"flex",alignItems:"center",gap:8}}>
       <input type={type} value={value||""} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={{...s,flex:1}}/>
       {type==="date"&&value&&<button onClick={()=>onChange("")} style={{flexShrink:0,background:"none",border:"none",color:"#E05C5C",fontSize:22,cursor:"pointer",padding:"0 2px",lineHeight:1,fontFamily:"inherit"}}>×</button>}
@@ -67,17 +67,17 @@ function Inp({label,value,onChange,type="text",placeholder=""}) {
 }
 function Txa({label,value,onChange,rows=3,placeholder=""}) {
   const dk=useContext(DarkCtx);
-  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",resize:"vertical"};
+  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",resize:"vertical"};
   return <div style={{marginBottom:14}}>
-    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
     <textarea value={value||""} rows={rows} placeholder={placeholder} onChange={e=>onChange(e.target.value)} style={s}/>
   </div>;
 }
 function Sel({label,value,onChange,options}) {
   const dk=useContext(DarkCtx);
-  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
   return <div style={{marginBottom:14}}>
-    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
     <select value={value} onChange={e=>onChange(e.target.value)} style={s}>
       {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
@@ -85,11 +85,11 @@ function Sel({label,value,onChange,options}) {
 }
 function TimeSel({label,value,onChange}) {
   const dk=useContext(DarkCtx);
-  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+  const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
   const opts=[];
   for(let h=0;h<24;h++)for(let m=0;m<60;m+=5){const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");opts.push(hh+":"+mm);}
   return <div style={{marginBottom:14}}>
-    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
     <select value={value||"10:00"} onChange={e=>onChange(e.target.value)} style={s}>
       {opts.map(o=><option key={o} value={o}>{o}</option>)}
     </select>
@@ -100,11 +100,11 @@ function PatientPicker({label,value,onChange,onSelect,patients}) {
   const [open,setOpen]=useState(false);
   const matches=(patients||[]).filter(p=>value&&p.name.toLowerCase().includes(value.toLowerCase())).slice(0,6);
   return <div style={{marginBottom:14,position:"relative"}}>
-    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
     <input value={value||""} placeholder="Wpisz imię pacjenta..." onChange={e=>{onChange(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),150)}
-      style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
-    {open&&matches.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden"}}>
-      {matches.map(p=><div key={p.id} onPointerDown={e=>{e.preventDefault();onChange(p.name);if(onSelect)onSelect(p);setOpen(false);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`,fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>
+      style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+    {open&&matches.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:dk?"#18202F":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden"}}>
+      {matches.map(p=><div key={p.id} onPointerDown={e=>{e.preventDefault();onChange(p.name);if(onSelect)onSelect(p);setOpen(false);}} style={{padding:"12px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>
         {p.name} <span style={{color:"#7A8FA6",fontSize:12}}>{p.phone}</span>
       </div>)}
     </div>}
@@ -115,15 +115,15 @@ function EquipmentPicker({label,value,onChange,options}) {
   const [open,setOpen]=useState(false);
   const current=options.find(o=>o.value===value);
   return <div style={{marginBottom:14,position:"relative"}}>
-    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
+    {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
     <div onClick={()=>setOpen(o=>!o)}
-      style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A4040":"#E4EAF0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",boxSizing:"border-box"}}>
+      style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",boxSizing:"border-box"}}>
       <span>{current?current.label:"—"}</span><span style={{color:"#7A8FA6",fontSize:12}}>▾</span>
     </div>
     {open&&<>
       <div onClick={()=>setOpen(false)} style={{position:"fixed",inset:0,zIndex:190}}/>
-      <div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:dk?"#1A2A2A":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden",maxHeight:280,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-        {options.map(o=><div key={o.value} onClick={()=>{onChange(o.value);setOpen(false);}} style={{padding:"10px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A4040":"#F2F5F7"}`}}>
+      <div style={{position:"absolute",top:"100%",left:0,right:0,marginTop:4,background:dk?"#18202F":"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,.18)",zIndex:200,overflow:"hidden",maxHeight:280,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+        {options.map(o=><div key={o.value} onClick={()=>{onChange(o.value);setOpen(false);}} style={{padding:"10px 16px",cursor:"pointer",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div style={{fontSize:14,fontWeight:500,color:dk?"#E8F5F5":"#1C2B3A"}}>{o.label}</div>
           {o.sub&&<div style={{fontSize:11,color:"#7A8FA6",marginTop:1}}>{o.sub}</div>}
         </div>)}

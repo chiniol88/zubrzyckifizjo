@@ -7,14 +7,14 @@
           <div style={{fontSize:12,fontWeight:700,color,textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>{type==="income"?"Przychody":"Koszty"}</div>
           {cats.map((cat,ci)=>(
             <div key={ci} style={{marginBottom:8,border:`1px solid ${border}`,borderRadius:10,overflow:"hidden"}}>
-              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 10px",background:dk?"#0F1F1F":"#F7F9FB"}}>
+              <div style={{display:"flex",alignItems:"center",gap:4,padding:"8px 10px",background:dk?"#111826":"#F7F9FB"}}>
                 <div style={{display:"flex",flexDirection:"column",gap:0}}>
                   <button onClick={()=>moveCat(type,ci,-1)} disabled={ci===0} style={{background:"none",border:"none",cursor:ci===0?"default":"pointer",color:ci===0?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▲</button>
                   <button onClick={()=>moveCat(type,ci,1)} disabled={ci===cats.length-1} style={{background:"none",border:"none",cursor:ci===cats.length-1?"default":"pointer",color:ci===cats.length-1?border:sub,fontSize:11,lineHeight:1,padding:"1px 3px"}}>▼</button>
                 </div>
                 {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="name"
                   ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
-                      style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+                      style={{flex:1,padding:"5px 8px",borderRadius:7,border:`1.5px solid ${color}`,background:dk?"#111826":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
                     <button onClick={()=>renameCat(type,ci,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:7,padding:"5px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
                     <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
                   :<><span style={{flex:1,fontSize:14,fontWeight:600,color:dk?"#C8E8E8":"#1C2B3A"}}>{cat.name}</span>
@@ -30,10 +30,10 @@
                   </div>
                   {editCat&&editCat.type===type&&editCat.catIdx===ci&&editCat.field==="sub"&&editCat.subIdx===si
                     ?<><input autoFocus value={editCat.value} onChange={e=>setEditCat(ec=>({...ec,value:e.target.value}))}
-                        style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1.5px solid ${color}`,background:dk?"#0F1F1F":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
+                        style={{flex:1,padding:"4px 8px",borderRadius:6,border:`1.5px solid ${color}`,background:dk?"#111826":"#fff",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit"}}/>
                       <button onClick={()=>renameSub(type,ci,si,editCat.value)} style={{background:color,color:"#fff",border:"none",borderRadius:6,padding:"4px 10px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
                       <button onClick={()=>setEditCat(null)} style={{background:"none",border:"none",color:sub,cursor:"pointer",fontSize:16}}>×</button></>
-                    :<><span style={{flex:1,fontSize:13,color:dk?"#A0C8C8":"#4A6070"}}>↳ {s2}</span>
+                    :<><span style={{flex:1,fontSize:13,color:dk?"#A0C8C8":"#3E5578"}}>↳ {s2}</span>
                       <button onClick={()=>setEditCat({type,catIdx:ci,field:"sub",subIdx:si,value:s2})} style={{background:"none",border:"none",color:sub,cursor:"pointer",padding:"0 4px",fontSize:12}}>✏️</button>
                       <button onClick={()=>delSub(type,ci,si)} style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:15,lineHeight:1}}>×</button></>
                   }
@@ -50,7 +50,7 @@
           <div style={{display:"flex",gap:8,marginTop:8}}>
             <input ref={nameRef} defaultValue=""
               onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addCat(type,e.target.value);e.target.value="";}}}
-              placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
+              placeholder="Nowa kategoria..." style={{flex:1,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
             <button onClick={()=>{if(nameRef.current&&nameRef.current.value.trim()){addCat(type,nameRef.current.value);nameRef.current.value="";}}} style={{background:color,color:"#fff",border:"none",borderRadius:10,padding:"9px 14px",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+</button>
           </div>
         </div>
@@ -59,7 +59,7 @@
 
     function BudgetEditItemForm({cats,initial,selMonth,onSave,onDelete,onClose,onFormChange}) {
       const dk=useContext(DarkCtx);
-      const border=dk?"#2A4040":"#E4EAF0";
+      const border=dk?"#2A3A56":"#D9E2F0";
       const sub="#7A8FA6";
       const [form,setFormLocal]=useState(initial);
       const setForm=(fn)=>{const next=typeof fn==="function"?fn(form):fn;setFormLocal(next);onFormChange(next);};
@@ -88,29 +88,29 @@
         <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
             <select value={form.dayOfMonth||1} onChange={e=>setForm(f=>({...f,dayOfMonth:+e.target.value}))}
-              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
               {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
             </select>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
-            <input type="month" value={(form.startMonth||(selMonth)).length>7?(form.startMonth||selMonth).slice(0,7):(form.startMonth||selMonth)} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
+            <input type="month" value={(form.startMonth||(selMonth)).length>7?(form.startMonth||selMonth).slice(0,7):(form.startMonth||selMonth)} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
             <select value={form.endDayOfMonth||""} onChange={e=>setForm(f=>({...f,endDayOfMonth:e.target.value?+e.target.value:null}))}
-              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
               <option value="">— brak —</option>
               {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
             </select>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
-            <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
         <Btn disabled={!form.cat||!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>onSave(form)}>Zapisz</Btn>
@@ -129,29 +129,29 @@
         <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
             <select value={form.dayOfMonth||1} onChange={e=>setForm(f=>({...f,dayOfMonth:+e.target.value}))}
-              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
               {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
             </select>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
-            <input type="month" value={(form.startMonth||(selMonth)).length>7?(form.startMonth||selMonth).slice(0,7):(form.startMonth||selMonth)} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc startu</div>
+            <input type="month" value={(form.startMonth||(selMonth)).length>7?(form.startMonth||selMonth).slice(0,7):(form.startMonth||selMonth)} onChange={e=>setForm(f=>({...f,startMonth:e.target.value}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
             <select value={form.endDayOfMonth||""} onChange={e=>setForm(f=>({...f,endDayOfMonth:e.target.value?+e.target.value:null}))}
-              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
+              style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>
               <option value="">— brak —</option>
               {Array.from({length:28},(_,i)=><option key={i+1} value={i+1}>{i+1}</option>)}
             </select>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:dk?"#5A8A8A":"#4A6070",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
-            <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+            <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miesiąc zakończenia <span style={{fontWeight:400,fontSize:12,color:sub}}>(opcjonalnie)</span></div>
+            <input type="month" value={form.endMonth?(form.endMonth.length>7?form.endMonth.slice(0,7):form.endMonth):""} onChange={e=>setForm(f=>({...f,endMonth:e.target.value||null}))} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
           </div>
         </div>
         <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>onSave(form)}>Zapisz zmiany</Btn>
@@ -165,9 +165,9 @@
       const [amount,setAmount]=useState(hasOverride?String(overrideVal.amount):String(r.amount));
       const [desc,setDesc]=useState(hasOverride?(overrideVal.desc||r.desc||""):(r.desc||""));
       const monthLabel=new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-      const inputStyle={width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",boxSizing:"border-box"};
+      const inputStyle={width:"100%",padding:"13px 16px",border:`1.5px solid ${border}`,borderRadius:12,fontSize:16,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit",boxSizing:"border-box"};
       return <Modal title={"Cykliczny · "+monthLabel} onClose={onClose}>
-        {hasOverride&&<div style={{background:dk?"#1A3030":"#FFF8E1",border:"1px solid #F0C040",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#8A6A00"}}>↻* Nadpisano dla tego miesiąca</div>}
+        {hasOverride&&<div style={{background:dk?"#1A2840":"#FFF8E1",border:"1px solid #F0C040",borderRadius:10,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#8A6A00"}}>↻* Nadpisano dla tego miesiąca</div>}
         <Inp label="Opis (dla tego miesiąca)" value={desc} onChange={v=>setDesc(v)}/>
         <Inp label="Kwota (zł) *" value={amount} onChange={v=>setAmount(v)} type="number"/>
         <Btn disabled={!amount} style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>onSave({amount:+amount,desc})}>Zapisz dla tego miesiąca</Btn>
@@ -201,8 +201,8 @@
     function Budget({finances,visits,rentals,budget,setBudget,desk,anthropicKey}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
-      const bg2=dk?"#1A2A2A":"#fff";
-      const border=dk?"#2A4040":"#E4EAF0";
+      const bg2=dk?"#18202F":"#fff";
+      const border=dk?"#2A3A56":"#D9E2F0";
       const sub="#7A8FA6";
 
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
@@ -632,43 +632,43 @@
       return <div style={{padding:"0 20px 40px"}}>
         {/* Month selector — kompaktowy */}
         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:dk?"#7ABABA":"#4A6070",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:dk?"#7A93B8":"#3E5578",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
           <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"'Syne',sans-serif"}}>
             {new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}
           </div>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:dk?"#7ABABA":"#4A6070",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${border}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:dk?"#7A93B8":"#3E5578",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
         </div>
 
         {/* D — badge kosztów stałych */}
         {recurringExpTotalEarly>0&&<div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-          <div style={{padding:"5px 12px",borderRadius:20,background:dk?"#1A2A2A":"#F8FAFB",border:`1px solid ${border}`,fontSize:12,color:sub}}>
+          <div style={{padding:"5px 12px",borderRadius:20,background:dk?"#18202F":"#F8FAFB",border:`1px solid ${border}`,fontSize:12,color:sub}}>
             Stałe: <strong style={{color:dk?"#E8F5F5":"#1C2B3A"}}>{demo?"****":recurringExpTotalEarly.toFixed(0)} zł</strong>
           </div>
-          {totalInc>0&&<div style={{padding:"5px 12px",borderRadius:20,background:dk?"#1A2A2A":"#F8FAFB",border:`1px solid ${border}`,fontSize:12,color:sub}}>
+          {totalInc>0&&<div style={{padding:"5px 12px",borderRadius:20,background:dk?"#18202F":"#F8FAFB",border:`1px solid ${border}`,fontSize:12,color:sub}}>
             {Math.round(recurringExpTotalEarly/totalInc*100)}% przychodów
           </div>}
-          {totalExp>0&&<div style={{padding:"5px 12px",borderRadius:20,background:dk?"#1A2A2A":"#F8FAFB",border:`1px solid ${border}`,fontSize:12,color:sub}}>
+          {totalExp>0&&<div style={{padding:"5px 12px",borderRadius:20,background:dk?"#18202F":"#F8FAFB",border:`1px solid ${border}`,fontSize:12,color:sub}}>
             {Math.round(recurringExpTotalEarly/totalExp*100)}% kosztów ogółem
           </div>}
         </div>}
 
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:12}}>
           {[
-            {icon:"📷",label:"Paragon",onClick:()=>setShowScanner(true),active:false,color:"#0A7C7C"},
+            {icon:"📷",label:"Paragon",onClick:()=>setShowScanner(true),active:false,color:"#3E6FB0"},
             {icon:"⚖️",label:"Porównaj",onClick:()=>setShowCompare(v=>!v),active:showCompare,color:"#2E86AB"},
-            {icon:"📅",label:"Rok "+selMonth.slice(0,4),onClick:()=>setShowYear(v=>!v),active:showYear,color:"#0A7C7C"},
+            {icon:"📅",label:"Rok "+selMonth.slice(0,4),onClick:()=>setShowYear(v=>!v),active:showYear,color:"#3E6FB0"},
             {icon:"↻",label:"Cykliczne",onClick:()=>setShowRecurringList(v=>!v),active:showRecurringList,color:"#8B5CF6"},
             {icon:"⚙️",label:"Kat.",onClick:()=>setShowCatMgr(true),active:false,color:sub},
           ].map(b=>(
             <button key={b.label} onClick={b.onClick} style={{
               display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
               gap:3,padding:"10px 4px",borderRadius:12,cursor:"pointer",fontFamily:"inherit",
-              background:b.active?b.color:(dk?"#1A2A2A":"#fff"),
+              background:b.active?b.color:(dk?"#18202F":"#fff"),
               border:`1.5px solid ${b.active?b.color:border}`,
               boxShadow:"0 1px 3px rgba(0,0,0,.06)"
             }}>
               <span style={{fontSize:18,lineHeight:1}}>{b.icon}</span>
-              <span style={{fontSize:10,fontWeight:600,color:b.active?"#fff":(dk?"#7ABABA":"#4A6070"),whiteSpace:"nowrap"}}>{b.label}</span>
+              <span style={{fontSize:10,fontWeight:600,color:b.active?"#fff":(dk?"#7A93B8":"#3E5578"),whiteSpace:"nowrap"}}>{b.label}</span>
             </button>
           ))}
         </div>
@@ -686,13 +686,13 @@
                 const isCur=m===selMonth;
                 const barW=maxRecExp>0?Math.round(mRecExp/maxRecExp*100):0;
                 return <React.Fragment key={m}>
-                  <div style={{padding:"8px 10px",fontSize:12,fontWeight:isCur?700:400,color:isCur?"#0A7C7C":dk?"#C8E8E8":"#1C2B3A",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"short",year:"2-digit"})}</div>
-                  <div style={{padding:"8px 6px",borderBottom:`1px solid ${border}`,display:"flex",alignItems:"center",background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent"}}>
+                  <div style={{padding:"8px 10px",fontSize:12,fontWeight:isCur?700:400,color:isCur?"#3E6FB0":dk?"#C8E8E8":"#1C2B3A",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E1E9F5"):"transparent"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"short",year:"2-digit"})}</div>
+                  <div style={{padding:"8px 6px",borderBottom:`1px solid ${border}`,display:"flex",alignItems:"center",background:isCur?(dk?"#0A2020":"#E1E9F5"):"transparent"}}>
                     <div style={{height:6,borderRadius:3,background:"#E05C5C",width:barW+"%",minWidth:mRecExp>0?4:0,transition:"width .3s"}}/>
                   </div>
-                  <div style={{padding:"8px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"right"}}>{demo?"***":mRecExp>0?mRecExp.toFixed(0)+"zł":"—"}</div>
-                  <div style={{padding:"8px 6px",fontSize:12,color:pctInc!=null?(pctInc>80?"#E05C5C":pctInc>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"center"}}>{pctInc!=null?pctInc+"%":"—"}</div>
-                  <div style={{padding:"8px 6px",fontSize:12,color:pctExp!=null?(pctExp>80?"#E05C5C":pctExp>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E6F4F4"):"transparent",textAlign:"center"}}>{pctExp!=null?pctExp+"%":"—"}</div>
+                  <div style={{padding:"8px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E1E9F5"):"transparent",textAlign:"right"}}>{demo?"***":mRecExp>0?mRecExp.toFixed(0)+"zł":"—"}</div>
+                  <div style={{padding:"8px 6px",fontSize:12,color:pctInc!=null?(pctInc>80?"#E05C5C":pctInc>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E1E9F5"):"transparent",textAlign:"center"}}>{pctInc!=null?pctInc+"%":"—"}</div>
+                  <div style={{padding:"8px 6px",fontSize:12,color:pctExp!=null?(pctExp>80?"#E05C5C":pctExp>50?"#F4A261":"#3DAA72"):sub,fontWeight:600,borderBottom:`1px solid ${border}`,background:isCur?(dk?"#0A2020":"#E1E9F5"):"transparent",textAlign:"center"}}>{pctExp!=null?pctExp+"%":"—"}</div>
                 </React.Fragment>;
               })}
             </div>
@@ -723,7 +723,7 @@
             }).sort((a,b)=>b.catActiveSum-a.catActiveSum);
             const totalActiveSum=recs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
             return <div key={typ}>
-              <div style={{padding:"6px 16px",background:dk?"#0F1F1F":typ==="income"?"#F0F9F5":"#FDF7F7",fontSize:10,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>
+              <div style={{padding:"6px 16px",background:dk?"#111826":typ==="income"?"#F0F9F5":"#FDF7F7",fontSize:10,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>
               {catGroups.map(({cat,catRecs,catActiveSum})=>{
                 const key=typ+"-"+cat;
                 const isOpen=openRecurringCats.has(key);
@@ -757,7 +757,7 @@
                   })}
                 </div>;
               })}
-              <div style={{padding:"8px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:dk?"#0F1F1F":typ==="income"?"#E8F7F0":"#FEF0F0"}}>
+              <div style={{padding:"8px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:dk?"#111826":typ==="income"?"#E8F7F0":"#FEF0F0"}}>
                 <SectionLabel style={{marginBottom:0}}>Suma miesięczna</SectionLabel>
                 <span style={{fontSize:14,fontWeight:800,color:col}}>{demo?"****":totalActiveSum.toFixed(2)} zł</span>
               </div>
@@ -770,7 +770,7 @@
           <div style={{padding:"12px 16px",borderBottom:`1px solid ${border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <SectionLabel style={{marginBottom:0}}>Porównaj miesiące</SectionLabel>
             <select value={safeCompareMonth} onChange={e=>setCompareMonth(e.target.value)}
-              style={{padding:"5px 10px",borderRadius:8,border:`1px solid ${border}`,background:dk?"#0F1F1F":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}>
+              style={{padding:"5px 10px",borderRadius:8,border:`1px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:12,fontFamily:"inherit"}}>
               {monthsList.filter(m=>m!==selMonth).map(m=><option key={m} value={m}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</option>)}
             </select>
           </div>
@@ -798,7 +798,7 @@
             return <div style={{padding:"12px 16px"}}>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:4,marginBottom:8,textAlign:"center"}}>
                 <div style={{fontSize:11,color:sub}}></div>
-                <div style={{fontSize:11,fontWeight:700,color:"#0A7C7C"}}>{new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"short",year:"numeric"})}</div>
+                <div style={{fontSize:11,fontWeight:700,color:"#3E6FB0"}}>{new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"short",year:"numeric"})}</div>
                 <div style={{fontSize:11,fontWeight:700,color:"#2E86AB"}}>{new Date(safeCompareMonth+"-15").toLocaleDateString("pl-PL",{month:"short",year:"numeric"})}</div>
               </div>
               {rows.map(row=>{
@@ -835,7 +835,7 @@
             const inc2=prac+(md.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc;
             const exp2=(md.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp;
             const isSelected=m===selMonth;
-            return <div key={m} onClick={()=>{setSelMonth(m);setShowYear(false);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer",background:isSelected?(dk?"#1A3030":"#F0FAF6"):"transparent"}}>
+            return <div key={m} onClick={()=>{setSelMonth(m);setShowYear(false);}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:`1px solid ${border}`,cursor:"pointer",background:isSelected?(dk?"#1A2840":"#F0FAF6"):"transparent"}}>
               <span style={{fontSize:13,fontWeight:isSelected?700:500,color:dk?"#C8E8E8":"#1C2B3A",textTransform:"capitalize"}}>{new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long"})}</span>
               <div style={{display:"flex",gap:16}}>
                 <span style={{fontSize:13,fontWeight:600,color:"#3DAA72"}}>{demo?"**":inc2>0?"+"+inc2.toFixed(0):"—"}</span>
@@ -857,12 +857,12 @@
               <span style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:"#3DAA72",whiteSpace:"nowrap"}}>{demo?"****":totalInc.toFixed(2)} zł</span>
             </div>
             <div style={{display:"flex",gap:6}}>
-              <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:"",date:selMonth===todayLocal().slice(0,7)?todayLocal():selMonth+"-01"});setShowAdd("income");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#0A7C7C",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
+              <button onClick={()=>{const c=incCats[0];setForm({cat:c?c.name:"",subcat:"",desc:"",amount:"",date:selMonth===todayLocal().slice(0,7)?todayLocal():selMonth+"-01"});setShowAdd("income");}} style={{flex:1,padding:"8px 10px",borderRadius:10,border:"none",background:"#3E6FB0",color:"#fff",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
               <button onClick={()=>{const c=incCats[0];setRForm({type:"income",cat:c?c.name:"",subcat:"",desc:"",amount:"",cycle:"monthly",startMonth:selMonth});setShowRecurring("income");}} style={{padding:"8px 12px",borderRadius:10,border:`1.5px solid ${border}`,background:"none",color:sub,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>↻</button>
             </div>
           </div>
           {practiceCats.length>0&&<>
-            <div style={{padding:"6px 16px",background:dk?"#0F1F1F":"#F0F9F5",fontSize:10,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5}}>Praktyka (auto)</div>
+            <div style={{padding:"6px 16px",background:dk?"#111826":"#F0F9F5",fontSize:10,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5}}>Praktyka (auto)</div>
             {practiceCats.map(c=><div key={c.label} style={{display:"flex",justifyContent:"space-between",padding:"9px 16px",borderBottom:`1px solid ${border}`}}>
               <span style={{fontSize:13,color:dk?"#C8E8E8":"#1C2B3A"}}>{c.label}</span>
               <span style={{fontWeight:700,fontSize:13,color:"#3DAA72"}}>{demo?"****":c.v.toFixed(2)} zł</span>

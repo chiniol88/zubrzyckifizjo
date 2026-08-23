@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
-  <meta name="theme-color" content="#0A7C7C"/>
+  <meta name="theme-color" content="#3E6FB0"/>
   <title>ZubrzyckiFizjo</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -14,11 +14,11 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'DM Sans',sans-serif;background:#F2F5F7;color:#1C2B3A;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+    body{font-family:'DM Sans',sans-serif;background:#EFF3FA;color:#1C2B3A;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
     input,select,textarea,button{font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent}
     ::-webkit-scrollbar{display:none}*{scrollbar-width:none}
-    .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;background:#F2F5F7}
-    .spinner{width:40px;height:40px;border:3px solid #E4EAF0;border-top-color:#0A7C7C;border-radius:50%;animation:spin 0.8s linear infinite}
+    .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;background:#EFF3FA}
+    .spinner{width:40px;height:40px;border:3px solid #D9E2F0;border-top-color:#3E6FB0;border-radius:50%;animation:spin 0.8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
@@ -49,7 +49,7 @@
             React.createElement('div',{style:{fontWeight:700,fontSize:16,marginBottom:12,color:"#E05C5C"}},"Blad aplikacji"),
             React.createElement('div',{style:{marginBottom:8,wordBreak:"break-all"}},String(this.state.err)),
             React.createElement('div',{style:{fontSize:11,color:"#7A8FA6",wordBreak:"break-all",whiteSpace:"pre-wrap"}},this.state.err&&this.state.err.stack),
-            React.createElement('button',{onClick:()=>this.setState({err:null}),style:{marginTop:16,padding:"8px 16px",background:"#0A7C7C",color:"#fff",border:"none",borderRadius:8,cursor:"pointer"}},"Sprobuj ponownie")
+            React.createElement('button',{onClick:()=>this.setState({err:null}),style:{marginTop:16,padding:"8px 16px",background:"#3E6FB0",color:"#fff",border:"none",borderRadius:8,cursor:"pointer"}},"Sprobuj ponownie")
           );
         }
         return this.props.children;
