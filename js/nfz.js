@@ -122,6 +122,9 @@
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const orig=cases.find(x=>x.id===selId);
               setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...editForm}:x));
+              if(orig&&orig.patientName!==editForm.patientName){
+                setFinances(fs=>fs.map(f=>f.sourceId==="wozek-"+selId?{...f,description:"Wózek – "+editForm.patientName}:f));
+              }
               const pending=syncContactOnSave(
                 {kind:"nfz",id:selId,patientId:editForm.patientId||null,patientName:editForm.patientName,original:{phone:orig?.phone||"",address:orig?.address||""},updated:{phone:editForm.phone||"",address:editForm.address||""}},
                 {patients,setPatients,rentals,setRentals,nfzCases,setNfzCases}

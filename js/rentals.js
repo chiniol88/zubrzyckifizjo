@@ -88,6 +88,7 @@
       const [newDate,setNewDate]=useState("");
       const [editAmt,setEditAmt]=useState(false);
       const [paidAmtDraft,setPaidAmtDraft]=useState(String(cycle.amount||""));
+      const [paidDateDraft,setPaidDateDraft]=useState(cycle.paidDate||todayLocal());
       const [confirmDel,setConfirmDel]=useState(false);
       const dueDt=cycle.dueDate||cycle.month+"-15";
       const label=new Date(dueDt+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
@@ -158,12 +159,13 @@
         const toggleDoc=k=>updateCycle({doc:cycle.doc===k?null:k});
         const savePaidAmount=()=>{
           const v=+paidAmtDraft||0;
-          updateCycle({amount:v});
+          const pd=paidDateDraft||todayLocal();
+          updateCycle({amount:v,paidDate:pd});
           setFinances(fs=>{
             const exists=fs.some(f=>f.sourceId===sid);
             if(v<=0)return fs.filter(f=>f.sourceId!==sid);
-            if(exists)return fs.map(f=>f.sourceId===sid?{...f,amount:v}:f);
-            return [{id:Date.now()+Math.random(),sourceId:sid,date:cycle.paidDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs];
+            if(exists)return fs.map(f=>f.sourceId===sid?{...f,amount:v,date:pd}:f);
+            return [{id:Date.now()+Math.random(),sourceId:sid,date:pd,type:"przychód",category:"Wypożyczalnia",amount:v,description:"Wypożyczenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+") "+label},...fs];
           });
           setEditAmt(false);
         };
@@ -176,9 +178,10 @@
                   {periodCaption}
                   <div style={{fontWeight:600,fontSize:14}}>{rangeLabel}</div>
                   {!editAmt
-                    ? <div onClick={()=>{setPaidAmtDraft(String(cycle.amount||""));setEditAmt(true);}} style={{fontSize:12,color:"#7A8FA6",cursor:"pointer"}}>{cycle.amount>0?cycle.amount+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate} ✏️</div>
-                    : <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
+                    ? <div onClick={()=>{setPaidAmtDraft(String(cycle.amount||""));setPaidDateDraft(cycle.paidDate||todayLocal());setEditAmt(true);}} style={{fontSize:12,color:"#7A8FA6",cursor:"pointer"}}>{cycle.amount>0?cycle.amount+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate} ✏️</div>
+                    : <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2,flexWrap:"wrap"}}>
                         <input type="number" autoFocus value={paidAmtDraft} onChange={e=>setPaidAmtDraft(e.target.value)} style={{width:80,padding:"5px 8px",border:"1.5px solid #E4EAF0",borderRadius:8,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+                        <input type="date" value={paidDateDraft} onChange={e=>setPaidDateDraft(e.target.value)} style={{padding:"5px 8px",border:"1.5px solid #E4EAF0",borderRadius:8,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
                         <button onClick={savePaidAmount} style={{background:"#0A7C7C",border:"none",borderRadius:6,padding:"4px 8px",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✓</button>
                       </div>
                   }
@@ -983,13 +986,21 @@ p{margin:2px 0}.bold7{font-weight:bold}
               } else {
                 setRentals(rs=>rs.map(x=>x.id===effectiveDetail?{...x,...u}:x));
               }
-              // Sync opisy finansów: normalne wpłaty + przedłużenia
+              // Sync opisy finansów: wpłaty, przedłużenia, cykle i transport
               setFinances(fs=>fs.map(f=>{
                 if(!cur)return f;
                 const isPayment=(cur.payments||[]).some(p=>f.sourceId==="payment-"+p.id);
                 const isExtension=f.sourceId&&f.sourceId.startsWith("extend-"+effectiveDetail+"-");
+                const isCycle=f.sourceId&&f.sourceId.startsWith("cycle-"+effectiveDetail+"-");
+                const isTransport=f.sourceId==="transport-"+effectiveDetail;
                 if(isPayment) return{...f,description:"Wypożyczenie – "+u.patientName+" ("+u.equipment+")"};
                 if(isExtension) return{...f,description:"Przedłużenie – "+u.patientName+" ("+u.equipment+")"};
+                if(isCycle){
+                  const idx=(f.description||"").indexOf(")");
+                  const suffix=idx>=0?f.description.slice(idx+1):"";
+                  return{...f,description:"Wypożyczenie – "+u.patientName+" ("+(u.equipment||"Do ustalenia")+")"+suffix};
+                }
+                if(isTransport) return{...f,description:"Transport – "+u.patientName+" ("+(u.equipment||"Do ustalenia")+")"};
                 return f;
               }));
               const pending=syncContactOnSave(
