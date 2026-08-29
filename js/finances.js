@@ -580,7 +580,7 @@
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,anthropicKey,stock,setStock,machines,setMachines,wealth,setWealth,invoices,setInvoices}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,stock,setStock,machines,setMachines,wealth,setWealth,invoices,setInvoices}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [showAdd,setShowAdd]=useState(false);
@@ -775,7 +775,7 @@
                 else setYear(String(+year+1));
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#18202F":"#EFF3FA",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
-            {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk} anthropicKey={anthropicKey}/>}
+            {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk}/>}
             {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines} nfzCases={nfzCases}/>}
             {viewMode==="wealth"&&<Wealth wealth={wealth} setWealth={setWealth}/>}
             {viewMode==="faktury"&&<Invoices invoices={invoices} setInvoices={setInvoices}/>}
@@ -901,7 +901,7 @@
     
 
     // ── RECEIPT SCANNER ───────────────────────────────────────────────────────
-    function ReceiptScanner({onClose,onConfirm,expCats,incCats,memory,setMemory,selMonth,existingExpenses,anthropicKey}) {
+    function ReceiptScanner({onClose,onConfirm,expCats,incCats,memory,setMemory,selMonth,existingExpenses}) {
       const dk=useContext(DarkCtx);
       const bg2=dk?"#18202F":"#fff";
       const border=dk?"#2A3A56":"#D9E2F0";
@@ -975,15 +975,10 @@ Zasady:
             ...images.map(img=>({type:"image",source:{type:"base64",media_type:img.mime,data:img.b64}}))
           ];
 
-          if(!anthropicKey){setAiError("Brak klucza API — dodaj go w Ustawieniach");setStep("upload");return;}
-          const resp=await fetch("https://api.anthropic.com/v1/messages",{
+          const resp=await fetch("/api/scan-receipt",{
             method:"POST",
-            headers:{"Content-Type":"application/json","x-api-key":anthropicKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-            body:JSON.stringify({
-              model:"claude-haiku-4-5-20251001",
-              max_tokens:4000,
-              messages:[{role:"user",content}]
-            })
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({content})
           });
 
           const data=await resp.json();

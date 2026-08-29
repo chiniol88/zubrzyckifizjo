@@ -198,7 +198,7 @@
       return arr.map(c=>typeof c==="string"?{name:c,subs:[]}:c);
     }
 
-    function Budget({finances,visits,rentals,budget,setBudget,desk,anthropicKey}) {
+    function Budget({finances,visits,rentals,budget,setBudget,desk}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const bg2=dk?"#18202F":"#fff";
@@ -997,7 +997,6 @@
           setMemory={setReceiptMemory}
           selMonth={selMonth}
           existingExpenses={(monthData.expenses||[])}
-          anthropicKey={anthropicKey}
         />}
 
         {showCatMgr&&<Modal title="Zarządzaj kategoriami" onClose={()=>setShowCatMgr(false)}>

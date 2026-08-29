@@ -170,20 +170,6 @@
             <Toggle val={settings.backupReminder!==false} onToggle={()=>setSettings(s=>({...s,backupReminder:s.backupReminder===false?true:false}))}/>
           </Row>
         </Sec>
-        <Sec title="INTEGRACJE">
-          <div style={{padding:"12px 0",borderBottom:`1px solid ${dk?"#1A2840":"#F0F4F8"}`}}>
-            <div style={{fontSize:14,color:txt,marginBottom:8}}>Klucz API Anthropic</div>
-            <div style={{fontSize:12,color:sub,marginBottom:8}}>Wymagany do skanowania paragonów. Wygeneruj na console.anthropic.com</div>
-            <input
-              type="password"
-              value={settings.anthropicKey||""}
-              onChange={e=>setSettings(s=>({...s,anthropicKey:e.target.value}))}
-              placeholder="sk-ant-..."
-              style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"}}
-            />
-            {settings.anthropicKey&&<div style={{fontSize:12,color:"#3DAA72",marginTop:6}}>✓ Klucz zapisany</div>}
-          </div>
-        </Sec>
         <Sec title="LINKI — MEDIA SPOŁECZNOŚCIOWE"><SocialLinks settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A3A56":"#D9E2F0"}/></Sec>
         <Sec title="INFORMACJE">
           <Row label="Wersja aplikacji"><span style={{fontSize:13,color:sub}}>ZubrzyckiFizjo 1.0</span></Row>

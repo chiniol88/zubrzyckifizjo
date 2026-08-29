@@ -145,6 +145,14 @@
       const [invoices,setInvoices,v13]=usePersistedState("fizjo-invoices",{},unlocked);
       const [dark,setDark]=useState(false);
       const [demo,setDemo]=useState(false);
+
+      // Jednorazowe czyszczenie: klucz Anthropic API nie jest już trzymany w bazie
+      // (przeniesiony na serwer w api/scan-receipt.js) — usuń stary, jeśli został zapisany wcześniej
+      React.useEffect(()=>{
+        if(settings&&settings.anthropicKey!==undefined){
+          setSettings(s=>{const {anthropicKey,...rest}=s;return rest;});
+        }
+      },[settings]);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
       const [showConflictBanner,setShowConflictBanner]=useState(false);
 
