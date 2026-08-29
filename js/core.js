@@ -86,6 +86,14 @@ async function dbSet(key, value, keepalive=false) {
       headers: {...getHeaders(), "Prefer": "resolution=merge-duplicates"},
       body: JSON.stringify({key, value: {_d: value, _ts: Date.now()}}),
       keepalive});
+    if(r.ok){
+      // Cichy zapis historii — nie blokuje ani nie wpływa na wynik głównego zapisu.
+      // Przycinanie do ostatnich N wersji per klucz robi trigger w bazie (patrz SQL do wdrożenia w Supabase).
+      fetch(`${SUPA_URL}/rest/v1/app_data_history`, {method:"POST",
+        headers: getHeaders(),
+        body: JSON.stringify({key, value}),
+        keepalive}).catch(()=>{});
+    }
     return r.ok;
   } catch { return false; }
 }
