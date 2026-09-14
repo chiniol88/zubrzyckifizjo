@@ -141,32 +141,31 @@
         if(!rentalsLoaded||!rentals)return;
         const today=todayLocal();
         const currMonthStart=today.slice(0,7)+"-01";
-        const needsUpdate=rentals.some(r=>{
-          if(r.status!=="aktywne"||!r.renewable||r.cyclesAutoPaused)return false;
-          const cyc=r.cycles||[];
-          if(cyc.length===0){
-            if(r.startDate<currMonthStart)return false; // HistoryFill handles old rentals
-            return r.startDate<=today;
-          }
-          const last=[...cyc].sort((a,b)=>(b.dueDate||b.month+"-01").localeCompare(a.dueDate||a.month+"-01"))[0];
-          return addDays(last.dueDate||last.month+"-01",30)<=today;
-        });
-        if(!needsUpdate)return;
-        setRentals(rs=>rs.map(r=>{
-          if(r.status!=="aktywne"||!r.renewable||r.cyclesAutoPaused)return r;
+        // Nie odtwarzaj okresów, które użytkownik świadomie usunął (patrz CycleRow/doDelete w rentals.js)
+        const computeNewCycles=r=>{
+          if(r.status!=="aktywne"||!r.renewable||r.cyclesAutoPaused)return null;
+          const deleted=r.deletedCycleDates||[];
           let cyc=[...(r.cycles||[])];
           if(cyc.length===0){
-            if(r.startDate<currMonthStart||r.startDate>today)return r;
+            if(r.startDate<currMonthStart||r.startDate>today)return null; // HistoryFill handles old rentals
+            if(deleted.includes(r.startDate))return null;
             cyc=[{dueDate:r.startDate,month:r.startDate.slice(0,7),amount:+(r.amount||0),paid:false,paidDate:null}];
           }
           let last=[...cyc].sort((a,b)=>(b.dueDate||b.month+"-01").localeCompare(a.dueDate||a.month+"-01"))[0];
           let nd=addDays(last.dueDate||last.month+"-01",30);
+          let changed=cyc.length!==(r.cycles||[]).length;
           while(nd<=today){
-            if(cyc.some(c=>(c.dueDate||c.month+"-01")===nd))break;
+            if(cyc.some(c=>(c.dueDate||c.month+"-01")===nd)){nd=addDays(nd,30);continue;}
+            if(deleted.includes(nd)){nd=addDays(nd,30);continue;}
             cyc=[...cyc,{dueDate:nd,month:nd.slice(0,7),amount:last.amount,paid:false,paidDate:null}];
-            last=cyc[cyc.length-1];nd=addDays(nd,30);
+            changed=true;nd=addDays(nd,30);
           }
-          return cyc.length===(r.cycles||[]).length?r:{...r,cycles:cyc};
+          return changed?cyc:null;
+        };
+        if(!rentals.some(r=>computeNewCycles(r)!==null))return;
+        setRentals(rs=>rs.map(r=>{
+          const cyc=computeNewCycles(r);
+          return cyc?{...r,cycles:cyc}:r;
         }));
       },[rentalsLoaded,rentals]);
       // Jednorazowe aktywne wypożyczenia wózków → przełącz na odnawialne (cykliczne)

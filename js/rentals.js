@@ -114,7 +114,7 @@
       };
 
       const doDelete=()=>{
-        setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).filter(c=>(c.dueDate||c.month)!==key)}:x));
+        setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cycles:(x.cycles||[]).filter(c=>(c.dueDate||c.month)!==key),deletedCycleDates:[...new Set([...(x.deletedCycleDates||[]),key])]}:x));
         setFinances(fs=>fs.filter(f=>f.sourceId!==sid));
         setConfirmDel(false);
       };
@@ -127,9 +127,9 @@
         <button onClick={()=>setEditDate(false)} style={{background:"#EFF3FA",border:"none",borderRadius:8,padding:"7px 10px",color:"#7A8FA6",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
       </div>;
 
-      const smallActions=<div style={{display:"flex",gap:14,marginTop:8}}>
-        <button onClick={()=>{setNewDate(dueDt);setEditDate(v=>!v);}} style={{background:"none",border:"none",padding:0,fontSize:11,fontWeight:600,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>✏️ zmień datę</button>
-        <button onClick={()=>setConfirmDel(true)} style={{background:"none",border:"none",padding:0,fontSize:11,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑 usuń okres</button>
+      const smallActions=<div style={{display:"flex",gap:10,marginTop:8}}>
+        <button onClick={()=>{setNewDate(dueDt);setEditDate(v=>!v);}} style={{background:"none",border:"none",padding:"8px 6px",fontSize:12,fontWeight:600,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>✏️ zmień datę</button>
+        <button onClick={()=>setConfirmDel(true)} style={{background:"none",border:"none",padding:"8px 6px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑 usuń okres</button>
       </div>;
 
       const confirmDelUi=confirmDel&&<Modal title="Usuń okres" onClose={()=>setConfirmDel(false)}>
@@ -148,8 +148,8 @@
               <div><div style={{fontWeight:600,fontSize:14,textDecoration:"line-through"}}>{rangeLabel}</div><div style={{fontSize:12,color:"#7A8FA6"}}>Anulowany</div></div>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <button onClick={()=>updateCycle({cancelled:false})} style={{background:"#EFF3FA",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
-              <button onClick={()=>setConfirmDel(true)} style={{background:"none",border:"none",color:"#E05C5C",fontSize:16,cursor:"pointer",padding:"0 2px"}}>🗑</button>
+              <button onClick={()=>updateCycle({cancelled:false})} style={{background:"#EFF3FA",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:600,color:"#7A8FA6",cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
+              <button onClick={()=>setConfirmDel(true)} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑 Usuń</button>
             </div>
           </div>
           {confirmDelUi}
