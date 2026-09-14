@@ -210,13 +210,15 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const totalAmt2=(+ev.r.amount||0)+extDue2;
           const totalPaid2=calcRentalPaid(ev.r);
           const remaining2=totalAmt2-totalPaid2;
-          const adSub=ev.r.renewable?null:(ev.type==="end"||ev.type==="plannedReturn")?(remaining2>0?`do zapłaty: ${remaining2} zł`:null):ev.type==="start"?totalAmt2+" zł":null;
+          const isEndType=ev.type==="end"||ev.type==="plannedReturn";
+          const isPaidEnd=isEndType&&remaining2<=0;
+          const adSub=ev.r.renewable?null:isEndType?(remaining2>0?`do zapłaty: ${remaining2} zł`:`✅ Opłacono: ${totalAmt2} zł`):ev.type==="start"?totalAmt2+" zł":null;
           return <div key={"ad-r"+idx} onClick={()=>setQuickRental(ev.r)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,cursor:"pointer"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
             <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
             <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
           </div>
-          {adSub&&<Badge color={(ev.type==="end"||ev.type==="plannedReturn")?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
+          {adSub&&<Badge color={isPaidEnd?"#3DAA72":isEndType?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
         </div>;}
         return null;
       })}
@@ -245,13 +247,15 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         </div>;}
         if(item._kind==="rental"){const ev=item.ev;
           const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":(ev.type==="cycle"||ev.type==="cycleEnd")?"🔁 Koniec cyklu":"🔄 Opłata";
-          const color=ev.type==="end"||ev.type==="plannedReturn"?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
+          const isEndType2=ev.type==="end"||ev.type==="plannedReturn";
           const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
           const totalAmt=(+ev.r.amount||0)+extDue;
           const totalPaid=calcRentalPaid(ev.r);
           const remaining=totalAmt-totalPaid;
-          const endSub=remaining>0?`do zapłaty: ${remaining} zł`:null;
-          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cycleEnd"?"zbliża się koniec okresu":ev.type==="end"?endSub:ev.type==="plannedReturn"?(remaining>0?`do zapłaty: ${remaining} zł`:null):totalAmt+" zł";
+          const isPaidEnd2=isEndType2&&remaining<=0;
+          const color=isPaidEnd2?"#3DAA72":isEndType2?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
+          const endSub=remaining>0?`do zapłaty: ${remaining} zł`:`✅ Opłacono: ${totalAmt} zł`;
+          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cycleEnd"?"zbliża się koniec okresu":isEndType2?endSub:totalAmt+" zł";
           const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?(ev.r.plannedReturnTime||"10:00"):""):"";
 
           const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
@@ -291,7 +295,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         <div style={{background:dk?"#0F2020":"#EFF6FF",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>{r.renewable?"Stawka / mies.":"Kwota całkowita"}</span><span style={{fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{totalAmt} zł</span></div>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Wpłacono</span><span style={{fontWeight:700,color:"#3DAA72"}}>{totalPaid} zł</span></div>
-          {!r.renewable&&remaining>0&&<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Pozostało</span><span style={{fontWeight:700,color:"#E05C5C"}}>{remaining} zł</span></div>}
+          {!r.renewable&&(remaining>0?<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Pozostało</span><span style={{fontWeight:700,color:"#E05C5C"}}>{remaining} zł</span></div>:<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Status</span><span style={{fontWeight:700,color:"#3DAA72"}}>✅ Opłacono w całości</span></div>)}
         </div>
         {r.notes&&<div style={{fontSize:13,color:"#7A8FA6",marginBottom:12,padding:"8px 12px",background:dk?"#1A2840":"#F7FAFC",borderRadius:10,whiteSpace:"pre-wrap"}}>📝 {r.notes}</div>}
         <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{setQuickRental(null);onGoToRental(r.id);}}>Otwórz pełny widok →</Btn>
@@ -548,7 +552,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
                 <div><div style={{fontWeight:600}}>{icon}{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                   <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
-                  {remaining>0&&<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>}
+                  {remaining>0?<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>:<Badge color="#3DAA72">{demo?"****":kind==="cykl"?"✅ Opłacono":`✅ Opłacono: ${totalAmt} zł`}</Badge>}
                 </div>
               </div>
             </Card>
