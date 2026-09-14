@@ -210,13 +210,13 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const totalAmt2=(+ev.r.amount||0)+extDue2;
           const totalPaid2=calcRentalPaid(ev.r);
           const remaining2=totalAmt2-totalPaid2;
-          const adSub=ev.r.renewable?null:ev.type==="end"?(remaining2>0?`do zapłaty: ${remaining2} zł`:null):ev.type==="start"?totalAmt2+" zł":null;
+          const adSub=ev.r.renewable?null:(ev.type==="end"||ev.type==="plannedReturn")?(remaining2>0?`do zapłaty: ${remaining2} zł`:null):ev.type==="start"?totalAmt2+" zł":null;
           return <div key={"ad-r"+idx} onClick={()=>setQuickRental(ev.r)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,cursor:"pointer"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
             <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
             <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
           </div>
-          {adSub&&<Badge color={ev.type==="end"?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
+          {adSub&&<Badge color={(ev.type==="end"||ev.type==="plannedReturn")?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
         </div>;}
         return null;
       })}
