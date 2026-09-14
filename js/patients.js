@@ -51,6 +51,26 @@
       </Card>;
     }
 
+    function getPhones(pat) {
+      if(pat.phones&&pat.phones.length)return pat.phones;
+      return pat.phone?[{id:"legacy",number:pat.phone,label:""}]:[];
+    }
+
+    function PhonesEditor({phones, onChange}) {
+      const dk=useContext(DarkCtx);
+      const list=phones||[];
+      const inputStyle={padding:"11px 14px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      return <div style={{marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Telefony</div>
+        {list.map(ph=><div key={ph.id} style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+          <input type="tel" value={ph.number} onChange={e=>onChange(list.map(x=>x.id===ph.id?{...x,number:e.target.value}:x))} placeholder="600 000 000" style={{...inputStyle,flex:1.3}}/>
+          <input value={ph.label} onChange={e=>onChange(list.map(x=>x.id===ph.id?{...x,label:e.target.value}:x))} placeholder="np. żona, syn, praca..." style={{...inputStyle,flex:1}}/>
+          <button onClick={()=>onChange(list.filter(x=>x.id!==ph.id))} style={{flexShrink:0,background:"none",border:"none",color:"#E05C5C",fontSize:22,cursor:"pointer",padding:"0 4px",lineHeight:1,fontFamily:"inherit"}}>×</button>
+        </div>)}
+        <button onClick={()=>onChange([...list,{id:Date.now()+Math.random(),number:"",label:""}])} style={{width:"100%",padding:"10px",borderRadius:10,border:"1.5px dashed #D9E2F0",background:"none",color:"#3E6FB0",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj numer</button>
+      </div>;
+    }
+
     function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,setNfzCases,allClients}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
@@ -59,7 +79,7 @@
       const [showEdit,setShowEdit]=useState(false);
       const [confirmDelPat,setConfirmDelPat]=useState(false);
       const [editForm,setEditForm]=useState(null);
-      const [newForm,setNewForm]=useState({name:"",phone:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});
+      const [newForm,setNewForm]=useState({name:"",phone:"",phones:[],address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});
       const [showAddV,setShowAddV]=useState(false);
       const [vf,setVf]=useState(emptyVisit);
       const [editV,setEditV]=useState(null);
@@ -130,6 +150,7 @@
 
       if(pat) {
         const maps=pat.address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pat.address)}`:null;
+        const patPhones=getPhones(pat);
         return <>
           <div>
             <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#3E6FB0",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
@@ -141,17 +162,18 @@
                   <Av name={pat.name}/>
                   <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800}}>{pat.name}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{pat.phone}</div></div>
                 </div>
-                <Btn small variant="secondary" onClick={()=>{setEditForm({...pat});setConfirmDelPat(false);setShowEdit(true);}}>✏️ Edytuj</Btn>
+                <Btn small variant="secondary" onClick={()=>{setEditForm({...pat,phones:getPhones(pat)});setConfirmDelPat(false);setShowEdit(true);}}>✏️ Edytuj</Btn>
               </div>
 
               <Card style={{marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:pat.address?10:0}}>
-                  <div style={{fontSize:14,color:"#7A8FA6"}}>{pat.phone||"Brak telefonu"}</div>
-                  {pat.phone&&<div style={{display:"flex",gap:6}}>
-                    <a href={`tel:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#3E6FB0"/> Zadzwoń</Btn></a>
-                    <a href={`sms:${pat.phone.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#3E6FB0"/> SMS</Btn></a>
-                  </div>}
-                </div>
+                {patPhones.length===0&&<div style={{fontSize:14,color:"#7A8FA6",marginBottom:pat.address?10:0}}>Brak telefonu</div>}
+                {patPhones.map((ph,i)=><div key={ph.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:(i<patPhones.length-1||pat.address)?10:0}}>
+                  <div style={{fontSize:14,color:"#7A8FA6"}}>{ph.number}{ph.label&&<span style={{color:"#3E6FB0",fontWeight:600}}> · {ph.label}</span>}</div>
+                  <div style={{display:"flex",gap:6}}>
+                    <a href={`tel:${ph.number.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#3E6FB0"/> Zadzwoń</Btn></a>
+                    <a href={`sms:${ph.number.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#3E6FB0"/> SMS</Btn></a>
+                  </div>
+                </div>)}
                 {pat.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{pat.address}</div>
                   {maps&&<a href={maps} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">🗺️ Trasa</Btn></a>}
@@ -235,7 +257,7 @@
           {/* Modal: edytuj pacjenta */}
           {showEdit&&editForm&&<Modal title="Edytuj pacjenta" onClose={()=>{setShowEdit(false);setEditForm(null);setConfirmDelPat(false);}}>
             <Inp label="Imię i nazwisko" value={editForm.name||""} onChange={v=>setEditForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
-            <Inp label="Telefon" value={editForm.phone||""} onChange={v=>setEditForm(f=>({...f,phone:v}))} placeholder="600 000 000" type="tel"/>
+            <PhonesEditor phones={editForm.phones||[]} onChange={phones=>setEditForm(f=>({...f,phones}))}/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Txa label="Diagnoza" value={editForm.diagnosis||""} onChange={v=>setEditForm(f=>({...f,diagnosis:v}))} rows={2}/>
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
@@ -248,7 +270,9 @@
                     const orig=patients.find(p=>p.id===_pid);
                     const _old=orig?.name||editForm.name;
                     const _new=editForm.name||_old;
-                    setPatients(ps=>ps.map(p=>p.id===_pid?{...p,...editForm}:p));
+                    const _phones=(editForm.phones||[]).filter(ph=>ph.number.trim());
+                    const _phone=_phones[0]?.number||"";
+                    setPatients(ps=>ps.map(p=>p.id===_pid?{...p,...editForm,phones:_phones,phone:_phone}:p));
                     if(_new!==_old){
                       setVisits(vs=>vs.map(v=>v.patientId===_pid?{...v,patientName:_new}:v));
                       setFinances(fs=>fs.map(f=>f.description?{...f,description:f.description.split(_old).join(_new)}:f));
@@ -257,7 +281,7 @@
                     setRentals(rs=>rs.map(r=>(r.patientId===_pid||r.patientName===_old)?{...r,patientName:_new,patientId:_pid}:r));
                     if(setNfzCases)setNfzCases(cs=>(cs||[]).map(c=>(c.patientId===_pid||c.patientName===_old)?{...c,patientName:_new,patientId:_pid}:c));
                     const pending=syncContactOnSave(
-                      {kind:"patient",id:_pid,patientId:_pid,patientName:_new,original:{phone:orig?.phone||"",address:orig?.address||""},updated:{phone:editForm.phone||"",address:editForm.address||""}},
+                      {kind:"patient",id:_pid,patientId:_pid,patientName:_new,original:{phone:orig?.phone||"",address:orig?.address||""},updated:{phone:_phone,address:editForm.address||""}},
                       {patients,setPatients,rentals,setRentals,nfzCases,setNfzCases}
                     );
                     if(pending.length)setContactSyncPending(pending);
@@ -344,7 +368,7 @@
 
       // Lista pacjentów
       const sl=search.toLowerCase(),sn=search.replace(/\s/g,"");
-      const filtered=patients.filter(p=>(!!p.archived)===showArchived&&(p.name.toLowerCase().includes(sl)||(p.phone||"").replace(/\s/g,"").includes(sn)||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl)));
+      const filtered=patients.filter(p=>(!!p.archived)===showArchived&&(p.name.toLowerCase().includes(sl)||getPhones(p).some(ph=>ph.number.replace(/\s/g,"").includes(sn))||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl)));
       const lastVisitDate=p=>visits.filter(v=>v.patientId===p.id).map(v=>v.date).sort((a,b)=>b.localeCompare(a))[0]||"";
       const sorted=[...filtered].sort((a,b)=>sort==="alpha"?a.name.localeCompare(b.name,"pl"):lastVisitDate(b).localeCompare(lastVisitDate(a)));
 
@@ -418,13 +442,13 @@
         </div>
         {showAdd&&<Modal title="Nowy pacjent" onClose={()=>setShowAdd(false)}>
           <Inp label="Imię i nazwisko *" value={newForm.name} onChange={v=>setNewForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
-          <Inp label="Telefon" value={newForm.phone} onChange={v=>setNewForm(f=>({...f,phone:v}))} placeholder="600 000 000" type="tel"/>
+          <PhonesEditor phones={newForm.phones} onChange={phones=>setNewForm(f=>({...f,phones}))}/>
           <Inp label="Adres" value={newForm.address} onChange={v=>setNewForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Txa label="Diagnoza" value={newForm.diagnosis} onChange={v=>setNewForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={newForm.notes} onChange={v=>setNewForm(f=>({...f,notes:v}))} rows={2}/>
           <Inp label="Domyślna cena wizyty (zł)" value={newForm.defaultPrice||""} onChange={v=>setNewForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>
           <BirthdayInput value={newForm.birthday||""} onChange={v=>setNewForm(f=>({...f,birthday:v}))}/>
-          <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;setPatients(ps=>[...ps,{...newForm,id:Date.now()}]);setNewForm({name:"",phone:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
+          <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;const phones=(newForm.phones||[]).filter(ph=>ph.number.trim());setPatients(ps=>[...ps,{...newForm,phones,phone:phones[0]?.number||"",id:Date.now()}]);setNewForm({name:"",phone:"",phones:[],address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
         </Modal>}
         {showQuickV&&quickV&&<Modal title={"Wizyta – "+quickV.patientName} onClose={()=>setShowQuickV(false)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
