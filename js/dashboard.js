@@ -3,9 +3,9 @@ function nextCycleEnd(r, today) {
   const lastCycle=activeCycles.length?activeCycles.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a):null;
   const lastDue=lastCycle?(lastCycle.dueDate||lastCycle.month+"-01"):null;
   if(lastCycle&&lastDue>=today) return {date:lastDue,cycle:lastCycle};
-  const base=lastDue||r.startDate;
-  const steps=Math.max(1,Math.ceil(dateDiff(base,today)/30));
-  return {date:addDays(base,steps*30),cycle:null};
+  let date=lastDue||r.startDate;
+  while(date<today) date=nextCycleDueDate(date);
+  return {date,cycle:null};
 }
 
 function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents,patients}) {
@@ -218,7 +218,10 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
             <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
             <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
           </div>
-          {adSub&&<Badge color={isPaidEnd?"#3DAA72":isEndType?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+            {adSub&&<Badge color={isPaidEnd?"#3DAA72":isEndType?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
+            {ev.r.status==="zakończone"&&<Badge color="#3DAA72">✅ Zwrócono</Badge>}
+          </div>
         </div>;}
         return null;
       })}
@@ -266,7 +269,10 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
               <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              {sub&&<Badge color={color}>{sub}</Badge>}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                {sub&&<Badge color={color}>{sub}</Badge>}
+                {ev.r.status==="zakończone"&&<Badge color="#3DAA72">✅ Zwrócono</Badge>}
+              </div>
               <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+(ev.r.equipment||"Do ustalenia")+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
             </div>
           </div>;

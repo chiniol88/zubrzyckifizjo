@@ -259,6 +259,10 @@ const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"Wózki"},{key:"balkoniki",label:"Balkoniki"}];
 const getActiveEquipmentNames = stock => ((stock&&stock.equipment&&stock.equipment.length) ? [...new Set([...EQUIPMENT,...stock.equipment.map(e=>e.name)])].filter(n=>{const e=(stock.equipment||[]).find(x=>x.name===n);return !e||!e.hidden;}) : EQUIPMENT);
 const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
+// Dodaje N miesięcy kalendarzowych zachowując dzień miesiąca (przycięty do długości docelowego miesiąca) —
+// jedyne miejsce definiujące "kolejny miesiąc" dla cyklicznych wypożyczeń (auto-generacja, "+ Dodaj okres", widżet Nadchodzące)
+const addMonthsClamped = (d,n=1) => { const [y,m,day]=d.split("-").map(Number); const totalM=(m-1)+n; const ny=y+Math.floor(totalM/12); const nm=((totalM%12)+12)%12+1; const lastDay=new Date(ny,nm,0).getDate(); return ny+"-"+String(nm).padStart(2,"0")+"-"+String(Math.min(day,lastDay)).padStart(2,"0"); };
+const nextCycleDueDate = fromDate => addMonthsClamped(fromDate,1);
 const parseCycleSourceId = sid => { const rest=sid.slice(6); const di=rest.indexOf("-"); return {rentalId:+rest.slice(0,di), cycleKey:rest.slice(di+1)}; };
 const marketingSpendForMonth = (budget, stock, ym) => {
   const mktgCat=(stock&&stock.marketingCat)||"";

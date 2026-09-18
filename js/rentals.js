@@ -92,7 +92,7 @@
       const [confirmDel,setConfirmDel]=useState(false);
       const dueDt=cycle.dueDate||cycle.month+"-15";
       const label=new Date(dueDt+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
-      const periodEndDt=addDays(dueDt,30);
+      const periodEndDt=addDays(nextCycleDueDate(dueDt),-1);
       const sameYear=dueDt.slice(0,4)===periodEndDt.slice(0,4);
       const fmtPeriodD=(d,withYear)=>new Date(d+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",...(withYear?{year:"numeric"}:{})});
       const rangeLabel=fmtPeriodD(dueDt,!sameYear)+" – "+fmtPeriodD(periodEndDt,true);
@@ -103,8 +103,8 @@
 
       const saveDate=()=>{
         if(!newDate||newDate===key){setEditDate(false);return;}
-        const conflict=(r.cycles||[]).some(c=>(c.dueDate||c.month)!==key&&(c.dueDate||c.month)===newDate);
-        if(conflict){alert("Ten termin już istnieje w tym wypożyczeniu.");return;}
+        const conflict=(r.cycles||[]).some(c=>(c.dueDate||c.month)!==key&&!c.cancelled&&c.month===newDate.slice(0,7));
+        if(conflict){alert("Na ten miesiąc już istnieje okres w tym wypożyczeniu — jeden miesiąc może mieć tylko jeden okres.");return;}
         updateCycle({dueDate:newDate,month:newDate.slice(0,7)});
         if(cycle.paid){
           const newSid="cycle-"+r.id+"-"+newDate;
@@ -762,7 +762,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                       let nextDate=r.startDate;
                       if(cyc.length>0){
                         const last=[...cyc].sort((a,b)=>(b.dueDate||b.month+"-01").localeCompare(a.dueDate||a.month+"-01"))[0];
-                        nextDate=addDays(last.dueDate||last.month+"-01",30);
+                        nextDate=nextCycleDueDate(last.dueDate||last.month+"-01");
                       }
                       setAddCycleForm({date:nextDate,amount:String(r.amount||""),paid:false,payDate:todayLocal(),note:""});
                       setShowAddCycle(true);
@@ -901,8 +901,10 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   if(r.renewable&&!effectiveCloseDate){alert("Podaj datę zakończenia");return;}
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
                   const endMonth=r.renewable&&effectiveCloseDate?effectiveCloseDate.slice(0,7):null;
+                  const removedDates=endMonth?(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled&&c.month>endMonth).map(c=>c.dueDate||c.month):[];
                   setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?effectiveCloseDate:x.endDate,
-                    cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.cancelled||c.month<=endMonth)):x.cycles
+                    cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.cancelled||c.month<=endMonth)):x.cycles,
+                    ...(removedDates.length?{deletedCycleDates:[...new Set([...(x.deletedCycleDates||[]),...removedDates])]}:{})
                   }:x));
                   if(endMonth){
                     const toRemove=new Set((r.cycles||[]).filter(c=>!c.paid&&c.month>endMonth).map(c=>"cycle-"+r.id+"-"+(c.dueDate||c.month)));
@@ -1081,8 +1083,8 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <Btn disabled={!addCycleForm.date} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const d=addCycleForm.date;
               if(!d)return;
-              const conflict=(r.cycles||[]).some(c=>(c.dueDate||c.month)===d);
-              if(conflict){alert("Ten termin już istnieje w tym wypożyczeniu.");return;}
+              const conflict=(r.cycles||[]).some(c=>!c.cancelled&&c.month===d.slice(0,7));
+              if(conflict){alert("Na ten miesiąc już istnieje okres w tym wypożyczeniu — jeden miesiąc może mieć tylko jeden okres. Edytuj istniejący zamiast dodawać nowy.");return;}
               const amount=+addCycleForm.amount||0;
               const label=new Date(d+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
               const nc={dueDate:d,month:d.slice(0,7),amount,paid:!!addCycleForm.paid,paidDate:addCycleForm.paid?(addCycleForm.payDate||todayLocal()):null,note:addCycleForm.note||""};

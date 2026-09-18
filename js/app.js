@@ -136,12 +136,12 @@
     }
 
     function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,wealth,setWealth,invoices,setInvoices,rentalsLoaded,financesLoaded}) {
-      // Auto-generate next cycle 30 days after the previous one (or on startDate for new rentals)
+      // Auto-generate next cycle kalendarzowy miesiąc po poprzednim (patrz nextCycleDueDate w core.js)
       useEffect(()=>{
         if(!rentalsLoaded||!rentals)return;
         const today=todayLocal();
         const currMonthStart=today.slice(0,7)+"-01";
-        // Nie odtwarzaj okresów, które użytkownik świadomie usunął (patrz CycleRow/doDelete w rentals.js)
+        // Nie odtwarzaj okresów, które użytkownik świadomie usunął (patrz CycleRow/doDelete i "Zakończ" w rentals.js)
         const computeNewCycles=r=>{
           if(r.status!=="aktywne"||!r.renewable||r.cyclesAutoPaused)return null;
           const deleted=r.deletedCycleDates||[];
@@ -152,13 +152,13 @@
             cyc=[{dueDate:r.startDate,month:r.startDate.slice(0,7),amount:+(r.amount||0),paid:false,paidDate:null}];
           }
           let last=[...cyc].sort((a,b)=>(b.dueDate||b.month+"-01").localeCompare(a.dueDate||a.month+"-01"))[0];
-          let nd=addDays(last.dueDate||last.month+"-01",30);
+          let nd=nextCycleDueDate(last.dueDate||last.month+"-01");
           let changed=cyc.length!==(r.cycles||[]).length;
           while(nd<=today){
-            if(cyc.some(c=>(c.dueDate||c.month+"-01")===nd)){nd=addDays(nd,30);continue;}
-            if(deleted.includes(nd)){nd=addDays(nd,30);continue;}
+            if(cyc.some(c=>(c.dueDate||c.month+"-01")===nd)){nd=nextCycleDueDate(nd);continue;}
+            if(deleted.includes(nd)){nd=nextCycleDueDate(nd);continue;}
             cyc=[...cyc,{dueDate:nd,month:nd.slice(0,7),amount:last.amount,paid:false,paidDate:null}];
-            changed=true;nd=addDays(nd,30);
+            changed=true;nd=nextCycleDueDate(nd);
           }
           return changed?cyc:null;
         };
