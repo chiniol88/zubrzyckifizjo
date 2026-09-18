@@ -249,16 +249,18 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           </div>
         </div>;}
         if(item._kind==="rental"){const ev=item.ev;
-          const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":(ev.type==="cycle"||ev.type==="cycleEnd")?"🔁 Koniec cyklu":"🔄 Opłata";
+          const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":ev.type==="cycle"?"💳 Opłata cykliczna":ev.type==="cycleEnd"?"🔁 Koniec cyklu":"🔄 Opłata";
           const isEndType2=ev.type==="end"||ev.type==="plannedReturn";
           const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
           const totalAmt=(+ev.r.amount||0)+extDue;
           const totalPaid=calcRentalPaid(ev.r);
           const remaining=totalAmt-totalPaid;
           const isPaidEnd2=isEndType2&&remaining<=0;
-          const color=isPaidEnd2?"#3DAA72":isEndType2?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":"#E05C5C"):"#7C6AF4";
+          // Okres cykliczny, którego termin jeszcze nie nadszedł, nie jest "zaległy" — nie ma co go pokazywać na czerwono
+          const cycleFuture=ev.type==="cycle"&&!ev.c.paid&&!ev.c.cancelled&&(ev.c.dueDate||ev.c.month+"-01")>today;
+          const color=isPaidEnd2?"#3DAA72":isEndType2?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":cycleFuture?"#7C6AF4":"#E05C5C"):"#7C6AF4";
           const endSub=remaining>0?`do zapłaty: ${remaining} zł`:`✅ Opłacono: ${totalAmt} zł`;
-          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cycleEnd"?"zbliża się koniec okresu":isEndType2?endSub:totalAmt+" zł";
+          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:cycleFuture?`zaplanowane: ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cycleEnd"?"zbliża się koniec okresu":isEndType2?endSub:totalAmt+" zł";
           const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?(ev.r.plannedReturnTime||"10:00"):""):"";
 
           const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
