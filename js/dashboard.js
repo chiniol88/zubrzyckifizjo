@@ -52,10 +52,14 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms))){
           add(r.plannedReturn,{type:"plannedReturn",r});
         }
-        if(r.status==="aktywne"&&!r.plannedReturn){
-          const nce=nextCycleEnd(r,today);
-          if(!nce.cycle&&visibleMonths.includes(nce.date.slice(0,7))){
-            add(nce.date,{type:"cycleEnd",r});
+        if(r.status==="aktywne"&&!r.reserved&&!r.plannedReturn){
+          // Podgląd kolejnego okresu — liczony na bieżąco, nigdy nie zapisywany, znika sam gdy wypożyczenie się kończy
+          const activeCycles=(r.cycles||[]).filter(c=>!c.cancelled);
+          const anchor=activeCycles.length?activeCycles.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a):null;
+          const anchorDate=anchor?(anchor.dueDate||anchor.month+"-01"):r.startDate;
+          const previewDate=nextCycleDueDate(anchorDate);
+          if(!activeCycles.some(c=>(c.dueDate||c.month+"-01")===previewDate)&&visibleMonths.includes(previewDate.slice(0,7))){
+            add(previewDate,{type:"cyclePreview",r});
           }
         }
       }
@@ -249,7 +253,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           </div>
         </div>;}
         if(item._kind==="rental"){const ev=item.ev;
-          const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":ev.type==="cycle"?"💳 Opłata cykliczna":ev.type==="cycleEnd"?"🔁 Koniec cyklu":"🔄 Opłata";
+          const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":ev.type==="cycle"?"💳 Opłata cykliczna":ev.type==="cyclePreview"?"👀 Podgląd — jeśli kontynuacja":"🔄 Opłata";
           const isEndType2=ev.type==="end"||ev.type==="plannedReturn";
           const extDue=(ev.r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
           const totalAmt=(+ev.r.amount||0)+extDue;
@@ -258,9 +262,9 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const isPaidEnd2=isEndType2&&remaining<=0;
           // Okres cykliczny, którego termin jeszcze nie nadszedł, nie jest "zaległy" — nie ma co go pokazywać na czerwono
           const cycleFuture=ev.type==="cycle"&&!ev.c.paid&&!ev.c.cancelled&&(ev.c.dueDate||ev.c.month+"-01")>today;
-          const color=isPaidEnd2?"#3DAA72":isEndType2?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":cycleFuture?"#7C6AF4":"#E05C5C"):"#7C6AF4";
+          const color=isPaidEnd2?"#3DAA72":isEndType2?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":cycleFuture?"#7C6AF4":"#E05C5C"):ev.type==="cyclePreview"?"#7A8FA6":"#7C6AF4";
           const endSub=remaining>0?`do zapłaty: ${remaining} zł`:`✅ Opłacono: ${totalAmt} zł`;
-          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:cycleFuture?`zaplanowane: ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cycleEnd"?"zbliża się koniec okresu":isEndType2?endSub:totalAmt+" zł";
+          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:cycleFuture?`zaplanowane: ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cyclePreview"?`~${ev.r.amount||0} zł, jeśli będzie kontynuacja`:isEndType2?endSub:totalAmt+" zł";
           const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?(ev.r.plannedReturnTime||"10:00"):""):"";
 
           const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
@@ -275,7 +279,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
                 {sub&&<Badge color={color}>{sub}</Badge>}
                 {ev.r.status==="zakończone"&&<Badge color="#3DAA72">✅ Zwrócono</Badge>}
               </div>
-              <button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+(ev.r.equipment||"Do ustalenia")+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
+              {ev.type!=="cyclePreview"&&<button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+(ev.r.equipment||"Do ustalenia")+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>}
             </div>
           </div>;
         }
