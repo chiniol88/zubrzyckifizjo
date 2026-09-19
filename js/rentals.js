@@ -593,7 +593,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,rentalsView,setRentalsView,stock,setStock,settings}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,initialAddDate,onAddDateHandled,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const view=rentalsView||"aktywne",setView=setRentalsView;
@@ -603,6 +603,12 @@ p{margin:2px 0}.bold7{font-weight:bold}
       const [showExtend,setShowExtend]=useState(false);
       const [extForm,setExtForm]=useState({newEndDate:"",endTime:"10:00",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});
       const [form,setForm]=useState(emptyRental);
+      useEffect(()=>{
+        if(!initialAddDate)return;
+        setForm({...emptyRental(),startDate:initialAddDate});
+        setShowAdd(true);
+        if(onAddDateHandled)onAddDateHandled();
+      },[initialAddDate]);
       const [ef,setEf]=useState(null);
       const [confirmDel,setConfirmDel]=useState(false);
       const [closeDate,setCloseDate]=useState("");

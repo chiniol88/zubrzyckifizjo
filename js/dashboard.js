@@ -8,7 +8,7 @@ function nextCycleEnd(r, today) {
   return {date,cycle:null};
 }
 
-function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,events,setEvents,patients}) {
+function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,onAddRental,events,setEvents,patients}) {
   const dk=useContext(DarkCtx);
   const demo=useDemo();
   const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
@@ -176,7 +176,8 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
         <div style={{display:"flex",gap:6}}>
           <button onClick={()=>{setEvtForm({title:"",date:openDateStr,allDay:false,time:"10:00",notes:"",address:"",editId:null});setShowEvtModal(true);}} style={{background:"#FFF4E8",color:"#F4A261",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wydarzenie</button>
-          <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#3E6FB0",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
+          <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#3DAA72",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
+          {onAddRental&&<button onClick={()=>onAddRental(openDateStr)} style={{background:"#7C6AF4",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Sprzęt</button>}
         </div>
       </div>
 
@@ -331,7 +332,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────
-function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,allClients,goToRental,nfzCases,goToWozki,todos,setTodos,events,setEvents}) {
+function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,allClients,goToRental,onAddRental,nfzCases,goToWozki,todos,setTodos,events,setEvents}) {
   const demo=useDemo();
   const today = todayLocal();
   const dk=useContext(DarkCtx);
@@ -525,6 +526,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
           onEditVisit={v=>setEditV({...v,price:String(v.price)})}
           onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
           onGoToRental={goToRental}
+          onAddRental={onAddRental}
         />
         {(upcoming.length>0||wózkiReminders.length>0||birthdayReminders.length>0||reservedRentals.length>0)&&<>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700,marginBottom:10,marginTop:8}}>Nadchodzące</div>

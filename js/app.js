@@ -15,7 +15,9 @@
       const [dlBackLabel,setDlBackLabel]=useState("Wypożyczalnia");
       const [wozkiSel,setWozkiSel]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
+      const [addRentalDate,setAddRentalDate]=useState(null);
       const goToRental=(id,returnTab="rentals")=>{setDlReturnTab(returnTab);setDlBackLabel(returnTab==="dashboard"?"Pulpit":"Wypożyczalnia");setDlRental(id);setTab("rentals");};
+      const goToAddRental=date=>{setAddRentalDate(date);setTab("rentals");};
       const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
       const allClients=useMemo(()=>{
         const existing=new Set((patients||[]).map(p=>p.name));
@@ -49,9 +51,9 @@
       const unpaidCount=(rentals||[]).filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid&&!c.cancelled)).length;
 
       const content = <>
-        {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
+        {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} onAddRental={goToAddRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients}/>}
-        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
+        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} initialAddDate={addRentalDate} onAddDateHandled={()=>setAddRentalDate(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} stock={stock} setStock={setStock} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth} invoices={invoices} setInvoices={setInvoices}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} allClients={allClients}/>}
         {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines} setFinances={setFinances} stock={stock}/>}
