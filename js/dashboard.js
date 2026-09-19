@@ -13,7 +13,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
   const demo=useDemo();
   const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
   const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
-  const [openDay,setOpenDay]=useState(null);
+  const [openDay,setOpenDay]=useState(()=>today);
   const [showEvtModal,setShowEvtModal]=useState(false);
   const [evtForm,setEvtForm]=useState({title:"",date:"",allDay:false,time:"10:00",notes:"",address:"",editId:null});
   const [quickRental,setQuickRental]=useState(null);
