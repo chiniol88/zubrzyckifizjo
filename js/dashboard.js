@@ -157,7 +157,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           return <div key={dateStr} onClick={()=>setOpenDay(isOpen?null:dateStr)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",opacity:isOverflow?0.45:1,background:isOpen?"#3E6FB0":isToday?(dk?"#0A3030":"#E1E9F5"):isOverflow?"transparent":normalBg}}>
             <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#3E6FB0":isOverflow?overflowColor:normalColor}}>{d}</span>
             <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
-              {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#3E6FB0"}}/>)}
+              {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#3DAA72"}}/>)}
               {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
               {ec>0&&[...Array(Math.min(ec,2))].map((_,j)=><div key={"e"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#F4A261"}}/>)}
             </div>
@@ -165,7 +165,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         })}
       </div>
       <div style={{display:"flex",gap:12,marginTop:10,paddingTop:8,borderTop:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,justifyContent:"center"}}>
-        <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#3E6FB0",display:"inline-block"}}/>Wizyty</span>
+        <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#3DAA72",display:"inline-block"}}/>Wizyty</span>
         <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#7C6AF4",display:"inline-block"}}/>Wypożyczenia</span>
         <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#F4A261",display:"inline-block"}}/>Wydarzenia</span>
       </div>
@@ -202,7 +202,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         </div>;}
         if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"ad-v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
-            <div style={{width:6,height:6,borderRadius:2,background:"#3E6FB0",flexShrink:0}}/>
+            <div style={{width:6,height:6,borderRadius:2,background:"#3DAA72",flexShrink:0}}/>
             <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -233,7 +233,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
       {dayTimedAll.map((item,idx)=>{
         if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
-            <div style={{width:6,height:6,borderRadius:"50%",background:"#3E6FB0",flexShrink:0}}/>
+            <div style={{width:6,height:6,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
             <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
