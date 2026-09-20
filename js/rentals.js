@@ -129,8 +129,9 @@
 
       const smallActions=<div style={{display:"flex",gap:10,marginTop:8}}>
         <button onClick={()=>{setNewDate(dueDt);setEditDate(v=>!v);}} style={{background:"none",border:"none",padding:"8px 6px",fontSize:12,fontWeight:600,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>✏️ zmień datę</button>
-        <button onClick={()=>setConfirmDel(true)} style={{background:"none",border:"none",padding:"8px 6px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>🗑 usuń okres</button>
       </div>;
+
+      const delBtn=<button onClick={()=>setConfirmDel(true)} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"8px 11px",fontSize:14,color:"#E05C5C",cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center"}}>🗑</button>;
 
       const confirmDelUi=confirmDel&&<Modal title="Usuń okres" onClose={()=>setConfirmDel(false)}>
         <div style={{fontSize:15,marginBottom:20}}>Na pewno usunąć okres „{rangeLabel}”?{cycle.paid?" Powiązana wpłata w Finansach też zniknie.":""}</div>
@@ -187,7 +188,10 @@
                   }
                 </div>
               </div>
-              <button onClick={()=>{updateCycle({paid:false,paidDate:null});setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                <button onClick={()=>{updateCycle({paid:false,paidDate:null});setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Anuluj</button>
+                {delBtn}
+              </div>
             </div>
             <div style={{display:"flex",gap:8}}>
               {[{k:"receipt",l:"🧾 Paragon"},{k:"invoice",l:"📄 Faktura"}].map(opt=>{
@@ -204,9 +208,12 @@
       }
       return (
         <div style={{padding:"10px 0",borderBottom:"1px solid #EFF3FA"}}>
-          <div style={{marginBottom:8}}>
-            <div style={{fontSize:10,color:"#E05C5C",fontWeight:700,textTransform:"uppercase",letterSpacing:.4,marginBottom:2}}>⚠️ Okres rozliczeniowy — do opłacenia</div>
-            <div style={{fontWeight:600,fontSize:14,color:"#E05C5C"}}>{rangeLabel}</div>
+          <div style={{marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+            <div>
+              <div style={{fontSize:10,color:"#E05C5C",fontWeight:700,textTransform:"uppercase",letterSpacing:.4,marginBottom:2}}>⚠️ Okres rozliczeniowy — do opłacenia</div>
+              <div style={{fontWeight:600,fontSize:14,color:"#E05C5C"}}>{rangeLabel}</div>
+            </div>
+            {delBtn}
           </div>
           <div style={{display:"flex",gap:8,marginBottom:6}}>
             <input type="number" value={amt} onChange={e=>setAmt(e.target.value)} placeholder="Kwota..." style={{flex:1,padding:"10px 14px",border:"1.5px solid #D9E2F0",borderRadius:12,fontSize:14,outline:"none",background:"#FAFCFD",fontFamily:"inherit"}}/>
