@@ -40,13 +40,15 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(!r.plannedReturn&&visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))add(r.endDate,{type:"end",r});
         if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms)))add(r.plannedReturn,{type:"plannedReturn",r});
       } else {
-        (r.cycles||[]).filter(c=>!c.cancelled).forEach(c=>{
+        // Pierwszy okres (data = start wypożyczenia) to w kalendarzu Wydanie sprzętu, nie "opłata cykliczna" —
+        // pokazuje konkretną godzinę/całodniowość dostawy, kolejne okresy to już realne przypomnienia o opłacie
+        (r.cycles||[]).filter(c=>!c.cancelled&&(c.dueDate||c.month+"-01")!==r.startDate).forEach(c=>{
           const cd=c.dueDate||c.month+"-01";
           if(visibleMonths.includes(cd.slice(0,7))){
             add(cd,{type:"cycle",c,r});
           }
         });
-        if(visibleMonths.some(ms=>r.startDate.startsWith(ms))&&!(r.cycles||[]).some(c=>(c.dueDate||c.month+"-01").startsWith(r.startDate.slice(0,7)))){
+        if(visibleMonths.some(ms=>r.startDate.startsWith(ms))){
           add(r.startDate,{type:"start",r});
         }
         if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms))){
