@@ -8,7 +8,7 @@ function nextCycleEnd(r, today) {
   return {date,cycle:null};
 }
 
-function MiniCalendar({visits,rentals,setRentals,today,onEditVisit,onAddVisit,onGoToRental,onAddRental,events,setEvents,patients}) {
+function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,onAddRental,events,setEvents,patients}) {
   const dk=useContext(DarkCtx);
   const demo=useDemo();
   const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
@@ -107,14 +107,8 @@ function MiniCalendar({visits,rentals,setRentals,today,onEditVisit,onAddVisit,on
   const holidays=useMemo(()=>getHolidays(calYear),[calYear]);
 
   const openDateStr=openDay||null;
-  // Odhaczanie zadań sprzętowych na dany dzień — czysto organizacyjne, nie zmienia statusu/płatności wypożyczenia
-  const isTaskDone=(r,type)=>!!(r.taskDone&&r.taskDone[openDay+":"+type]);
-  const toggleTask=(r,type)=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,taskDone:{...(x.taskDone||{}),[openDay+":"+type]:!isTaskDone(x,type)}}:x));
-  const Check=({checked,onToggle})=><button onClick={e=>{e.stopPropagation();onToggle();}} style={{flexShrink:0,width:20,height:20,borderRadius:6,border:`2px solid ${checked?"#3DAA72":"#D9E2F0"}`,background:checked?"#3DAA72":"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0}}>{checked&&<span style={{color:"#fff",fontSize:12,lineHeight:1}}>✓</span>}</button>;
   const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
   const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
-  const dayTasks=dayRentals.filter(ev=>ev.type!=="cyclePreview");
-  const dayTasksDone=dayTasks.filter(ev=>isTaskDone(ev.r,ev.type)).length;
   const dayEvents=openDay?(eventsByDay[openDay]||[]):[];
   const dayAllDay=[
     ...dayEvents.filter(e=>e.allDay).map(x=>({_kind:"event",e:x})),
@@ -179,10 +173,7 @@ function MiniCalendar({visits,rentals,setRentals,today,onEditVisit,onAddVisit,on
 
     {openDay&&<div style={{marginTop:8,background:dk?"#18202F":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div>
-          <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
-          {dayTasks.length>0&&<div style={{fontSize:11,color:dayTasksDone===dayTasks.length?"#3DAA72":"#7A8FA6",fontWeight:600,marginTop:1}}>🔧 {dayTasksDone}/{dayTasks.length} zrobione</div>}
-        </div>
+        <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
         <div style={{display:"flex",gap:6}}>
           <button onClick={()=>{setEvtForm({title:"",date:openDateStr,allDay:false,time:"10:00",notes:"",address:"",editId:null});setShowEvtModal(true);}} style={{background:"#FFF4E8",color:"#F4A261",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wydarzenie</button>
           <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#3DAA72",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
@@ -227,11 +218,10 @@ function MiniCalendar({visits,rentals,setRentals,today,onEditVisit,onAddVisit,on
           const isEndType=ev.type==="end"||ev.type==="plannedReturn";
           const isPaidEnd=isEndType&&remaining2<=0;
           const adSub=ev.r.renewable?null:isEndType?(remaining2>0?`do zapłaty: ${remaining2} zł`:`✅ Opłacono: ${totalAmt2} zł`):ev.type==="start"?totalAmt2+" zł":null;
-          const adDone=isTaskDone(ev.r,ev.type);
-          return <div key={"ad-r"+idx} onClick={()=>setQuickRental(ev.r)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,cursor:"pointer",opacity:adDone?.5:1}}>
+          return <div key={"ad-r"+idx} onClick={()=>setQuickRental(ev.r)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,cursor:"pointer"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
-            <Check checked={adDone} onToggle={()=>toggleTask(ev.r,ev.type)}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A",textDecoration:adDone?"line-through":"none"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
+            <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
+            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
           </div>
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
             {adSub&&<Badge color={isPaidEnd?"#3DAA72":isEndType?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
@@ -280,12 +270,10 @@ function MiniCalendar({visits,rentals,setRentals,today,onEditVisit,onAddVisit,on
 
           const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
           const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
-          const canCheck=ev.type!=="cyclePreview";
-          const done=canCheck&&isTaskDone(ev.r,ev.type);
-          return <div key={"r"+idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,opacity:done?.5:1}}>
+          return <div key={"r"+idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
             <div onClick={()=>setQuickRental(ev.r)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
-              {canCheck?<Check checked={done} onToggle={()=>toggleTask(ev.r,ev.type)}/>:<div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>}
-              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A",textDecoration:done?"line-through":"none"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
+              <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
+              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
@@ -534,7 +522,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
         </div>
       </div>
       <div style={{padding:"0 20px"}}>
-        <MiniCalendar visits={visits} rentals={rentals} setRentals={setRentals} today={today} events={events} setEvents={setEvents} patients={patients}
+        <MiniCalendar visits={visits} rentals={rentals} today={today} events={events} setEvents={setEvents} patients={patients}
           onEditVisit={v=>setEditV({...v,price:String(v.price)})}
           onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
           onGoToRental={goToRental}
