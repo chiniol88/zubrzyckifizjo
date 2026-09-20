@@ -350,7 +350,20 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
     const planned=rentals.filter(r=>r.status==="aktywne"&&r.plannedReturn&&!r.reserved).map(r=>({kind:"return",r,date:r.plannedReturn}));
     const szyny=rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable&&!r.reserved&&!r.plannedReturn).map(r=>({kind:"szyny",r,date:r.endDate}));
     const cykle=rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved&&!r.plannedReturn).map(r=>({kind:"cykl",r,date:nextCycleEnd(r,today).date}));
-    return [...planned,...szyny,...cykle].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+    return [...planned,...szyny,...cykle].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10);
+  },[rentals,today]);
+
+  const overdueCycles = useMemo(()=>{
+    const list=[];
+    rentals.forEach(r=>{
+      if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
+      (r.cycles||[]).forEach(c=>{
+        if(c.paid||c.cancelled)return;
+        const due=c.dueDate||c.month+"-01";
+        if(due<today)list.push({r,c,amount:+c.amount||0});
+      });
+    });
+    return list;
   },[rentals,today]);
 
   const wózkiReminders = useMemo(()=>{
@@ -524,6 +537,12 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
         </div>
       </div>
       <div style={{padding:"0 20px"}}>
+        {overdueCycles.length>0&&<Card onClick={()=>goToRental(overdueCycles[0].r.id)} style={{padding:"12px 16px",marginBottom:12,background:"#FEE2E2",border:"1.5px solid #E05C5C30"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#E05C5C"}}>⚠️ Zaległe opłaty cykliczne: {overdueCycles.length}</div>
+            <div style={{fontWeight:700,fontSize:14,color:"#E05C5C"}}>{demo?"****":overdueCycles.reduce((s,x)=>s+x.amount,0)+" zł"}</div>
+          </div>
+        </Card>}
         <MiniCalendar visits={visits} rentals={rentals} today={today} events={events} setEvents={setEvents} patients={patients}
           onEditVisit={v=>setEditV({...v,price:String(v.price)})}
           onAddVisit={date=>{ setVf({...emptyVisit(),date}); setShowAdd(true); }}
@@ -535,11 +554,11 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
           {reservedRentals.map(r=>{
             const startDl=r.startDate?dateDiff(today,r.startDate):null;
             const waitDays=r.reservedAt?dateDiff(r.reservedAt,today):0;
-            return <Card key={"res-"+r.id} onClick={()=>goToRental(r.id)} style={{borderLeft:"3px solid #7C6AF4"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontWeight:600}}>📋 {r.equipment||"❓ Do ustalenia"}</div>
-                  <div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName}{r.startDate?" · od "+r.startDate:""}</div>
+            return <Card key={"res-"+r.id} onClick={()=>goToRental(r.id)} style={{padding:"9px 14px",marginBottom:6,borderLeft:"3px solid #7C6AF4"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <div style={{minWidth:0,overflow:"hidden"}}>
+                  <span style={{fontWeight:600,fontSize:13}}>📋 {r.equipment||"❓ Do ustalenia"}</span>
+                  <span style={{fontSize:12,color:"#7A8FA6"}}> · {demo?"Pacjent":r.patientName}{r.startDate?" · od "+r.startDate:""}</span>
                 </div>
                 <Badge color={startDl!==null?(startDl<0?"#E05C5C":startDl===0?"#F4A261":"#7C6AF4"):"#F4A261"}>
                   {startDl!==null?(startDl<0?Math.abs(startDl)+"d po term.":startDl===0?"Dziś!":"za "+startDl+"d"):"czeka "+waitDays+"d"}
@@ -547,11 +566,11 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
               </div>
             </Card>;
           })}
-          {birthdayReminders.map(p=><Card key={"bd-"+p.id} style={{background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{fontWeight:600}}>🎂 {demo?"Pacjent":p.name}</div>
-                <div style={{fontSize:13,color:"#7A8FA6"}}>{p._age} lat · {p.birthday.slice(5).split("-").reverse().join(".")}</div>
+          {birthdayReminders.map(p=><Card key={"bd-"+p.id} style={{padding:"9px 14px",marginBottom:6,background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+              <div style={{minWidth:0,overflow:"hidden"}}>
+                <span style={{fontWeight:600,fontSize:13}}>🎂 {demo?"Pacjent":p.name}</span>
+                <span style={{fontSize:12,color:"#7A8FA6"}}> · {p._age} lat · {p.birthday.slice(5).split("-").reverse().join(".")}</span>
               </div>
               <Badge color={p._days===0?"#F4A261":p._days<=3?"#F4A261":"#3DAA72"}>{p._days===0?"Dziś!":p._days===1?"Jutro":"Za "+p._days+" dni"}</Badge>
             </div>
@@ -563,12 +582,15 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
             const remaining=r.renewable?(r.cycles||[]).filter(c=>!c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0):totalAmt-totalPaid;
             const icon=kind==="return"?"🔙 ":kind==="cykl"?"🔁 ":"";
             return(
-            <Card key={kind+"-"+r.id} onClick={()=>goToRental(r.id)} style={kind!=="szyny"?{borderLeft:"3px solid #7C6AF4"}:undefined}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontWeight:600}}>{icon}{r.equipment||"❓ Do ustalenia"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"Pacjent":r.patientName} · {date}</div></div>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+            <Card key={kind+"-"+r.id} onClick={()=>goToRental(r.id)} style={{padding:"9px 14px",marginBottom:6,...(kind!=="szyny"?{borderLeft:"3px solid #7C6AF4"}:{})}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <div style={{minWidth:0,overflow:"hidden"}}>
+                  <span style={{fontWeight:600,fontSize:13}}>{icon}{r.equipment||"❓ Do ustalenia"}</span>
+                  <span style={{fontSize:12,color:"#7A8FA6"}}> · {demo?"Pacjent":r.patientName} · {date}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
                   <Badge color={d<0?"#E05C5C":d===0?"#F4A261":d<7?"#F4A261":"#3DAA72"}>{d<0?Math.abs(d)+"d po term.":d===0?"Dziś!":d+"d"}</Badge>
-                  {remaining>0?<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>:<Badge color="#3DAA72">{demo?"****":kind==="cykl"?"✅ Opłacono":`✅ Opłacono: ${totalAmt} zł`}</Badge>}
+                  {remaining>0?<Badge color="#E05C5C">{demo?"****":remaining+" zł"}</Badge>:<Badge color="#3DAA72">{demo?"****":"✅"}</Badge>}
                 </div>
               </div>
             </Card>
@@ -576,11 +598,11 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
           {wózkiReminders.map(cas=>{
             const nd=nextOrderDate(cas);
             const dl=dateDiff(today,nd);
-            return <Card key={cas.id} onClick={()=>goToWozki(cas.id)}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontWeight:600}}>🦽 {cas.patientName}</div>
-                  <div style={{fontSize:13,color:"#7A8FA6"}}>{cas.hasDisabilityCert?"Z orzeczeniem":"Bez orzeczenia"} · kolejne od {nd}</div>
+            return <Card key={cas.id} onClick={()=>goToWozki(cas.id)} style={{padding:"9px 14px",marginBottom:6}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                <div style={{minWidth:0,overflow:"hidden"}}>
+                  <span style={{fontWeight:600,fontSize:13}}>🦽 {cas.patientName}</span>
+                  <span style={{fontSize:12,color:"#7A8FA6"}}> · {cas.hasDisabilityCert?"Z orzeczeniem":"Bez orzeczenia"} · kolejne od {nd}</span>
                 </div>
                 <span style={{fontSize:13,fontWeight:600,color:"#1C2B3A"}}>{dl<=0?"można złożyć":"za "+dl+"d"}</span>
               </div>
