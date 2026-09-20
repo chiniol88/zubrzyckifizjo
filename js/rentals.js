@@ -887,9 +887,8 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     const willReserve=!x.reserved;
                     const activating=x.reserved&&!willReserve;
                     const needsFirstCycle=activating&&x.renewable&&(x.cycles||[]).length===0;
-                    const firstDue=nextCycleDueDate(x.startDate);
                     return {...x,reserved:willReserve,reservedAt:willReserve?todayLocal():x.reservedAt,
-                      ...(needsFirstCycle?{cycles:[{dueDate:firstDue,month:firstDue.slice(0,7),amount:+(x.amount||0),paid:false,paidDate:null}]}:{})};
+                      ...(needsFirstCycle?{cycles:[{dueDate:x.startDate,month:x.startDate.slice(0,7),amount:+(x.amount||0),paid:false,paidDate:null}]}:{})};
                   }))}
                     style={{width:"100%",padding:"10px 14px",borderRadius:12,border:`1.5px solid ${r.reserved?"#7C6AF4":"#D9E2F0"}`,background:r.reserved?"#F0EEFF":dk?"#1A2A3A":"#fff",color:r.reserved?"#7C6AF4":"#7A8FA6",fontFamily:"inherit",fontWeight:600,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
                     {r.reserved&&<span>✓</span>}📋 Do potwierdzenia
@@ -1167,8 +1166,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
-            const firstDue=nextCycleDueDate(form.startDate);
-            const firstCycle=form.renewable?[{dueDate:firstDue,month:firstDue.slice(0,7),amount:+form.amount||0,paid:false,paidDate:null}]:[];
+            const firstCycle=form.renewable?[{dueDate:form.startDate,month:form.startDate.slice(0,7),amount:+form.amount||0,paid:false,paidDate:null}]:[];
             const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:firstCycle,status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
