@@ -101,12 +101,13 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
 
   const DOW=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
   const cells=[];
-  for(let i=0;i<startOffset;i++)cells.push({d:prevMonthDays-startOffset+1+i,overflow:"prev",ms:prevMonthStr});
+  const leading=startOffset+7;
+  for(let i=0;i<leading;i++)cells.push({d:prevMonthDays-leading+1+i,overflow:"prev",ms:prevMonthStr});
   for(let d=1;d<=daysInMonth;d++)cells.push({d,overflow:null,ms:monthStr});
-  const remaining=(7-cells.length%7)%7;
-  for(let d=1;d<=remaining;d++)cells.push({d,overflow:"next",ms:nextMonthStr});
+  const trailing=(7-cells.length%7)%7+7;
+  for(let d=1;d<=trailing;d++)cells.push({d,overflow:"next",ms:nextMonthStr});
 
-  const holidays=useMemo(()=>getHolidays(calYear),[calYear]);
+  const holidays=useMemo(()=>new Map([...getHolidays(calYear-1),...getHolidays(calYear),...getHolidays(calYear+1)]),[calYear]);
 
   const openDateStr=openDay||null;
   const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
@@ -152,12 +153,12 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const isOpen=dateStr===openDay;
           const colIndex=i%7;
           const isWeekend=colIndex>=5;
-          const isHoliday=!isOverflow&&holidays.has(dateStr);
-          const overflowColor=dk?"#2A3A3A":"#C8D4D8";
+          const isHoliday=holidays.has(dateStr);
+          const overflowColor=dk?"#8FA3B8":"#7A8FA6";
           const normalBg=isHoliday?(dk?"#5A0A0A":"#FCCFCF"):isWeekend?(dk?"rgba(244,162,97,0.22)":"rgba(244,162,97,0.28)"):"transparent";
           const normalColor=isHoliday?"#B71C1C":isWeekend?(dk?"#F4A261":"#C0622A"):(dk?"#C8E8E8":"#1C2B3A");
-          return <div key={dateStr} onClick={()=>setOpenDay(isOpen?null:dateStr)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",opacity:isOverflow?0.45:1,background:isOpen?"#3E6FB0":isToday?(dk?"#0A3030":"#E1E9F5"):isOverflow?"transparent":normalBg}}>
-            <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#3E6FB0":isOverflow?overflowColor:normalColor}}>{d}</span>
+          return <div key={dateStr} onClick={()=>setOpenDay(isOpen?null:dateStr)} style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"5px 2px",borderRadius:10,cursor:"pointer",opacity:isOverflow?0.7:1,background:isOpen?"#3E6FB0":isToday?(dk?"#0A3030":"#E1E9F5"):normalBg}}>
+            <span style={{fontSize:13,fontWeight:isToday||isOpen?700:400,color:isOpen?"#fff":isToday?"#3E6FB0":isOverflow?overflowColor:normalColor}}>{isOverflow&&d===1?d+"."+ms.slice(5):d}</span>
             <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
               {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#3DAA72"}}/>)}
               {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
