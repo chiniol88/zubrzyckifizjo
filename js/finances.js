@@ -1,3 +1,46 @@
+    // ── OBŁOŻENIE SPRZĘTU — liczone dzień po dniu ────────────────────────────
+    // Zajętość dnia = liczba wypożyczeń naraz, ale nie więcej niż sztuk z magazynu (z historią zmian),
+    // więc wynik nie może przekroczyć 100%; nakładanie się wypożyczeń ponad liczbę sztuk jest zliczane osobno (overlapDays). Start liczenia = data dodania albo pierwsze wypożyczenie (co wcześniej).
+    function occupancyForEq(eq,rentals,stock,from,to,today) {
+      const DAY=864e5,ts=d=>Date.parse(d+"T12:00:00Z"),fmtD=t=>new Date(t).toISOString().slice(0,10);
+      const added=(stock&&stock.addedDate&&stock.addedDate[eq])||"";
+      const rs=rentals.filter(r=>r.equipment===eq&&r.startDate&&!r.reserved);
+      const firstRent=rs.reduce((m,r)=>(!m||r.startDate<m)?r.startDate:m,"");
+      const start=[added,firstRent].filter(Boolean).sort()[0]||"";
+      const out={start,missingAdded:!added,days:[],booked:0,cap:0,overlapDays:0,pct:0,noData:true};
+      if(!start)return out;
+      const lo=from>start?from:start,hi=to<today?to:today;
+      if(lo>hi)return out;
+      const n=Math.round((ts(hi)-ts(lo))/DAY)+1,diff=new Array(n+2).fill(0);
+      rs.forEach(r=>{
+        const s=r.startDate;
+        const e=r.status==="aktywne"?today:(r.endDate||s);
+        if(e<s)return;
+        const cs=s>lo?s:lo,ce=e<hi?e:hi;
+        if(cs>ce)return;
+        diff[Math.round((ts(cs)-ts(lo))/DAY)]++;
+        diff[Math.round((ts(ce)-ts(lo))/DAY)+1]--;
+      });
+      const hist=((stock&&stock.history)||[]).filter(h=>h.eq===eq&&h.from).sort((a,b)=>a.from.localeCompare(b.from));
+      const curQty=(stock&&stock.qty&&stock.qty[eq])||1;
+      const capAt=d=>{
+        let q=null;hist.forEach(h=>{if(h.from<=d)q=+h.qty||1;});
+        if(q!==null)return q;
+        return hist.length?(hist[0].prev!=null?+hist[0].prev||1:+hist[0].qty||1):curQty;
+      };
+      let c=0;
+      for(let i=0;i<n;i++){
+        c+=diff[i];
+        const d=fmtD(ts(lo)+i*DAY),rec=capAt(d);
+        if(c>rec)out.overlapDays++;
+        out.days.push({d,c,cap:rec});
+        out.booked+=Math.min(c,rec);out.cap+=rec;
+      }
+      out.noData=false;
+      out.pct=out.cap>0?Math.round(out.booked/out.cap*100):0;
+      return out;
+    }
+
     // ── STATYSTYKI (dawniej Sprzęt) — lista rozwijana ────────────────────────
     function StatSpark({vals,w,h,color,sel}) {
       const mx=Math.max(1,...vals)*1.08;
@@ -194,33 +237,12 @@
       const saveRepair=(eq,rep)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:[...(ex.repairs||[]).filter(r=>r.id!==rep.id),rep]}}};});
       const deleteRepair=(eq,id)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});
 
-      // Obłożenie sprzętu — % dni wypożyczenia w wybranym okresie
-      const rentedDaysIn=(eq,from,to)=>{
-        let n=0;
-        rentals.filter(r=>r.equipment===eq).forEach(r=>{
-          const s=r.startDate||"";if(!s)return;
-          const e=r.endDate||(r.status==="aktywne"?today:s);
-          const cs=s<from?from:s,ce=e>to?to:e;
-          if(cs>ce)return;
-          n+=Math.round((new Date(ce)-new Date(cs))/86400000)+1;
-        });
-        return n;
-      };
-      const dayCovered=(eq,ds)=>rentals.some(r=>r.equipment===eq&&r.startDate&&r.startDate<=ds&&ds<=(r.endDate||(r.status==="aktywne"?today:r.startDate)));
-      const occStats=useMemo(()=>{
-        const cutEnd2=today<pEnd?today:pEnd;
-        return equipmentAll.map(eq=>{
-          const qty=getQty(eq);
-          const added=(stock&&stock.addedDate&&stock.addedDate[eq])||"";
-          const eqStart=added>pStart?added:pStart;
-          if(eqStart>cutEnd2)return{eq,qty,rentedDays:0,totalSlots:0,pct:0};
-          const elapsed=Math.round((new Date(cutEnd2)-new Date(eqStart))/86400000)+1;
-          const rentedDays=rentedDaysIn(eq,eqStart,cutEnd2);
-          const totalSlots=elapsed*qty;
-          return{eq,qty,rentedDays,totalSlots,pct:totalSlots>0?Math.min(100,Math.round(rentedDays/totalSlots*100)):0};
-        }).filter(x=>x.rentedDays>0||x.qty>1);
-      },[rentals,pStart,pEnd,stock,today]);
-      const avgOcc=occStats.length>0?Math.round(occStats.reduce((s,x)=>s+x.pct,0)/occStats.length):0;
+      // Obłożenie — tylko szyny CPM, liczone dzień po dniu (patrz occupancyForEq)
+      const occStats=useMemo(()=>equipmentAll.filter(eq=>catOf(eq)==="szyny")
+        .map(eq=>({eq,qty:getQty(eq),...occupancyForEq(eq,rentals,stock,pStart,pEnd,today)}))
+        .filter(x=>!x.noData),[rentals,pStart,pEnd,stock,today]);
+      const occBooked=occStats.reduce((s,x)=>s+x.booked,0),occCap=occStats.reduce((s,x)=>s+x.cap,0);
+      const avgOcc=occCap>0?Math.round(occBooked/occCap*100):0;
       const occCol=p=>p>=70?GREEN:p>=40?ORANGE:RED;
 
       // ROI — wiersze
@@ -409,39 +431,50 @@
           </div>}
         </StatAcc>
 
-        {/* 3. Obłożenie sprzętu */}
-        <StatAcc dk={dk} open={openSec==="occ"} onToggle={tog("occ")} title="Obłożenie sprzętu" sub={occStats.length>0?"średnio "+avgOcc+"% dni w okresie":"brak danych w okresie"}
+        {/* 3. Obłożenie szyn CPM */}
+        <StatAcc dk={dk} open={openSec==="occ"} onToggle={tog("occ")} title="Obłożenie szyn CPM" sub={occStats.length>0?"średnio "+avgOcc+"% dni w okresie":"brak danych w okresie"}
           mini={occStats.length>0?miniOcc:null} keyVal={occStats.length>0?avgOcc+"%":"—"} keyColor={occStats.length>0?occCol(avgOcc):subC}>
-          {occStats.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak wypożyczeń w tym okresie</div>}
+          {occStats.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak danych o szynach CPM w tym okresie</div>}
           {occStats.map(x=>{
             const col=occCol(x.pct);
+            const preStyle={height:16,borderRadius:3,background:"transparent",boxShadow:"inset 0 0 0 1px "+trackC};
             let strip;
             if(!isYear){
-              const days=Array.from({length:monthLastDay},(_,i)=>dayCovered(x.eq,selMonth+"-"+String(i+1).padStart(2,"0")));
-              strip=<><div style={{display:"grid",gridTemplateColumns:"repeat("+monthLastDay+",1fr)",gap:2}}>{days.map((f,i)=><i key={i} style={{height:16,borderRadius:3,background:f?col:trackC}}/>)}</div>
+              const byDate={};x.days.forEach(d=>{byDate[d.d]=d;});
+              const cells=Array.from({length:monthLastDay},(_,i)=>{
+                const ds=selMonth+"-"+String(i+1).padStart(2,"0");
+                const d=byDate[ds];
+                if(d)return <i key={i} style={{height:16,borderRadius:3,background:d.c>0?col:trackC}}/>;
+                return <i key={i} style={ds>today?{height:16,borderRadius:3,background:trackC,opacity:.4}:preStyle}/>;
+              });
+              strip=<><div style={{display:"grid",gridTemplateColumns:"repeat("+monthLastDay+",1fr)",gap:2}}>{cells}</div>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:subC,marginTop:3}}><span>1</span><span>10</span><span>20</span><span>{monthLastDay}</span></div></>;
             }else{
               const cells=Array.from({length:12},(_,i)=>{
                 const ym=statsYear+"-"+String(i+1).padStart(2,"0");
-                const last=new Date(statsYear,i+1,0).getDate();
-                const ms=ym+"-01",me=ym+"-"+String(last).padStart(2,"0");
-                const end=today<me?today:me;
-                if(ms>end)return 0;
-                const el=Math.round((new Date(end)-new Date(ms))/86400000)+1;
-                return Math.min(100,Math.round(rentedDaysIn(x.eq,ms,end)/(el*x.qty)*100));
+                const me=ym+"-"+String(new Date(statsYear,i+1,0).getDate()).padStart(2,"0");
+                const o=occupancyForEq(x.eq,rentals,stock,ym+"-01",me,today);
+                if(o.noData)return <i key={i} style={me>today?{height:16,borderRadius:3,background:trackC,opacity:.4}:preStyle}/>;
+                return <i key={i} style={{height:16,borderRadius:3,background:"color-mix(in srgb,"+col+" "+Math.max(o.pct>0?14:0,o.pct)+"%,"+trackC+")"}}/>;
               });
-              strip=<><div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:2}}>{cells.map((q,i)=><i key={i} style={{height:16,borderRadius:3,background:"color-mix(in srgb,"+col+" "+Math.max(q>0?14:0,q)+"%,"+trackC+")"}}/>)}</div>
+              strip=<><div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:2}}>{cells}</div>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:subC,marginTop:3}}>{["S","L","M","K","M","C","L","S","W","P","L","G"].map((l,i)=><span key={i}>{l}</span>)}</div></>;
             }
+            const fmtPl=d=>d.slice(8)+"."+d.slice(5,7)+"."+d.slice(0,4);
             return <div key={x.eq} style={{marginBottom:14}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5,gap:8}}>
                 <b style={{fontSize:13,fontWeight:600,color:textC,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.eq}{x.qty>1&&<span style={{color:subC,fontWeight:400}}> ({x.qty} szt.)</span>}</b>
                 <b style={{color:col,fontVariantNumeric:"tabular-nums"}}>{x.pct}%</b>
               </div>
               {strip}
+              <div style={{fontSize:10,color:subC,marginTop:4,lineHeight:1.45}}>
+                {x.start>pStart&&<div>liczone od {fmtPl(x.start)}</div>}
+                {x.missingAdded&&<div>brak daty dodania — start = pierwsze wypożyczenie ({fmtPl(x.start)}). Uzupełnij w Sprzęt → Edytuj.</div>}
+                {x.overlapDays>0&&<div style={{color:ORANGE}}>⚠ {x.overlapDays} dni: więcej wypożyczeń naraz niż sztuk ({x.qty}) — sprawdź daty lub liczbę sztuk</div>}
+              </div>
             </div>;
           })}
-          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>{isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy sprzęt był wypożyczony."} Liczone od daty dodania sprzętu.</div>
+          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Tylko szyny CPM. {isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."} Liczone od daty dodania sprzętu (albo pierwszego wypożyczenia), rezerwacje się nie liczą. Pusta ramka = przed dodaniem sprzętu.</div>
         </StatAcc>
 
         {/* 4. Opłacalność sprzętu */}

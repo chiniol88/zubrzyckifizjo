@@ -311,7 +311,7 @@
           const newQty=+draft[eq]||1;
           const oldQty=prevQty[eq]||1;
           if(newQty!==oldQty){
-            history.push({eq,qty:newQty,from:today});
+            history.push({eq,qty:newQty,prev:oldQty,from:today});
           }
         });
         const newQty={...qty,...Object.fromEntries(activeNames.map(eq=>[eq,+draft[eq]||1]))};
