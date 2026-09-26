@@ -14,7 +14,7 @@
       const n=Math.round((ts(hi)-ts(lo))/DAY)+1,diff=new Array(n+2).fill(0);
       rs.forEach(r=>{
         const s=r.startDate;
-        const e=r.status==="aktywne"?today:(r.endDate||s);
+        const e=r.status==="aktywne"?today:(r.returnedDate||r.endDate||s);
         if(e<s)return;
         const cs=s>lo?s:lo,ce=e<hi?e:hi;
         if(cs>ce)return;
@@ -148,8 +148,8 @@
       const avgDurationByEq=useMemo(()=>{
         const map={};
         equipmentAll.forEach(eq=>{
-          const finished=rentals.filter(r=>r.equipment===eq&&r.status==="zakończone"&&r.startDate&&r.endDate);
-          map[eq]=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+          const finished=rentals.filter(r=>r.equipment===eq&&r.status==="zakończone"&&r.startDate&&(r.returnedDate||r.endDate));
+          map[eq]=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.returnedDate||r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
         });
         return map;
       },[rentals,stock]);
@@ -207,20 +207,16 @@
 
         const monthlyArr=Object.keys(monthlyRev).sort().map(m=>[m,monthlyRev[m],monthlyWoz[m]]);
         const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]+x[2]),1);
-        const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
-        const lastUsed={};
-        rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
-        const idle=equipmentAll.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays);
         const durationIncludeMap=(stock&&stock.durationInclude)||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
-        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
-        const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&(r.returnedDate||r.endDate)&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
+        const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.returnedDate||r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
         const marketingSpend=isYear
           ?Array.from({length:12},(_,i)=>marketingSpendForMonth(budget,stock,statsYear+"-"+String(i+1).padStart(2,"0"))).reduce((a,b)=>a+b,0)
           :marketingSpendForMonth(budget,stock,selMonth);
 
-        return {totalRevenue,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,idle,cutStr,cutEnd,avgDuration,marketingSpend};
+        return {totalRevenue,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDuration,marketingSpend};
       },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,stock,budget]);
       const totalAll=stats.totalRevenue+stats.wozkiRevenue;
 
@@ -575,14 +571,6 @@
             </div>;
           })}
           <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Kreska = punkt zwrotu (zakup + naprawy). Nie zależy od wybranego okresu. Dotknij sprzętu, aby wpisać zakup i naprawy.</div>
-        </StatAcc>
-
-        {/* 5. Bezczynny sprzęt */}
-        <StatAcc dk={dk} open={openSec==="idle"} onToggle={tog("idle")} title="Bezczynny sprzęt" sub={stats.idle.length>0?"stoi bez wypożyczenia":"cały sprzęt w użyciu"}
-          keyVal={stats.idle.length+" szt."} keyColor={stats.idle.length>0?ORANGE:GREEN}>
-          {stats.idle.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"6px 0"}}>Cały sprzęt jest teraz wypożyczony</div>}
-          {stats.idle.map(x=>kv(x.eq,x.idleDays+" dni bez wyp.",x.idleDays>90?RED:x.idleDays>30?ORANGE:subC))}
-          {kv("Średni czas wypożyczenia (okres)",stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych")}
         </StatAcc>
 
         {repairForm&&(()=>{
