@@ -1,11 +1,56 @@
+    // ── STATYSTYKI (dawniej Sprzęt) — lista rozwijana ────────────────────────
+    function StatSpark({vals,w,h,color,sel}) {
+      const mx=Math.max(1,...vals)*1.08;
+      const pts=vals.map((v,i)=>[2+i/Math.max(1,vals.length-1)*(w-4),h-2-(v/mx)*(h-6)]);
+      const line=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+      const area=line+" L"+pts[pts.length-1][0].toFixed(1)+" "+h+" L"+pts[0][0].toFixed(1)+" "+h+" Z";
+      const gid="sg"+color.slice(1)+w;
+      return <svg width={w} height={h} viewBox={"0 0 "+w+" "+h} aria-hidden="true"><defs><linearGradient id={gid} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".32"/><stop offset="1" stopColor={color} stopOpacity="0"/></linearGradient></defs><path d={area} fill={"url(#"+gid+")"}/><path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>{sel!=null&&pts[sel]&&<circle cx={pts[sel][0]} cy={pts[sel][1]} r="3.6" fill={color}/>}</svg>;
+    }
+
+    function StatDonut({rows,size,top,bottom,track,ink,sub}) {
+      const r=size/2-9,c=2*Math.PI*r;
+      const tot=rows.reduce((s,x)=>s+x.v,0)||1;
+      let off=0;
+      return <svg width={size} height={size} viewBox={"0 0 "+size+" "+size} role="img" aria-label="Udział źródeł">
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={track} strokeWidth="13"/>
+        {rows.filter(x=>x.v>0).map(x=>{
+          const l=x.v/tot*c,g=Math.min(2,l*.2);
+          const el=<circle key={x.k} cx={size/2} cy={size/2} r={r} fill="none" stroke={x.c} strokeWidth="13" strokeDasharray={Math.max(0,l-g).toFixed(1)+" "+(c-l+g).toFixed(1)} strokeDashoffset={(-off).toFixed(1)} transform={"rotate(-90 "+size/2+" "+size/2+")"}/>;
+          off+=l;return el;
+        })}
+        <text x="50%" y={size/2-1} textAnchor="middle" fontFamily="Syne" fontWeight="800" fontSize="20" fill={ink}>{top}</text>
+        <text x="50%" y={size/2+14} textAnchor="middle" fontSize="10" fill={sub} fontFamily="DM Sans">{bottom}</text>
+      </svg>;
+    }
+
+    function StatAcc({open,onToggle,title,sub,mini,keyVal,keyColor,children,dk}) {
+      const bd=dk?"#2A3A56":"#E4EAF3";
+      return <div style={{background:dk?"#18202F":"#fff",border:"1px solid "+bd,borderRadius:18,marginBottom:10,overflow:"hidden"}}>
+        <button onClick={onToggle} aria-expanded={open} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"14px 16px",border:"none",background:"none",textAlign:"left",cursor:"pointer",fontFamily:"inherit",color:dk?"#C8E8E8":"#1C2B3A"}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:14,fontWeight:700}}>{title}</div>
+            <div style={{fontSize:11,color:"#7A8FA6",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sub}</div>
+          </div>
+          {mini&&<div style={{flexShrink:0,display:"flex",alignItems:"center"}}>{mini}</div>}
+          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:16,color:keyColor||"inherit",whiteSpace:"nowrap",textAlign:"right",minWidth:48}}>{keyVal}</div>
+          <div style={{color:"#7A8FA6",fontSize:10,transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}>▼</div>
+        </button>
+        {open&&<div style={{padding:"14px 16px 16px",borderTop:"1px solid "+bd}}>{children}</div>}
+      </div>;
+    }
+
     function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines,nfzCases}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
+      const [scope,setScope]=useState("month");
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
+      const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
+      const [openSec,setOpenSec]=useState("rev");
       const [roiEq,setRoiEq]=useState(null);
       const [repairForm,setRepairForm]=useState(null);
-      const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
-      const [srcYearTab,setSrcYearTab]=useState("all");
+      const [showRentalList,setShowRentalList]=useState(false);
+      const [srcTab,setSrcTab]=useState("all");
       const equipmentAll=getActiveEquipmentNames(stock);
       const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
       const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
@@ -14,24 +59,21 @@
         if(entry&&entry.category)return entry.category;
         return SZYNY_EQ.includes(eq)?"szyny":WOZEK_EQUIPMENT.includes(eq)?"wozki":BALKONIKI_EQ.includes(eq)?"balkoniki":"inne";
       };
-      const sourceStats=useMemo(()=>{
-        const yr=String(statsYear);
-        const base=rentals.filter(r=>r.status==="zakończone"&&(r.startDate||"").startsWith(yr)&&(srcYearTab==="all"||catOf(r.equipment)===srcYearTab));
-        return [...RENTAL_SOURCES.map(s=>s.value),""].map(sv=>{
-          const rows=base.filter(r=>(r.source||"")===sv);
-          const src=RENTAL_SOURCES.find(s=>s.value===sv);
-          return{value:sv,label:src?src.label:"❓ Nieznane",color:src?src.color:"#7A8FA6",cnt:rows.length,rev:rows.reduce((s,r)=>s+calcRentalPaid(r),0)};
-        }).filter(x=>x.cnt>0).sort((a,b)=>b.cnt-a.cnt);
-      },[rentals,statsYear,srcYearTab]);
-      const statsTotalCnt=sourceStats.reduce((s,x)=>s+x.cnt,0);
-      const statsTotalRev=sourceStats.reduce((s,x)=>s+x.rev,0);
-      const [showRentalList,setShowRentalList]=useState(false);
-      const [srcTab,setSrcTab]=useState("all");
       const today=todayLocal();
-      const borderC=dk?"#2A3A56":"#EFF3FA";
+      const borderC=dk?"#2A3A56":"#E4EAF3";
       const textC=dk?"#C8E8E8":"#1C2B3A";
       const subC="#7A8FA6";
       const bg=dk?"#18202F":"#fff";
+      const trackC=dk?"#22304B":"#EAEFF6";
+      const Z=n=>demo?"****":Math.round(n).toLocaleString("pl-PL")+" zł";
+      const PURPLE="#7B4FBF",BLUE="#2E86AB",GREEN="#3DAA72",ORANGE="#F4A261",RED="#E05C5C";
+
+      // Okres: miesiąc albo cały rok
+      const isYear=scope==="year";
+      const monthLastDay=new Date(+selMonth.slice(0,4),+selMonth.slice(5,7),0).getDate();
+      const pStart=isYear?statsYear+"-01-01":selMonth+"-01";
+      const pEnd=isYear?statsYear+"-12-31":selMonth+"-"+String(monthLastDay).padStart(2,"0");
+      const periodLabel=isYear?String(statsYear):new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
 
       // Mapa: rentalId → sprzęt
       const rentalEquipMap=useMemo(()=>{const m={};rentals.forEach(r=>{if(r.equipment)m[r.id]=r.equipment;});return m;},[rentals]);
@@ -69,19 +111,23 @@
         return map;
       },[rentals,stock]);
 
-      // Statystyki miesięczne — konkretny miesiąc kalendarzowy
+      // Statystyki okresu (miesiąc lub rok)
       const stats=useMemo(()=>{
-        const cutStr=selMonth+"-01";
-        const lastDay=new Date(new Date(selMonth+"-01").getFullYear(),new Date(selMonth+"-01").getMonth()+1,0).getDate();
-        const cutEnd=selMonth+"-"+String(lastDay).padStart(2,"0");
+        const cutStr=pStart,cutEnd=pEnd;
 
-        // ── PRZYCHÓD ────────────────────────────────────────────────────────────
+        // Wózki z refundacji — przychód zrealizowany (finances z sourceId "wozek-<id>")
+        const wozkiF=(finances||[]).filter(f=>{
+          if(f.type!=="przychód")return false;
+          const sid=f.sourceId||"";if(!sid.startsWith("wozek-"))return false;
+          const cid=+sid.slice(6);return !!cid&&(nfzCases||[]).some(x=>x.id===cid);
+        });
+
         // Inicjalizacja wykresu 12 miesięcy
-        const monthlyRev={};
-        for(let i=0;i<12;i++){const d=new Date(today);d.setMonth(d.getMonth()-i);monthlyRev[d.toISOString().slice(0,7)]=0;}
+        const monthlyRev={},monthlyWoz={};
+        for(let i=0;i<12;i++){const d=new Date(today);d.setMonth(d.getMonth()-i);const k=d.toISOString().slice(0,7);monthlyRev[k]=0;monthlyWoz[k]=0;}
 
         // 1) Wpłaty z tablicy finances (mają właściwy sourceId linkujący do rental)
-        const countedRids=new Set(); // rentale policzone z finances (żeby nie dublować z legacy)
+        const countedRids=new Set();
         let totalRevenue=0;
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód")return;
@@ -92,12 +138,11 @@
           if(monthlyRev.hasOwnProperty(m))monthlyRev[m]+=(+f.amount||0);
         });
 
-        // 2) Legacy: rental z amountPaid > 0 ale bez tablicy payments (brak wpisu w finances)
-        //    Używamy startDate jako przybliżonej daty wpłaty
+        // 2) Legacy: rental z amountPaid > 0 ale bez tablicy payments
         rentals.forEach(r=>{
-          if(countedRids.has(r.id))return; // już policzone z finances
-          if((r.payments||[]).length>0)return; // ma payments — powinny być w finances
-          if((r.cycles||[]).length>0)return; // odnawialne — cykle obsługiwane osobno
+          if(countedRids.has(r.id))return;
+          if((r.payments||[]).length>0)return;
+          if((r.cycles||[]).length>0)return;
           const paid=+r.amountPaid||0;if(paid<=0)return;
           const d=r.startDate||"";
           if(d>=cutStr&&d<=cutEnd)totalRevenue+=paid;
@@ -105,37 +150,40 @@
           if(monthlyRev.hasOwnProperty(m))monthlyRev[m]+=paid;
         });
 
-        // ── LICZBA WYPOŻYCZEŃ ────────────────────────────────────────────────────
-        // Wypożyczenia które ZACZĘŁY SIĘ w miesiącu (nie rezerwacje czekające na start)
-        const totalCount=rentals.filter(r=>
-          (r.startDate||"")>=cutStr&&
-          (r.startDate||"")<=cutEnd&&
-          !r.reserved
-        ).length;
+        // 3) Wózki (refundacje)
+        let wozkiRevenue=0,wozkiCount=0;
+        wozkiF.forEach(f=>{
+          const d=f.date||"";
+          if(d>=cutStr&&d<=cutEnd){wozkiRevenue+=(+f.amount||0);wozkiCount++;}
+          const m=d.slice(0,7);
+          if(monthlyWoz.hasOwnProperty(m))monthlyWoz[m]+=(+f.amount||0);
+        });
 
-        // ── POZOSTAŁE METRYKI ────────────────────────────────────────────────────
-        const monthlyArr=Object.entries(monthlyRev).sort((a,b)=>a[0].localeCompare(b[0]));
-        const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]),1);
+        // Liczba wypożyczeń które ZACZĘŁY SIĘ w okresie (nie rezerwacje)
+        const totalCount=rentals.filter(r=>(r.startDate||"")>=cutStr&&(r.startDate||"")<=cutEnd&&!r.reserved).length;
+
+        const monthlyArr=Object.keys(monthlyRev).sort().map(m=>[m,monthlyRev[m],monthlyWoz[m]]);
+        const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]+x[2]),1);
         const activeEqs=new Set(rentals.filter(r=>r.status==="aktywne").map(r=>r.equipment));
         const lastUsed={};
         rentals.filter(r=>r.status==="zakończone").forEach(r=>{const d=r.endDate||r.startDate;if(!lastUsed[r.equipment]||d>lastUsed[r.equipment])lastUsed[r.equipment]=d;});
-        const idle=equipmentAll.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays).slice(0,3);
+        const idle=equipmentAll.filter(eq=>!activeEqs.has(eq)&&lastUsed[eq]).map(eq=>({eq,idleDays:Math.round((new Date(today)-new Date(lastUsed[eq]))/(1000*60*60*24))})).sort((a,b)=>b.idleDays-a.idleDays);
         const durationIncludeMap=(stock&&stock.durationInclude)||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
         const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
         const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+        const marketingSpend=isYear
+          ?Array.from({length:12},(_,i)=>marketingSpendForMonth(budget,stock,statsYear+"-"+String(i+1).padStart(2,"0"))).reduce((a,b)=>a+b,0)
+          :marketingSpendForMonth(budget,stock,selMonth);
 
-        // ── MARKETING ───────────────────────────────────────────────────────────
-        const marketingSpend=marketingSpendForMonth(budget,stock,selMonth);
-
-        return {totalRevenue,totalCount,monthlyArr,maxMonthly,idle,cutStr,cutEnd,avgDuration,marketingSpend};
-      },[rentals,finances,selMonth,today,rentalEquipMap,paymentRentalMap,stock,budget]);
+        return {totalRevenue,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,idle,cutStr,cutEnd,avgDuration,marketingSpend};
+      },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,stock,budget]);
+      const totalAll=stats.totalRevenue+stats.wozkiRevenue;
 
       const costs=(stock&&stock.costs)||{};
       const getCosts=eq=>costs[eq]||{purchase:0,repairs:[]};
       const getQty=eq=>(stock&&stock.qty&&stock.qty[eq])||1;
-      // domyślnie wyłączone dla krótkoterminowych, włączone dla reszty — można nadpisać ręcznie
       const DURATION_OFF_BY_DEFAULT=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
       const getDurationInclude=eq=>(stock&&stock.durationInclude&&stock.durationInclude[eq]!==undefined)?stock.durationInclude[eq]:!DURATION_OFF_BY_DEFAULT.includes(eq);
       const setDurationInclude=(eq,val)=>setStock(s=>({...s,durationInclude:{...(s.durationInclude||{}),[eq]:val}}));
@@ -146,36 +194,44 @@
       const saveRepair=(eq,rep)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:[...(ex.repairs||[]).filter(r=>r.id!==rep.id),rep]}}};});
       const deleteRepair=(eq,id)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});
 
-      // Yield / obłożenie sprzętu — % dni w roku gdy dana szyna była wypożyczona
-      // (licząc od daty dodania sprzętu do magazynu, jeśli podana — żeby nie liczyć dni sprzed zakupu)
-      const yieldStats=useMemo(()=>{
-        const yStart=statsYear+"-01-01";
-        const yEnd=statsYear+"-12-31";
-        const cutEnd=today<yEnd?today:yEnd;
+      // Obłożenie sprzętu — % dni wypożyczenia w wybranym okresie
+      const rentedDaysIn=(eq,from,to)=>{
+        let n=0;
+        rentals.filter(r=>r.equipment===eq).forEach(r=>{
+          const s=r.startDate||"";if(!s)return;
+          const e=r.endDate||(r.status==="aktywne"?today:s);
+          const cs=s<from?from:s,ce=e>to?to:e;
+          if(cs>ce)return;
+          n+=Math.round((new Date(ce)-new Date(cs))/86400000)+1;
+        });
+        return n;
+      };
+      const dayCovered=(eq,ds)=>rentals.some(r=>r.equipment===eq&&r.startDate&&r.startDate<=ds&&ds<=(r.endDate||(r.status==="aktywne"?today:r.startDate)));
+      const occStats=useMemo(()=>{
+        const cutEnd2=today<pEnd?today:pEnd;
         return equipmentAll.map(eq=>{
           const qty=getQty(eq);
           const added=(stock&&stock.addedDate&&stock.addedDate[eq])||"";
-          const eqStart=added>yStart?added:yStart;
-          if(eqStart>cutEnd)return{eq,qty,rentedDays:0,idleDays:0,totalSlots:0,pct:0};
-          const elapsedDays=Math.round((new Date(cutEnd)-new Date(eqStart))/86400000)+1;
-          let rentedDays=0;
-          rentals.filter(r=>r.equipment===eq).forEach(r=>{
-            const s=r.startDate||"";if(!s)return;
-            const e=r.endDate||(r.status==="aktywne"?today:s);
-            const clipS=s<eqStart?eqStart:s;
-            const clipE=e>cutEnd?cutEnd:e;
-            if(clipS>clipE)return;
-            rentedDays+=Math.round((new Date(clipE)-new Date(clipS))/86400000)+1;
-          });
-          const totalSlots=elapsedDays*qty;
-          const pct=totalSlots>0?Math.round((rentedDays/totalSlots)*100):0;
-          const idleDays=Math.max(0,totalSlots-rentedDays);
-          return{eq,qty,rentedDays,idleDays,totalSlots,pct};
+          const eqStart=added>pStart?added:pStart;
+          if(eqStart>cutEnd2)return{eq,qty,rentedDays:0,totalSlots:0,pct:0};
+          const elapsed=Math.round((new Date(cutEnd2)-new Date(eqStart))/86400000)+1;
+          const rentedDays=rentedDaysIn(eq,eqStart,cutEnd2);
+          const totalSlots=elapsed*qty;
+          return{eq,qty,rentedDays,totalSlots,pct:totalSlots>0?Math.min(100,Math.round(rentedDays/totalSlots*100)):0};
         }).filter(x=>x.rentedDays>0||x.qty>1);
-      },[rentals,statsYear,stock,today]);
+      },[rentals,pStart,pEnd,stock,today]);
+      const avgOcc=occStats.length>0?Math.round(occStats.reduce((s,x)=>s+x.pct,0)/occStats.length):0;
+      const occCol=p=>p>=70?GREEN:p>=40?ORANGE:RED;
 
-      const allTimeTotal=equipmentAll.reduce((s,eq)=>s+(allTimeRevenue[eq]||0),0);
-      // Kategorie z budżetu do pickera marketingu
+      // ROI — wiersze
+      const roiRows=equipmentAll.map(eq=>{
+        const earned=allTimeRevenue[eq]||0,investment=getTotalInvestment(eq);
+        return {eq,earned,investment,roi:investment>0?Math.round(earned/investment*100):null};
+      });
+      const roiKnown=roiRows.filter(x=>x.investment>0);
+      const roiDone=roiKnown.filter(x=>x.earned>=x.investment).length;
+
+      // Marketing — picker kategorii z budżetu (Dom)
       const mktgCat=(stock&&stock.marketingCat)||"";
       const mktgSub=(stock&&stock.marketingSub)||"";
       const budgetCatMap={};
@@ -185,212 +241,214 @@
       ((budget&&budget.recurring)||[]).forEach(function(r){if(r.type==="expense"&&r.cat){if(!budgetCatMap[r.cat])budgetCatMap[r.cat]=[];if(r.subcat&&budgetCatMap[r.cat].indexOf(r.subcat)<0)budgetCatMap[r.cat].push(r.subcat);}});
       const budgetCatNames=Object.keys(budgetCatMap).sort();
       const budgetSubNames=mktgCat&&budgetCatMap[mktgCat]?budgetCatMap[mktgCat].sort():[];
-      const mktgLabel=mktgCat?(mktgCat+(mktgSub?" / "+mktgSub:"")):"— wybierz —";
+
+      // Źródła klientów w okresie (wypożyczenia + wózki z refundacji)
+      const src=(()=>{
+        const periodRentalsAll=rentals.filter(r=>(r.startDate||"")>=pStart&&(r.startDate||"")<=pEnd&&!r.reserved);
+        const listItemsAll=[];
+        (finances||[]).forEach(f=>{
+          if(f.type!=="przychód"||(f.date||"")<pStart||(f.date||"")>pEnd)return;
+          const rid=getRid(f.sourceId);if(!rid)return;
+          const r=rentals.find(x=>x.id===rid);if(!r)return;
+          const isExt=(f.sourceId||"").startsWith("extend-");
+          const isCycle=(f.sourceId||"").startsWith("cycle-");
+          listItemsAll.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,source:r.source,type:isExt?"↪ Przedłużenie":isCycle?"↻ Cykl":"Wpłata",cat:catOf(r.equipment)});
+        });
+        rentals.forEach(r=>{
+          if((r.payments||[]).length>0||(r.cycles||[]).length>0)return;
+          const paid=+r.amountPaid||0;if(!paid)return;
+          const d=r.startDate||"";
+          if(d>=pStart&&d<=pEnd)listItemsAll.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,source:r.source,type:"Wpłata",cat:catOf(r.equipment)});
+        });
+        const periodWozkiAll=[];
+        (finances||[]).forEach(f=>{
+          if(f.type!=="przychód"||(f.date||"")<pStart||(f.date||"")>pEnd)return;
+          const sid=f.sourceId||"";if(!sid.startsWith("wozek-"))return;
+          const cid=+sid.slice(6);if(!cid)return;
+          const cas=(nfzCases||[]).find(x=>x.id===cid);if(!cas)return;
+          listItemsAll.push({key:"w"+f.id,date:f.date,patientName:cas.patientName,equipment:cas.wheelchairModel||"Wózek",amount:+f.amount||0,source:cas.source,type:"🦽 Wózek",cat:"wozki"});
+          periodWozkiAll.push(cas);
+        });
+        listItemsAll.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+        const listItems=srcTab==="all"?listItemsAll:listItemsAll.filter(i=>i.cat===srcTab);
+        const periodRentals=srcTab==="all"?periodRentalsAll:periodRentalsAll.filter(r=>catOf(r.equipment)===srcTab);
+        const periodWozki=(srcTab==="szyny"||srcTab==="balkoniki")?[]:periodWozkiAll;
+        const revBy={},cntBy={},wCntBy={};
+        RENTAL_SOURCES.forEach(s=>{revBy[s.value]=0;cntBy[s.value]=0;wCntBy[s.value]=0;});
+        let unknownRev=0;
+        listItems.forEach(item=>{
+          if(item.source&&revBy.hasOwnProperty(item.source))revBy[item.source]+=item.amount;
+          else unknownRev+=item.amount;
+        });
+        periodRentals.forEach(r=>{if(r.source&&cntBy.hasOwnProperty(r.source))cntBy[r.source]++;});
+        const seen=new Set();
+        periodWozki.forEach(cas=>{if(seen.has(cas.id))return;seen.add(cas.id);if(cas.source&&wCntBy.hasOwnProperty(cas.source))wCntBy[cas.source]++;});
+        const rows=RENTAL_SOURCES.map(s=>({k:s.value,l:s.label,c:s.color,rev:revBy[s.value]||0,cnt:cntBy[s.value]||0,wc:wCntBy[s.value]||0}))
+          .filter(x=>x.rev>0||x.cnt>0||x.wc>0).sort((a,b)=>b.rev-a.rev);
+        const withoutSrc=listItems.filter(item=>!item.source).length;
+        const unknownCnt=periodRentals.filter(r=>!r.source||!cntBy.hasOwnProperty(r.source)).length;
+        if(unknownRev>0||unknownCnt>0)rows.push({k:"_none",l:"Nieznane",c:"#8A9BB0",rev:unknownRev,cnt:unknownCnt,wc:0});
+        return {listItems,rows,totalRev:listItems.reduce((s,i)=>s+i.amount,0),totalCnt:rows.reduce((s,r)=>s+r.cnt,0),totalW:rows.reduce((s,r)=>s+r.wc,0),withoutSrc};
+      })();
+
+      const tog=id=>()=>setOpenSec(o=>o===id?null:id);
+      const kv=(l,v,c,key)=><div key={key||l} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}><span style={{color:c||textC}}>{l}</span><b style={{color:c||textC,fontVariantNumeric:"tabular-nums",textAlign:"right"}}>{v}</b></div>;
+      const navBtn=(fn,ch)=><button onClick={fn} aria-label={ch==="‹"?"Wstecz":"Dalej"} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:"1.5px solid "+borderC,background:bg,cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{ch}</button>;
+      const shiftMonth=n=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+n);setSelMonth(d.toISOString().slice(0,7));};
+      const switchScope=s=>{if(s==="year")setStatsYear(+selMonth.slice(0,4));setScope(s);};
+
+      // ── mini-wizualizacje w nagłówkach ──
+      const miniSrc=(()=>{let x=0;const t=src.rows.reduce((s,r)=>s+r.rev,0)||1;
+        return <svg width="54" height="16" aria-hidden="true">{src.rows.map(r=>{const w=r.rev/t*54;const el=<rect key={r.k} x={x} y="0" width={Math.max(0,w-1.5)} height="16" rx="3" fill={r.c}/>;x+=w;return el;})}</svg>;})();
+      const miniOcc=<svg width={Math.max(9,Math.min(6,occStats.length)*9)} height="22" aria-hidden="true">{occStats.slice(0,6).map((x,i)=><rect key={x.eq} x={i*9} y={22-Math.max(2,x.pct/100*22)} width="6" height={Math.max(2,x.pct/100*22)} rx="2" fill={occCol(x.pct)}/>)}</svg>;
+      const miniRoi=<span>{roiKnown.slice(0,6).map(x=><i key={x.eq} style={{display:"inline-block",width:8,height:8,borderRadius:"50%",marginLeft:3,background:x.earned>=x.investment?GREEN:ORANGE}}/>)}</span>;
+      const selIdx=stats.monthlyArr.findIndex(x=>x[0]===selMonth);
 
       return <div style={{padding:"0 20px 24px"}}>
-        {/* Selektor miesiąca — kompaktowy */}
-        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16}}>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()-1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-          <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:textC,fontFamily:"'Syne',sans-serif"}}>
-            {new Date(selMonth+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}
-          </div>
-          <button onClick={()=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+1);setSelMonth(d.toISOString().slice(0,7));}} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:`1.5px solid ${borderC}`,background:"none",cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+        {/* Okres: miesiąc / rok — wspólny dla wszystkich sekcji */}
+        <div style={{display:"flex",background:dk?"#1E2F4A":"#DCE5F1",borderRadius:12,padding:3,marginBottom:10}}>
+          {[["month","Miesiąc"],["year","Rok"]].map(([k,l])=><button key={k} onClick={()=>switchScope(k)} style={{flex:1,border:"none",borderRadius:10,padding:8,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",background:scope===k?(dk?"#18202F":"#fff"):"none",color:scope===k?"#3E6FB0":(dk?"#93A9CE":"#3E5578"),boxShadow:scope===k?"0 1px 4px rgba(0,0,0,.14)":"none"}}>{l}</button>)}
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+          {navBtn(()=>isYear?setStatsYear(y=>y-1):shiftMonth(-1),"‹")}
+          <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:textC,fontFamily:"'Syne',sans-serif",textTransform:"capitalize"}}>{periodLabel}</div>
+          {navBtn(()=>isYear?setStatsYear(y=>y+1):shiftMonth(1),"›")}
         </div>
 
-        {/* KPI — pierwsze 4 w siatce 2x2 */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-          {[
-            {l:"Przychód (okres)",v:demo?"****":stats.totalRevenue.toFixed(2)+" zł",c:"#3DAA72"},
-            {l:"Aktywnych teraz",v:rentals.filter(r=>r.status==="aktywne").length,c:"#3E6FB0"},
-            {l:"Wypożyczeń (okres)",v:stats.totalCount,c:"#F4A261"},
-            {l:"Śr. czas wyp. (okres)",v:stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych",c:"#2E86AB"},
-          ].map((k,i)=>
-            <div key={i} style={{background:bg,borderRadius:14,padding:"12px 14px",border:`1.5px solid ${borderC}`}}>
-              <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>{k.l}</div>
-              <div style={{fontSize:18,fontWeight:800,color:k.c,fontFamily:"'Syne',sans-serif"}}>{k.v}</div>
-            </div>
-          )}
-        </div>
-
-        {/* KPI Marketing — osobny kafelek z pickerem kategorii */}
-        <div style={{background:bg,borderRadius:14,padding:"12px 14px",border:`1.5px solid ${borderC}`,marginBottom:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-            <div style={{fontSize:11,color:subC,fontWeight:600,textTransform:"uppercase",letterSpacing:.5}}>Marketing (wydatki)</div>
-            <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:10,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 6px",borderRadius:6,fontFamily:"inherit"}}>
-              {(stock&&stock._mktgOpen)?"zamknij":"zmien kat."}
-            </button>
+        {/* 1. Przychód */}
+        <StatAcc dk={dk} open={openSec==="rev"} onToggle={tog("rev")} title="Przychód" sub="wypożyczenia + wózki NFZ"
+          mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
+          keyVal={Z(totalAll)} keyColor={GREEN}>
+          {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
+          {kv("Wózki – refundacje NFZ ("+stats.wozkiCount+" szt.)",Z(stats.wozkiRevenue),PURPLE)}
+          {kv("Nowych wypożyczeń",stats.totalCount)}
+          {kv("Śr. czas wypożyczenia",stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych")}
+          {kv("Marketing (wydatki)",Z(stats.marketingSpend),RED)}
+          <div style={{textAlign:"right",marginTop:2}}>
+            <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:11,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"inherit"}}>{(stock&&stock._mktgOpen)?"zamknij wybór kategorii":"zmień kategorię marketingu"}</button>
           </div>
-          <div style={{fontSize:18,fontWeight:800,color:"#E05C5C",fontFamily:"'Syne',sans-serif",marginBottom:(stock&&stock._mktgOpen)?10:0}}>
-            {demo?"****":stats.marketingSpend.toFixed(2)+" zł"}
-          </div>
-          {stock&&stock._mktgOpen&&<div>
-            <div style={{fontSize:11,color:subC,marginBottom:4}}>Kategoria w budzecie (Dom):</div>
+          {stock&&stock._mktgOpen&&<div style={{marginBottom:6}}>
+            <div style={{fontSize:11,color:subC,marginBottom:4}}>Kategoria w budżecie (Dom):</div>
             <select value={mktgCat} onChange={e=>setStock(s=>({...s,marketingCat:e.target.value,marketingSub:""}))} style={{width:"100%",padding:"7px",borderRadius:8,border:"1px solid "+borderC,background:bg,color:textC,fontSize:13,fontFamily:"inherit",marginBottom:6}}>
-              <option value="">-- domyslnie: Firma / Marketing --</option>
+              <option value="">-- domyślnie: Firma / Marketing --</option>
               {budgetCatNames.map(c=><option key={c} value={c}>{c}</option>)}
             </select>
             {mktgCat&&<select value={mktgSub} onChange={e=>setStock(s=>({...s,marketingSub:e.target.value}))} style={{width:"100%",padding:"7px",borderRadius:8,border:"1px solid "+borderC,background:bg,color:textC,fontSize:13,fontFamily:"inherit"}}>
-              <option value="">-- cala kategoria --</option>
+              <option value="">-- cała kategoria --</option>
               {budgetSubNames.map(s=><option key={s} value={s}>{s}</option>)}
             </select>}
           </div>}
-        </div>
-
-        {/* Wykres miesięczny */}
-        <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-          <SectionLabel>Przychód — 12 mies.</SectionLabel>
-          <div style={{overflowX:"auto",paddingBottom:2}}>
-            <div style={{display:"flex",alignItems:"flex-end",gap:4,height:88,minWidth:stats.monthlyArr.length*32}}>
-              {stats.monthlyArr.map(([m,v])=>{
-                const pct=stats.maxMonthly>0?Math.round((v/stats.maxMonthly)*100):0;
-                const isSel=m===selMonth;
-                const isToday=m===today.slice(0,7);
-                const barH=Math.max(3,Math.round(pct*0.68));
-                const barCol=isSel?"#3E6FB0":isToday?(dk?"#2E86AB":"#5BA3C9"):dk?"#2A5A5A":"#B8D8D8";
-                return <div key={m} onClick={()=>setSelMonth(m)} style={{minWidth:28,flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer"}}>
-                  <div style={{fontSize:9,color:isSel?"#3E6FB0":subC,fontWeight:isSel?700:600,minHeight:12,textAlign:"center"}}>{demo?"?":v>0?(v>=1000?(v/1000).toFixed(1)+"k":v)+" zł":""}</div>
-                  <div style={{width:"100%",height:barH+"px",borderRadius:4,background:barCol,transition:"height .3s,background .15s"}}/>
-                  <div style={{fontSize:8,color:isSel?"#3E6FB0":subC,fontWeight:isSel?700:400}}>{m.slice(5)}</div>
-                </div>;
-              })}
-            </div>
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"14px 0 4px"}}>Ostatnie 12 miesięcy · dotknij słupka</div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:4,height:112,paddingTop:14}}>
+            {stats.monthlyArr.map(([m,v,w])=>{
+              const t=v+w,h=Math.max(t>0?3:0,Math.round(t/stats.maxMonthly*80)),hw=t>0?w/t*100:0;
+              const sel=isYear?m.startsWith(String(statsYear)):m===selMonth;
+              return <button key={m} onClick={()=>{setSelMonth(m);setScope("month");}} aria-label={m+": "+(demo?"":Math.round(t)+" zł")} style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",gap:4,height:"100%",border:"none",background:"none",padding:0,cursor:"pointer",fontFamily:"inherit"}}>
+                <div style={{fontSize:9,fontWeight:700,color:textC,minHeight:11,whiteSpace:"nowrap"}}>{!demo&&!isYear&&m===selMonth&&t>0?(t>=1000?(t/1000).toFixed(1)+"k":Math.round(t)):""}</div>
+                <div style={{width:"100%",height:h,display:"flex",flexDirection:"column",justifyContent:"flex-end",borderRadius:"5px 5px 0 0",overflow:"hidden",opacity:sel?1:.4}}>
+                  <div style={{height:hw+"%",background:PURPLE}}/><div style={{flex:1,background:BLUE}}/>
+                </div>
+                <div style={{fontSize:9,color:sel?"#3E6FB0":subC,fontWeight:sel?700:400}}>{m.slice(5)}</div>
+              </button>;
+            })}
           </div>
-          {(()=>{
-            const nonZero=stats.monthlyArr.filter(([,v])=>v>0);
-            if(nonZero.length===0)return null;
-            const avg=Math.round(nonZero.reduce((s,[,v])=>s+v,0)/nonZero.length);
-            const best=nonZero.reduce((a,b)=>b[1]>a[1]?b:a);
-            const curIdx=stats.monthlyArr.findIndex(([m])=>m===selMonth);
-            const prevV=curIdx>0?stats.monthlyArr[curIdx-1][1]:null;
-            const curV=stats.monthlyArr[curIdx]?.[1]||0;
-            const diff=prevV!==null?curV-prevV:null;
-            const bestLabel=new Date(best[0]+"-15").toLocaleDateString("pl-PL",{month:"short"});
-            const tileStyle={flex:1,minWidth:80,background:dk?"#0A2020":"#EFF8F6",borderRadius:10,padding:"7px 10px",textAlign:"center"};
-            return <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
-              <div style={tileStyle}>
-                <div style={{fontSize:10,color:subC,marginBottom:2}}>Najlepszy</div>
-                <div style={{fontWeight:700,fontSize:13,color:"#3E6FB0"}}>{demo?"???":bestLabel+" · "+(best[1]>=1000?(best[1]/1000).toFixed(1)+"k":best[1])+" zł"}</div>
-              </div>
-              <div style={tileStyle}>
-                <div style={{fontSize:10,color:subC,marginBottom:2}}>Śr. miesięczna</div>
-                <div style={{fontWeight:700,fontSize:13,color:"#3E6FB0"}}>{demo?"???":avg+" zł"}</div>
-              </div>
-              {diff!==null&&<div style={{...tileStyle,background:diff>=0?(dk?"#0A2A1A":"#E8F7ED"):(dk?"#2A0A0A":"#FEE8E8")}}>
-                <div style={{fontSize:10,color:subC,marginBottom:2}}>vs poprzedni</div>
-                <div style={{fontWeight:700,fontSize:13,color:diff>=0?"#3DAA72":"#E05C5C"}}>{demo?"????":(diff>=0?"+":"")+diff+" zł"}</div>
-              </div>}
-            </div>;
-          })()}
-        </div>
+          <div style={{display:"flex",gap:14,fontSize:11,color:subC,marginTop:8,flexWrap:"wrap"}}>
+            <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:BLUE,marginRight:5}}/>Wypożyczenia</span>
+            <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:PURPLE,marginRight:5}}/>Wózki (refundacje)</span>
+          </div>
+        </StatAcc>
 
-        {/* Skąd trafiają klienci — sortowanie po przychodzie */}
-        {(()=>{
-          // Wypożyczenia które wystartowały w miesiącu (do licznika i cntBySource)
-          const periodRentalsAll=rentals.filter(r=>(r.startDate||"")>=stats.cutStr&&(r.startDate||"")<=stats.cutEnd&&!r.reserved);
-          // Lista WSZYSTKICH wpłat w miesiącu (wpłaty + przedłużenia + cykle + legacy)
-          const listItemsAll=[];
-          (finances||[]).forEach(f=>{
-            if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
-            const rid=getRid(f.sourceId);if(!rid)return;
-            const r=rentals.find(x=>x.id===rid);if(!r)return;
-            const isExt=(f.sourceId||"").startsWith("extend-");
-            const isCycle=(f.sourceId||"").startsWith("cycle-");
-            listItemsAll.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,source:r.source,type:isExt?"↪ Przedłużenie":isCycle?"↻ Cykl":"Wpłata",cat:catOf(r.equipment)});
-          });
-          // legacy — amountPaid bez payments
-          rentals.forEach(r=>{
-            if((r.payments||[]).length>0||(r.cycles||[]).length>0)return;
-            const paid=+r.amountPaid||0;if(!paid)return;
-            const d=r.startDate||"";
-            if(d>=stats.cutStr&&d<=stats.cutEnd)listItemsAll.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,source:r.source,type:"Wpłata",cat:catOf(r.equipment)});
-          });
-          // wózki — przychód zrealizowany w miesiącu (finances z sourceId "wozek-<id>")
-          const periodWozkiAll=[];
-          (finances||[]).forEach(f=>{
-            if(f.type!=="przychód"||(f.date||"")<stats.cutStr||(f.date||"")>stats.cutEnd)return;
-            const sid=f.sourceId||"";if(!sid.startsWith("wozek-"))return;
-            const cid=+sid.slice(6);if(!cid)return;
-            const cas=(nfzCases||[]).find(x=>x.id===cid);if(!cas)return;
-            listItemsAll.push({key:"w"+f.id,date:f.date,patientName:cas.patientName,equipment:cas.wheelchairModel||"Wózek",amount:+f.amount||0,source:cas.source,type:"🦽 Wózek",cat:"wozki"});
-            periodWozkiAll.push(cas);
-          });
-          listItemsAll.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-          if(listItemsAll.length===0&&periodRentalsAll.length===0)return null;
-          // Filtr wg wybranej zakładki (Wszystko / Szyny / Wózki)
-          const listItems=srcTab==="all"?listItemsAll:listItemsAll.filter(i=>i.cat===srcTab);
-          const periodRentals=srcTab==="all"?periodRentalsAll:periodRentalsAll.filter(r=>catOf(r.equipment)===srcTab);
-          const periodWozki=(srcTab==="szyny"||srcTab==="balkoniki")?[]:periodWozkiAll;
-          // Przychód per źródło — budowany z listItems (spójny z listą i sumą totalRevenue)
-          const revBySource={};const cntBySource={};const wCntBySource={};
-          RENTAL_SOURCES.forEach(s=>{revBySource[s.value]=0;cntBySource[s.value]=0;wCntBySource[s.value]=0;});
-          listItems.forEach(item=>{
-            if(item.source&&revBySource.hasOwnProperty(item.source))revBySource[item.source]+=item.amount;
-          });
-          // Liczba nowych wypożyczeń per źródło (tylko starty w miesiącu)
-          periodRentals.forEach(r=>{if(r.source&&cntBySource.hasOwnProperty(r.source))cntBySource[r.source]++;});
-          // Liczba wózków zrealizowanych w miesiącu per źródło
-          const seenWozki=new Set();
-          periodWozki.forEach(cas=>{if(seenWozki.has(cas.id))return;seenWozki.add(cas.id);if(cas.source&&wCntBySource.hasOwnProperty(cas.source))wCntBySource[cas.source]++;});
-          const totalRev=listItems.reduce((s,item)=>s+item.amount,0);
-          const totalCnt=Object.values(cntBySource).reduce((s,v)=>s+v,0);
-          const sorted=RENTAL_SOURCES.map(s=>({...s,rev:revBySource[s.value]||0,cnt:cntBySource[s.value]||0,wCnt:wCntBySource[s.value]||0})).sort((a,b)=>b.rev-a.rev);
-          const topRev=sorted[0]?.rev||1;
-          const withoutSrc=listItems.filter(item=>!item.source).length;
-          return <div style={{background:bg,borderRadius:14,padding:"14px",marginBottom:12,border:`1.5px solid ${borderC}`}}>
-            <SectionLabel>📢 Skąd trafiają klienci</SectionLabel>
-            <div style={{display:"flex",gap:6,marginBottom:12}}>
-              {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
-                <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
-              )}
-            </div>
-            {totalRev===0
-              ?<div style={{fontSize:12,color:subC}}>Brak danych{srcTab!=="all"?" w tej kategorii":""} — uzupełnij źródło przy dodawaniu {srcTab==="wozki"?"wózków":"wypożyczeń"}</div>
-              :sorted.map(s=>{
-                const pct=totalRev>0?Math.round((s.rev/totalRev)*100):0;
-                const barW=Math.round((s.rev/topRev)*100);
-                return <div key={s.value} style={{marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:12,marginBottom:3}}>
-                    <span style={{color:textC,fontWeight:600}}>{s.label}</span>
-                    <span style={{flexShrink:0,marginLeft:8,textAlign:"right"}}>
-                      <span style={{color:s.color,fontWeight:800,fontSize:13}}>{demo?"****":s.rev.toFixed(2)+" zł"}</span>
-                      <span style={{color:subC,fontWeight:500}}> · {pct}% · {srcTab==="wozki"?(s.cnt+s.wCnt)+" wóz.":s.cnt+" wyp."+(s.wCnt?" · 🦽×"+s.wCnt:"")}</span>
-                    </span>
-                  </div>
-                  <div style={{height:6,borderRadius:3,background:dk?"#1E2F4A":"#D9E2F0",overflow:"hidden"}}>
-                    <div style={{height:"100%",width:barW+"%",background:s.color,borderRadius:3,transition:"width .5s"}}/>
-                  </div>
-                </div>;
-              })
+        {/* 2. Skąd trafiają klienci */}
+        <StatAcc dk={dk} open={openSec==="src"} onToggle={tog("src")} title="Skąd trafiają klienci" sub={src.rows.length>0?"najlepsze: "+src.rows[0].l:"brak danych w okresie"}
+          mini={src.rows.length>0?miniSrc:null} keyVal={src.totalCnt+" wyp."}>
+          <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+            {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
+              <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+            )}
+          </div>
+          {src.totalRev===0&&src.totalCnt===0
+            ?<div style={{fontSize:12,color:subC}}>Brak danych{srcTab!=="all"?" w tej kategorii":""} — uzupełnij źródło przy dodawaniu {srcTab==="wozki"?"wózków":"wypożyczeń"}</div>
+            :<>
+              <div style={{display:"grid",gridTemplateColumns:"132px 1fr",gap:14,alignItems:"center",marginBottom:8}}>
+                <StatDonut rows={src.rows.map(r=>({k:r.k,v:r.rev,c:r.c}))} size={132} top={src.totalCnt+(src.totalW?"+"+src.totalW:"")} bottom="klientów" track={trackC} ink={textC} sub={subC}/>
+                <div style={{display:"flex",flexDirection:"column",gap:7,minWidth:0}}>
+                  {src.rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,minWidth:0}}>
+                    <i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>
+                    <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:textC}}>{r.l}</span>
+                    <b style={{fontVariantNumeric:"tabular-nums",color:textC}}>{src.totalRev>0?Math.round(r.rev/src.totalRev*100):0}%</b>
+                  </div>)}
+                </div>
+              </div>
+              {src.rows.map(r=><div key={"d"+r.k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}>
+                <span style={{display:"flex",gap:8,alignItems:"center",minWidth:0,color:textC}}><i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>{r.l}</span>
+                <span style={{textAlign:"right",fontVariantNumeric:"tabular-nums",color:subC}}>{r.cnt>0&&r.cnt+" wyp."}{r.wc>0&&<span style={{color:PURPLE,fontWeight:600}}>{r.cnt>0?" + ":""}{r.wc} wózk{r.wc===1?"ek":r.wc<5?"i":"ów"}</span>} · <b style={{color:GREEN}}>{Z(r.rev)}</b></span>
+              </div>)}
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",fontSize:13}}>
+                <b style={{color:textC}}>Łącznie</b><b style={{color:textC}}>{src.totalCnt} wyp.{src.totalW>0?" + "+src.totalW+" wóz.":""} · <span style={{color:GREEN}}>{Z(src.totalRev)}</span></b>
+              </div>
+            </>
+          }
+          {src.withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:8}}>{src.withoutSrc} z {src.listItems.length} wpłat bez oznaczonego źródła</div>}
+          <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:"1px solid "+borderC,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+            {showRentalList?"▲ Ukryj listę":"▼ Lista wpłat ("+src.listItems.length+")"}
+          </button>
+          {showRentalList&&<div style={{marginTop:8}}>
+            {src.listItems.map(item=>{
+              const s=RENTAL_SOURCES.find(x=>x.value===item.source);
+              const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL").replace("Wózek inwalidzki Elite Tim","TIM");
+              const isExt=item.type!=="Wpłata";
+              return <div key={item.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+borderC,fontSize:12,gap:6}}>
+                <span style={{color:subC,flexShrink:0,fontSize:11}}>{item.date?.slice(5)}</span>
+                <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":item.patientName}</span>
+                <span style={{color:subC,flexShrink:0,fontSize:11}}>{eq}</span>
+                {isExt&&<span style={{color:"#7C6AF4",fontWeight:700,fontSize:10,flexShrink:0}}>{item.type}</span>}
+                <span style={{color:GREEN,fontWeight:700,flexShrink:0}}>{demo?"****":item.amount+" zł"}</span>
+                {s?<span style={{color:s.color,fontWeight:700,fontSize:10,flexShrink:0}}>{s.label.split(" ")[0]}</span>:<span style={{color:subC,fontSize:10,flexShrink:0}}>—</span>}
+              </div>;
+            })}
+          </div>}
+        </StatAcc>
+
+        {/* 3. Obłożenie sprzętu */}
+        <StatAcc dk={dk} open={openSec==="occ"} onToggle={tog("occ")} title="Obłożenie sprzętu" sub={occStats.length>0?"średnio "+avgOcc+"% dni w okresie":"brak danych w okresie"}
+          mini={occStats.length>0?miniOcc:null} keyVal={occStats.length>0?avgOcc+"%":"—"} keyColor={occStats.length>0?occCol(avgOcc):subC}>
+          {occStats.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak wypożyczeń w tym okresie</div>}
+          {occStats.map(x=>{
+            const col=occCol(x.pct);
+            let strip;
+            if(!isYear){
+              const days=Array.from({length:monthLastDay},(_,i)=>dayCovered(x.eq,selMonth+"-"+String(i+1).padStart(2,"0")));
+              strip=<><div style={{display:"grid",gridTemplateColumns:"repeat("+monthLastDay+",1fr)",gap:2}}>{days.map((f,i)=><i key={i} style={{height:16,borderRadius:3,background:f?col:trackC}}/>)}</div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:subC,marginTop:3}}><span>1</span><span>10</span><span>20</span><span>{monthLastDay}</span></div></>;
+            }else{
+              const cells=Array.from({length:12},(_,i)=>{
+                const ym=statsYear+"-"+String(i+1).padStart(2,"0");
+                const last=new Date(statsYear,i+1,0).getDate();
+                const ms=ym+"-01",me=ym+"-"+String(last).padStart(2,"0");
+                const end=today<me?today:me;
+                if(ms>end)return 0;
+                const el=Math.round((new Date(end)-new Date(ms))/86400000)+1;
+                return Math.min(100,Math.round(rentedDaysIn(x.eq,ms,end)/(el*x.qty)*100));
+              });
+              strip=<><div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:2}}>{cells.map((q,i)=><i key={i} style={{height:16,borderRadius:3,background:"color-mix(in srgb,"+col+" "+Math.max(q>0?14:0,q)+"%,"+trackC+")"}}/>)}</div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:subC,marginTop:3}}>{["S","L","M","K","M","C","L","S","W","P","L","G"].map((l,i)=><span key={i}>{l}</span>)}</div></>;
             }
-            {withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:6}}>{withoutSrc} z {listItems.length} bez oznaczonego źródła</div>}
-            <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:`1px solid ${borderC}`,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-              {showRentalList?"▲ Ukryj listę":"▼ Lista wpłat ("+listItems.length+")"}
-            </button>
-            {showRentalList&&<div style={{marginTop:8}}>
-              {listItems.map(item=>{
-                const src=RENTAL_SOURCES.find(s=>s.value===item.source);
-                const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL").replace("Wózek inwalidzki Elite Tim","TIM");
-                const isExt=item.type!=="Wpłata";
-                return <div key={item.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:`1px solid ${borderC}`,fontSize:12,gap:6}}>
-                  <span style={{color:subC,flexShrink:0,fontSize:11}}>{item.date?.slice(5)}</span>
-                  <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":item.patientName}</span>
-                  <span style={{color:subC,flexShrink:0,fontSize:11}}>{eq}</span>
-                  {isExt&&<span style={{color:"#7C6AF4",fontWeight:700,fontSize:10,flexShrink:0}}>{item.type}</span>}
-                  <span style={{color:"#3DAA72",fontWeight:700,flexShrink:0}}>{item.amount+" zł"}</span>
-                  {src?<span style={{color:src.color,fontWeight:700,fontSize:10,flexShrink:0}}>{src.label.split(" ")[0]}</span>:<span style={{color:subC,fontSize:10,flexShrink:0}}>—</span>}
-                </div>;
-              })}
-            </div>}
-          </div>;
-        })()}
+            return <div key={x.eq} style={{marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5,gap:8}}>
+                <b style={{fontSize:13,fontWeight:600,color:textC,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.eq}{x.qty>1&&<span style={{color:subC,fontWeight:400}}> ({x.qty} szt.)</span>}</b>
+                <b style={{color:col,fontVariantNumeric:"tabular-nums"}}>{x.pct}%</b>
+              </div>
+              {strip}
+            </div>;
+          })}
+          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>{isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy sprzęt był wypożyczony."} Liczone od daty dodania sprzętu.</div>
+        </StatAcc>
 
-        {/* ROI per urządzenie */}
-        <div style={{marginBottom:12}}>
-          <SectionLabel>💰 ROI urządzeń (all-time)</SectionLabel>
-          {equipmentAll.map(eq=>{
-            const earned=allTimeRevenue[eq]||0;
-            const investment=getTotalInvestment(eq);
-            const roi=investment>0?Math.round((earned/investment)*100):null;
+        {/* 4. Opłacalność sprzętu */}
+        <StatAcc dk={dk} open={openSec==="roi"} onToggle={tog("roi")} title="Opłacalność sprzętu" sub="zakup, naprawy, zwrot (cały czas)"
+          mini={roiKnown.length>0?miniRoi:null} keyVal={roiKnown.length>0?roiDone+"/"+roiKnown.length:"—"}>
+          {roiRows.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak sprzętu</div>}
+          {roiRows.map(({eq,earned,investment,roi})=>{
             const isOpen=roiEq===eq;
             const c=getCosts(eq);
             const qty=getQty(eq);
@@ -409,35 +467,40 @@
             const remaining=investment-earned;
             const monthsLeft=avgMonthly>0&&remaining>0?Math.ceil(remaining/avgMonthly):null;
             const avgDur=getDurationInclude(eq)?avgDurationByEq[eq]:null;
-            return <div key={eq} style={{marginBottom:10,background:dk?"#0F1E1E":"#F8FAFB",borderRadius:12,overflow:"hidden"}}>
+            const ok=investment>0&&earned>=investment;
+            const scale=Math.max(earned,investment,1)*1.08;
+            return <div key={eq} style={{marginBottom:10,background:dk?"#0F1E1E":"#F6F9FC",borderRadius:14,overflow:"hidden"}}>
               <div onClick={()=>setRoiEq(isOpen?null:eq)} style={{padding:"10px 12px",cursor:"pointer"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,gap:8}}>
                   <div style={{fontSize:13,fontWeight:700,color:textC,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{eq}</div>
                   <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                    {roi!==null&&<span style={{fontSize:15,fontWeight:800,color:roi>=100?"#3DAA72":roi>=50?"#F4A261":"#E05C5C"}}>{roi}%</span>}
-                    {roi===null&&<span style={{fontSize:11,color:subC}}>brak danych</span>}
-                    <span style={{fontSize:11,color:subC}}>{isOpen?"▲":"▼"}</span>
+                    {roi!==null
+                      ?<span style={{borderRadius:8,padding:"3px 9px",fontSize:11,fontWeight:700,background:(ok?GREEN:ORANGE)+"26",color:ok?GREEN:ORANGE}}>{ok?"zwrócony · "+roi+"%":roi+"% zwrotu"}</span>
+                      :<span style={{fontSize:11,color:subC}}>wpisz koszt zakupu</span>}
+                    <span style={{fontSize:10,color:subC}}>{isOpen?"▲":"▼"}</span>
                   </div>
                 </div>
                 {investment>0&&<>
-                  <div style={{height:7,borderRadius:4,background:dk?"#1E2F4A":"#D9E2F0",overflow:"hidden",marginBottom:4}}>
-                    <div style={{height:"100%",width:Math.min(100,roi||0)+"%",background:(roi||0)>=100?"#3DAA72":(roi||0)>=50?"#F4A261":"#E05C5C",borderRadius:4,transition:"width .5s"}}/>
+                  <div style={{position:"relative",height:12,borderRadius:6,background:trackC,marginBottom:6}}>
+                    <div style={{position:"absolute",top:0,bottom:0,left:0,width:(investment/scale*100)+"%",borderRadius:"6px 0 0 6px",background:"rgba(122,143,166,.35)"}}/>
+                    <div style={{position:"absolute",top:3,bottom:3,left:0,width:Math.min(100,earned/scale*100)+"%",borderRadius:3,background:ok?GREEN:ORANGE}}/>
+                    <div style={{position:"absolute",top:-3,bottom:-3,left:(investment/scale*100)+"%",width:2,borderRadius:1,background:textC}}/>
                   </div>
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:subC}}>
-                    <span>{demo?"****":"Zarobiono: "+earned.toFixed(2)+" zł"}</span>
-                    <span>{demo?"****":"Inwest.: "+investment.toFixed(0)+" zł"+(qty>1?" ("+qty+"×"+(+c.purchase||0)+(repairsTotal>0?"+"+repairsTotal+"nap.":"")+")":(repairsTotal>0?" (w tym "+repairsTotal+" nap.)":""))}</span>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:subC,gap:8}}>
+                    <span>{demo?"****":"Zarobiono: "+Math.round(earned)+" zł"}</span>
+                    <span>{demo?"****":"Inwest.: "+Math.round(investment)+" zł"+(qty>1?" ("+qty+"×"+(+c.purchase||0)+(repairsTotal>0?"+"+repairsTotal+"nap.":"")+")":(repairsTotal>0?" (w tym "+repairsTotal+" nap.)":""))}</span>
                   </div>
-                  {monthsLeft!==null&&remaining>0&&<div style={{fontSize:11,color:"#F4A261",marginTop:3}}>⏳ Zwrot za ~{monthsLeft} mies.</div>}
-                  {remaining<=0&&investment>0&&<div style={{fontSize:11,color:"#3DAA72",marginTop:3}}>✅ Zwróciło się w całości!</div>}
+                  {monthsLeft!==null&&remaining>0&&<div style={{fontSize:11,color:ORANGE,marginTop:3}}>⏳ Zwrot za ~{monthsLeft} mies.</div>}
+                  {ok&&<div style={{fontSize:11,color:GREEN,marginTop:3}}>✅ Zwróciło się w całości!</div>}
                 </>}
-                {avgDur!==null&&<div style={{fontSize:11,color:subC,marginTop:investment>0?3:6}}>⏱ Śr. czas wypożyczenia: {avgDur} dni</div>}
+                {avgDur!==null&&<div style={{fontSize:11,color:subC,marginTop:investment>0?3:0}}>⏱ Śr. czas wypożyczenia: {avgDur} dni</div>}
               </div>
-              {isOpen&&<div style={{padding:"0 12px 12px",borderTop:`1px solid ${borderC}`}}>
+              {isOpen&&<div style={{padding:"0 12px 12px",borderTop:"1px solid "+borderC}}>
                 <div style={{marginTop:10}}>
                   <SectionLabel style={{marginBottom:6}}>Koszt zakupu (za 1 szt.)</SectionLabel>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <input type="number" value={c.purchase||""} onChange={e=>setPurchase(eq,e.target.value)} placeholder="0 zł"
-                      style={{flex:1,padding:"8px 12px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:10,fontSize:14,background:dk?"#18202F":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
+                      style={{flex:1,padding:"8px 12px",border:"1.5px solid "+(dk?"#2A3A56":"#D9E2F0"),borderRadius:10,fontSize:14,background:dk?"#18202F":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
                     <span style={{fontSize:13,color:subC}}>zł</span>
                   </div>
                 </div>
@@ -445,7 +508,7 @@
                   <SectionLabel style={{marginBottom:6}}>Liczba sztuk</SectionLabel>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <input type="number" min="1" value={qty} onChange={e=>setQtyInStats(eq,e.target.value)}
-                      style={{width:80,padding:"8px 12px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:10,fontSize:14,background:dk?"#18202F":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
+                      style={{width:80,padding:"8px 12px",border:"1.5px solid "+(dk?"#2A3A56":"#D9E2F0"),borderRadius:10,fontSize:14,background:dk?"#18202F":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
                     <span style={{fontSize:12,color:subC}}>szt. → łączny koszt: <b style={{color:textC}}>{(+c.purchase||0)*qty} zł</b></span>
                   </div>
                 </div>
@@ -458,98 +521,36 @@
                 <div style={{marginTop:12}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                     <SectionLabel style={{marginBottom:0}}>
-                      Naprawy / serwis{repairsTotal>0&&<span style={{color:"#E05C5C",marginLeft:4}}>({repairsTotal} zł)</span>}
+                      Naprawy / serwis{repairsTotal>0&&<span style={{color:RED,marginLeft:4}}>({repairsTotal} zł)</span>}
                     </SectionLabel>
                     <button onClick={()=>setRepairForm({eq,id:Date.now()+"",date:todayLocal(),amount:"",desc:""})}
                       style={{background:"#E1E9F5",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj</button>
                   </div>
                   {(()=>{const allRep=[...(c.repairs||[]),...machineSrvEntries].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
                   if(allRep.length===0)return<div style={{fontSize:12,color:subC}}>Brak wpisanych napraw</div>;
-                  return allRep.map(rep=><div key={rep.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${borderC}`}}>
+                  return allRep.map(rep=><div key={rep.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:"1px solid "+borderC}}>
                     <div>
                       <div style={{fontSize:13,color:textC,fontWeight:600}}>{demo?"****":rep.amount+" zł"}{rep.desc&&<span style={{fontWeight:400,color:subC}}> · {rep.desc}</span>}</div>
                       {rep.date&&<div style={{fontSize:11,color:subC}}>{rep.date}{rep.fromService&&<span style={{marginLeft:6,color:"#3E6FB0",fontSize:10}}>z Serwisu</span>}</div>}
                     </div>
                     {rep.fromService
                       ?<span style={{fontSize:10,color:"#7A8FA6",padding:"2px 8px"}}>🔧</span>
-                      :<button onClick={()=>deleteRepair(eq,rep.id)} style={{background:"none",border:"none",color:"#E05C5C",fontSize:18,cursor:"pointer",padding:"2px 6px"}}>×</button>}
+                      :<button onClick={()=>deleteRepair(eq,rep.id)} style={{background:"none",border:"none",color:RED,fontSize:18,cursor:"pointer",padding:"2px 6px"}}>×</button>}
                   </div>);})()}
                 </div>
               </div>}
             </div>;
           })}
-        </div>
+          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Kreska = punkt zwrotu (zakup + naprawy). Nie zależy od wybranego okresu. Dotknij sprzętu, aby wpisać zakup i naprawy.</div>
+        </StatAcc>
 
-        {/* Nieużywany sprzęt */}
-        {stats.idle.length>0&&<div style={{background:bg,borderRadius:14,padding:"14px",border:`1.5px solid ${borderC}`}}>
-          <SectionLabel style={{marginBottom:8}}>🕐 Nieużywany sprzęt</SectionLabel>
-          {stats.idle.map(x=><div key={x.eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${borderC}`}}>
-            <span style={{fontSize:13,color:textC,fontWeight:500}}>{x.eq}</span>
-            <span style={{fontSize:12,color:x.idleDays>90?"#E05C5C":x.idleDays>30?"#F4A261":subC,fontWeight:600}}>{x.idleDays} dni bez wyp.</span>
-          </div>)}
-        </div>}
-
-        {/* Yield / obłożenie sprzętu */}
-        <div style={{margin:"16px 0 0",background:bg,borderRadius:14,padding:"14px 16px",border:`1px solid ${borderC}`}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-            <div style={{fontWeight:700,fontSize:14,color:textC}}>📈 Obłożenie sprzętu (yield)</div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>‹</button>
-              <span style={{fontWeight:700,fontSize:15,minWidth:40,textAlign:"center",color:textC}}>{statsYear}</span>
-              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
-            </div>
-          </div>
-          {yieldStats.length===0
-            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak danych w {statsYear} r.</div>
-            :yieldStats.map(x=>
-              <div key={x.eq} style={{marginBottom:10}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                  <span style={{fontSize:13,fontWeight:600,color:textC,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{x.eq}{x.qty>1&&<span style={{color:subC,fontWeight:400}}> ({x.qty} szt.)</span>}</span>
-                  <span style={{fontSize:12,color:subC,flexShrink:0,marginLeft:8}}>{x.rentedDays}/{x.totalSlots} dni · <span style={{fontWeight:700,color:x.pct>=70?"#3DAA72":x.pct>=40?"#F4A261":"#E05C5C"}}>{x.pct}%</span></span>
-                </div>
-                <div style={{height:6,borderRadius:4,background:dk?"#1E2F4A":"#EFF3FA",overflow:"hidden"}}>
-                  <div style={{height:"100%",width:Math.min(100,x.pct)+"%",background:x.pct>=70?"#3DAA72":x.pct>=40?"#F4A261":"#E05C5C",borderRadius:4,transition:"width .3s"}}/>
-                </div>
-              </div>
-            )}
-        </div>
-
-        <div style={{margin:"16px 0 0",background:bg,borderRadius:14,padding:"14px 16px",border:`1px solid ${borderC}`}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-            <div style={{fontWeight:700,fontSize:14,color:textC}}>📊 Źródła pacjentów</div>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <button onClick={()=>setStatsYear(y=>y-1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>‹</button>
-              <span style={{fontWeight:700,fontSize:15,minWidth:40,textAlign:"center",color:textC}}>{statsYear}</span>
-              <button onClick={()=>setStatsYear(y=>y+1)} style={{width:28,height:28,borderRadius:8,border:"none",background:dk?"#1E2F4A":"#EFF3FA",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit",color:textC}}>›</button>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:6,marginBottom:12}}>
-            {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
-              <button key={t.k} onClick={()=>setSrcYearTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcYearTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcYearTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
-            )}
-          </div>
-          {statsTotalCnt===0
-            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń{srcYearTab!=="all"?" w tej kategorii":""} w {statsYear} r.</div>
-            :<>
-              {sourceStats.map(x=>{
-                const pct=statsTotalCnt>0?Math.round(x.cnt/statsTotalCnt*100):0;
-                return <div key={x.value||"none"} style={{marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                    <span style={{fontSize:13,fontWeight:600,color:textC}}>{x.label}</span>
-                    <span style={{fontSize:12,color:subC}}>{x.cnt} wypożyczeń · <span style={{color:"#3DAA72",fontWeight:600}}>{demo?"****":x.rev.toLocaleString("pl-PL")+" zł"}</span> · {pct}%</span>
-                  </div>
-                  <div style={{height:6,borderRadius:4,background:dk?"#1E2F4A":"#EFF3FA",overflow:"hidden"}}>
-                    <div style={{height:"100%",width:pct+"%",background:x.color,borderRadius:4,transition:"width .3s"}}/>
-                  </div>
-                </div>;
-              })}
-              <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${borderC}`,display:"flex",justifyContent:"space-between",fontSize:13}}>
-                <span style={{fontWeight:700,color:textC}}>Łącznie</span>
-                <span style={{fontWeight:700,color:textC}}>{statsTotalCnt} wypożyczeń · <span style={{color:"#3DAA72"}}>{demo?"****":statsTotalRev.toLocaleString("pl-PL")+" zł"}</span></span>
-              </div>
-            </>
-          }
-        </div>
+        {/* 5. Bezczynny sprzęt */}
+        <StatAcc dk={dk} open={openSec==="idle"} onToggle={tog("idle")} title="Bezczynny sprzęt" sub={stats.idle.length>0?"stoi bez wypożyczenia":"cały sprzęt w użyciu"}
+          keyVal={stats.idle.length+" szt."} keyColor={stats.idle.length>0?ORANGE:GREEN}>
+          {stats.idle.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"6px 0"}}>Cały sprzęt jest teraz wypożyczony</div>}
+          {stats.idle.map(x=>kv(x.eq,x.idleDays+" dni bez wyp.",x.idleDays>90?RED:x.idleDays>30?ORANGE:subC))}
+          {kv("Średni czas wypożyczenia (okres)",stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych")}
+        </StatAcc>
 
         {repairForm&&(()=>{
           const eqMachines=(machines||[]).filter(m=>m.type===repairForm.eq);
@@ -754,7 +755,7 @@
                 )}
               </div>
               <div style={{display:"flex",gap:6,flexShrink:0}}>
-                {[{k:"budget",l:"🏠",t:"Dom"},{k:"sprzet",l:"📦",t:"Sprzęt"},{k:"wealth",l:"💼",t:"Majątek"}].map(x=>
+                {[{k:"budget",l:"🏠",t:"Dom"},{k:"sprzet",l:"📊",t:"Statystyki"},{k:"wealth",l:"💼",t:"Majątek"}].map(x=>
                   <button key={x.k} onClick={()=>setViewMode(x.k)} title={x.t} style={{width:36,height:34,borderRadius:10,border:`1.5px solid ${viewMode===x.k?"#3E6FB0":border}`,cursor:"pointer",fontSize:16,background:viewMode===x.k?(dk?"#0A3030":"#E1E9F5"):dk?"#18202F":"#fff",color:viewMode===x.k?"#3E6FB0":sub,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{x.l}</button>
                 )}
               </div>
