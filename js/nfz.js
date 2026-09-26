@@ -26,6 +26,12 @@
       const cases = nfzCases || [];
       const today = todayLocal();
 
+      const sourceFromRentals = p => {
+        const mine=(rentals||[]).filter(r=>r.source&&(r.patientId?r.patientId===p.id:r.patientName===p.name));
+        if(!mine.length) return "";
+        return mine.reduce((a,b)=>(b.startDate||"")>(a.startDate||"")?b:a).source;
+      };
+
       const SORT_OPTIONS = [
         {value:"newest",label:"Najnowsze zlecenia"},
         {value:"oldest",label:"Najstarsze zlecenia"},
@@ -106,7 +112,7 @@
             </div>
           </div>
           {editForm&&<Modal title="Edytuj" onClose={()=>setEditForm(null)}>
-            <PatientPicker label="Klient" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} onSelect={p=>setEditForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={allClients||patients||[]}/>
+            <PatientPicker label="Klient" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} onSelect={p=>setEditForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id,source:f.source||sourceFromRentals(p)}))} patients={allClients||patients||[]}/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Inp label="Telefon" value={editForm.phone||""} onChange={v=>setEditForm(f=>({...f,phone:v}))} type="tel"/>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setEditForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
@@ -204,7 +210,7 @@
           })}
         </div>
         {showAdd&&<Modal title="Nowy wózek" onClose={()=>setShowAdd(false)}>
-          <PatientPicker label="Klient *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id}))} patients={allClients||patients||[]}/>
+          <PatientPicker label="Klient *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id,source:f.source||sourceFromRentals(p)}))} patients={allClients||patients||[]}/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
