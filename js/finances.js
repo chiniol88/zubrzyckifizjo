@@ -12,14 +12,30 @@
       const lo=from>start?from:start,hi=to<today?to:today;
       if(lo>hi)return out;
       const n=Math.round((ts(hi)-ts(lo))/DAY)+1,diff=new Array(n+2).fill(0);
+      // Okres wypożyczenia = czas, w którym sprzęt ma pacjent (i za który płaci) — NIE moment fizycznego odbioru.
+      // Jednorazowe: start → data końca (z przedłużeniami). Cykliczne: okresy rozliczeniowe (po 30 dni), po zakończeniu ucięte datą końca.
+      const spansOf=r=>{
+        const cyc=(r.cycles||[]).filter(c=>!c.cancelled);
+        if(!r.renewable||!cyc.length)return [[r.startDate,r.endDate||(r.status==="aktywne"?today:r.startDate)]];
+        const closed=r.status!=="aktywne";
+        return cyc.map(c=>{
+          let cs,ce;
+          if(c.dueDate){cs=c.dueDate;ce=addDays(c.dueDate,30);}
+          else{cs=c.month+"-01";ce=c.month+"-"+String(new Date(+c.month.slice(0,4),+c.month.slice(5,7),0).getDate()).padStart(2,"0");}
+          if(closed&&r.endDate&&ce>r.endDate)ce=r.endDate;
+          return [cs,ce];
+        });
+      };
       rs.forEach(r=>{
-        const s=r.startDate;
-        const e=r.status==="aktywne"?today:(r.returnedDate||r.endDate||s);
-        if(e<s)return;
-        const cs=s>lo?s:lo,ce=e<hi?e:hi;
-        if(cs>ce)return;
-        diff[Math.round((ts(cs)-ts(lo))/DAY)]++;
-        diff[Math.round((ts(ce)-ts(lo))/DAY)+1]--;
+        const spans=spansOf(r).filter(x=>x[1]>=x[0]).sort((a,b)=>a[0].localeCompare(b[0]));
+        const merged=[];
+        spans.forEach(x=>{const l=merged[merged.length-1];if(l&&x[0]<=addDays(l[1],1)){if(x[1]>l[1])l[1]=x[1];}else merged.push([x[0],x[1]]);});
+        merged.forEach(([s,e])=>{
+          const cs=s>lo?s:lo,ce=e<hi?e:hi;
+          if(cs>ce)return;
+          diff[Math.round((ts(cs)-ts(lo))/DAY)]++;
+          diff[Math.round((ts(ce)-ts(lo))/DAY)+1]--;
+        });
       });
       const hist=((stock&&stock.history)||[]).filter(h=>h.eq===eq&&h.from).sort((a,b)=>a.from.localeCompare(b.from));
       const curQty=(stock&&stock.qty&&stock.qty[eq])||1;
@@ -148,8 +164,8 @@
       const avgDurationByEq=useMemo(()=>{
         const map={};
         equipmentAll.forEach(eq=>{
-          const finished=rentals.filter(r=>r.equipment===eq&&r.status==="zakończone"&&r.startDate&&(r.returnedDate||r.endDate));
-          map[eq]=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.returnedDate||r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+          const finished=rentals.filter(r=>r.equipment===eq&&r.status==="zakończone"&&r.startDate&&r.endDate);
+          map[eq]=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
         });
         return map;
       },[rentals,stock]);
@@ -210,8 +226,8 @@
         const durationIncludeMap=(stock&&stock.durationInclude)||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
-        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&(r.returnedDate||r.endDate)&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
-        const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.returnedDate||r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
+        const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
         const marketingSpend=isYear
           ?Array.from({length:12},(_,i)=>marketingSpendForMonth(budget,stock,statsYear+"-"+String(i+1).padStart(2,"0"))).reduce((a,b)=>a+b,0)
           :marketingSpendForMonth(budget,stock,selMonth);
@@ -470,7 +486,7 @@
               </div>
             </div>;
           })}
-          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Tylko szyny CPM. {isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."} Liczone od daty dodania sprzętu (albo pierwszego wypożyczenia), rezerwacje się nie liczą. Pusta ramka = przed dodaniem sprzętu.</div>
+          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Tylko szyny CPM. {isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."} Liczone jest wypożyczenie pacjenta (od startu do końca okresu, za który płaci), a nie moment odbioru sprzętu. Start = data dodania sprzętu albo pierwsze wypożyczenie; rezerwacje się nie liczą. Pusta ramka = przed dodaniem sprzętu.</div>
         </StatAcc>
 
         {/* 4. Opłacalność sprzętu */}

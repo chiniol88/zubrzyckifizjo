@@ -904,10 +904,10 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:x))} style={{background:"none",border:"none",fontSize:12,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>× Usuń planowany odbiór</button>
                   </>}
                 </div>
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:12,color:"#7A8FA6",marginBottom:6,fontWeight:600}}>{r.renewable?"Data zakończenia wypożyczenia":"Data faktycznego zwrotu sprzętu"}</div>
-                  <Inp label="" value={r.renewable?(closeDate||r.plannedReturn||""):(closeDate||todayLocal())} onChange={v=>setCloseDate(v)} type="date"/>
-                </div>
+                {r.renewable&&<div style={{marginBottom:10}}>
+                  <div style={{fontSize:12,color:"#7A8FA6",marginBottom:6,fontWeight:600}}>Data zakończenia wypożyczenia</div>
+                  <Inp label="" value={closeDate||r.plannedReturn||""} onChange={v=>setCloseDate(v)} type="date"/>
+                </div>}
                 <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{
                   const extTotal=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
                   const totalAmount=(+r.amount||0)+extTotal;
@@ -918,19 +918,17 @@ p{margin:2px 0}.bold7{font-weight:bold}
                   if(r.renewable&&!effectiveCloseDate){alert("Podaj datę zakończenia");return;}
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
                   const endMonth=r.renewable&&effectiveCloseDate?effectiveCloseDate.slice(0,7):null;
-                  const returnedDate=r.renewable?null:(closeDate||todayLocal());
-                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?effectiveCloseDate:x.endDate,...(returnedDate?{returnedDate}:{}),
+                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?effectiveCloseDate:x.endDate,
                     cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.cancelled||c.month<=endMonth)):x.cycles
                   }:x));
                   if(endMonth){
                     const toRemove=new Set((r.cycles||[]).filter(c=>!c.paid&&c.month>endMonth).map(c=>"cycle-"+r.id+"-"+(c.dueDate||c.month)));
                     if(toRemove.size>0)setFinances(fs=>fs.filter(f=>!toRemove.has(f.sourceId)));
                   }
-                  setCloseDate("");
                   close();
                 }}><Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ</Btn>
               </>}
-              {r.status==="zakończone"&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne",returnedDate:undefined}:x))}>↩️ Cofnij zakończenie</Btn>}
+              {r.status==="zakończone"&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne"}:x))}>↩️ Cofnij zakończenie</Btn>}
               {!r.renewable&&(()=>{
                 const lastExt=(r.extensions||[]).at(-1);
                 const dtStart=r.startDate+"T"+(r.startTime||"10:00")+":00";
