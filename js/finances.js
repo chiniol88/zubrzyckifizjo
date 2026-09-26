@@ -57,6 +57,14 @@
       return out;
     }
 
+    // ── pomocnicze: miesiące jako tekst "RRRR-MM" (bez Date — brak błędu 29-31 dnia miesiąca) ──
+    const ymAdd=(ym,n)=>{let y=+ym.slice(0,4),m=+ym.slice(5,7)-1+n;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+"-"+String(m+1).padStart(2,"0");};
+    const PL_MON=["sty","lut","mar","kwi","maj","cze","lip","sie","wrz","paź","lis","gru"];
+    const fmtNum=n=>{const s=String(Math.round(Math.abs(n)));let o="";for(let i=0;i<s.length;i++){if(i&&(s.length-i)%3===0)o+=String.fromCharCode(160);o+=s[i];}return (n<0?"-":"")+o;};
+    const plWozek=n=>n===1?"wózek":(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"wózki":"wózków";
+    // procenty sumujące się do 100 (metoda największych reszt)
+    const pctSplit=vals=>{const t=vals.reduce((a,b)=>a+b,0);if(t<=0)return vals.map(()=>0);const raw=vals.map(v=>v/t*100),fl=raw.map(Math.floor);let rest=100-fl.reduce((a,b)=>a+b,0);raw.map((r,i)=>[r-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{if(rest>0){fl[i]++;rest--;}});return fl;};
+
     // ── STATYSTYKI (dawniej Sprzęt) — lista rozwijana ────────────────────────
     function StatSpark({vals,w,h,color,sel}) {
       const mx=Math.max(1,...vals)*1.08;
@@ -107,6 +115,7 @@
       const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
       const [openSec,setOpenSec]=useState("rev");
       const [roiEq,setRoiEq]=useState(null);
+      const [showAllRoi,setShowAllRoi]=useState(false);
       const [repairForm,setRepairForm]=useState(null);
       const [showRentalList,setShowRentalList]=useState(false);
       const [srcTab,setSrcTab]=useState("all");
@@ -124,8 +133,8 @@
       const subC="#7A8FA6";
       const bg=dk?"#18202F":"#fff";
       const trackC=dk?"#22304B":"#EAEFF6";
-      const Z=n=>demo?"****":Math.round(n).toLocaleString("pl-PL")+" zł";
-      const PURPLE="#7B4FBF",BLUE="#2E86AB",GREEN="#3DAA72",ORANGE="#F4A261",RED="#E05C5C";
+      const Z=n=>demo?"****":fmtNum(n)+" zł";
+      const PURPLE=dk?"#9A78DB":"#7B4FBF",BLUE="#2E86AB",GREEN="#3DAA72",ORANGE="#F4A261",RED="#E05C5C";
 
       // Okres: miesiąc albo cały rok
       const isYear=scope==="year";
@@ -139,26 +148,35 @@
       // Mapa: paymentId → rentalId
       const paymentRentalMap=useMemo(()=>{const m={};rentals.forEach(r=>{(r.payments||[]).forEach(p=>{m[String(p.id)]=r.id;});});return m;},[rentals]);
       // Wyciąg rentalId z sourceId finansów
+      const rentalIdSet=useMemo(()=>new Set(rentals.map(r=>r.id)),[rentals]);
       const getRid=sid=>{
         if(!sid)return null;
-        if(sid.startsWith("payment-"))return paymentRentalMap[sid.replace("payment-","")]||null;
-        if(sid.startsWith("cycle-")){const r=sid.slice(6);return +r.split("-")[0]||null;}
-        if(sid.startsWith("extend-")){const r=sid.slice(7);return +r.split("-")[0]||null;}
-        if(sid.startsWith("transport-"))return +sid.slice(10)||null;
-        return null;
+        let id=null;
+        if(sid.startsWith("payment-"))id=paymentRentalMap[sid.replace("payment-","")]||null;
+        else if(sid.startsWith("cycle-"))id=+sid.slice(6).split("-")[0]||null;
+        else if(sid.startsWith("extend-"))id=+sid.slice(7).split("-")[0]||null;
+        else if(sid.startsWith("transport-"))id=+sid.slice(10)||null;
+        return id!==null&&rentalIdSet.has(id)?id:null;
       };
 
       // All-time przychód per sprzęt — z RZECZYWISTYCH wpłat w finansach
       const allTimeRevenue=useMemo(()=>{
         const rev={};equipmentAll.forEach(eq=>rev[eq]=0);
+        const counted=new Set();
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód")return;
           const rid=getRid(f.sourceId);if(!rid)return;
+          counted.add(rid);
           const eq=rentalEquipMap[rid];
           if(eq&&rev.hasOwnProperty(eq))rev[eq]+=(+f.amount||0);
         });
+        rentals.forEach(r=>{
+          if(counted.has(r.id)||(r.payments||[]).length>0||(r.cycles||[]).length>0)return;
+          const paid=+r.amountPaid||0;
+          if(paid>0&&r.equipment&&rev.hasOwnProperty(r.equipment))rev[r.equipment]+=paid;
+        });
         return rev;
-      },[finances,rentalEquipMap,paymentRentalMap,stock]);
+      },[finances,rentals,rentalEquipMap,paymentRentalMap,rentalIdSet,stock]);
 
       // All-time śr. czas wypożyczenia per sprzęt (zakończone, z datą od i do)
       const avgDurationByEq=useMemo(()=>{
@@ -181,9 +199,12 @@
           const cid=+sid.slice(6);return !!cid&&(nfzCases||[]).some(x=>x.id===cid);
         });
 
-        // Inicjalizacja wykresu 12 miesięcy
+        // Wykres 12 miesięcy: w skali rocznej styczeń–grudzień wybranego roku; w miesięcznej okno kończy się na bieżącym miesiącu
+        // (albo zaczyna na wybranym, gdy wybrano miesiąc starszy niż 12 mies. temu)
         const monthlyRev={},monthlyWoz={};
-        for(let i=0;i<12;i++){const d=new Date(today);d.setMonth(d.getMonth()-i);const k=d.toISOString().slice(0,7);monthlyRev[k]=0;monthlyWoz[k]=0;}
+        const curYM=today.slice(0,7);
+        const winEnd=isYear?statsYear+"-12":(selMonth<ymAdd(curYM,-11)?ymAdd(selMonth,11):curYM);
+        for(let i=0;i<12;i++){const k=ymAdd(winEnd,i-11);monthlyRev[k]=0;monthlyWoz[k]=0;}
 
         // 1) Wpłaty z tablicy finances (mają właściwy sourceId linkujący do rental)
         const countedRids=new Set();
@@ -233,7 +254,7 @@
           :marketingSpendForMonth(budget,stock,selMonth);
 
         return {totalRevenue,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDuration,marketingSpend};
-      },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,stock,budget]);
+      },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,rentalIdSet,stock,budget]);
       const totalAll=stats.totalRevenue+stats.wozkiRevenue;
 
       const costs=(stock&&stock.costs)||{};
@@ -262,6 +283,8 @@
         const earned=allTimeRevenue[eq]||0,investment=getTotalInvestment(eq);
         return {eq,earned,investment,roi:investment>0?Math.round(earned/investment*100):null};
       });
+      const roiShown=roiRows.filter(x=>showAllRoi||x.earned>0||x.investment>0||roiEq===x.eq);
+      const roiHidden=roiRows.length-roiShown.length;
       const roiKnown=roiRows.filter(x=>x.investment>0);
       const roiDone=roiKnown.filter(x=>x.earned>=x.investment).length;
 
@@ -325,10 +348,11 @@
         return {listItems,rows,totalRev:listItems.reduce((s,i)=>s+i.amount,0),totalCnt:rows.reduce((s,r)=>s+r.cnt,0),totalW:rows.reduce((s,r)=>s+r.wc,0),withoutSrc};
       })();
 
+      const srcPct=pctSplit(src.rows.map(r=>r.rev));
       const tog=id=>()=>setOpenSec(o=>o===id?null:id);
       const kv=(l,v,c,key)=><div key={key||l} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}><span style={{color:c||textC}}>{l}</span><b style={{color:c||textC,fontVariantNumeric:"tabular-nums",textAlign:"right"}}>{v}</b></div>;
-      const navBtn=(fn,ch)=><button onClick={fn} aria-label={ch==="‹"?"Wstecz":"Dalej"} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:"1.5px solid "+borderC,background:bg,cursor:"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{ch}</button>;
-      const shiftMonth=n=>{const d=new Date(selMonth+"-15");d.setMonth(d.getMonth()+n);setSelMonth(d.toISOString().slice(0,7));};
+      const navBtn=(fn,ch,dis)=><button onClick={dis?undefined:fn} disabled={!!dis} aria-label={ch==="‹"?"Wstecz":"Dalej"} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:"1.5px solid "+borderC,background:bg,opacity:dis?.35:1,cursor:dis?"default":"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{ch}</button>;
+      const shiftMonth=n=>setSelMonth(m=>{const t=ymAdd(m,n);return t>today.slice(0,7)?m:t;});
       const switchScope=s=>{if(s==="year")setStatsYear(+selMonth.slice(0,4));setScope(s);};
 
       // ── mini-wizualizacje w nagłówkach ──
@@ -346,18 +370,18 @@
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
           {navBtn(()=>isYear?setStatsYear(y=>y-1):shiftMonth(-1),"‹")}
           <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:16,color:textC,fontFamily:"'Syne',sans-serif",textTransform:"capitalize"}}>{periodLabel}</div>
-          {navBtn(()=>isYear?setStatsYear(y=>y+1):shiftMonth(1),"›")}
+          {navBtn(()=>isYear?setStatsYear(y=>y+1):shiftMonth(1),"›",isYear?statsYear>=+today.slice(0,4):selMonth>=today.slice(0,7))}
         </div>
 
         {/* 1. Przychód */}
-        <StatAcc dk={dk} open={openSec==="rev"} onToggle={tog("rev")} title="Przychód" sub="wypożyczenia + wózki NFZ"
+        <StatAcc dk={dk} open={openSec==="rev"} onToggle={tog("rev")} title="Przychód ze sprzętu" sub="wypożyczenia i wózki"
           mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
           keyVal={Z(totalAll)} keyColor={GREEN}>
           {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
           {kv("Wózki – refundacje NFZ ("+stats.wozkiCount+" szt.)",Z(stats.wozkiRevenue),PURPLE)}
           {kv("Nowych wypożyczeń",stats.totalCount)}
           {kv("Śr. czas wypożyczenia",stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych")}
-          {kv("Marketing (wydatki)",Z(stats.marketingSpend),RED)}
+          {stats.marketingSpend>0?kv("Marketing (wydatki)",Z(stats.marketingSpend),RED):kv("Marketing (wydatki)","brak wpisów w budżecie",subC)}
           <div style={{textAlign:"right",marginTop:2}}>
             <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:11,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"inherit"}}>{(stock&&stock._mktgOpen)?"zamknij wybór kategorii":"zmień kategorię marketingu"}</button>
           </div>
@@ -372,7 +396,7 @@
               {budgetSubNames.map(s=><option key={s} value={s}>{s}</option>)}
             </select>}
           </div>}
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"14px 0 4px"}}>Ostatnie 12 miesięcy · dotknij słupka</div>
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"14px 0 4px"}}>{isYear?"Rok "+statsYear:"12 miesięcy"} · dotknij słupka</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:4,height:112,paddingTop:14}}>
             {stats.monthlyArr.map(([m,v,w])=>{
               const t=v+w,h=Math.max(t>0?3:0,Math.round(t/stats.maxMonthly*80)),hw=t>0?w/t*100:0;
@@ -382,7 +406,7 @@
                 <div style={{width:"100%",height:h,display:"flex",flexDirection:"column",justifyContent:"flex-end",borderRadius:"5px 5px 0 0",overflow:"hidden",opacity:sel?1:.4}}>
                   <div style={{height:hw+"%",background:PURPLE}}/><div style={{flex:1,background:BLUE}}/>
                 </div>
-                <div style={{fontSize:9,color:sel?"#3E6FB0":subC,fontWeight:sel?700:400}}>{m.slice(5)}</div>
+                <div style={{fontSize:9,lineHeight:1.15,textAlign:"center",color:sel?"#3E6FB0":subC,fontWeight:sel?700:400}}>{PL_MON[+m.slice(5)-1]}{(m.slice(5)==="01"||m===stats.monthlyArr[0][0])&&<div style={{fontSize:8,opacity:.8}}>{"'"+m.slice(2,4)}</div>}</div>
               </button>;
             })}
           </div>
@@ -409,13 +433,13 @@
                   {src.rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,minWidth:0}}>
                     <i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>
                     <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:textC}}>{r.l}</span>
-                    <b style={{fontVariantNumeric:"tabular-nums",color:textC}}>{src.totalRev>0?Math.round(r.rev/src.totalRev*100):0}%</b>
+                    <b style={{fontVariantNumeric:"tabular-nums",color:textC}}>{srcPct[src.rows.indexOf(r)]}%</b>
                   </div>)}
                 </div>
               </div>
               {src.rows.map(r=><div key={"d"+r.k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}>
                 <span style={{display:"flex",gap:8,alignItems:"center",minWidth:0,color:textC}}><i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>{r.l}</span>
-                <span style={{textAlign:"right",fontVariantNumeric:"tabular-nums",color:subC}}>{r.cnt>0&&r.cnt+" wyp."}{r.wc>0&&<span style={{color:PURPLE,fontWeight:600}}>{r.cnt>0?" + ":""}{r.wc} wózk{r.wc===1?"ek":r.wc<5?"i":"ów"}</span>} · <b style={{color:GREEN}}>{Z(r.rev)}</b></span>
+                <span style={{textAlign:"right",fontVariantNumeric:"tabular-nums",color:subC}}>{r.cnt>0&&r.cnt+" wyp."}{r.wc>0&&<span style={{color:PURPLE,fontWeight:600}}>{r.cnt>0?" + ":""}{r.wc} {plWozek(r.wc)}</span>} · <b style={{color:GREEN}}>{Z(r.rev)}</b></span>
               </div>)}
               <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",fontSize:13}}>
                 <b style={{color:textC}}>Łącznie</b><b style={{color:textC}}>{src.totalCnt} wyp.{src.totalW>0?" + "+src.totalW+" wóz.":""} · <span style={{color:GREEN}}>{Z(src.totalRev)}</span></b>
@@ -492,23 +516,23 @@
         {/* 4. Opłacalność sprzętu */}
         <StatAcc dk={dk} open={openSec==="roi"} onToggle={tog("roi")} title="Opłacalność sprzętu" sub="zakup, naprawy, zwrot (cały czas)"
           mini={roiKnown.length>0?miniRoi:null} keyVal={roiKnown.length>0?roiDone+"/"+roiKnown.length:"—"}>
-          {roiRows.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak sprzętu</div>}
-          {roiRows.map(({eq,earned,investment,roi})=>{
+          {roiShown.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak sprzętu z przychodem lub kosztem zakupu</div>}
+          {roiShown.map(({eq,earned,investment,roi})=>{
             const isOpen=roiEq===eq;
             const c=getCosts(eq);
             const qty=getQty(eq);
             const machineSrvEntries=getMachineSrvForEq(eq);
             const repairsTotal=(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+machineSrvEntries.reduce((s,x)=>s+x.amount,0);
-            // Szacowanie zwrotu na bazie ostatnich 3 miesięcy (z finansów)
-            const last3mStr=new Date(today);last3mStr.setMonth(last3mStr.getMonth()-3);
-            const last3mCut=last3mStr.toISOString().slice(0,10);
+            // Szacunek zwrotu: średnia z ostatnich 3 miesięcy, ale dzielona przez faktyczny czas działania sprzętu (nowy sprzęt nie jest "rozwodniony")
+            const cut3=ymAdd(today.slice(0,7),-3)+"-"+today.slice(8,10);
+            const eqRev=(finances||[]).filter(f=>{if(f.type!=="przychód"||!f.date)return false;const rid=getRid(f.sourceId);return !!rid&&rentalEquipMap[rid]===eq;});
             let avgMonthly=0;
-            (finances||[]).forEach(f=>{
-              if(f.type!=="przychód"||!f.date||(f.date<last3mCut))return;
-              const rid=getRid(f.sourceId);if(!rid)return;
-              if(rentalEquipMap[rid]===eq)avgMonthly+=(+f.amount||0);
-            });
-            avgMonthly=Math.round(avgMonthly/3);
+            if(eqRev.length){
+              const first=eqRev.reduce((m,f)=>f.date<m?f.date:m,"9999-12-31");
+              const from=first>cut3?first:cut3;
+              const sum3=eqRev.filter(f=>f.date>=cut3).reduce((sm,f)=>sm+(+f.amount||0),0);
+              avgMonthly=Math.round(sum3/Math.min(3,Math.max(1,dateDiff(from,today)/30.4)));
+            }
             const remaining=investment-earned;
             const monthsLeft=avgMonthly>0&&remaining>0?Math.ceil(remaining/avgMonthly):null;
             const avgDur=getDurationInclude(eq)?avgDurationByEq[eq]:null;
@@ -586,6 +610,7 @@
               </div>}
             </div>;
           })}
+          {(roiHidden>0||showAllRoi)&&<button onClick={()=>setShowAllRoi(v=>!v)} style={{width:"100%",padding:"8px",borderRadius:10,border:"1px dashed "+borderC,background:"none",color:"#3E6FB0",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit",marginBottom:6}}>{showAllRoi?"Ukryj sprzęt bez danych":"Pokaż resztę sprzętu ("+roiHidden+") — aby wpisać koszt zakupu"}</button>}
           <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Kreska = punkt zwrotu (zakup + naprawy). Nie zależy od wybranego okresu. Dotknij sprzętu, aby wpisać zakup i naprawy.</div>
         </StatAcc>
 
