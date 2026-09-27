@@ -114,7 +114,16 @@
 
     function StatAcc({open,onToggle,title,sub,mini,keyVal,keyColor,children,dk}) {
       const bd=dk?"#2A3A56":"#E4EAF3";
-      return <div style={{background:dk?"#18202F":"#fff",border:"1px solid "+bd,borderRadius:18,marginBottom:10,overflow:"hidden"}}>
+      const ref=useRef(null);
+      useEffect(()=>{
+        if(!open||!ref.current)return;
+        const t=setTimeout(()=>{
+          const r=ref.current.getBoundingClientRect();
+          if(r.top<70||r.bottom>window.innerHeight)ref.current.scrollIntoView({behavior:"smooth",block:"start"});
+        },80);
+        return ()=>clearTimeout(t);
+      },[open]);
+      return <div ref={ref} style={{background:dk?"#18202F":"#fff",border:"1px solid "+bd,borderRadius:18,marginBottom:10,overflow:"hidden",scrollMarginTop:12}}>
         <button onClick={onToggle} aria-expanded={open} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"14px 16px",border:"none",background:"none",textAlign:"left",cursor:"pointer",fontFamily:"inherit",color:dk?"#C8E8E8":"#1C2B3A"}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:14,fontWeight:700}}>{title}</div>
