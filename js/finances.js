@@ -247,13 +247,15 @@
         const durationIncludeMap=(stock&&stock.durationInclude)||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
-        const finished=rentals.filter(r=>r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
-        const avgDuration=finished.length>0?Math.round(finished.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finished.length):null;
+        const finishedOne=rentals.filter(r=>!r.renewable&&r.status==="zakończone"&&r.startDate&&r.endDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
+        const avgDurationOne=finishedOne.length>0?Math.round(finishedOne.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finishedOne.length):null;
+        const finishedCyc=rentals.filter(r=>r.renewable&&r.status==="zakończone"&&r.startDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
+        const avgCyclesCount=finishedCyc.length>0?Math.round(finishedCyc.reduce((s,r)=>s+(r.cycles||[]).filter(c=>!c.cancelled).length,0)/finishedCyc.length*10)/10:null;
         const marketingSpend=isYear
           ?Array.from({length:12},(_,i)=>marketingSpendForMonth(budget,stock,statsYear+"-"+String(i+1).padStart(2,"0"))).reduce((a,b)=>a+b,0)
           :marketingSpendForMonth(budget,stock,selMonth);
 
-        return {totalRevenue,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDuration,marketingSpend};
+        return {totalRevenue,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDurationOne,avgCyclesCount,marketingSpend};
       },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,rentalIdSet,stock,budget]);
       const totalAll=stats.totalRevenue+stats.wozkiRevenue;
 
@@ -380,7 +382,8 @@
           {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
           {kv("Wózki – refundacje NFZ ("+stats.wozkiCount+" szt.)",Z(stats.wozkiRevenue),PURPLE)}
           {kv("Nowych wypożyczeń",stats.totalCount)}
-          {kv("Śr. czas wypożyczenia",stats.avgDuration!==null?stats.avgDuration+" dni":"brak danych")}
+          {kv("Śr. czas jednorazowych",stats.avgDurationOne!==null?stats.avgDurationOne+" dni":"brak danych")}
+          {kv("Śr. liczba okresów (cykliczne)",stats.avgCyclesCount!==null?String(stats.avgCyclesCount):"brak danych")}
           {stats.marketingSpend>0?kv("Marketing (wydatki)",Z(stats.marketingSpend),RED):kv("Marketing (wydatki)","brak wpisów w budżecie",subC)}
           <div style={{textAlign:"right",marginTop:2}}>
             <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:11,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"inherit"}}>{(stock&&stock._mktgOpen)?"zamknij wybór kategorii":"zmień kategorię marketingu"}</button>
@@ -646,7 +649,6 @@
     function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,stock,setStock,machines,setMachines,wealth,setWealth}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
-      const [showAdd,setShowAdd]=useState(false);
       const [editE,setEditE]=useState(null);
       const [viewMode,setViewMode]=useState(()=>{const h=window.location.hash.replace("#","").split("-");return h[1]||"month";});
       useEffect(()=>{window.location.replace("#finances-"+viewMode);},[viewMode]);
@@ -659,8 +661,6 @@
       const [showAllPats,setShowAllPats]=useState(false);
       const [expandedCat,setExpandedCat]=useState(null);
       const cats=["Wizyta","Wypożyczalnia","Wózek","Inne"];
-      const ef=()=>({date:todayLocal(),category:"Wizyta",amount:"",description:""});
-      const [form,setForm]=useState(ef);
 
       const weekEnd=useMemo(()=>{const d=new Date(weekStart+"T12:00:00");d.setDate(d.getDate()+6);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");},[weekStart]);
 
@@ -807,7 +807,6 @@
         <div>
           <div style={{padding:"28px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800}}>Finanse</div>
-            {viewMode!=="sprzet"&&viewMode!=="wealth"&&<Btn small onClick={()=>{setForm(ef());setShowAdd(true);}}><Ico d={I.plus} s={16} c="#fff"/> Dodaj</Btn>}
           </div>
           <div style={{padding:"0 20px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,gap:8}}>
@@ -932,14 +931,6 @@
 
           </div>
         </div>
-
-        {showAdd&&<Modal title="Nowy przychód" onClose={()=>setShowAdd(false)}>
-          <Sel label="Kategoria" value={form.category} onChange={v=>setForm(f=>({...f,category:v}))} options={cats.map(c=>({value:c,label:c}))}/>
-          <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="150"/>
-          <Inp label="Opis" value={form.description} onChange={v=>setForm(f=>({...f,description:v}))} placeholder="np. wizyta u Jana Kowalskiego"/>
-          <Inp label="Data" value={form.date} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>
-          <Btn disabled={!form.amount} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.amount)return;setFinances(fs=>[{...form,id:Date.now(),type:"przychód",amount:+form.amount},...fs]);setForm(ef());setShowAdd(false);setToast("Wpis dodany");}}>Zapisz</Btn>
-        </Modal>}
 
         {editE&&<Modal title="Edytuj wpis" onClose={()=>setEditE(null)}>
           <Sel label="Kategoria" value={editE.category||"Wizyta"} onChange={v=>setEditE(f=>({...f,category:v}))} options={cats.map(c=>({value:c,label:c}))}/>
