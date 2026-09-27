@@ -64,6 +64,27 @@
     const plWozek=n=>n===1?"wózek":(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"wózki":"wózków";
     // procenty sumujące się do 100 (metoda największych reszt)
     const pctSplit=vals=>{const t=vals.reduce((a,b)=>a+b,0);if(t<=0)return vals.map(()=>0);const raw=vals.map(v=>v/t*100),fl=raw.map(Math.floor);let rest=100-fl.reduce((a,b)=>a+b,0);raw.map((r,i)=>[r-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{if(rest>0){fl[i]++;rest--;}});return fl;};
+    // Niedziela Wielkanocna (algorytm Gaussa, ten sam co w getHolidays z ui.js)
+    const easterSunday=year=>{
+      const a=year%19,b=Math.floor(year/100),c=year%100;
+      const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+      const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+      const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
+      const m=Math.floor((a+11*h+22*l)/451);
+      const month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;
+      return year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+    };
+    // Sezonowe okresy (przybliżone — ferie zimowe różnią się wg regionu, tu okno obejmujące wszystkie grupy)
+    const seasonBuckets=year=>{
+      const easter=easterSunday(year);
+      return [
+        {k:"ferie",l:"❄️ Ferie zimowe",from:year+"-01-15",to:year+"-03-15",note:"okres przybliżony — dokładne daty różnią się wg województwa"},
+        {k:"wielkanoc",l:"🐣 Wielkanoc",from:addDays(easter,-3),to:addDays(easter,1)},
+        {k:"wakacje",l:"☀️ Wakacje letnie",from:year+"-06-21",to:year+"-08-31"},
+        {k:"wrzesien",l:"🍂 Wrzesień",from:year+"-09-01",to:year+"-09-30"},
+        {k:"swieta",l:"🎄 Święta i Nowy Rok",from:year+"-12-20",to:(year+1)+"-01-06"},
+      ];
+    };
 
     // ── STATYSTYKI (dawniej Sprzęt) — lista rozwijana ────────────────────────
     function StatSpark({vals,w,h,color,sel}) {
@@ -105,6 +126,10 @@
         </button>
         {open&&<div style={{padding:"14px 16px 16px",borderTop:"1px solid "+bd}}>{children}</div>}
       </div>;
+    }
+
+    function GroupLabel({children,dk}) {
+      return <div style={{fontSize:12,fontWeight:800,color:dk?"#8FA6CC":"#3E5578",textTransform:"uppercase",letterSpacing:".08em",margin:"22px 2px 8px"}}>{children}</div>;
     }
 
     function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines,nfzCases}) {
@@ -283,7 +308,11 @@
       // ROI — wiersze
       const roiRows=equipmentAll.map(eq=>{
         const earned=allTimeRevenue[eq]||0,investment=getTotalInvestment(eq);
-        return {eq,earned,investment,roi:investment>0?Math.round(earned/investment*100):null};
+        const c=getCosts(eq);
+        const repairsTotal=(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+getMachineSrvForEq(eq).reduce((s,x)=>s+x.amount,0);
+        const occAll=repairsTotal>0?occupancyForEq(eq,rentals,stock,"2000-01-01",today,today):null;
+        const repairsPer100=(occAll&&occAll.booked>0)?Math.round(repairsTotal/occAll.booked*100):null;
+        return {eq,earned,investment,roi:investment>0?Math.round(earned/investment*100):null,repairsPer100};
       });
       const roiShown=roiRows.filter(x=>showAllRoi||x.earned>0||x.investment>0||roiEq===x.eq);
       const roiHidden=roiRows.length-roiShown.length;
@@ -350,6 +379,206 @@
         return {listItems,rows,totalRev:listItems.reduce((s,i)=>s+i.amount,0),totalCnt:rows.reduce((s,r)=>s+r.cnt,0),totalW:rows.reduce((s,r)=>s+r.wc,0),withoutSrc};
       })();
 
+      // Przychód sprzętu w dowolnym zakresie dat (opcjonalnie: tylko jeden typ sprzętu) — używane przez prognozę i sezonowość
+      const revenueInRange=(from,to,eqFilter)=>{
+        if(from>to)return 0;
+        let total=0;
+        const countedR=new Set();
+        (finances||[]).forEach(f=>{
+          if(f.type!=="przychód"||(f.date||"")<from||(f.date||"")>to)return;
+          const rid=getRid(f.sourceId);
+          if(rid){
+            if(eqFilter&&rentalEquipMap[rid]!==eqFilter)return;
+            countedR.add(rid);total+=(+f.amount||0);return;
+          }
+          if(!eqFilter){
+            const sid=f.sourceId||"";
+            if(sid.startsWith("wozek-")){const cid=+sid.slice(6);if(cid&&(nfzCases||[]).some(x=>x.id===cid))total+=(+f.amount||0);}
+          }
+        });
+        rentals.forEach(r=>{
+          if(eqFilter&&r.equipment!==eqFilter)return;
+          if(countedR.has(r.id)||(r.payments||[]).length>0||(r.cycles||[]).length>0)return;
+          const paid=+r.amountPaid||0;if(paid<=0)return;
+          const d=r.startDate||"";
+          if(d>=from&&d<=to)total+=paid;
+        });
+        return total;
+      };
+
+      // ── A1: Prognoza przychodu na 30 dni ──
+      const forecast=useMemo(()=>{
+        const horizon=addDays(today,30);
+        let overdue=0,overdueCount=0,scheduled=0,scheduledCount=0;
+        rentals.forEach(r=>{
+          if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
+          (r.cycles||[]).forEach(c=>{
+            if(c.paid||c.cancelled)return;
+            const due=c.dueDate||c.month+"-01";
+            if(due<today){overdue+=(+c.amount||0);overdueCount++;}
+            else if(due<=horizon){scheduled+=(+c.amount||0);scheduledCount++;}
+          });
+        });
+        let expectedNext=0,expectedCount=0;
+        rentals.forEach(r=>{
+          if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
+          const active=(r.cycles||[]).filter(c=>!c.cancelled);
+          if(!active.length)return;
+          const last=active.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a);
+          const lastDue=last.dueDate||last.month+"-01",next=nextCycleDueDate(lastDue);
+          if(active.some(c=>(c.dueDate||c.month+"-01")===next))return;
+          if(next>=today&&next<=horizon){expectedNext+=(+last.amount||+r.amount||0);expectedCount++;}
+        });
+        let plannedStarts=0,plannedCount=0;
+        rentals.forEach(r=>{
+          if(!r.reserved||!r.startDate)return;
+          if(r.startDate>=today&&r.startDate<=horizon){plannedStarts+=(+r.amount||0);plannedCount++;}
+        });
+        const pewne=overdue+scheduled,szacunek=expectedNext+plannedStarts;
+        return {overdue,overdueCount,scheduled,scheduledCount,expectedNext,expectedCount,plannedStarts,plannedCount,pewne,szacunek,total:pewne+szacunek,horizon};
+      },[rentals,today]);
+
+      // ── A2: Retencja cyklicznych (all-time) ──
+      const retention=useMemo(()=>{
+        const cyc=rentals.filter(r=>r.renewable&&(r.cycles||[]).some(c=>!c.cancelled));
+        const finishedCyc=cyc.filter(r=>r.status==="zakończone");
+        const activeCyc=cyc.filter(r=>r.status==="aktywne");
+        const counts=finishedCyc.map(r=>(r.cycles||[]).filter(c=>!c.cancelled).length);
+        const avg=counts.length?Math.round(counts.reduce((a,b)=>a+b,0)/counts.length*10)/10:null;
+        const maxK=Math.min(6,Math.max(0,...counts));
+        const curve=[];
+        for(let k=1;k<=maxK;k++)curve.push({k:String(k),pct:counts.length?Math.round(counts.filter(c=>c>=k).length/counts.length*100):0,cnt:counts.filter(c=>c>=k).length});
+        const over=counts.filter(c=>c>6).length;
+        if(over>0)curve.push({k:"7+",pct:Math.round(over/counts.length*100),cnt:over});
+        return {finishedCount:finishedCyc.length,activeCount:activeCyc.length,avg,curve};
+      },[rentals]);
+
+      // ── A8: Wartość klienta (LTV) wg źródła — tylko sprzęt, all-time ──
+      const ltvBySource=useMemo(()=>{
+        const pats={};
+        const keyOf=(pid,pname)=>pid?"p"+pid:"n"+(pname||"");
+        rentals.forEach(r=>{
+          if(r.reserved)return;
+          const key=keyOf(r.patientId,r.patientName);
+          if(!pats[key])pats[key]={paid:0,source:null,sourceDate:null};
+          pats[key].paid+=calcRentalPaid(r);
+          if(r.source&&(!pats[key].sourceDate||(r.startDate||"")<pats[key].sourceDate)){pats[key].source=r.source;pats[key].sourceDate=r.startDate||"";}
+        });
+        (nfzCases||[]).forEach(cas=>{
+          const key=keyOf(cas.patientId,cas.patientName);
+          const paidW=(finances||[]).filter(f=>f.type==="przychód"&&f.sourceId==="wozek-"+cas.id).reduce((s,f)=>s+(+f.amount||0),0);
+          if(!pats[key])pats[key]={paid:0,source:null,sourceDate:null};
+          pats[key].paid+=paidW;
+          if(cas.source&&(!pats[key].sourceDate||(cas.orderDate||"")<pats[key].sourceDate)){pats[key].source=cas.source;pats[key].sourceDate=cas.orderDate||"";}
+        });
+        const bySrc={};RENTAL_SOURCES.forEach(s=>bySrc[s.value]={sum:0,cnt:0});
+        Object.values(pats).forEach(p=>{if(p.paid>0&&p.source&&bySrc[p.source]){bySrc[p.source].sum+=p.paid;bySrc[p.source].cnt++;}});
+        const rows=RENTAL_SOURCES.map(s=>({k:s.value,l:s.label,c:s.color,avg:bySrc[s.value].cnt?Math.round(bySrc[s.value].sum/bySrc[s.value].cnt):0,cnt:bySrc[s.value].cnt}))
+          .filter(x=>x.cnt>0).sort((a,b)=>b.avg-a.avg);
+        return {rows};
+      },[rentals,nfzCases,finances]);
+
+      // ── A9: Wypożyczenie wózka → refundacja NFZ (ten sam pacjent, all-time) ──
+      const wozekConv=useMemo(()=>{
+        const wozRentals=rentals.filter(r=>WOZEK_EQUIPMENT.includes(r.equipment)&&r.startDate&&!r.reserved);
+        const keyOf=(pid,pname)=>pid?"p"+pid:"n"+(pname||"");
+        let converted=0,daysSum=0,refundSum=0;
+        wozRentals.forEach(r=>{
+          const key=keyOf(r.patientId,r.patientName);
+          const match=(nfzCases||[]).filter(cas=>keyOf(cas.patientId,cas.patientName)===key&&cas.orderDate&&cas.orderDate>=r.startDate).sort((a,b)=>a.orderDate.localeCompare(b.orderDate))[0];
+          if(match){
+            converted++;
+            daysSum+=Math.max(0,dateDiff(r.startDate,match.orderDate));
+            refundSum+=(finances||[]).filter(f=>f.type==="przychód"&&f.sourceId==="wozek-"+match.id).reduce((s,f)=>s+(+f.amount||0),0);
+          }
+        });
+        return {total:wozRentals.length,converted,pct:wozRentals.length?Math.round(converted/wozRentals.length*100):0,avgDays:converted?Math.round(daysSum/converted):null,avgRefund:converted?Math.round(refundSum/converted):null};
+      },[rentals,nfzCases,finances]);
+
+      // ── A5 + A7: Sezonowość, rok do roku, koszt reklamy ──
+      const displayYear=isYear?statsYear:+selMonth.slice(0,4);
+      const seasonData=useMemo(()=>{
+        const rows=seasonBuckets(displayYear).map(b=>{
+          const future=b.from>today;
+          const to=b.to>today?today:b.to;
+          const cur=future?0:revenueInRange(b.from,to,null);
+          const prevB=seasonBuckets(displayYear-1).find(x=>x.k===b.k);
+          const prev=revenueInRange(prevB.from,prevB.to,null);
+          const days=Math.round((Date.parse(to+"T00:00:00Z")-Date.parse(b.from+"T00:00:00Z"))/864e5)+1;
+          return {...b,cur,prev,future,perDay:(!future&&days>0)?Math.round(cur/days):null,diffPct:(prev>0&&!future)?Math.round((cur-prev)/prev*100):null};
+        });
+        const yoyMonths=Array.from({length:12},(_,i)=>{
+          const mm=String(i+1).padStart(2,"0");
+          const lastCur=String(new Date(displayYear,i+1,0).getDate()).padStart(2,"0");
+          const lastPrev=String(new Date(displayYear-1,i+1,0).getDate()).padStart(2,"0");
+          const startCur=displayYear+"-"+mm+"-01";
+          const cur=startCur>today?0:revenueInRange(startCur,(displayYear+"-"+mm+"-"+lastCur)>today?today:(displayYear+"-"+mm+"-"+lastCur),null);
+          const prev=revenueInRange((displayYear-1)+"-"+mm+"-01",(displayYear-1)+"-"+mm+"-"+lastPrev,null);
+          return {m:i,cur,prev};
+        });
+        return {rows,yoyMonths};
+      },[displayYear,rentals,finances,nfzCases,today]);
+      const adsStats=useMemo(()=>{
+        const newRentals=rentals.filter(r=>r.source==="reklama"&&!r.reserved&&(r.startDate||"")>=pStart&&(r.startDate||"")<=pEnd).length;
+        const newWozki=(nfzCases||[]).filter(cas=>cas.source==="reklama"&&(cas.orderDate||"")>=pStart&&(cas.orderDate||"")<=pEnd).length;
+        let revenue=0;
+        (finances||[]).forEach(f=>{
+          if(f.type!=="przychód"||(f.date||"")<pStart||(f.date||"")>pEnd)return;
+          const rid=getRid(f.sourceId);
+          if(rid){const r=rentals.find(x=>x.id===rid);if(r&&r.source==="reklama")revenue+=(+f.amount||0);return;}
+          const sid=f.sourceId||"";
+          if(sid.startsWith("wozek-")){const cid=+sid.slice(6);const cas=(nfzCases||[]).find(x=>x.id===cid);if(cas&&cas.source==="reklama")revenue+=(+f.amount||0);}
+        });
+        rentals.forEach(r=>{
+          if((r.payments||[]).length>0||(r.cycles||[]).length>0||r.source!=="reklama")return;
+          const paid=+r.amountPaid||0;if(!paid)return;
+          const d=r.startDate||"";if(d>=pStart&&d<=pEnd)revenue+=paid;
+        });
+        const newCount=newRentals+newWozki;
+        return {newCount,revenue,spend:stats.marketingSpend,perPatient:newCount>0?Math.round(stats.marketingSpend/newCount):null,roas:stats.marketingSpend>0?Math.round(revenue/stats.marketingSpend*100)/100:null};
+      },[rentals,nfzCases,finances,pStart,pEnd,stats.marketingSpend]);
+
+      // ── A10: Struktura długości wypożyczeń jednorazowych (all-time) ──
+      const durationHist=useMemo(()=>{
+        const finished=rentals.filter(r=>!r.renewable&&r.status==="zakończone"&&r.startDate&&r.endDate);
+        const buckets=[{l:"1–7 dni",lo:1,hi:7,n:0},{l:"8–14 dni",lo:8,hi:14,n:0},{l:"15–30 dni",lo:15,hi:30,n:0},{l:"31+ dni",lo:31,hi:Infinity,n:0}];
+        finished.forEach(r=>{const d=Math.max(1,dateDiff(r.startDate,r.endDate));const b=buckets.find(x=>d>=x.lo&&d<=x.hi);if(b)b.n++;});
+        return {buckets,total:finished.length};
+      },[rentals]);
+
+      // ── A11: Kontrola danych ──
+      const dataHealth=useMemo(()=>{
+        const issues=[];
+        const overlapEq=occStats.filter(x=>x.overlapDays>0);
+        if(overlapEq.length)issues.push({k:"overlap",l:"Nakładające się wypożyczenia szyn ponad liczbę sztuk",n:overlapEq.reduce((s,x)=>s+x.overlapDays,0),detail:overlapEq.map(x=>x.eq+" ("+x.overlapDays+" dni)").join(", ")});
+        const noSrcRentals=rentals.filter(r=>!r.reserved&&!r.source).length;
+        const noSrcWozki=(nfzCases||[]).filter(c=>!c.source).length;
+        if(noSrcRentals+noSrcWozki>0)issues.push({k:"nosrc",l:"Brak oznaczonego źródła",n:noSrcRentals+noSrcWozki,detail:noSrcRentals+" wypożyczeń, "+noSrcWozki+" wózków"});
+        const eqNoAdded=equipmentAll.filter(eq=>catOf(eq)==="szyny"&&!(stock&&stock.addedDate&&stock.addedDate[eq])&&rentals.some(r=>r.equipment===eq));
+        if(eqNoAdded.length)issues.push({k:"noadded",l:"Brak daty dodania sprzętu (szyny)",n:eqNoAdded.length,detail:eqNoAdded.join(", ")});
+        const noEnd=rentals.filter(r=>r.status==="zakończone"&&!r.renewable&&!r.endDate).length;
+        if(noEnd>0)issues.push({k:"noend",l:"Zakończone wypożyczenia bez daty końca",n:noEnd});
+        const oldRes=rentals.filter(r=>r.reserved&&r.reservedAt&&dateDiff(r.reservedAt,today)>14);
+        if(oldRes.length)issues.push({k:"oldres",l:"Rezerwacje czekające ponad 14 dni",n:oldRes.length,detail:oldRes.map(r=>r.patientName).join(", ")});
+        let overdueCyc=0,overdueCycSum=0;
+        rentals.forEach(r=>{
+          if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
+          (r.cycles||[]).forEach(c=>{if(!c.paid&&!c.cancelled&&(c.dueDate||c.month+"-01")<today){overdueCyc++;overdueCycSum+=(+c.amount||0);}});
+        });
+        if(overdueCyc>0)issues.push({k:"overdue",l:"Zaległe okresy cykliczne",n:overdueCyc,detail:Z(overdueCycSum)});
+        return {issues,total:issues.reduce((s,i)=>s+i.n,0)};
+      },[rentals,nfzCases,stock,occStats,equipmentAll,today]);
+
+      // ── A3 + A6: przychód/dzień dostępności i przestój między wypożyczeniami (tylko szyny CPM) ──
+      const occStatsExt=useMemo(()=>occStats.map(x=>{
+        const list=rentals.filter(r=>r.equipment===x.eq&&r.startDate&&!r.reserved).map(r=>({s:r.startDate,e:r.status==="aktywne"?today:(r.endDate||r.startDate)})).sort((a,b)=>a.s.localeCompare(b.s));
+        const gaps=[];
+        for(let i=1;i<list.length;i++){const g=dateDiff(list[i-1].e,list[i].s)-1;if(g>0&&list[i].s>=pStart&&list[i].s<=pEnd)gaps.push(g);}
+        const cutEnd2=pEnd<today?pEnd:today;
+        const revPerDay=x.cap>0?Math.round(revenueInRange(pStart,cutEnd2,x.eq)/x.cap):null;
+        return {...x,gapAvg:gaps.length?Math.round(gaps.reduce((a,b)=>a+b,0)/gaps.length):null,gapCount:gaps.length,revPerDay};
+      }),[occStats,rentals,finances,nfzCases,pStart,pEnd,today]);
+
       const srcPct=pctSplit(src.rows.map(r=>r.rev));
       const tog=id=>()=>setOpenSec(o=>o===id?null:id);
       const kv=(l,v,c,key)=><div key={key||l} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}><span style={{color:c||textC}}>{l}</span><b style={{color:c||textC,fontVariantNumeric:"tabular-nums",textAlign:"right"}}>{v}</b></div>;
@@ -375,6 +604,11 @@
           {navBtn(()=>isYear?setStatsYear(y=>y+1):shiftMonth(1),"›",isYear?statsYear>=+today.slice(0,4):selMonth>=today.slice(0,7))}
         </div>
 
+        {dataHealth.total>0&&<button onClick={()=>setOpenSec("health")} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"11px 14px",borderRadius:14,border:"1px solid "+ORANGE+"55",background:ORANGE+"18",color:ORANGE,fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",marginBottom:12,textAlign:"left"}}>
+          <span>⚠ {dataHealth.issues.length} rzecz{dataHealth.issues.length===1?"":"y"} do sprawdzenia w danych</span><span>zobacz ›</span>
+        </button>}
+
+        <GroupLabel dk={dk}>💰 Pieniądze</GroupLabel>
         {/* 1. Przychód */}
         <StatAcc dk={dk} open={openSec==="rev"} onToggle={tog("rev")} title="Przychód ze sprzętu" sub="wypożyczenia i wózki"
           mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
@@ -417,8 +651,83 @@
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:BLUE,marginRight:5}}/>Wypożyczenia</span>
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:PURPLE,marginRight:5}}/>Wózki (refundacje)</span>
           </div>
+          <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid "+borderC}}>
+            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Prognoza — najbliższe 30 dni</div>
+            {forecast.pewne+forecast.szacunek===0
+              ?<div style={{fontSize:12,color:subC}}>Brak aktywnych cykli, rezerwacji ani zaległości do prognozy.</div>
+              :<>
+                <div style={{display:"flex",gap:8,marginBottom:8}}>
+                  <div style={{flex:1,background:dk?"#0F2A1E":"#EAF8F0",borderRadius:12,padding:"10px 12px"}}>
+                    <div style={{fontSize:10,color:subC,marginBottom:2}}>Pewne</div>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:GREEN}}>{Z(forecast.pewne)}</div>
+                  </div>
+                  <div style={{flex:1,background:dk?"#241A0A":"#FFF6E8",borderRadius:12,padding:"10px 12px"}}>
+                    <div style={{fontSize:10,color:subC,marginBottom:2}}>Szacunek</div>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:ORANGE}}>{Z(forecast.szacunek)}</div>
+                  </div>
+                </div>
+                {forecast.overdueCount>0&&kv("Zaległe do odzyskania ("+forecast.overdueCount+")",Z(forecast.overdue),RED)}
+                {forecast.scheduledCount>0&&kv("Już zaplanowane cykle ("+forecast.scheduledCount+")",Z(forecast.scheduled))}
+                {forecast.expectedCount>0&&kv("Spodziewane kolejne okresy ("+forecast.expectedCount+")",Z(forecast.expectedNext),ORANGE)}
+                {forecast.plannedCount>0&&kv("Zaplanowane starty rezerwacji ("+forecast.plannedCount+")",Z(forecast.plannedStarts),ORANGE)}
+                <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>„Pewne" = zaległości do ściągnięcia + już utworzone okresy z terminem w tym oknie. „Szacunek" = kolejne okresy jeszcze nieutworzone (licząc +30 dni od ostatniego) i starty z rezerwacji — mogą się nie zrealizować.</div>
+              </>
+            }
+          </div>
         </StatAcc>
 
+        {/* 1b. Sezonowość i reklama */}
+        <StatAcc dk={dk} open={openSec==="season"} onToggle={tog("season")} title="Sezonowość i reklama" sub={displayYear+" vs "+(displayYear-1)}
+          keyVal={adsStats.perPatient!==null?Z(adsStats.perPatient)+"/pacj.":"—"} keyColor={adsStats.newCount===0&&adsStats.spend>0?RED:ORANGE}>
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>📢 Reklama w tym okresie ({periodLabel})</div>
+          <div style={{display:"flex",gap:8,marginBottom:4}}>
+            <div style={{flex:1,background:dk?"#241A0A":"#FFF6E8",borderRadius:12,padding:"10px 12px"}}>
+              <div style={{fontSize:10,color:subC,marginBottom:2}}>Wydano</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:17,color:RED}}>{Z(adsStats.spend)}</div>
+            </div>
+            <div style={{flex:1,background:dk?"#0F1E33":"#EEF4FC",borderRadius:12,padding:"10px 12px"}}>
+              <div style={{fontSize:10,color:subC,marginBottom:2}}>Nowych klientów</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:17,color:BLUE}}>{adsStats.newCount}</div>
+            </div>
+          </div>
+          {adsStats.spend>0&&adsStats.newCount===0&&<div style={{fontSize:12,color:RED,fontWeight:600,marginBottom:8}}>⚠ Wydano {Z(adsStats.spend)} na reklamę, zero nowych klientów z tego źródła w tym okresie.</div>}
+          {kv("Koszt na pozyskanego klienta",adsStats.perPatient!==null?Z(adsStats.perPatient):"—")}
+          {kv("Przychód z reklamy w okresie",Z(adsStats.revenue),GREEN)}
+          {kv("Zwrot z wydanej złotówki (ROAS)",adsStats.roas!==null?adsStats.roas+"×":"—")}
+
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 8px"}}>Rok do roku — {displayYear} vs {displayYear-1}</div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:3,height:78}}>
+            {seasonData.yoyMonths.map(mo=>{
+              const mx=Math.max(1,...seasonData.yoyMonths.map(x=>Math.max(x.cur,x.prev)));
+              return <div key={mo.m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,height:"100%",justifyContent:"flex-end"}}>
+                <div style={{display:"flex",gap:1,alignItems:"flex-end",width:"100%",height:64}}>
+                  <div style={{flex:1,height:Math.round(mo.prev/mx*64)+"px",background:trackC,borderRadius:"2px 2px 0 0"}}/>
+                  <div style={{flex:1,height:Math.round(mo.cur/mx*64)+"px",background:mo.cur>0?BLUE:trackC,borderRadius:"2px 2px 0 0"}}/>
+                </div>
+                <span style={{fontSize:8,color:subC}}>{PL_MON[mo.m]}</span>
+              </div>;
+            })}
+          </div>
+          <div style={{display:"flex",gap:14,fontSize:11,color:subC,marginTop:6}}>
+            <span><i style={{display:"inline-block",width:8,height:8,borderRadius:2,background:trackC,marginRight:5}}/>{displayYear-1}</span>
+            <span><i style={{display:"inline-block",width:8,height:8,borderRadius:2,background:BLUE,marginRight:5}}/>{displayYear}</span>
+          </div>
+
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 8px"}}>Okresy sezonowe</div>
+          {seasonData.rows.map(b=><div key={b.k} style={{marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
+              <span style={{fontSize:13,fontWeight:600,color:textC}}>{b.l}</span>
+              <span style={{fontSize:12,color:subC,textAlign:"right"}}>
+                {b.future?"jeszcze nie nadszedł":<>{Z(b.cur)}{b.diffPct!==null&&<b style={{color:b.diffPct>=0?GREEN:RED,marginLeft:4}}>{b.diffPct>=0?"+":""}{b.diffPct}%</b>}</>}
+              </span>
+            </div>
+            {b.note&&<div style={{fontSize:10,color:subC,marginTop:1}}>{b.note}</div>}
+            {!b.future&&b.perDay!==null&&<div style={{fontSize:10,color:subC,marginTop:1}}>śr. {Z(b.perDay)}/dzień · rok temu: {Z(b.prev)}</div>}
+          </div>)}
+          <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Porównanie do tego samego okresu rok temu. Ferie zimowe pokazane jako jedno szerokie okno (różne regiony mają różne terminy) — daj znać, jeśli wolisz dokładniejsze dopasowanie.</div>
+        </StatAcc>
+
+        <GroupLabel dk={dk}>👥 Klienci</GroupLabel>
         {/* 2. Skąd trafiają klienci */}
         <StatAcc dk={dk} open={openSec==="src"} onToggle={tog("src")} title="Skąd trafiają klienci" sub={src.rows.length>0?"najlepsze: "+src.rows[0].l:"brak danych w okresie"}
           mini={src.rows.length>0?miniSrc:null} keyVal={src.totalCnt+" wyp."}>
@@ -470,11 +779,61 @@
           </div>}
         </StatAcc>
 
+        {/* 2b. Retencja cyklicznych */}
+        <StatAcc dk={dk} open={openSec==="ret"} onToggle={tog("ret")} title="Retencja cyklicznych" sub={retention.finishedCount>0?"śr. "+retention.avg+" okresów":"brak zakończonych cyklicznych"}
+          keyVal={retention.finishedCount>0?String(retention.avg):"—"}>
+          {retention.finishedCount===0
+            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń cyklicznych do policzenia retencji.{retention.activeCount>0&&" ("+retention.activeCount+" nadal aktywnych)"}</div>
+            :<>
+              <div style={{fontSize:12,color:subC,marginBottom:12}}>Na podstawie {retention.finishedCount} zakończonych wypożyczeń cyklicznych{retention.activeCount>0&&" (+ "+retention.activeCount+" nadal aktywnych, jeszcze licząc)"}.</div>
+              {retention.curve.map(c=><div key={c.k} style={{marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                  <span style={{color:textC,fontWeight:600}}>{c.k==="1"?"1 okres":c.k+" okres"+(c.k!=="7+"&&+c.k<5?"y":"ów")}</span>
+                  <span style={{color:subC}}>{c.pct}% ({c.cnt})</span>
+                </div>
+                <div style={{height:7,borderRadius:4,background:trackC}}><div style={{height:"100%",width:c.pct+"%",background:BLUE,borderRadius:4}}/></div>
+              </div>)}
+              <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Odsetek wypożyczeń, które dotrwały do co najmniej k-tego okresu (30 dni = 1 okres). Liczone all-time, niezależnie od wybranego miesiąca/roku.</div>
+            </>
+          }
+        </StatAcc>
+
+        {/* 2c. Wartość klienta wg źródła */}
+        <StatAcc dk={dk} open={openSec==="ltv"} onToggle={tog("ltv")} title="Wartość klienta wg źródła" sub={ltvBySource.rows.length>0?"najlepsze: "+ltvBySource.rows[0].l:"brak danych"}
+          keyVal={ltvBySource.rows.length>0?Z(ltvBySource.rows[0].avg):"—"}>
+          {ltvBySource.rows.length===0
+            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Za mało danych — uzupełnij źródła przy wypożyczeniach.</div>
+            :<>
+              {ltvBySource.rows.map(r=><div key={r.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}>
+                <span style={{display:"flex",gap:8,alignItems:"center",color:textC}}><i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>{r.l}<span style={{color:subC,fontWeight:400}}> ({r.cnt} os.)</span></span>
+                <b style={{color:GREEN,fontVariantNumeric:"tabular-nums"}}>{Z(r.avg)}</b>
+              </div>)}
+              <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Średnia suma wpłat (wypożyczenia + wózki, bez wizyt) na jednego pacjenta z danego źródła, całościowo. Źródło = pierwsze wypożyczenie/zlecenie tego pacjenta.</div>
+            </>
+          }
+        </StatAcc>
+
+        {/* 2d. Wózek → refundacja NFZ */}
+        <StatAcc dk={dk} open={openSec==="wozconv"} onToggle={tog("wozconv")} title="Wózek → refundacja NFZ" sub={wozekConv.total>0?wozekConv.converted+" z "+wozekConv.total+" przeszło na refundację":"brak wypożyczeń wózków"}
+          keyVal={wozekConv.total>0?wozekConv.pct+"%":"—"}>
+          {wozekConv.total===0
+            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak wypożyczeń wózków do policzenia.</div>
+            :<>
+              {kv("Wypożyczeń wózka",wozekConv.total)}
+              {kv("Przeszło na refundację NFZ",wozekConv.converted+" ("+wozekConv.pct+"%)",GREEN)}
+              {wozekConv.avgDays!==null&&kv("Śr. czas do decyzji",wozekConv.avgDays+" dni")}
+              {wozekConv.avgRefund!==null&&kv("Śr. kwota refundacji",Z(wozekConv.avgRefund),PURPLE)}
+              <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Ten sam pacjent, zlecenie NFZ złożone w dniu wypożyczenia wózka lub później. All-time.</div>
+            </>
+          }
+        </StatAcc>
+
+        <GroupLabel dk={dk}>🦿 Sprzęt</GroupLabel>
         {/* 3. Obłożenie szyn CPM */}
         <StatAcc dk={dk} open={openSec==="occ"} onToggle={tog("occ")} title="Obłożenie szyn CPM" sub={occStats.length>0?"średnio "+avgOcc+"% dni w okresie":"brak danych w okresie"}
           mini={occStats.length>0?miniOcc:null} keyVal={occStats.length>0?avgOcc+"%":"—"} keyColor={occStats.length>0?occCol(avgOcc):subC}>
           {occStats.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak danych o szynach CPM w tym okresie</div>}
-          {occStats.map(x=>{
+          {occStatsExt.map(x=>{
             const col=occCol(x.pct);
             const preStyle={height:16,borderRadius:3,background:"transparent",boxShadow:"inset 0 0 0 1px "+trackC};
             let strip;
@@ -511,6 +870,10 @@
                 {x.missingAdded&&<div>brak daty dodania — start = pierwsze wypożyczenie ({fmtPl(x.start)}). Uzupełnij w Sprzęt → Edytuj.</div>}
                 {x.overlapDays>0&&<div style={{color:ORANGE}}>⚠ {x.overlapDays} dni: więcej wypożyczeń naraz niż sztuk ({x.qty}) — sprawdź daty lub liczbę sztuk</div>}
               </div>
+              <div style={{display:"flex",gap:14,marginTop:6,fontSize:11}}>
+                {x.revPerDay!==null&&<span style={{color:subC}}>💰 <b style={{color:textC}}>{Z(x.revPerDay)}</b>/dzień dostępności</span>}
+                {x.gapAvg!==null&&<span style={{color:subC}}>⏸ śr. przestój <b style={{color:textC}}>{x.gapAvg} dni</b> ({x.gapCount}×)</span>}
+              </div>
             </div>;
           })}
           <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Tylko szyny CPM. {isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."} Liczone jest wypożyczenie pacjenta (od startu do końca okresu, za który płaci), a nie moment odbioru sprzętu. Start = data dodania sprzętu albo pierwsze wypożyczenie; rezerwacje się nie liczą. Pusta ramka = przed dodaniem sprzętu.</div>
@@ -520,7 +883,7 @@
         <StatAcc dk={dk} open={openSec==="roi"} onToggle={tog("roi")} title="Opłacalność sprzętu" sub="zakup, naprawy, zwrot (cały czas)"
           mini={roiKnown.length>0?miniRoi:null} keyVal={roiKnown.length>0?roiDone+"/"+roiKnown.length:"—"}>
           {roiShown.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak sprzętu z przychodem lub kosztem zakupu</div>}
-          {roiShown.map(({eq,earned,investment,roi})=>{
+          {roiShown.map(({eq,earned,investment,roi,repairsPer100})=>{
             const isOpen=roiEq===eq;
             const c=getCosts(eq);
             const qty=getQty(eq);
@@ -566,6 +929,7 @@
                   {ok&&<div style={{fontSize:11,color:GREEN,marginTop:3}}>✅ Zwróciło się w całości!</div>}
                 </>}
                 {avgDur!==null&&<div style={{fontSize:11,color:subC,marginTop:investment>0?3:0}}>⏱ Śr. czas wypożyczenia: {avgDur} dni</div>}
+                {repairsPer100!==null&&<div style={{fontSize:11,color:subC,marginTop:2}}>🔧 Koszt napraw: {Z(repairsPer100)}/100 dni wypożyczenia</div>}
               </div>
               {isOpen&&<div style={{padding:"0 12px 12px",borderTop:"1px solid "+borderC}}>
                 <div style={{marginTop:10}}>
@@ -615,6 +979,38 @@
           })}
           {(roiHidden>0||showAllRoi)&&<button onClick={()=>setShowAllRoi(v=>!v)} style={{width:"100%",padding:"8px",borderRadius:10,border:"1px dashed "+borderC,background:"none",color:"#3E6FB0",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit",marginBottom:6}}>{showAllRoi?"Ukryj sprzęt bez danych":"Pokaż resztę sprzętu ("+roiHidden+") — aby wpisać koszt zakupu"}</button>}
           <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Kreska = punkt zwrotu (zakup + naprawy). Nie zależy od wybranego okresu. Dotknij sprzętu, aby wpisać zakup i naprawy.</div>
+        </StatAcc>
+
+        {/* 4b. Długość wypożyczeń jednorazowych */}
+        <StatAcc dk={dk} open={openSec==="dur"} onToggle={tog("dur")} title="Długość wypożyczeń jednorazowych" sub={durationHist.total>0?durationHist.total+" zakończonych, all-time":"brak danych"}
+          keyVal={durationHist.total>0?(durationHist.buckets.reduce((best,b)=>b.n>best.n?b:best,durationHist.buckets[0]).l):"—"}>
+          {durationHist.total===0
+            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń jednorazowych.</div>
+            :durationHist.buckets.map(b=><div key={b.l} style={{marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
+                <span style={{color:textC,fontWeight:600}}>{b.l}</span>
+                <span style={{color:subC}}>{b.n} ({durationHist.total?Math.round(b.n/durationHist.total*100):0}%)</span>
+              </div>
+              <div style={{height:7,borderRadius:4,background:trackC}}><div style={{height:"100%",width:(durationHist.total?b.n/durationHist.total*100:0)+"%",background:BLUE,borderRadius:4}}/></div>
+            </div>)
+          }
+          <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Tylko wypożyczenia jednorazowe (nie cykliczne), cały czas działania firmy. Pomaga zaplanować pakiety cenowe.</div>
+        </StatAcc>
+
+        {/* 4c. Kontrola danych */}
+        <StatAcc dk={dk} open={openSec==="health"} onToggle={tog("health")} title="Kontrola danych" sub={dataHealth.issues.length>0?"warto sprawdzić":"wszystko wygląda dobrze"}
+          keyVal={dataHealth.issues.length} keyColor={dataHealth.issues.length>0?ORANGE:GREEN}>
+          {dataHealth.issues.length===0
+            ?<div style={{fontSize:13,color:GREEN,textAlign:"center",padding:"8px 0"}}>✅ Nic do zgłoszenia</div>
+            :dataHealth.issues.map(i=><div key={i.k} style={{padding:"10px 0",borderBottom:"1px solid "+borderC}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,gap:8}}>
+                <span style={{color:textC,fontWeight:600}}>{i.l}</span>
+                <b style={{color:ORANGE,flexShrink:0}}>{i.n}</b>
+              </div>
+              {i.detail&&<div style={{fontSize:11,color:subC,marginTop:2}}>{i.detail}</div>}
+            </div>)
+          }
+          <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach. Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan).</div>
         </StatAcc>
 
         {repairForm&&(()=>{
