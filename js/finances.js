@@ -64,26 +64,20 @@
     const plWozek=n=>n===1?"wózek":(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"wózki":"wózków";
     // procenty sumujące się do 100 (metoda największych reszt)
     const pctSplit=vals=>{const t=vals.reduce((a,b)=>a+b,0);if(t<=0)return vals.map(()=>0);const raw=vals.map(v=>v/t*100),fl=raw.map(Math.floor);let rest=100-fl.reduce((a,b)=>a+b,0);raw.map((r,i)=>[r-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{if(rest>0){fl[i]++;rest--;}});return fl;};
-    // Niedziela Wielkanocna (algorytm Gaussa, ten sam co w getHolidays z ui.js)
-    const easterSunday=year=>{
-      const a=year%19,b=Math.floor(year/100),c=year%100;
-      const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
-      const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
-      const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
-      const m=Math.floor((a+11*h+22*l)/451);
-      const month=Math.floor((h+l-7*m+114)/31),day=((h+l-7*m+114)%31)+1;
-      return year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0");
-    };
-    // Sezonowe okresy (przybliżone — ferie zimowe różnią się wg regionu, tu okno obejmujące wszystkie grupy)
-    const seasonBuckets=year=>{
-      const easter=easterSunday(year);
-      return [
-        {k:"ferie",l:"❄️ Ferie zimowe",from:year+"-01-15",to:year+"-03-15",note:"okres przybliżony — dokładne daty różnią się wg województwa"},
-        {k:"wielkanoc",l:"🐣 Wielkanoc",from:addDays(easter,-3),to:addDays(easter,1)},
-        {k:"wakacje",l:"☀️ Wakacje letnie",from:year+"-06-21",to:year+"-08-31"},
-        {k:"wrzesien",l:"🍂 Wrzesień",from:year+"-09-01",to:year+"-09-30"},
-        {k:"swieta",l:"🎄 Święta i Nowy Rok",from:year+"-12-20",to:(year+1)+"-01-06"},
-      ];
+    // Kalendarzowe kawałki roku (bez nazywania świąt) — 2 tygodnie albo miesiąc, żeby było widać krótsze trendy
+    const fmtShort=d=>+d.slice(8,10)+" "+PL_MON[+d.slice(5,7)-1];
+    const chunkRanges=(year,gran)=>{
+      if(gran==="month")return Array.from({length:12},(_,i)=>{
+        const mm=String(i+1).padStart(2,"0"),last=String(new Date(year,i+1,0).getDate()).padStart(2,"0");
+        return {from:year+"-"+mm+"-01",to:year+"-"+mm+"-"+last,label:PL_MON[i]+" "+year};
+      });
+      const out=[];let d=year+"-01-01";const yEnd=year+"-12-31";
+      while(d<=yEnd){
+        const to=addDays(d,13)>yEnd?yEnd:addDays(d,13);
+        out.push({from:d,to,label:fmtShort(d)+" – "+fmtShort(to)});
+        d=addDays(to,1);
+      }
+      return out;
     };
 
     // ── STATYSTYKI (dawniej Sprzęt) — lista rozwijana ────────────────────────
@@ -153,6 +147,7 @@
       const [repairForm,setRepairForm]=useState(null);
       const [showRentalList,setShowRentalList]=useState(false);
       const [srcTab,setSrcTab]=useState("all");
+      const [seasonGran,setSeasonGran]=useState("2w");
       const equipmentAll=getActiveEquipmentNames(stock);
       const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
       const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
@@ -507,14 +502,15 @@
       // ── A5 + A7: Sezonowość, rok do roku, koszt reklamy ──
       const displayYear=isYear?statsYear:+selMonth.slice(0,4);
       const seasonData=useMemo(()=>{
-        const rows=seasonBuckets(displayYear).map(b=>{
+        const curChunks=chunkRanges(displayYear,seasonGran),prevChunks=chunkRanges(displayYear-1,seasonGran);
+        const rows=curChunks.map((b,i)=>{
           const future=b.from>today;
           const to=b.to>today?today:b.to;
           const cur=future?0:revenueInRange(b.from,to,null);
-          const prevB=seasonBuckets(displayYear-1).find(x=>x.k===b.k);
-          const prev=revenueInRange(prevB.from,prevB.to,null);
+          const pb=prevChunks[i];
+          const prev=pb?revenueInRange(pb.from,pb.to,null):0;
           const days=Math.round((Date.parse(to+"T00:00:00Z")-Date.parse(b.from+"T00:00:00Z"))/864e5)+1;
-          return {...b,cur,prev,future,perDay:(!future&&days>0)?Math.round(cur/days):null,diffPct:(prev>0&&!future)?Math.round((cur-prev)/prev*100):null};
+          return {k:"c"+i,l:b.label,from:b.from,to:b.to,cur,prev,future,perDay:(!future&&days>0)?Math.round(cur/days):null,diffPct:(prev>0&&!future)?Math.round((cur-prev)/prev*100):null};
         });
         const yoyMonths=Array.from({length:12},(_,i)=>{
           const mm=String(i+1).padStart(2,"0");
@@ -526,7 +522,7 @@
           return {m:i,cur,prev};
         });
         return {rows,yoyMonths};
-      },[displayYear,rentals,finances,nfzCases,today]);
+      },[displayYear,seasonGran,rentals,finances,nfzCases,today]);
       const adsStats=useMemo(()=>{
         const newRentals=rentals.filter(r=>r.source==="reklama"&&!r.reserved&&(r.startDate||"")>=pStart&&(r.startDate||"")<=pEnd).length;
         const newWozki=(nfzCases||[]).filter(cas=>cas.source==="reklama"&&(cas.orderDate||"")>=pStart&&(cas.orderDate||"")<=pEnd).length;
@@ -744,7 +740,12 @@
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:2,background:BLUE,marginRight:5}}/>{displayYear}</span>
           </div>
 
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 8px"}}>Okresy sezonowe</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"16px 0 8px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em"}}>Okresy kalendarzowe</div>
+            <div style={{display:"flex",background:dk?"#1E2F4A":"#DCE5F1",borderRadius:10,padding:2}}>
+              {[["2w","2 tyg."],["month","Miesiąc"]].map(([k,l])=><button key={k} onClick={()=>setSeasonGran(k)} style={{border:"none",borderRadius:8,padding:"4px 10px",fontWeight:600,fontSize:11,cursor:"pointer",fontFamily:"inherit",background:seasonGran===k?(dk?"#18202F":"#fff"):"none",color:seasonGran===k?"#3E6FB0":(dk?"#93A9CE":"#3E5578")}}>{l}</button>)}
+            </div>
+          </div>
           {seasonData.rows.map(b=><div key={b.k} style={{marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8}}>
               <span style={{fontSize:13,fontWeight:600,color:textC}}>{b.l}</span>
@@ -752,10 +753,9 @@
                 {b.future?"jeszcze nie nadszedł":<>{Z(b.cur)}{b.diffPct!==null&&<b style={{color:b.diffPct>=0?GREEN:RED,marginLeft:4}}>{b.diffPct>=0?"+":""}{b.diffPct}%</b>}</>}
               </span>
             </div>
-            {b.note&&<div style={{fontSize:10,color:subC,marginTop:1}}>{b.note}</div>}
             {!b.future&&b.perDay!==null&&<div style={{fontSize:10,color:subC,marginTop:1}}>śr. {Z(b.perDay)}/dzień · rok temu: {Z(b.prev)}</div>}
           </div>)}
-          <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Porównanie do tego samego okresu rok temu. Ferie zimowe pokazane jako jedno szerokie okno (różne regiony mają różne terminy) — daj znać, jeśli wolisz dokładniejsze dopasowanie.</div>
+          <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Porównanie do tego samego okresu rok temu, po kolei od stycznia. Przełącznik zmienia szerokość okna.</div>
         </StatAcc>
 
         <GroupLabel dk={dk}>👥 Klienci</GroupLabel>
