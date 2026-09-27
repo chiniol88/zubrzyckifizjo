@@ -141,7 +141,7 @@
       return <div style={{fontSize:12,fontWeight:800,color:dk?"#8FA6CC":"#3E5578",textTransform:"uppercase",letterSpacing:".08em",margin:"22px 2px 8px"}}>{children}</div>;
     }
 
-    function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines,nfzCases}) {
+    function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines,nfzCases,goToRental,goToWozki}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [scope,setScope]=useState("month");
@@ -555,28 +555,50 @@
         return {buckets,total:finished.length};
       },[rentals]);
 
-      // ── A11: Kontrola danych ──
+      // ── A11: Kontrola danych — każdy problem z listą konkretnych, klikalnych pozycji ──
       const dataHealth=useMemo(()=>{
         const issues=[];
+        const goR=id=>goToRental?()=>goToRental(id):null;
+        const goW=id=>goToWozki?()=>goToWozki(id):null;
+
         const overlapEq=occStats.filter(x=>x.overlapDays>0);
-        if(overlapEq.length)issues.push({k:"overlap",l:"Nakładające się wypożyczenia szyn ponad liczbę sztuk",n:overlapEq.reduce((s,x)=>s+x.overlapDays,0),detail:overlapEq.map(x=>x.eq+" ("+x.overlapDays+" dni)").join(", ")});
-        const noSrcRentals=rentals.filter(r=>!r.reserved&&!r.source).length;
-        const noSrcWozki=(nfzCases||[]).filter(c=>!c.source).length;
-        if(noSrcRentals+noSrcWozki>0)issues.push({k:"nosrc",l:"Brak oznaczonego źródła",n:noSrcRentals+noSrcWozki,detail:noSrcRentals+" wypożyczeń, "+noSrcWozki+" wózków"});
+        if(overlapEq.length)issues.push({k:"overlap",l:"Nakładające się wypożyczenia szyn ponad liczbę sztuk",n:overlapEq.reduce((s,x)=>s+x.overlapDays,0),
+          hint:"Otwórz Obłożenie szyn CPM — tam przy sprzęcie zobaczysz dokładnie które dni się nakładają.",
+          rows:overlapEq.map(x=>({label:x.eq,sub:x.overlapDays+" dni nakładania",go:()=>setOpenSec("occ")}))});
+
+        const noSrcRentals=rentals.filter(r=>!r.reserved&&!r.source);
+        const noSrcWozki=(nfzCases||[]).filter(c=>!c.source);
+        if(noSrcRentals.length+noSrcWozki.length>0)issues.push({k:"nosrc",l:"Brak oznaczonego źródła",n:noSrcRentals.length+noSrcWozki.length,
+          rows:[...noSrcRentals.map(r=>({label:r.patientName||"—",sub:(r.equipment||"")+" · "+(r.startDate||""),go:goR(r.id)})),
+                ...noSrcWozki.map(c=>({label:c.patientName||"—",sub:"🦽 wózek · "+(c.orderDate||""),go:goW(c.id)}))]});
+
         const eqNoAdded=equipmentAll.filter(eq=>catOf(eq)==="szyny"&&!(stock&&stock.addedDate&&stock.addedDate[eq])&&rentals.some(r=>r.equipment===eq));
-        if(eqNoAdded.length)issues.push({k:"noadded",l:"Brak daty dodania sprzętu (szyny)",n:eqNoAdded.length,detail:eqNoAdded.join(", ")});
-        const noEnd=rentals.filter(r=>r.status==="zakończone"&&!r.renewable&&!r.endDate).length;
-        if(noEnd>0)issues.push({k:"noend",l:"Zakończone wypożyczenia bez daty końca",n:noEnd});
+        if(eqNoAdded.length)issues.push({k:"noadded",l:"Brak daty dodania sprzętu (szyny)",n:eqNoAdded.length,
+          hint:"Uzupełnij w zakładce Sprzęt → Edytuj magazyn.",
+          rows:eqNoAdded.map(eq=>({label:eq,sub:null,go:null}))});
+
+        const noEnd=rentals.filter(r=>r.status==="zakończone"&&!r.renewable&&!r.endDate);
+        if(noEnd.length)issues.push({k:"noend",l:"Zakończone wypożyczenia bez daty końca",n:noEnd.length,
+          rows:noEnd.map(r=>({label:r.patientName||"—",sub:r.equipment||"",go:goR(r.id)}))});
+
         const oldRes=rentals.filter(r=>r.reserved&&r.reservedAt&&dateDiff(r.reservedAt,today)>14);
-        if(oldRes.length)issues.push({k:"oldres",l:"Rezerwacje czekające ponad 14 dni",n:oldRes.length,detail:oldRes.map(r=>r.patientName).join(", ")});
-        let overdueCyc=0,overdueCycSum=0;
+        if(oldRes.length)issues.push({k:"oldres",l:"Rezerwacje czekające ponad 14 dni",n:oldRes.length,
+          rows:oldRes.map(r=>({label:r.patientName||"—",sub:dateDiff(r.reservedAt,today)+" dni czekania",go:goR(r.id)}))});
+
+        const overdueByRental={};
         rentals.forEach(r=>{
           if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
-          (r.cycles||[]).forEach(c=>{if(!c.paid&&!c.cancelled&&(c.dueDate||c.month+"-01")<today){overdueCyc++;overdueCycSum+=(+c.amount||0);}});
+          (r.cycles||[]).forEach(c=>{if(!c.paid&&!c.cancelled&&(c.dueDate||c.month+"-01")<today){
+            if(!overdueByRental[r.id])overdueByRental[r.id]={r,n:0,sum:0};
+            overdueByRental[r.id].n++;overdueByRental[r.id].sum+=(+c.amount||0);
+          }});
         });
-        if(overdueCyc>0)issues.push({k:"overdue",l:"Zaległe okresy cykliczne",n:overdueCyc,detail:Z(overdueCycSum)});
+        const overdueList=Object.values(overdueByRental);
+        if(overdueList.length)issues.push({k:"overdue",l:"Zaległe okresy cykliczne",n:overdueList.reduce((s,x)=>s+x.n,0),
+          rows:overdueList.map(x=>({label:x.r.patientName||"—",sub:x.n+" okres"+(x.n===1?"":"y")+" · "+Z(x.sum),go:goR(x.r.id)}))});
+
         return {issues,total:issues.reduce((s,i)=>s+i.n,0)};
-      },[rentals,nfzCases,stock,occStats,equipmentAll,today]);
+      },[rentals,nfzCases,stock,occStats,equipmentAll,today,goToRental,goToWozki]);
 
       // ── A3 + A6: przychód/dzień dostępności i przestój między wypożyczeniami (tylko szyny CPM) ──
       const occStatsExt=useMemo(()=>occStats.map(x=>{
@@ -1012,11 +1034,21 @@
           {dataHealth.issues.length===0
             ?<div style={{fontSize:13,color:GREEN,textAlign:"center",padding:"8px 0"}}>✅ Nic do zgłoszenia</div>
             :dataHealth.issues.map(i=><div key={i.k} style={{padding:"10px 0",borderBottom:"1px solid "+borderC}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,gap:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,gap:8,marginBottom:i.rows?.length?6:0}}>
                 <span style={{color:textC,fontWeight:600}}>{i.l}</span>
                 <b style={{color:ORANGE,flexShrink:0}}>{i.n}</b>
               </div>
-              {i.detail&&<div style={{fontSize:11,color:subC,marginTop:2}}>{i.detail}</div>}
+              {i.hint&&<div style={{fontSize:11,color:subC,marginBottom:6}}>{i.hint}</div>}
+              {i.rows&&i.rows.map((row,ri)=>{
+                const Tag=row.go?"button":"div";
+                return <Tag key={ri} onClick={row.go||undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",gap:8,padding:"7px 8px",marginBottom:2,borderRadius:9,border:"none",background:row.go?(dk?"#1E2F4A":"#F0F4FA"):"transparent",cursor:row.go?"pointer":"default",fontFamily:"inherit",textAlign:"left"}}>
+                  <span style={{minWidth:0}}>
+                    <span style={{display:"block",fontSize:12,fontWeight:600,color:row.go?(dk?"#9CB8E8":"#3E6FB0"):textC,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.label}</span>
+                    {row.sub&&<span style={{display:"block",fontSize:10,color:subC}}>{row.sub}</span>}
+                  </span>
+                  {row.go&&<span style={{fontSize:11,color:subC,flexShrink:0}}>otwórz ›</span>}
+                </Tag>;
+              })}
             </div>)
           }
           <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach. Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan).</div>
@@ -1051,7 +1083,7 @@
 
     // ── FINANCES ──────────────────────────────────────────────────────────────
 
-    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,stock,setStock,machines,setMachines,wealth,setWealth}) {
+    function Finances({finances,setFinances,visits,setVisits,rentals,setRentals,nfzCases,setNfzCases,budget,setBudget,desk,stock,setStock,machines,setMachines,wealth,setWealth,goToRental,goToWozki}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [editE,setEditE]=useState(null);
@@ -1243,7 +1275,7 @@
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#18202F":"#EFF3FA",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk}/>}
-            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines} nfzCases={nfzCases}/>}
+            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines} nfzCases={nfzCases} goToRental={goToRental} goToWozki={goToWozki}/>}
             {viewMode==="wealth"&&<Wealth wealth={wealth} setWealth={setWealth}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
