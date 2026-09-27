@@ -745,7 +745,7 @@
                   {src.rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,minWidth:0}}>
                     <i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>
                     <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:textC}}>{r.l}</span>
-                    <b style={{fontVariantNumeric:"tabular-nums",color:textC}}>{srcPct[src.rows.indexOf(r)]}%</b>
+                    <b style={{fontVariantNumeric:"tabular-nums",color:textC,flexShrink:0}}>{r.cnt+r.wc} · {srcPct[src.rows.indexOf(r)]}%</b>
                   </div>)}
                 </div>
               </div>
