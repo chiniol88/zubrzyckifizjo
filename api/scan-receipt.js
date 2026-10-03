@@ -1,6 +1,28 @@
+const SUPA_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co";
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  const supaKey = req.headers.apikey || "";
+  if (!token || !supaKey) {
+    res.status(401).json({ error: "Brak autoryzacji" });
+    return;
+  }
+  try {
+    const who = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      headers: { apikey: supaKey, Authorization: `Bearer ${token}` }
+    });
+    if (!who.ok) {
+      res.status(401).json({ error: "Brak autoryzacji" });
+      return;
+    }
+  } catch (e) {
+    res.status(500).json({ error: "Błąd weryfikacji logowania" });
     return;
   }
 

@@ -1467,7 +1467,7 @@ Zasady:
 
           const resp=await fetch("/api/scan-receipt",{
             method:"POST",
-            headers:{"Content-Type":"application/json"},
+            headers:getHeaders(),
             body:JSON.stringify({content})
           });
 
