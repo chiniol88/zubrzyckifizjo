@@ -75,8 +75,10 @@
       const who=r=>demo?"[klient]":(r.patientName||"?");
 
       // ── karty (sztuki z kodem) ──
-      const openNewCard=eq=>{setFormError("");setCardForm({mode:"new",eq,code:"",serialNo:"",purchaseDate:today,price:"",notes:"",period:"365",where:""});};
-      const openConvert=eq=>{setFormError("");setCardForm({mode:"convert",eq,code:"",serialNo:"",purchaseDate:"",price:"",notes:"",period:"365",where:""});};
+      // cena i data z typu sprzętu (Statystyki → Opłacalność / "Dodano do magazynu") podstawiają się do formularza, do poprawienia
+      const typePrice=eq=>{const p=demo?0:+((costs[eq]||{}).purchase||0);return p>0?String(p):"";};
+      const openNewCard=eq=>{setFormError("");setCardForm({mode:"new",eq,code:"",serialNo:"",purchaseDate:today,price:typePrice(eq),notes:"",period:"365",where:""});};
+      const openConvert=eq=>{setFormError("");setCardForm({mode:"convert",eq,code:"",serialNo:"",purchaseDate:addedDate[eq]||"",price:typePrice(eq),notes:"",period:"365",where:""});};
       const openEditCard=c=>{setFormError("");setCardForm({mode:"edit",eq:c.type,id:c.id,code:c.code||"",serialNo:c.serialNo||"",purchaseDate:c.purchaseDate||"",price:c.price?String(c.price):"",notes:c.notes||"",period:String(c.servicePeriodDays||365),where:""});};
       const saveCard=()=>{
         const f=cardForm;
