@@ -294,10 +294,9 @@
       const DURATION_OFF_BY_DEFAULT=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
       const getDurationInclude=eq=>(stock&&stock.durationInclude&&stock.durationInclude[eq]!==undefined)?stock.durationInclude[eq]:!DURATION_OFF_BY_DEFAULT.includes(eq);
       const setDurationInclude=(eq,val)=>setStock(s=>({...s,durationInclude:{...(s.durationInclude||{}),[eq]:val}}));
-      const getMachineSrvForEq=eq=>(machines||[]).filter(m=>m.type===eq).flatMap(m=>(m.serviceLog||[]).filter(s=>+s.cost>0).map(s=>({id:"srv-"+s.id,date:s.date,amount:+s.cost,desc:(s.type+(s.notes?" – "+s.notes:""))+" ("+(m.name||m.type)+")",fromService:true})));
-      const getTotalInvestment=eq=>{const c=getCosts(eq);const qty=getQty(eq);const machineSrv=getMachineSrvForEq(eq).reduce((s,x)=>s+x.amount,0);return(+c.purchase||0)*qty+(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+machineSrv;};
+      const getMachineSrvForEq=eq=>(machines||[]).filter(m=>m.type===eq).flatMap(m=>(m.serviceLog||[]).filter(s=>+s.cost>0).map(s=>({id:"srv-"+s.id,date:s.date,amount:+s.cost,desc:(s.type+(s.notes?" – "+s.notes:""))+" ("+(m.code||m.name||m.type)+")",fromService:true})));
+      const getTotalInvestment=eq=>{const c=getCosts(eq);const machineSrv=getMachineSrvForEq(eq).reduce((s,x)=>s+x.amount,0);return whPurchaseTotal(stock,machines,eq)+(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+machineSrv;};
       const setPurchase=(eq,val)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,purchase:+val||0}}};});
-      const setQtyInStats=(eq,val)=>setStock(s=>({...s,qty:{...(s.qty||{}),[eq]:Math.max(1,+val||1)}}));
       const saveRepair=(eq,rep)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:[...(ex.repairs||[]).filter(r=>r.id!==rep.id),rep]}}};});
       const deleteRepair=(eq,id)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});
 
@@ -918,6 +917,7 @@
             const isOpen=roiEq===eq;
             const c=getCosts(eq);
             const qty=getQty(eq);
+            const purchaseTotal=whPurchaseTotal(stock,machines,eq);
             const machineSrvEntries=getMachineSrvForEq(eq);
             const repairsTotal=(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+machineSrvEntries.reduce((s,x)=>s+x.amount,0);
             // Szacunek zwrotu: średnia z ostatnich 3 miesięcy, ale dzielona przez faktyczny czas działania sprzętu (nowy sprzęt nie jest "rozwodniony")
@@ -954,7 +954,7 @@
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",fontSize:11,color:subC,gap:8}}>
                     <span>{demo?"****":"Zarobiono: "+Math.round(earned)+" zł"}</span>
-                    <span>{demo?"****":"Inwest.: "+Math.round(investment)+" zł"+(qty>1?" ("+qty+"×"+(+c.purchase||0)+(repairsTotal>0?"+"+repairsTotal+"nap.":"")+")":(repairsTotal>0?" (w tym "+repairsTotal+" nap.)":""))}</span>
+                    <span>{demo?"****":"Inwest.: "+Math.round(investment)+" zł"+(purchaseTotal>0&&repairsTotal>0?" (zakup "+Math.round(purchaseTotal)+" + "+repairsTotal+" nap.)":(repairsTotal>0?" (w tym "+repairsTotal+" nap.)":""))}</span>
                   </div>
                   {monthsLeft!==null&&remaining>0&&<div style={{fontSize:11,color:ORANGE,marginTop:3}}>⏳ Zwrot za ~{monthsLeft} mies.</div>}
                   {ok&&<div style={{fontSize:11,color:GREEN,marginTop:3}}>✅ Zwróciło się w całości!</div>}
@@ -973,11 +973,8 @@
                 </div>
                 <div style={{marginTop:10}}>
                   <SectionLabel style={{marginBottom:6}}>Liczba sztuk</SectionLabel>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <input type="number" min="1" value={qty} onChange={e=>setQtyInStats(eq,e.target.value)}
-                      style={{width:80,padding:"8px 12px",border:"1.5px solid "+(dk?"#2A3A56":"#D9E2F0"),borderRadius:10,fontSize:14,background:dk?"#18202F":"#fff",color:textC,fontFamily:"inherit",outline:"none"}}/>
-                    <span style={{fontSize:12,color:subC}}>szt. → łączny koszt: <b style={{color:textC}}>{(+c.purchase||0)*qty} zł</b></span>
-                  </div>
+                  <div style={{fontSize:13,color:subC}}><b style={{color:textC}}>{qty} szt.</b> → łączny koszt zakupu: <b style={{color:textC}}>{demo?"****":Math.round(purchaseTotal)+" zł"}</b></div>
+                  <div style={{fontSize:11,color:subC,marginTop:3}}>Liczbę sztuk i ceny poszczególnych sztuk zmieniasz w zakładce Magazyn.</div>
                 </div>
                 <div style={{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <SectionLabel style={{marginBottom:0}}>Wliczaj do śr. czasu wyp.</SectionLabel>
@@ -1055,22 +1052,20 @@
         </StatAcc>
 
         {repairForm&&(()=>{
-          const eqMachines=(machines||[]).filter(m=>m.type===repairForm.eq);
-          const targetId=eqMachines.length===1?eqMachines[0].id:repairForm.machineId;
+          const eqCards=whCards(machines,repairForm.eq);
           return <Modal title="Naprawa / serwis" onClose={()=>setRepairForm(null)}>
             <div style={{fontSize:13,fontWeight:600,color:subC,marginBottom:12}}>{repairForm.eq}</div>
             <Inp label="Kwota (zł)" value={repairForm.amount} onChange={v=>setRepairForm(f=>({...f,amount:v}))} type="number"/>
             <Inp label="Opis (opcjonalnie)" value={repairForm.desc} onChange={v=>setRepairForm(f=>({...f,desc:v}))}/>
             <Inp label="Data" value={repairForm.date} onChange={v=>setRepairForm(f=>({...f,date:v}))} type="date"/>
-            {eqMachines.length>1&&<Sel label="Maszyna (zakładka Serwis)" value={String(repairForm.machineId||eqMachines[0].id)} onChange={v=>setRepairForm(f=>({...f,machineId:+v}))} options={eqMachines.map(m=>({value:String(m.id),label:m.name||m.type}))}/>}
-            {eqMachines.length===1&&<div style={{fontSize:12,color:subC,marginBottom:10}}>📍 Doda się też do maszyny "{eqMachines[0].name||eqMachines[0].type}" w zakładce Serwis</div>}
+            {eqCards.length>0&&<Sel label="Której sztuki dotyczy? (Magazyn)" value={String(repairForm.machineId||"")} onChange={v=>setRepairForm(f=>({...f,machineId:v?+v:null}))} options={[{value:"",label:"Nie wskazuję (koszt całego sprzętu)"},...eqCards.map(m=>({value:String(m.id),label:(m.code||"(bez kodu)")+(m.serialNo?" · "+m.serialNo:"")}))]}/>}
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               if(!repairForm.amount)return;
-              const target=eqMachines.find(m=>m.id===(targetId||eqMachines[0]?.id));
+              const target=repairForm.machineId?eqCards.find(m=>m.id===repairForm.machineId):null;
               if(target){
                 const entry={id:Date.now(),date:repairForm.date,type:"Naprawa",notes:repairForm.desc,cost:+repairForm.amount};
-                setMachines(ms=>ms.map(m=>m.id===target.id?{...m,lastServiceDate:repairForm.date,serviceLog:[...(m.serviceLog||[]),entry]}:m));
-                setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"serwis-"+target.id+"-"+entry.id,date:repairForm.date,type:"koszt",category:"Serwis",amount:+repairForm.amount,description:"Naprawa"+(repairForm.desc?" – "+repairForm.desc:"")+" ("+(target.name||target.type)+")"},...(fs||[])]);
+                setMachines(ms=>ms.map(m=>m.id===target.id?{...m,lastServiceDate:(m.lastServiceDate&&m.lastServiceDate>repairForm.date)?m.lastServiceDate:repairForm.date,serviceLog:[...(m.serviceLog||[]),entry]}:m));
+                setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"serwis-"+target.id+"-"+entry.id,date:repairForm.date,type:"koszt",category:"Serwis",amount:+repairForm.amount,description:"Naprawa"+(repairForm.desc?" – "+repairForm.desc:"")+" ("+(target.code||target.name||target.type)+")"},...(fs||[])]);
               }else{
                 saveRepair(repairForm.eq,{id:repairForm.id,date:repairForm.date,amount:+repairForm.amount,desc:repairForm.desc});
               }

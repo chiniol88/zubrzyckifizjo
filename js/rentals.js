@@ -232,61 +232,17 @@
       );
     }
 
-    // Pomocnik: ile sztuk danego sprzętu było w danym dniu
-    // stock = {qty:{eq:n}, history:[{eq,qty,from}]}
-    // Migracja ze starego formatu (plain {eq:n}) odbywa się w StockPanel przy zapisie
-    function qtyAt(stock, eq, dateStr) {
-      // stary format (brak history) — zwróć qty lub 1
-      const qty = stock && stock.qty ? stock.qty : stock;
-      const history = (stock && stock.history) || [];
-      // wpisy dla tego urządzenia posortowane rosnąco po dacie
-      const entries = history.filter(h=>h.eq===eq).sort((a,b)=>a.from.localeCompare(b.from));
-      if(entries.length===0) return (qty&&qty[eq])||1;
-      // znajdź ostatni wpis który był <= dateStr
-      let result = (qty&&qty[eq])||1;
-      for(const e of entries){
-        if(e.from<=dateStr) result=e.qty;
-        else break;
-      }
-      return result;
-    }
-
-    function EqRow({eq,showDims,draft,setDraft,archiveEquipment}) {
-      return <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #D9E2F0"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-          <span style={{fontSize:14,fontWeight:500,flex:1,paddingRight:12}}>{eq}</span>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <button onClick={()=>setDraft(d=>({...d,[eq]:String(Math.max(1,(+d[eq]||1)-1))}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #D9E2F0",background:"#EFF3FA",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
-            <span style={{fontSize:16,fontWeight:700,minWidth:24,textAlign:"center"}}>{draft[eq]||1}</span>
-            <button onClick={()=>setDraft(d=>({...d,[eq]:String((+d[eq]||1)+1)}))} style={{width:30,height:30,borderRadius:8,border:"1.5px solid #D9E2F0",background:"#EFF3FA",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-            <button onClick={()=>archiveEquipment(eq)} title="Archiwizuj" style={{background:"none",border:"none",color:"#E05C5C",cursor:"pointer",fontSize:16,padding:"0 2px"}}>🗑</button>
-          </div>
-        </div>
-        <Inp label="Data dodania do magazynu (opcjonalnie)" value={draft["added_"+eq]||""} onChange={v=>setDraft(d=>({...d,["added_"+eq]:v}))} type="date"/>
-        {showDims&&<div style={{display:"flex",gap:8}}>
-          <div style={{flex:1}}><Inp label="Szerokość siedziska (cm)" value={draft["seat_"+eq]||""} onChange={v=>setDraft(d=>({...d,["seat_"+eq]:v}))} type="number" placeholder="np. 45"/></div>
-          <div style={{flex:1}}><Inp label="Szerokość całkowita (cm)" value={draft["total_"+eq]||""} onChange={v=>setDraft(d=>({...d,["total_"+eq]:v}))} type="number" placeholder="np. 62"/></div>
-        </div>}
-      </div>;
-    }
-
-    function StockPanel({rentals,stock,setStock}) {
+    // Panel "Stan magazynu" na górze zakładki Sprzęt: ile sztuk wolnych z ilu (liczone z wypożyczeń).
+    // Zarządzanie sprzętem (sztuki, kody, serwis, nowe typy) jest w zakładce Magazyn; liczby biorą się z tych samych danych.
+    function StockPanel({rentals,stock,onOpenMagazyn}) {
       const dk=useContext(DarkCtx);
       const [open,setOpen]=useState(false);
-      const [showEdit,setShowEdit]=useState(false);
-      const [draft,setDraft]=useState({});
-      const [addForm,setAddForm]=useState(null); // {category,name,addedDate}
-
-      // normalizuj stock do nowego formatu jeśli stary
       const qty = stock && stock.qty ? stock.qty : (stock||{});
       const catalog = (stock&&stock.equipment)||[];
-      const addedDate=(stock&&stock.addedDate)||{};
       const seatWidth=(stock&&stock.seatWidth)||{};
       const totalWidth=(stock&&stock.totalWidth)||{};
       const activeNames = getActiveEquipmentNames(stock);
-      const hiddenNames = catalog.filter(e=>e.hidden).map(e=>e.name);
       const categoryOf = name => { const matches=catalog.filter(x=>x.name===name); return matches.length?matches[matches.length-1].category:null; };
-      const unassignedNames = activeNames.filter(n=>!categoryOf(n));
 
       const activeCount=useMemo(()=>{
         const m={};
@@ -295,80 +251,6 @@
       },[rentals]);
 
       const total=eq=>qty[eq]||1;
-
-      const summary=useMemo(()=>{
-        let free=0,warn=0,occupied=0;
-        activeNames.forEach(eq=>{const tot=total(eq),fr=tot-(activeCount[eq]||0);if(fr===0)occupied++;else if(fr===1&&tot>1)warn++;else free++;});
-        return {free,warn,occupied};
-      },[activeCount,qty,stock]);
-
-      const saveStock=()=>{
-        const today=todayLocal();
-        const prevQty=qty;
-        const history=[...((stock&&stock.history)||[])];
-        // dla każdego eq które się zmieniło — dodaj wpis historii
-        activeNames.forEach(eq=>{
-          const newQty=+draft[eq]||1;
-          const oldQty=prevQty[eq]||1;
-          if(newQty!==oldQty){
-            history.push({eq,qty:newQty,prev:oldQty,from:today});
-          }
-        });
-        const newQty={...qty,...Object.fromEntries(activeNames.map(eq=>[eq,+draft[eq]||1]))};
-        const newAddedDate={...addedDate,...Object.fromEntries(activeNames.map(eq=>[eq,draft["added_"+eq]||""]).filter(([,v])=>v))};
-        const newSeatWidth={...seatWidth,...Object.fromEntries(activeNames.map(eq=>[eq,draft["seat_"+eq]||""]).filter(([,v])=>v))};
-        const newTotalWidth={...totalWidth,...Object.fromEntries(activeNames.map(eq=>[eq,draft["total_"+eq]||""]).filter(([,v])=>v))};
-        setStock({...(stock||{}),qty:newQty,history,addedDate:newAddedDate,seatWidth:newSeatWidth,totalWidth:newTotalWidth});
-        setShowEdit(false);
-      };
-
-      const openEdit=()=>{
-        setDraft(Object.fromEntries([
-          ...activeNames.map(eq=>[eq,String(qty[eq]||1)]),
-          ...activeNames.map(eq=>["added_"+eq,addedDate[eq]||""]),
-          ...activeNames.map(eq=>["seat_"+eq,seatWidth[eq]||""]),
-          ...activeNames.map(eq=>["total_"+eq,totalWidth[eq]||""]),
-        ]));
-        setShowEdit(true);
-      };
-
-      const addEquipment=category=>{
-        if(!addForm||!addForm.name.trim())return;
-        const name=addForm.name.trim();
-        setStock(s=>{
-          const cur=s||{};
-          const cat=[...(cur.equipment||[])];
-          const idx=cat.findIndex(x=>x.name===name);
-          if(idx>=0) cat[idx]={...cat[idx],category,hidden:false};
-          else cat.push({name,category,hidden:false});
-          return {...cur,equipment:cat,
-            addedDate:{...(cur.addedDate||{}),[name]:(cur.addedDate||{})[name]||addForm.addedDate||""},
-            qty:{...(cur.qty||{}),[name]:(cur.qty||{})[name]||1}};
-        });
-        setDraft(d=>({...d,[name]:String(qty[name]||1),["added_"+name]:addedDate[name]||addForm.addedDate||""}));
-        setAddForm(null);
-      };
-      const assignCategory=(name,category)=>{
-        setStock(s=>{
-          const cat=[...(((s||{}).equipment)||[])];
-          const idx=cat.findIndex(x=>x.name===name);
-          if(idx>=0) cat[idx]={...cat[idx],category};
-          else cat.push({name,category,hidden:false});
-          return {...(s||{}),equipment:cat};
-        });
-      };
-      const archiveEquipment=name=>{
-        setStock(s=>{
-          const cat=[...(((s||{}).equipment)||[])];
-          const idx=cat.findIndex(x=>x.name===name);
-          if(idx>=0) cat[idx]={...cat[idx],hidden:true};
-          else cat.push({name,category:categoryOf(name),hidden:true});
-          return {...(s||{}),equipment:cat};
-        });
-      };
-      const restoreEquipment=name=>{
-        setStock(s=>({...(s||{}),equipment:(((s||{}).equipment)||[]).map(x=>x.name===name?{...x,hidden:false}:x)}));
-      };
 
       const GROUP_COLORS={szyny:"#3E6FB0",wozki:"#7C6AF4",balkoniki:"#F4A261"};
       const GroupHeader=({groupKey,label})=>{
@@ -380,8 +262,7 @@
         </div>;
       };
 
-      return <>
-        <div style={{padding:"0 20px 12px"}}>
+      return <div style={{padding:"0 20px 12px"}}>
           <div style={{background:dk?"#18202F":"#fff",borderRadius:16,overflow:"hidden",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
             <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",justifyContent:"center",alignItems:"center",padding:"13px 16px",cursor:"pointer",position:"relative"}}>
               <span style={{fontSize:13,fontWeight:700,color:dk?"#8ABABA":"#3E5578",textTransform:"uppercase",letterSpacing:.8}}>Stan magazynu</span>
@@ -406,62 +287,17 @@
                   })}
                 </div>;
               })}
-              <button onClick={e=>{e.stopPropagation();openEdit();}} style={{background:"none",border:"none",fontSize:12,color:"#3E6FB0",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Zarządzaj sprzętem</button>
+              <button onClick={e=>{e.stopPropagation();if(onOpenMagazyn)onOpenMagazyn();}} style={{background:"none",border:"none",fontSize:12,color:"#3E6FB0",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Otwórz Magazyn →</button>
             </div>}
           </div>
         </div>
-        {showEdit&&<Modal title="Zarządzaj sprzętem" onClose={()=>setShowEdit(false)}>
-          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:16}}>Dodawaj i edytuj sprzęt w grupach, podaj ile sztuk posiadasz i od kiedy dany sprzęt jest w magazynie (do poprawnego liczenia obłożenia).</div>
-          {EQUIPMENT_GROUPS.map(g=>{
-            const names=activeNames.filter(n=>categoryOf(n)===g.key);
-            return <div key={g.key} style={{marginBottom:18}}>
-              <GroupHeader groupKey={g.key} label={g.label}/>
-              {names.length===0&&<div style={{fontSize:12,color:"#7A8FA6",marginBottom:8}}>Brak sprzętu w tej grupie</div>}
-              {names.map(eq=><div key={eq}>
-                <EqRow eq={eq} showDims={g.key==="wozki"} draft={draft} setDraft={setDraft} archiveEquipment={archiveEquipment}/>
-                <div style={{display:"flex",gap:6,marginBottom:14,marginTop:-4}}>
-                  {EQUIPMENT_GROUPS.filter(og=>og.key!==g.key).map(og=>
-                    <button key={og.key} onClick={()=>assignCategory(eq,og.key)} style={{flex:1,padding:"6px 4px",borderRadius:8,border:"1px solid #D9E2F0",background:"none",color:"#3E6FB0",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>→ {og.label}</button>
-                  )}
-                </div>
-              </div>)}
-              {addForm&&addForm.category===g.key
-                ? <div style={{marginBottom:10,padding:10,background:dk?"#111826":"#F7F9FB",borderRadius:10}}>
-                    <Inp label="Nazwa sprzętu" value={addForm.name} onChange={v=>setAddForm(f=>({...f,name:v}))} placeholder="np. Wózek Vermeiren V200"/>
-                    <Inp label="Data dodania do magazynu" value={addForm.addedDate} onChange={v=>setAddForm(f=>({...f,addedDate:v}))} type="date"/>
-                    <div style={{display:"flex",gap:8}}>
-                      <Btn small style={{flex:1,justifyContent:"center"}} onClick={()=>addEquipment(g.key)}>Dodaj</Btn>
-                      <Btn small variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setAddForm(null)}>Anuluj</Btn>
-                    </div>
-                  </div>
-                : <button onClick={()=>setAddForm({category:g.key,name:"",addedDate:todayLocal()})} style={{background:"none",border:"none",fontSize:12,color:"#3E6FB0",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>+ Dodaj sprzęt</button>
-              }
-            </div>;
-          })}
-          {unassignedNames.length>0&&<div style={{marginBottom:18}}>
-            <GroupHeader groupKey={null} label="Nieprzypisane"/>
-            {unassignedNames.map(eq=><div key={eq}>
-              <EqRow eq={eq} draft={draft} setDraft={setDraft} archiveEquipment={archiveEquipment}/>
-              <div style={{display:"flex",gap:6,marginBottom:14,marginTop:-4}}>
-                {EQUIPMENT_GROUPS.map(g=><button key={g.key} onClick={()=>assignCategory(eq,g.key)} style={{flex:1,padding:"6px 4px",borderRadius:8,border:"1px solid #D9E2F0",background:"none",color:"#3E6FB0",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>→ {g.label}</button>)}
-              </div>
-            </div>)}
-          </div>}
-          {hiddenNames.length>0&&<div style={{marginBottom:8}}>
-            <GroupHeader groupKey={null} label="Zarchiwizowany sprzęt"/>
-            {hiddenNames.map(eq=><div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #EFF3FA"}}>
-              <span style={{fontSize:13,color:"#7A8FA6"}}>{eq}</span>
-              <button onClick={()=>restoreEquipment(eq)} style={{background:"none",border:"none",fontSize:12,color:"#3E6FB0",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Przywróć</button>
-            </div>)}
-          </div>}
-          <Btn style={{width:"100%",justifyContent:"center",marginTop:8}} onClick={saveStock}>Zapisz stany</Btn>
-        </Modal>}
-      </>;
     }
 
 
     function RCard({r,onClick}) {
       const demo=useDemo();
+      const mctx=useContext(MachinesCtx);
+      const card=r.machineId&&mctx?(mctx.machines||[]).find(m=>m.id===r.machineId):null;
       const today=todayLocal(),dl=r.endDate?dateDiff(today,r.endDate):null,ov=dl!==null&&dl<0;
       const waitDays=r.reserved&&r.reservedAt?dateDiff(r.reservedAt,today):0;
       const startDl=r.reserved&&r.startDate?dateDiff(today,r.startDate):null;
@@ -482,7 +318,7 @@
 
       return <Card onClick={onClick}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2,flexWrap:"wrap"}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment||"❓ Do ustalenia"}</div>{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reserved&&<Badge color="#7C6AF4">📋</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}{r.plannedReturn&&<Badge color="#3DAA72">📅 {r.plannedReturn}</Badge>}{needsName&&<Badge color="#E05C5C">⚠️ brak nazwiska</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
+          <div style={{flex:1}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2,flexWrap:"wrap"}}><div style={{fontWeight:700,fontSize:15}}>{r.equipment||"❓ Do ustalenia"}</div>{card&&card.code&&<Badge color="#7A8FA6">{card.code}</Badge>}{r.renewable&&<Badge color="#7C6AF4">🔄</Badge>}{r.reserved&&<Badge color="#7C6AF4">📋</Badge>}{r.reviewRequested&&<Badge color="#F4A261">⭐ opinia</Badge>}{r.plannedReturn&&<Badge color="#3DAA72">📅 {r.plannedReturn}</Badge>}{needsName&&<Badge color="#E05C5C">⚠️ brak nazwiska</Badge>}</div><div style={{fontSize:14}}>{demo?"Pacjent":r.patientName}</div></div>
           {r.status==="aktywne"&&(r.reserved?(startDl!==null?<Badge color={startDl<0?"#E05C5C":startDl===0?"#F4A261":"#7C6AF4"}>{startDl<0?Math.abs(startDl)+"d po term.":startDl===0?"Start dziś!":"za "+startDl+"d"}</Badge>:<Badge color="#F4A261">czeka {waitDays}d</Badge>):(r.renewable?<Badge color={unpaid>0?"#E05C5C":"#3DAA72"}>{unpaid>0?unpaid+" nieopłacone":"✓ opłacone"}</Badge>:dl!==null?<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po term.":dl===0?"Dziś!":dl+"d"}</Badge>:<Badge color="#7A8FA6">brak terminu</Badge>))}
         </div>
         <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",fontSize:12,color:"#7A8FA6"}}>
@@ -600,9 +436,11 @@ p{margin:2px 0}.bold7{font-weight:bold}
       else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,initialAddDate,onAddDateHandled,rentalsView,setRentalsView,stock,setStock,settings}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,initialAddDate,onAddDateHandled,rentalsView,setRentalsView,stock,setStock,settings,goToMagazyn}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
+      const mctx=useContext(MachinesCtx);
+      const machines=(mctx&&mctx.machines)||[];
       const view=rentalsView||"aktywne",setView=setRentalsView;
       const [showAdd,setShowAdd]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
@@ -662,6 +500,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
                 <div>
                   <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{r.equipment||"❓ Do ustalenia"}</div>
+                  {(()=>{const rc=r.machineId?machines.find(m=>m.id===r.machineId):null;return rc?<div style={{fontSize:13,color:"#7A8FA6",marginBottom:6}}>Sztuka: <b>{rc.code||"(bez kodu)"}</b>{rc.serialNo?" · nr fabryczny "+rc.serialNo:""}</div>:null;})()}
                   {r.renewable?<Badge color="#7C6AF4">🔄 Odnawialne miesięcznie</Badge>:dl!==null&&<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po terminie":dl===0?"Termin dziś!":dl+" dni"}</Badge>}
                 </div>
                 <div style={{display:"flex",gap:6}}>
@@ -962,7 +801,8 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </div>
 
           {showEdit&&ef&&<Modal title="Edytuj wypożyczenie" onClose={()=>setShowEdit(false)}>
-            <EquipmentPicker label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
+            <EquipmentPicker label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v,machineId:v===f.equipment?f.machineId:whDefaultCardId(machines,rentals,stock,v,f.id)}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
+            <CardPicker eq={ef.equipment} value={ef.machineId} onChange={v=>setEf(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={ef.id}/>
             <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
@@ -992,7 +832,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
               const cur=rentals.find(x=>x.id===effectiveDetail);
               const newPaid=ef.renewable?(cur?.amountPaid||0):Math.min(+(ef.amountPaid||0),raw);
-              const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null};
+              const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null,machineId:whValidMachineId(machines,ef.equipment,ef.machineId)};
               // Dla jednorazowych bez payments: jeśli wpisano zapłacono → utwórz wpłatę i wpis finansowy
               const hasPayments=cur&&(cur.payments||[]).length>0;
               if(!ef.renewable&&!hasPayments&&newPaid>0){
@@ -1133,12 +973,13 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <button key={x.k} onClick={()=>setZakSubView(x.k)} style={{flex:1,padding:"6px 4px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,whiteSpace:"nowrap",background:zakSubView===x.k?"#5A7A9A":dk?"#18202F":"#EAF0F5",color:zakSubView===x.k?"#fff":dk?"#6B84AC":"#3E5578",fontFamily:"inherit",textAlign:"center"}}>{x.l}</button>
           )}
         </div>}
-        <StockPanel rentals={rentals} stock={stock} setStock={setStock}/>
+        <StockPanel rentals={rentals} stock={stock} onOpenMagazyn={goToMagazyn}/>
         <div style={{padding:"0 20px"}}>
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
         {showAdd&&<Modal title="Nowe wypożyczenie" onClose={()=>setShowAdd(false)}>
-          <EquipmentPicker label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)}))]}/>
+          <EquipmentPicker label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v,machineId:whDefaultCardId(machines,rentals,stock,v,null)}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)}))]}/>
+          <CardPicker eq={form.equipment} value={form.machineId} onChange={v=>setForm(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={null}/>
 
           <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
@@ -1167,7 +1008,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
             const firstCycle=form.renewable?[{dueDate:form.startDate,month:form.startDate.slice(0,7),amount:+form.amount||0,paid:false,paidDate:null}]:[];
-            const nr={...form,id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:firstCycle,status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined};
+            const nr={...form,machineId:whValidMachineId(machines,form.equipment,form.machineId),id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:firstCycle,status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
             if(setPatients&&!pat){setPatients(ps=>[...(ps||[]),{id:Date.now()+2,name:form.patientName,phone:form.phone||"",address:form.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}

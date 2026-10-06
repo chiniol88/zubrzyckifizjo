@@ -1,5 +1,5 @@
     // ── APP ───────────────────────────────────────────────────────────────────
-    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"finances",i:I.fin,l:"Finanse"},{id:"serwis",i:I.wrench,l:"Serwis"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
+    const TABS=[{id:"dashboard",i:I.home,l:"Pulpit"},{id:"patients",i:I.users,l:"Pacjenci"},{id:"rentals",i:I.equip,l:"Sprzęt"},{id:"nfz",i:"M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",l:"Wózki"},{id:"finances",i:I.fin,l:"Finanse"},{id:"magazyn",i:I.box,l:"Magazyn"},{id:"settings",i:"M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",l:"Ustawienia"}];
 
     function useIsDesktop(){
       const [desk,setDesk]=React.useState(()=>window.innerWidth>=900);
@@ -8,7 +8,7 @@
     }
 
     function App({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,wealth,setWealth}) {
-      const [tab,setTab]=useState(()=>{const h=window.location.hash.replace("#","").split("-")[0];return["dashboard","patients","rentals","finances","nfz","serwis","settings"].includes(h)?h:"dashboard";});
+      const [tab,setTab]=useState(()=>{const h0=window.location.hash.replace("#","").split("-")[0];const h=h0==="serwis"?"magazyn":h0;return["dashboard","patients","rentals","finances","nfz","magazyn","settings"].includes(h)?h:"dashboard";});
       useEffect(()=>{if(tab!=="finances")window.location.replace("#"+tab);},[tab]);
       const [dlRental,setDlRental]=useState(null);
       const [dlReturnTab,setDlReturnTab]=useState("rentals");
@@ -16,9 +16,10 @@
       const [wozkiSel,setWozkiSel]=useState(null);
       const [rentalsView,setRentalsView]=useState("aktywne");
       const [addRentalDate,setAddRentalDate]=useState(null);
-      const goToRental=(id,returnTab="rentals")=>{setDlReturnTab(returnTab);setDlBackLabel(returnTab==="dashboard"?"Pulpit":"Wypożyczalnia");setDlRental(id);setTab("rentals");};
+      const goToRental=(id,returnTab="rentals")=>{setDlReturnTab(returnTab);setDlBackLabel(returnTab==="dashboard"?"Pulpit":returnTab==="magazyn"?"Magazyn":"Wypożyczalnia");setDlRental(id);setTab("rentals");};
       const goToAddRental=date=>{setAddRentalDate(date);setTab("rentals");};
       const goToWozki=id=>{setWozkiSel(id);setTab("nfz");};
+      const goToMagazyn=()=>setTab("magazyn");
       const allClients=useMemo(()=>{
         const existing=new Set((patients||[]).map(p=>p.name));
         const extras=[];const seen=new Set();
@@ -53,10 +54,10 @@
       const content = <>
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} onAddRental={goToAddRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients}/>}
-        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} initialAddDate={addRentalDate} onAddDateHandled={()=>setAddRentalDate(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
+        {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} initialAddDate={addRentalDate} onAddDateHandled={()=>setAddRentalDate(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings} goToMagazyn={goToMagazyn}/>}
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} stock={stock} setStock={setStock} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth} goToRental={id=>goToRental(id,"finances")} goToWozki={goToWozki}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} allClients={allClients}/>}
-        {tab==="serwis"&&<Service rentals={rentals} machines={machines} setMachines={setMachines} setFinances={setFinances} stock={stock}/>}
+        {tab==="magazyn"&&<Magazyn rentals={rentals} setRentals={setRentals} machines={machines} setMachines={setMachines} stock={stock} setStock={setStock} setFinances={setFinances} goToRental={id=>goToRental(id,"magazyn")}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
       </>;
 
@@ -139,6 +140,11 @@
 
     function AppWithSync({visits,setVisits,patients,setPatients,rentals,setRentals,finances,setFinances,stock,setStock,nfzCases,setNfzCases,todos,setTodos,events,setEvents,dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,budget,setBudget,machines,setMachines,wealth,setWealth,rentalsLoaded,financesLoaded}) {
       // Jednorazowe aktywne wypożyczenia wózków → przełącz na odnawialne (cykliczne)
+      // Jednorazowo: puste, testowe wpisy z dawnej zakładki Serwis (bez kodu i bez historii) trafiają do archiwum — nic nie jest kasowane
+      useEffect(()=>{
+        const cleaned=whCleanOldService(machines);
+        if(cleaned!==machines)setMachines(cleaned);
+      },[machines]);
       useEffect(()=>{
         if(!rentalsLoaded||!rentals)return;
         const needsMigration=rentals.some(r=>r.status==="aktywne"&&!r.renewable&&WOZEK_EQUIPMENT.includes(r.equipment));
