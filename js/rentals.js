@@ -232,68 +232,6 @@
       );
     }
 
-    // Panel "Stan magazynu" na górze zakładki Sprzęt: ile sztuk wolnych z ilu (liczone z wypożyczeń).
-    // Zarządzanie sprzętem (sztuki, kody, serwis, nowe typy) jest w zakładce Magazyn; liczby biorą się z tych samych danych.
-    function StockPanel({rentals,stock,onOpenMagazyn}) {
-      const dk=useContext(DarkCtx);
-      const [open,setOpen]=useState(false);
-      const qty = stock && stock.qty ? stock.qty : (stock||{});
-      const catalog = (stock&&stock.equipment)||[];
-      const seatWidth=(stock&&stock.seatWidth)||{};
-      const totalWidth=(stock&&stock.totalWidth)||{};
-      const activeNames = getActiveEquipmentNames(stock);
-      const categoryOf = name => { const matches=catalog.filter(x=>x.name===name); return matches.length?matches[matches.length-1].category:null; };
-
-      const activeCount=useMemo(()=>{
-        const m={};
-        rentals.filter(r=>r.status==="aktywne").forEach(r=>{m[r.equipment]=(m[r.equipment]||0)+1;});
-        return m;
-      },[rentals]);
-
-      const total=eq=>qty[eq]||1;
-
-      const GROUP_COLORS={szyny:"#3E6FB0",wozki:"#7C6AF4",balkoniki:"#F4A261"};
-      const GroupHeader=({groupKey,label})=>{
-        const color=GROUP_COLORS[groupKey]||"#7A8FA6";
-        return <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,marginTop:2}}>
-          <div style={{width:8,height:8,borderRadius:"50%",background:color,flexShrink:0}}/>
-          <div style={{fontSize:14,fontWeight:800,color,textTransform:"uppercase",letterSpacing:.5,whiteSpace:"nowrap"}}>{label}</div>
-          <div style={{flex:1,height:1,background:dk?"#2A3A56":"#D9E2F0"}}/>
-        </div>;
-      };
-
-      return <div style={{padding:"0 20px 12px"}}>
-          <div style={{background:dk?"#18202F":"#fff",borderRadius:16,overflow:"hidden",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
-            <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",justifyContent:"center",alignItems:"center",padding:"13px 16px",cursor:"pointer",position:"relative"}}>
-              <span style={{fontSize:13,fontWeight:700,color:dk?"#8ABABA":"#3E5578",textTransform:"uppercase",letterSpacing:.8}}>Stan magazynu</span>
-              <span style={{position:"absolute",right:16,fontSize:12,color:dk?"#6B84AC":"#7A8FA6"}}>{open?"▲":"▼"}</span>
-            </div>
-            {open&&<div style={{borderTop:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,padding:"12px 16px 14px"}}>
-              {[...EQUIPMENT_GROUPS,{key:null,label:"Nieprzypisane"}].map(g=>{
-                const names=activeNames.filter(n=>categoryOf(n)===g.key);
-                if(names.length===0)return null;
-                return <div key={g.key||"none"} style={{marginBottom:14}}>
-                  <GroupHeader groupKey={g.key} label={g.label}/>
-                  {names.map(eq=>{
-                    const active=activeCount[eq]||0,tot=total(eq),fr=tot-active;
-                    const sw=seatWidth[eq],tw=totalWidth[eq];
-                    return <div key={eq} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
-                      <div>
-                        <div style={{fontSize:14,fontWeight:500,color:dk?"#C8E8E8":"#1C2B3A"}}>{eq}</div>
-                        {g.key==="wozki"&&(sw||tw)&&<div style={{fontSize:11,color:"#7A8FA6",marginTop:1}}>{sw?`siedzisko ${sw} cm`:""}{sw&&tw?" · ":""}{tw?`całk. ${tw} cm`:""}</div>}
-                      </div>
-                      <span style={{fontSize:13,fontWeight:700,color:dk?"#C8E8E8":"#1C2B3A",flexShrink:0,marginLeft:8}}>{fr}/{tot}</span>
-                    </div>;
-                  })}
-                </div>;
-              })}
-              <button onClick={e=>{e.stopPropagation();if(onOpenMagazyn)onOpenMagazyn();}} style={{background:"none",border:"none",fontSize:12,color:"#3E6FB0",fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:"8px 0 0",marginTop:2}}>Otwórz Magazyn →</button>
-            </div>}
-          </div>
-        </div>
-    }
-
-
     function RCard({r,onClick}) {
       const demo=useDemo();
       const mctx=useContext(MachinesCtx);
@@ -436,7 +374,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
       else alert('Zezwól na otwieranie nowych okien w przeglądarce.');
     }
 
-    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,initialAddDate,onAddDateHandled,rentalsView,setRentalsView,stock,setStock,settings,goToMagazyn}) {
+    function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,initialAddDate,onAddDateHandled,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const mctx=useContext(MachinesCtx);
@@ -803,6 +741,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           {showEdit&&ef&&<Modal title="Edytuj wypożyczenie" onClose={()=>setShowEdit(false)}>
             <EquipmentPicker label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v,machineId:v===f.equipment?f.machineId:whDefaultCardId(machines,rentals,stock,v,f.id)}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
             <CardPicker eq={ef.equipment} value={ef.machineId} onChange={v=>setEf(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={ef.id}/>
+            <EqIssueHint eq={ef.equipment} machineId={ef.machineId} stock={stock}/>
             <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
@@ -973,13 +912,13 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <button key={x.k} onClick={()=>setZakSubView(x.k)} style={{flex:1,padding:"6px 4px",borderRadius:16,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,whiteSpace:"nowrap",background:zakSubView===x.k?"#5A7A9A":dk?"#18202F":"#EAF0F5",color:zakSubView===x.k?"#fff":dk?"#6B84AC":"#3E5578",fontFamily:"inherit",textAlign:"center"}}>{x.l}</button>
           )}
         </div>}
-        <StockPanel rentals={rentals} stock={stock} onOpenMagazyn={goToMagazyn}/>
         <div style={{padding:"0 20px"}}>
           {filt.length===0?<Empty text="Brak wypożyczeń w tej kategorii"/>:filt.map(r=><RCard key={r.id} r={r} onClick={()=>setDetail(r.id)}/>)}
         </div>
         {showAdd&&<Modal title="Nowe wypożyczenie" onClose={()=>setShowAdd(false)}>
           <EquipmentPicker label="Sprzęt" value={form.equipment} onChange={v=>setForm(f=>({...f,equipment:v,machineId:whDefaultCardId(machines,rentals,stock,v,null)}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)}))]}/>
           <CardPicker eq={form.equipment} value={form.machineId} onChange={v=>setForm(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={null}/>
+          <EqIssueHint eq={form.equipment} machineId={form.machineId} stock={stock}/>
 
           <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>

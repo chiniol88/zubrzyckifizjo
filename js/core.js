@@ -257,7 +257,23 @@ const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","
 const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"Wózki"},{key:"balkoniki",label:"Balkoniki"}];
-const getActiveEquipmentNames = stock => ((stock&&stock.equipment&&stock.equipment.length) ? [...new Set([...EQUIPMENT,...stock.equipment.map(e=>e.name)])].filter(n=>{const e=(stock.equipment||[]).find(x=>x.name===n);return !e||!e.hidden;}) : EQUIPMENT);
+const getActiveEquipmentNames = stock => {
+  const base = (stock&&stock.equipment&&stock.equipment.length) ? [...new Set([...EQUIPMENT,...stock.equipment.map(e=>e.name)])].filter(n=>{const e=(stock.equipment||[]).find(x=>x.name===n);return !e||!e.hidden;}) : EQUIPMENT;
+  const ord = stock && stock.order;
+  if(!ord) return base;
+  // własna kolejność w obrębie grupy (Magazyn): elementy grupy zamieniają się miejscami tylko między sobą, reszta zostaje na swoich pozycjach
+  const catOf = {}; ((stock&&stock.equipment)||[]).forEach(e=>{catOf[e.name]=e.category;});
+  let out = base.slice();
+  Object.keys(ord).forEach(g=>{
+    const list = ord[g]||[];
+    const members = out.filter(n=>catOf[n]===g);
+    if(members.length<2) return;
+    const rank = n=>{const i=list.indexOf(n);return i<0?1e6:i;};
+    const sorted = members.map((n,i)=>({n,i})).sort((a,b)=>rank(a.n)-rank(b.n)||a.i-b.i).map(x=>x.n);
+    let k=0; out = out.map(n=>catOf[n]===g?sorted[k++]:n);
+  });
+  return out;
+};
 const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
 // Jedyne miejsce definiujące "kolejny okres" dla cyklicznych wypożyczeń (auto-generacja, "+ Dodaj okres", widżet Nadchodzące) — celowo +30 dni, nie kalendarzowy miesiąc
 const nextCycleDueDate = fromDate => addDays(fromDate,30);

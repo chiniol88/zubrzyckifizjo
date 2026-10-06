@@ -151,3 +151,97 @@
       const priced=whCards(machines,eq).map(m=>+m.price||0).filter(p=>p>0);
       return Math.max(0,whQty(stock,eq)-priced.length)*unit+priced.reduce((a,b)=>a+b,0);
     }
+
+    // ── Kolejność typów sprzętu w obrębie grupy (stock.order = {szyny:[nazwy], wozki:[...], balkoniki:[...]}) ──
+    // Zapisywana kolejność jest stosowana w getActiveEquipmentNames (core.js), więc obowiązuje też w wypożyczeniach i Statystykach.
+    const whCatOf=(stock,name)=>{const m=((stock&&stock.equipment)||[]).filter(x=>x.name===name);return m.length?m[m.length-1].category:null;};
+    const whGroupNames=(stock,key)=>getActiveEquipmentNames(stock).filter(n=>whCatOf(stock,n)===key);
+    function whMoveType(stock,key,name,dir){
+      const names=whGroupNames(stock,key);
+      const i=names.indexOf(name),j=i+dir;
+      if(i<0||j<0||j>=names.length)return stock;
+      const next=names.slice();[next[i],next[j]]=[next[j],next[i]];
+      return {...(stock||{}),order:{...((stock&&stock.order)||{}),[key]:next}};
+    }
+
+    // ── Usuwanie na stałe (tylko z archiwum) ──────────────────────────────────────
+    // Typ sprzętu: znika cała jego konfiguracja (liczba sztuk, daty, koszty, historia pojemności, uwagi, kolejność) oraz jego karty.
+    // Wypożyczenia z historii NIE są ruszane (zostają z nazwą sprzętu). W katalogu zostaje jeden "nagrobek" {deleted:true},
+    // żeby sprzęt zapisany w kodzie (EQUIPMENT) nie pojawił się znowu jako aktywny.
+    function whDeleteType(stock,machines,rentals,name){
+      if((rentals||[]).some(r=>r.equipment===name&&r.status==="aktywne"))return {error:"Ten sprzęt ma aktywne wypożyczenie. Najpierw je zakończ."};
+      const s={...(stock||{})};
+      ["qty","addedDate","costs","seatWidth","totalWidth","durationInclude","issues"].forEach(k=>{if(s[k]&&typeof s[k]==="object"){const c={...s[k]};delete c[name];s[k]=c;}});
+      if(s.history)s.history=s.history.filter(h=>h.eq!==name);
+      if(s.order){const o={};Object.keys(s.order).forEach(g=>{o[g]=(s.order[g]||[]).filter(n=>n!==name);});s.order=o;}
+      if(typeof s[name]==="number")delete s[name];
+      const cat=whCatOf(stock,name);
+      s.equipment=[...((stock&&stock.equipment)||[]).filter(e=>e.name!==name),{name,category:cat,hidden:true,deleted:true}];
+      const cards=(machines||[]).filter(m=>m.type===name);
+      return {stock:s,machines:(machines||[]).filter(m=>m.type!==name),removedCards:cards.length};
+    }
+    // Karta z archiwum: znika razem z historią serwisu, ale KOSZTY zostają jako naprawy typu (ROI i Finanse się nie zmieniają).
+    function whPurgeCard(stock,machines,id){
+      const c=(machines||[]).find(m=>m.id===id);
+      if(!c)return null;
+      const costly=(c.serviceLog||[]).filter(e=>+e.cost>0);
+      let s=stock||{};const finMap=[];
+      if(costly.length){
+        const cur=(s.costs||{})[c.type]||{purchase:0,repairs:[]};
+        const add=costly.map(e=>{
+          const rid=c.id+"-"+e.id;
+          finMap.push({from:"serwis-"+c.id+"-"+e.id,to:"naprawa-"+rid});
+          return {id:rid,date:e.date,amount:+e.cost,kind:e.type||"Serwis",notes:e.notes||"",desc:(e.type||"Serwis")+(e.notes?" – "+e.notes:"")+" ("+(c.code||c.type)+")"};
+        });
+        s={...s,costs:{...(s.costs||{}),[c.type]:{...cur,repairs:[...(cur.repairs||[]),...add]}}};
+      }
+      return {stock:s,machines:machines.filter(m=>m.id!==id),finMap,movedCost:costly.reduce((a,e)=>a+(+e.cost||0),0),lostEntries:(c.serviceLog||[]).length-costly.length};
+    }
+
+    // ── Serwis i naprawy na poziomie sprzętu: wpisy kart (machines[].serviceLog) + naprawy typu (stock.costs[eq].repairs) ──
+    function whServiceEntries(stock,machines,eq){
+      const out=[];
+      (machines||[]).filter(m=>m.type===eq).forEach(m=>(m.serviceLog||[]).forEach(s=>out.push({key:"c"+m.id+"-"+s.id,src:"card",cardId:m.id,code:m.code||"",entryId:s.id,date:s.date||"",kind:s.type||"",notes:s.notes||"",cost:+s.cost||0})));
+      const reps=((((stock||{}).costs||{})[eq]||{}).repairs)||[];
+      reps.forEach(r=>out.push({key:"t"+r.id,src:"type",cardId:null,code:"",entryId:r.id,date:r.date||"",kind:r.kind||"Naprawa",notes:r.notes!=null?r.notes:(r.desc||""),cost:+r.amount||0}));
+      return out.sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    }
+    // Wpis bez wskazania sztuki: zapisywany jako naprawa typu (tak samo czyta go ROI w Statystykach)
+    function whAddTypeRepair(stock,eq,f){
+      const cur=((stock||{}).costs||{})[eq]||{purchase:0,repairs:[]};
+      let n=Date.now();const ids=new Set((cur.repairs||[]).map(r=>String(r.id)));
+      while(ids.has(String(n)))n++;
+      const id=String(n);
+      const rep={id,date:f.date,amount:+f.cost||0,kind:f.type,notes:f.notes||"",desc:f.type+(f.notes?" – "+f.notes:"")};
+      return {stock:{...(stock||{}),costs:{...((stock||{}).costs||{}),[eq]:{...cur,repairs:[...(cur.repairs||[]),rep]}}},id};
+    }
+    function whRemoveTypeRepair(stock,eq,id){
+      const cur=((stock||{}).costs||{})[eq];
+      if(!cur)return stock;
+      return {...stock,costs:{...stock.costs,[eq]:{...cur,repairs:(cur.repairs||[]).filter(r=>String(r.id)!==String(id))}}};
+    }
+
+    // ── Uwagi do sprzętu (np. "wymienić rzepy", "dokręcić śrubki"): stock.issues[eq] = [{id,text,created,done,doneDate,machineId}] ──
+    function whAddIssue(stock,eq,text,machineId,today){
+      const list=((stock||{}).issues||{})[eq]||[];
+      let n=Date.now();const ids=new Set(list.map(i=>i.id));while(ids.has(n))n++;
+      return {...(stock||{}),issues:{...((stock||{}).issues||{}),[eq]:[...list,{id:n,text:String(text).trim(),created:today,done:false,doneDate:"",machineId:machineId||null}]}};
+    }
+    function whSetIssue(stock,eq,id,patch){
+      const list=((stock||{}).issues||{})[eq]||[];
+      return {...(stock||{}),issues:{...((stock||{}).issues||{}),[eq]:list.map(i=>i.id===id?{...i,...patch}:i)}};
+    }
+    function whRemoveIssue(stock,eq,id){
+      const list=((stock||{}).issues||{})[eq]||[];
+      return {...(stock||{}),issues:{...((stock||{}).issues||{}),[eq]:list.filter(i=>i.id!==id)}};
+    }
+    // Podsumowanie dla Pulpitu i nagłówka Magazynu (tylko aktywne typy): otwarte uwagi i sztuki z serwisem po terminie lub wkrótce
+    function whAttention(stock,machines,today,names){
+      const set=new Set(names||[]);
+      const issues=[];
+      Object.keys((stock&&stock.issues)||{}).forEach(eq=>{if(set.has(eq))(stock.issues[eq]||[]).filter(i=>!i.done).forEach(i=>issues.push({eq,...i}));});
+      const due=[];
+      (machines||[]).filter(m=>!m.archived&&set.has(m.type)).forEach(c=>{const s=whServiceInfo(c,today);if(s.status==="zaległy"||s.status==="wkrótce")due.push({c,s});});
+      due.sort((a,b)=>a.s.left-b.s.left);
+      return {issues,due};
+    }

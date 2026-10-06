@@ -335,7 +335,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────
-function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,allClients,goToRental,onAddRental,nfzCases,goToWozki,todos,setTodos,events,setEvents}) {
+function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,patients,allClients,goToRental,onAddRental,nfzCases,goToWozki,todos,setTodos,events,setEvents,stock,machines,goToMagazyn}) {
   const demo=useDemo();
   const today = todayLocal();
   const dk=useContext(DarkCtx);
@@ -538,6 +538,19 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
         </div>
       </div>
       <div style={{padding:"0 20px"}}>
+        {(()=>{
+          // Sprzęt: otwarte uwagi (np. "wymienić rzepy") i serwis po terminie albo wkrótce — z zakładki Magazyn
+          const att=whAttention(stock,machines,today,getActiveEquipmentNames(stock));
+          if(att.issues.length===0&&att.due.length===0)return null;
+          const n=att.issues.length,pl=n===1?"uwaga":(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14))?"uwagi":"uwag";
+          const parts=[n>0?n+" "+pl+" do załatwienia":"",att.due.length>0?"serwis: "+att.due.length:""].filter(Boolean).join(" · ");
+          return <Card onClick={()=>goToMagazyn&&goToMagazyn()} style={{padding:"12px 16px",marginBottom:12,background:dk?"#3A2A14":"#FDF0E3",border:"1.5px solid #F4A26140"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+              <div style={{fontWeight:700,fontSize:14,color:dk?"#F4C48A":"#B8691A"}}>🔧 Sprzęt: {parts}</div>
+              <div style={{fontWeight:700,fontSize:12,color:dk?"#F4C48A":"#B8691A",whiteSpace:"nowrap"}}>Magazyn ›</div>
+            </div>
+          </Card>;
+        })()}
         {overdueCycles.length>0&&<Card onClick={()=>goToRental(overdueCycles[0].r.id)} style={{padding:"12px 16px",marginBottom:12,background:"#FEE2E2",border:"1.5px solid #E05C5C30"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div style={{fontWeight:700,fontSize:14,color:"#E05C5C"}}>⚠️ Zaległe opłaty cykliczne: {overdueCycles.length}</div>

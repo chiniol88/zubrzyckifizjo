@@ -298,7 +298,7 @@
       const getTotalInvestment=eq=>{const c=getCosts(eq);const machineSrv=getMachineSrvForEq(eq).reduce((s,x)=>s+x.amount,0);return whPurchaseTotal(stock,machines,eq)+(c.repairs||[]).reduce((s,r)=>s+(+r.amount||0),0)+machineSrv;};
       const setPurchase=(eq,val)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,purchase:+val||0}}};});
       const saveRepair=(eq,rep)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:[...(ex.repairs||[]).filter(r=>r.id!==rep.id),rep]}}};});
-      const deleteRepair=(eq,id)=>setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});
+      const deleteRepair=(eq,id)=>{setStock(s=>{const ex=(s.costs||{})[eq]||{purchase:0,repairs:[]};return{...s,costs:{...(s.costs||{}),[eq]:{...ex,repairs:(ex.repairs||[]).filter(r=>r.id!==id)}}};});setFinances(fs=>(fs||[]).filter(f=>f.sourceId!==("naprawa-"+id)));};
 
       // Obłożenie — tylko szyny CPM, liczone dzień po dniu (patrz occupancyForEq)
       const occStats=useMemo(()=>equipmentAll.filter(eq=>catOf(eq)==="szyny")
@@ -1068,6 +1068,7 @@
                 setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"serwis-"+target.id+"-"+entry.id,date:repairForm.date,type:"koszt",category:"Serwis",amount:+repairForm.amount,description:"Naprawa"+(repairForm.desc?" – "+repairForm.desc:"")+" ("+(target.code||target.name||target.type)+")"},...(fs||[])]);
               }else{
                 saveRepair(repairForm.eq,{id:repairForm.id,date:repairForm.date,amount:+repairForm.amount,desc:repairForm.desc});
+                setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"naprawa-"+repairForm.id,date:repairForm.date,type:"koszt",category:"Serwis",amount:+repairForm.amount,description:"Naprawa"+(repairForm.desc?" – "+repairForm.desc:"")+" ("+repairForm.eq+")"},...(fs||[])]);
               }
               setRepairForm(null);
             }}>Zapisz</Btn>
@@ -1227,6 +1228,7 @@
         else if(sid.startsWith("wozek-")){const cid=+sid.replace("wozek-","");setNfzCases(cs=>(cs||[]).map(c=>+c.id===cid?{...c,realized:false}:c));}
         else if(sid.startsWith("transport-")){const rid=+sid.slice(10);setRentals(rs=>rs.map(r=>+r.id===rid?{...r,transportPaid:false,transportPaidDate:null}:r));}
         else if(sid.startsWith("serwis-")){const rest=sid.slice(7);const di=rest.indexOf("-");const mid=+rest.slice(0,di);const eid=+rest.slice(di+1);setMachines(ms=>(ms||[]).map(m=>{if(m.id!==mid)return m;const log=(m.serviceLog||[]).filter(s=>s.id!==eid);const lastServiceDate=log.length>0?log.reduce((a,b)=>(a.date>b.date?a:b)).date:null;return{...m,serviceLog:log,lastServiceDate};}));}
+        else if(sid.startsWith("naprawa-")){const rid=sid.slice(8);setStock(s=>{const costs=(s&&s.costs)||{};const next={};Object.keys(costs).forEach(k=>{const c=costs[k]||{};next[k]=Array.isArray(c.repairs)?{...c,repairs:c.repairs.filter(r=>String(r.id)!==rid)}:c;});return {...(s||{}),costs:next};});}
         setFinances(fs=>fs.filter(f=>f.id!==entry.id));
       };
 
