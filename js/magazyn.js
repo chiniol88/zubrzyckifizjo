@@ -268,15 +268,14 @@
               {c.notes&&<div>{c.notes}</div>}
             </div>
             <SectionLabel style={{marginBottom:6}}>Serwis (co {c.servicePeriodDays||365} dni)</SectionLabel>
-            <div style={{fontSize:12,color:subC,marginBottom:6}}>{c.lastServiceDate?"Ostatni serwis: "+c.lastServiceDate:"Brak wpisów serwisowych, nic nie przypomina."}</div>
+            {c.lastServiceDate&&<div style={{fontSize:12,color:subC,marginBottom:6}}>Ostatni serwis: {c.lastServiceDate}</div>}
             {renderEntries(c.type,cardEntries)}
             <button onClick={()=>openSrv(c.type,c.id)} style={linkBtn}>+ Wpis serwisowy dla tej sztuki</button>
             <SectionLabel style={{marginBottom:2,marginTop:8}}>Uwagi do tej sztuki</SectionLabel>
-            {cardIssues.length===0&&<div style={{fontSize:12,color:subC,marginBottom:2}}>Brak uwag.</div>}
             {cardIssues.map(i=>renderIssue(c.type,i))}
             <button onClick={()=>openIssue(c.type,c.id)} style={linkBtn}>+ Dodaj uwagę do tej sztuki</button>
             <SectionLabel style={{marginBottom:6,marginTop:8}}>Kto miał tę sztukę</SectionLabel>
-            {history.length===0&&<div style={{fontSize:12,color:subC,marginBottom:6}}>Jeszcze nie wypożyczana (liczy się od chwili wskazania sztuki przy wypożyczeniu).</div>}
+            {history.length===0&&<div style={{fontSize:12,color:subC,marginBottom:6}}>Jeszcze nie wypożyczana.</div>}
             {history.slice(0,8).map(r=><div key={r.id} onClick={()=>goToRental&&goToRental(r.id)} style={{fontSize:12,padding:"5px 0",borderBottom:`1px solid ${lineC}`,cursor:"pointer",display:"flex",justifyContent:"space-between",gap:8}}>
               <span>{who(r)}</span><span style={{color:subC}}>{r.startDate||"?"} → {r.endDate||(r.status==="aktywne"?"trwa":"?")}</span>
             </div>)}
@@ -331,7 +330,6 @@
               {legacy>0&&<div style={{border:`1px dashed ${dk?"#2A3A56":"#C9D6E8"}`,background:boxBg,borderRadius:12,padding:"10px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
                 <div style={{flex:1,minWidth:180}}>
                   <div style={{fontSize:13,fontWeight:700}}>Starsze sztuki bez karty: {legacy}</div>
-                  <div style={{fontSize:11,color:subC,marginTop:2}}>Liczone jak dotąd, bez numerów. Kartę utworzysz, kiedy zechcesz je śledzić (liczba sztuk się nie zmieni).</div>
                 </div>
                 <Btn small variant="secondary" onClick={()=>openConvert(eq)}>Utwórz kartę</Btn>
               </div>}
@@ -339,13 +337,10 @@
             </>:<div style={{display:"flex",alignItems:"center",gap:12}}>
               <button onClick={()=>changeQty(eq,-1)} style={{width:44,height:44,borderRadius:10,border:"1.5px solid #D9E2F0",background:dk?"#18202F":"#EFF3FA",fontSize:20,cursor:"pointer",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>−</button>
               <span style={{fontSize:18,fontWeight:800,minWidth:28,textAlign:"center"}}>{qty}</span>
-              <button onClick={()=>changeQty(eq,1)} style={{width:44,height:44,borderRadius:10,border:"1.5px solid #D9E2F0",background:dk?"#18202F":"#EFF3FA",fontSize:20,cursor:"pointer",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>+</button>
-              <span style={{fontSize:12,color:subC}}>sztuk w magazynie, zapis od razu</span>
-            </div>}
+              <button onClick={()=>changeQty(eq,1)} style={{width:44,height:44,borderRadius:10,border:"1.5px solid #D9E2F0",background:dk?"#18202F":"#EFF3FA",fontSize:20,cursor:"pointer",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}>+</button>            </div>}
 
             <div style={{marginTop:16,borderTop:`1px solid ${lineC}`,paddingTop:12}}>
               <SectionLabel style={{marginBottom:6}}>Serwis i naprawy{entries.length>0?" ("+entries.length+")":""}</SectionLabel>
-              {entries.length===0&&<div style={{fontSize:12,color:subC,marginBottom:4}}>Brak wpisów. Przeglądy i naprawy zapisane tu z kosztem trafiają do Finansów i Statystyk.</div>}
               {renderEntries(eq,shownEntries)}
               {entries.length>5&&<button onClick={()=>setAllEntries(a=>({...a,[eq]:!a[eq]}))} style={linkBtn}>{allEntries[eq]?"Pokaż mniej":"Pokaż wszystkie ("+entries.length+")"}</button>}
               <div><button onClick={()=>openSrv(eq,"")} style={linkBtn}>+ Wpis serwisowy</button></div>
@@ -353,7 +348,6 @@
 
             <div style={{marginTop:10}}>
               <SectionLabel style={{marginBottom:2}}>Uwagi do załatwienia{issOpen.length>0?" ("+issOpen.length+")":""}</SectionLabel>
-              {issOpen.length===0&&<div style={{fontSize:12,color:subC,padding:"4px 0"}}>Nic do załatwienia. Zapisz tu np. "wymienić rzepy" albo "dokręcić śrubki przy najbliższej okazji".</div>}
               {issOpen.map(i=>renderIssue(eq,i))}
               <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
                 <button onClick={()=>openIssue(eq,"")} style={linkBtn}>+ Dodaj uwagę</button>
@@ -373,7 +367,6 @@
                   <div style={{flex:1}}><Inp label="Całkowita (cm)" value={totalWidth[eq]||""} onChange={v=>setStock(s=>({...(s||{}),totalWidth:{...((s||{}).totalWidth||{}),[eq]:v}}))} type="number"/></div>
                 </div>}
                 <Inp label="Domyślny koszt zakupu 1 szt. (zł)" value={demo?"":((costs[eq]||{}).purchase||"")} onChange={v=>setStock(s=>{const cur=s||{};const ex=(cur.costs||{})[eq]||{purchase:0,repairs:[]};return {...cur,costs:{...(cur.costs||{}),[eq]:{...ex,purchase:+v||0}}};})} type="number"/>
-                <div style={{fontSize:11,color:subC,marginBottom:12}}>Ta sama wartość jest w Statystykach (Opłacalność). Sztuki z własną ceną na karcie liczą się po swojej cenie.</div>
                 <Btn small variant="danger" onClick={()=>archiveType(eq)}>Archiwizuj sprzęt</Btn>
               </div>}
             </div>
@@ -460,12 +453,11 @@
         </div>}
 
         {cardForm&&<Modal title={cardForm.mode==="new"?"Nowa sztuka":cardForm.mode==="convert"?"Karta dla starszej sztuki":"Edytuj kartę"} onClose={()=>setCardForm(null)}>
-          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:14}}>{cardForm.eq}{cardForm.mode==="convert"?" · liczba sztuk się nie zmieni":""}</div>
-          <Inp label="Kod magazynowy *" value={cardForm.code} onChange={v=>{setFormError("");setCardForm(f=>({...f,code:v}));}} placeholder="dowolny, ale niepowtarzalny"/>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:14}}>{cardForm.eq}</div>
+          <Inp label="Kod magazynowy *" value={cardForm.code} onChange={v=>{setFormError("");setCardForm(f=>({...f,code:v}));}}/>
           {formError&&<div style={{fontSize:12,color:"#E05C5C",margin:"-8px 0 12px"}}>{formError}</div>}
-          <Inp label="Numer fabryczny" value={cardForm.serialNo} onChange={v=>setCardForm(f=>({...f,serialNo:v}))} placeholder="z tabliczki urządzenia, opcjonalnie"/>
+          <Inp label="Numer fabryczny" value={cardForm.serialNo} onChange={v=>setCardForm(f=>({...f,serialNo:v}))} placeholder="opcjonalnie"/>
           <Inp label={cardForm.mode==="new"?"Data zakupu":"Data zakupu (opcjonalnie)"} value={cardForm.purchaseDate} onChange={v=>setCardForm(f=>({...f,purchaseDate:v}))} type="date"/>
-          {cardForm.mode==="new"&&<div style={{fontSize:11,color:"#7A8FA6",margin:"-8px 0 14px"}}>Od tej daty sztuka liczy się do obłożenia. Wcześniejsze dni zostają bez zmian.</div>}
           <Inp label="Cena zakupu (zł)" value={cardForm.price} onChange={v=>setCardForm(f=>({...f,price:v}))} type="number" placeholder="puste = domyślna cena typu"/>
           {cardForm.mode==="convert"&&(()=>{
             const out=(rentals||[]).filter(r=>r.status==="aktywne"&&r.equipment===cardForm.eq&&!r.machineId);
@@ -483,9 +475,8 @@
             <Inp label="Data" value={srvForm.date} onChange={v=>{setFormError("");setSrvForm(f=>({...f,date:v}));}} type="date"/>
             <Sel label="Rodzaj" value={srvForm.type} onChange={v=>setSrvForm(f=>({...f,type:v}))} options={["Przegląd","Naprawa","Wymiana części","Kalibracja","Czyszczenie","Inne"].map(x=>({value:x,label:x}))}/>
             {cards.length>0&&<Sel label="Której sztuki dotyczy?" value={srvForm.cardId} onChange={v=>setSrvForm(f=>({...f,cardId:v}))} options={[{value:"",label:"Nie wskazuję (cały sprzęt)"},...cards.map(c=>({value:String(c.id),label:(c.code||"(bez kodu)")+(c.serialNo?" · "+c.serialNo:"")}))]}/>}
-            <Txa label="Opis" value={srvForm.notes} onChange={v=>setSrvForm(f=>({...f,notes:v}))} rows={2} placeholder="np. wymiana rzepów, nowy silnik"/>
+            <Txa label="Opis" value={srvForm.notes} onChange={v=>setSrvForm(f=>({...f,notes:v}))} rows={2}/>
             <Inp label="Koszt (zł)" value={srvForm.cost} onChange={v=>setSrvForm(f=>({...f,cost:v}))} type="number" placeholder="0"/>
-            <div style={{fontSize:11,color:"#7A8FA6",margin:"-6px 0 14px"}}>Koszt trafia do Finansów (kategoria Serwis) i do zwrotu z inwestycji w Statystykach.</div>
             {formError&&<div style={{fontSize:12,color:"#E05C5C",marginBottom:12}}>{formError}</div>}
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={saveSrv}>Zapisz</Btn>
           </Modal>;
@@ -495,18 +486,17 @@
           const cards=whCards(machines,issueForm.eq);
           return <Modal title="Nowa uwaga" onClose={()=>setIssueForm(null)}>
             <div style={{fontSize:13,color:"#7A8FA6",marginBottom:14}}>{issueForm.eq}</div>
-            <Txa label="Co trzeba zrobić?" value={issueForm.text} onChange={v=>{setFormError("");setIssueForm(f=>({...f,text:v}));}} rows={3} placeholder="np. wymienić rzepy, dokręcić śrubki przy najbliższej okazji"/>
+            <Txa label="Co trzeba zrobić?" value={issueForm.text} onChange={v=>{setFormError("");setIssueForm(f=>({...f,text:v}));}} rows={3}/>
             {cards.length>0&&<Sel label="Której sztuki dotyczy?" value={issueForm.cardId} onChange={v=>setIssueForm(f=>({...f,cardId:v}))} options={[{value:"",label:"Cały sprzęt / nie wiem"},...cards.map(c=>({value:String(c.id),label:(c.code||"(bez kodu)")+(c.serialNo?" · "+c.serialNo:"")}))]}/>}
             {formError&&<div style={{fontSize:12,color:"#E05C5C",marginBottom:12}}>{formError}</div>}
-            <div style={{fontSize:11,color:"#7A8FA6",margin:"-4px 0 14px"}}>Uwaga będzie widoczna na Pulpicie i przy wypożyczaniu tego sprzętu, dopóki jej nie odhaczysz.</div>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={saveIssue}>Dodaj uwagę</Btn>
           </Modal>;
         })()}
 
         {retireForm&&<Modal title="Wycofaj sztukę" onClose={()=>setRetireForm(null)}>
-          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:14}}>Sztuka trafi do archiwum, a liczba sztuk spadnie o 1 od wybranej daty. Dni sprzed tej daty zostają bez zmian, historia wypożyczeń i serwisu też.</div>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:14}}>{(()=>{const rc=(machines||[]).find(m=>m.id===retireForm.id);return rc?(rc.code||"(bez kodu)")+" · "+rc.type:"";})()}</div>
           <Inp label="Data wycofania" value={retireForm.date} onChange={v=>{setFormError("");setRetireForm(f=>({...f,date:v}));}} type="date"/>
-          <Txa label="Powód (opcjonalnie)" value={retireForm.reason} onChange={v=>setRetireForm(f=>({...f,reason:v}))} rows={2} placeholder="np. sprzedana, zepsuta"/>
+          <Txa label="Powód (opcjonalnie)" value={retireForm.reason} onChange={v=>setRetireForm(f=>({...f,reason:v}))} rows={2}/>
           {formError&&<div style={{fontSize:12,color:"#E05C5C",marginBottom:12}}>{formError}</div>}
           <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={doRetire}>Wycofaj sztukę</Btn>
         </Modal>}
@@ -543,9 +533,9 @@
 
         {typeForm&&<Modal title="Nowy sprzęt" onClose={()=>setTypeForm(null)}>
           <Sel label="Grupa" value={typeForm.category} onChange={v=>setTypeForm(f=>({...f,category:v}))} options={EQUIPMENT_GROUPS.map(g=>({value:g.key,label:g.label}))}/>
-          <Inp label="Nazwa sprzętu *" value={typeForm.name} onChange={v=>{setFormError("");setTypeForm(f=>({...f,name:v}));}} placeholder="np. Artromot K1 2027"/>
+          <Inp label="Nazwa sprzętu *" value={typeForm.name} onChange={v=>{setFormError("");setTypeForm(f=>({...f,name:v}));}}/>
           {(typeForm.category==="szyny"||typeForm.category==="wozki")?<>
-            <Inp label="Kod magazynowy pierwszej sztuki *" value={typeForm.code} onChange={v=>{setFormError("");setTypeForm(f=>({...f,code:v}));}} placeholder="dowolny, ale niepowtarzalny"/>
+            <Inp label="Kod magazynowy pierwszej sztuki *" value={typeForm.code} onChange={v=>{setFormError("");setTypeForm(f=>({...f,code:v}));}}/>
             <Inp label="Numer fabryczny" value={typeForm.serialNo} onChange={v=>setTypeForm(f=>({...f,serialNo:v}))} placeholder="opcjonalnie"/>
             <Inp label="Cena zakupu (zł)" value={typeForm.price} onChange={v=>setTypeForm(f=>({...f,price:v}))} type="number" placeholder="opcjonalnie"/>
           </>:<Inp label="Liczba sztuk" value={typeForm.qty} onChange={v=>setTypeForm(f=>({...f,qty:v}))} type="number"/>}
