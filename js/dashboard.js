@@ -196,7 +196,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(item._kind==="event"){const ev=item.e;return <div key={"ad-e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
             <div style={{width:6,height:6,borderRadius:2,background:"#F4A261",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
+            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Wydarzenie":ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{maskText(demo,ev.notes)}</div>}</div>
           </div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
             <button onClick={()=>openICS(makeICS(ev.title, ev.date, ev.date, ev.notes||"", true))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
@@ -207,7 +207,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"ad-v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
             <div style={{width:6,height:6,borderRadius:2,background:"#3DAA72",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
+            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {maskAddr(demo,addr)}</div>}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(v)}</Badge>
@@ -220,11 +220,11 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const remaining2=totalAmt2-totalPaid2;
           const isEndType=ev.type==="end"||ev.type==="plannedReturn";
           const isPaidEnd=isEndType&&remaining2<=0;
-          const adSub=ev.r.renewable?null:isEndType?(remaining2>0?`do zapłaty: ${remaining2} zł`:`✅ Opłacono: ${totalAmt2} zł`):ev.type==="start"?totalAmt2+" zł":null;
+          const adSub=ev.r.renewable?null:isEndType?(remaining2>0?`do zapłaty: ${maskAmt(demo,remaining2)} zł`:`✅ Opłacono: ${maskAmt(demo,totalAmt2)} zł`):ev.type==="start"?maskAmt(demo,totalAmt2)+" zł":null;
           return <div key={"ad-r"+idx} onClick={()=>setQuickRental(ev.r)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`,cursor:"pointer"}}>
           <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
             <div style={{width:6,height:6,borderRadius:2,background:"#7C6AF4",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {ev.r.address}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
+            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {label} · {demo?"Pacjent":ev.r.patientName}</div>{ev.r.address&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {maskAddr(demo,ev.r.address)}</div>}<div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}</div></div>
           </div>
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
             {adSub&&<Badge color={isPaidEnd?"#3DAA72":isEndType?"#F4A261":"#7C6AF4"}>{adSub}</Badge>}
@@ -238,17 +238,17 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {addr}</div>}</div>
+            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {maskAddr(demo,addr)}</div>}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.price} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(v)}</Badge></div>
+            <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{maskAmt(demo,v.price)} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(v)}</Badge></div>
             <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date+"T"+v.time, v.date+"T"+(()=>{const[h,m]=v.time.split(":").map(Number);const e=h*60+m+60;return String(Math.floor(e/60)%24).padStart(2,"0")+":"+String(e%60).padStart(2,"0");})(), "Cena: "+v.price+" zł"+(addr?"\\nAdres: "+addr:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px",color:"#7A8FA6"}}>📅</button>
           </div>
         </div>;}
         if(item._kind==="event"){const ev=item.e;return <div key={"e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:"#F4A261",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{ev.notes}</div>}</div>
+            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {demo?"Wydarzenie":ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{maskText(demo,ev.notes)}</div>}</div>
           </div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
             <button onClick={()=>openICS(makeICS(ev.title, ev.date+"T"+ev.time, ev.date+"T"+ev.time, ev.notes||"", false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
@@ -267,8 +267,8 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           // Okres cykliczny, którego termin jeszcze nie nadszedł, nie jest "zaległy" — nie ma co go pokazywać na czerwono
           const cycleFuture=ev.type==="cycle"&&!ev.c.paid&&!ev.c.cancelled&&(ev.c.dueDate||ev.c.month+"-01")>today;
           const color=isPaidEnd2?"#3DAA72":isEndType2?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":cycleFuture?"#7C6AF4":"#E05C5C"):ev.type==="cyclePreview"?"#7A8FA6":"#7C6AF4";
-          const endSub=remaining>0?`do zapłaty: ${remaining} zł`:`✅ Opłacono: ${totalAmt} zł`;
-          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${ev.c.amount} zł`:cycleFuture?`zaplanowane: ${ev.c.amount} zł`:`do opłacenia ${ev.c.amount} zł`):ev.type==="cyclePreview"?`~${ev.r.amount||0} zł`:isEndType2?endSub:totalAmt+" zł";
+          const endSub=remaining>0?`do zapłaty: ${maskAmt(demo,remaining)} zł`:`✅ Opłacono: ${maskAmt(demo,totalAmt)} zł`;
+          const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${maskAmt(demo,ev.c.amount)} zł`:cycleFuture?`zaplanowane: ${maskAmt(demo,ev.c.amount)} zł`:`do opłacenia ${maskAmt(demo,ev.c.amount)} zł`):ev.type==="cyclePreview"?`~${maskAmt(demo,ev.r.amount||0)} zł`:isEndType2?endSub:maskAmt(demo,totalAmt)+" zł";
           const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?(ev.r.plannedReturnTime||"10:00"):""):"";
 
           const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
@@ -276,7 +276,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           return <div key={"r"+idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
             <div onClick={()=>setQuickRental(ev.r)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
               <div style={{width:6,height:6,borderRadius:"50%",background:"#7C6AF4",flexShrink:0}}/>
-              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+ev.r.address:""}</div></div>
+              <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{timeLabel?timeLabel+" · ":""}{label} · {demo?"Pacjent":ev.r.patientName}</div><div style={{fontSize:12,color:"#7A8FA6"}}>{ev.r.equipment||"❓ Do ustalenia"}{ev.r.address?" · 📍"+maskAddr(demo,ev.r.address):""}</div></div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
@@ -299,21 +299,21 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
       const statusColor=r.status==="aktywne"?"#3DAA72":r.status==="zakończone"?"#7A8FA6":"#F4A261";
       return <Modal title="Podgląd wypożyczenia" onClose={()=>setQuickRental(null)}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <div style={{fontSize:18,fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{r.patientName}</div>
+          <div style={{fontSize:18,fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{demo?"Pacjent":r.patientName}</div>
           <Badge color={statusColor}>{r.status}</Badge>
         </div>
         <div style={{background:dk?"#1A2840":"#F7FAFC",borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",flexDirection:"column",gap:8}}>
           <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:15}}>📦</span><span style={{fontWeight:600,color:dk?"#E8F5F5":"#1C2B3A"}}>{r.equipment||"❓ Do ustalenia"}</span></div>
           <div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📅</span><span style={{fontSize:13,color:"#7A8FA6"}}>{r.startDate||"—"} → {r.endDate||"—"}</span></div>
-          {r.address&&<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📍</span><a href={"https://maps.google.com/?q="+encodeURIComponent(r.address)} target="_blank" rel="noreferrer" style={{fontSize:13,color:"#3E6FB0",textDecoration:"none"}}>{r.address}</a></div>}
-          {r.phone&&<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📞</span><a href={"tel:"+r.phone} style={{fontSize:13,color:"#3E6FB0",textDecoration:"none",fontWeight:600}}>{r.phone}</a></div>}
+          {r.address&&<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📍</span><a href={demo?undefined:"https://maps.google.com/?q="+encodeURIComponent(r.address)} target="_blank" rel="noreferrer" style={{fontSize:13,color:"#3E6FB0",textDecoration:"none"}}>{maskAddr(demo,r.address)}</a></div>}
+          {r.phone&&<div style={{display:"flex",gap:8,alignItems:"center"}}><span style={{fontSize:13}}>📞</span><a href={demo?undefined:"tel:"+r.phone} style={{fontSize:13,color:"#3E6FB0",textDecoration:"none",fontWeight:600}}>{maskPhone(demo,r.phone)}</a></div>}
         </div>
         <div style={{background:dk?"#0F2020":"#EFF6FF",borderRadius:12,padding:"12px 14px",marginBottom:12}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>{r.renewable?"Stawka / mies.":"Kwota całkowita"}</span><span style={{fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{totalAmt} zł</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Wpłacono</span><span style={{fontWeight:700,color:"#3DAA72"}}>{totalPaid} zł</span></div>
-          {!r.renewable&&(remaining>0?<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Pozostało</span><span style={{fontWeight:700,color:"#E05C5C"}}>{remaining} zł</span></div>:<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Status</span><span style={{fontWeight:700,color:"#3DAA72"}}>✅ Opłacono w całości</span></div>)}
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>{r.renewable?"Stawka / mies.":"Kwota całkowita"}</span><span style={{fontWeight:700,color:dk?"#E8F5F5":"#1C2B3A"}}>{maskAmt(demo,totalAmt)} zł</span></div>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{fontSize:13,color:"#7A8FA6"}}>Wpłacono</span><span style={{fontWeight:700,color:"#3DAA72"}}>{maskAmt(demo,totalPaid)} zł</span></div>
+          {!r.renewable&&(remaining>0?<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Pozostało</span><span style={{fontWeight:700,color:"#E05C5C"}}>{maskAmt(demo,remaining)} zł</span></div>:<div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,color:"#7A8FA6"}}>Status</span><span style={{fontWeight:700,color:"#3DAA72"}}>✅ Opłacono w całości</span></div>)}
         </div>
-        {r.notes&&<div style={{fontSize:13,color:"#7A8FA6",marginBottom:12,padding:"8px 12px",background:dk?"#1A2840":"#F7FAFC",borderRadius:10,whiteSpace:"pre-wrap"}}>📝 {r.notes}</div>}
+        {r.notes&&<div style={{fontSize:13,color:"#7A8FA6",marginBottom:12,padding:"8px 12px",background:dk?"#1A2840":"#F7FAFC",borderRadius:10,whiteSpace:"pre-wrap"}}>📝 {maskText(demo,r.notes)}</div>}
         <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{setQuickRental(null);onGoToRental(r.id);}}>Otwórz pełny widok →</Btn>
       </Modal>;})()}
 
@@ -454,16 +454,16 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
       return (v.patientName||"").toLowerCase().includes(q)||(v.notes||"").toLowerCase().includes(q)||(v.type||"").toLowerCase().includes(q)||((pat.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")));
     }).slice(0,5).forEach(v=>{
       const pat=patByName[v.patientName]||{};
-      res.push({kind:"visit",label:"Wizyta",title:(v.allDay?"🗓 ":"⏰ ")+(v.time?v.time+" · ":"")+v.patientName,sub:v.date+" · "+v.type+(v.price?" · "+v.price+" zł":"")+(pat.phone?" · 📞 "+pat.phone:""),item:v});
+      res.push({kind:"visit",label:"Wizyta",title:(v.allDay?"🗓 ":"⏰ ")+(v.time?v.time+" · ":"")+(demo?"Pacjent":v.patientName),sub:v.date+" · "+v.type+(v.price?" · "+maskAmt(demo,v.price)+" zł":"")+(pat.phone?" · 📞 "+maskPhone(demo,pat.phone):""),item:v});
     });
     // wypożyczenia
-    rentals.filter(r=>(r.patientName||"").toLowerCase().includes(q)||(r.equipment||"").toLowerCase().includes(q)||(r.address||"").toLowerCase().includes(q)||((r.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")))).slice(0,5).forEach(r=>res.push({kind:"rental",label:"Sprzęt",title:"📦 "+r.patientName+" – "+(r.equipment||"Do ustalenia"),sub:r.startDate+(r.endDate?" → "+r.endDate:"")+" · "+(r.status||"")+(r.phone?" · 📞 "+r.phone:""),item:r}));
+    rentals.filter(r=>(r.patientName||"").toLowerCase().includes(q)||(r.equipment||"").toLowerCase().includes(q)||(r.address||"").toLowerCase().includes(q)||((r.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,"")))).slice(0,5).forEach(r=>res.push({kind:"rental",label:"Sprzęt",title:"📦 "+(demo?"Pacjent":r.patientName)+" – "+(r.equipment||"Do ustalenia"),sub:r.startDate+(r.endDate?" → "+r.endDate:"")+" · "+(r.status||"")+(r.phone?" · 📞 "+maskPhone(demo,r.phone):""),item:r}));
     // pacjenci
-    (allClients||patients||[]).filter(p=>(p.name||"").toLowerCase().includes(q)||(p.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""))||(p.address||"").toLowerCase().includes(q)).slice(0,3).forEach(p=>res.push({kind:"patient",label:"Klient",title:"👤 "+p.name,sub:(p.phone?"📞 "+p.phone:"")+(p.address?" · "+p.address:""),item:p}));
+    (allClients||patients||[]).filter(p=>(p.name||"").toLowerCase().includes(q)||(p.phone||"").replace(/\s/g,"").includes(q.replace(/\s/g,""))||(p.address||"").toLowerCase().includes(q)).slice(0,3).forEach(p=>res.push({kind:"patient",label:"Klient",title:"👤 "+(demo?"Klient":p.name),sub:(p.phone?"📞 "+maskPhone(demo,p.phone):"")+(p.address?" · "+maskAddr(demo,p.address):""),item:p}));
     // wydarzenia
-    events.filter(e=>(e.title||"").toLowerCase().includes(q)||(e.notes||"").toLowerCase().includes(q)).slice(0,3).forEach(e=>res.push({kind:"event",label:"Wydarzenie",title:"📌 "+e.title,sub:e.date+(e.time?" · "+e.time:""),item:e}));
+    events.filter(e=>(e.title||"").toLowerCase().includes(q)||(e.notes||"").toLowerCase().includes(q)).slice(0,3).forEach(e=>res.push({kind:"event",label:"Wydarzenie",title:"📌 "+(demo?"Wydarzenie":e.title),sub:e.date+(e.time?" · "+e.time:""),item:e}));
     return res;
-  },[searchQ,visits,rentals,patients,events]);
+  },[searchQ,visits,rentals,patients,events,demo]);
   const [todoInput,setTodoInput]=useState("");
   const [todoOpen,setTodoOpen]=useState(false);
   const [editTodoId,setEditTodoId]=useState(null);
@@ -527,7 +527,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
                     onKeyDown={e=>{if(e.key==="Enter"&&editTodoText.trim()){setTodos(ts=>(ts||[]).map(x=>x.id===t.id?{...x,text:editTodoText.trim()}:x));setEditTodoId(null);}if(e.key==="Escape")setEditTodoId(null);}}
                     onBlur={()=>{if(editTodoText.trim())setTodos(ts=>(ts||[]).map(x=>x.id===t.id?{...x,text:editTodoText.trim()}:x));setEditTodoId(null);}}
                     style={{flex:1,padding:"4px 8px",border:`1.5px solid #3E6FB0`,borderRadius:8,fontSize:14,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
-                : <span onDoubleClick={()=>{setEditTodoId(t.id);setEditTodoText(t.text);}} style={{flex:1,fontSize:14,color:t.done?"#7A8FA6":(dk?"#E8F5F5":"#1C2B3A"),textDecoration:t.done?"line-through":"none",cursor:"text"}}>{t.text}</span>
+                : <span onDoubleClick={()=>{setEditTodoId(t.id);setEditTodoText(t.text);}} style={{flex:1,fontSize:14,color:t.done?"#7A8FA6":(dk?"#E8F5F5":"#1C2B3A"),textDecoration:t.done?"line-through":"none",cursor:"text"}}>{maskText(demo,t.text)}</span>
               }
               <button onClick={()=>setTodos(ts=>(ts||[]).filter(x=>x.id!==t.id))}
                 style={{background:"none",border:"none",color:"#7A8FA6",fontSize:16,cursor:"pointer",padding:"0 2px",lineHeight:1}}>×</button>
@@ -584,7 +584,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
               <div style={{minWidth:0,overflow:"hidden"}}>
                 <span style={{fontWeight:600,fontSize:13}}>🎂 {demo?"Pacjent":p.name}</span>
-                <span style={{fontSize:12,color:"#7A8FA6"}}> · {p._age} lat · {p.birthday.slice(5).split("-").reverse().join(".")}</span>
+                <span style={{fontSize:12,color:"#7A8FA6"}}> · {demo?"••••••":<>{p._age} lat · {p.birthday.slice(5).split("-").reverse().join(".")}</>}</span>
               </div>
               <Badge color={p._days===0?"#F4A261":p._days<=3?"#F4A261":"#3DAA72"}>{p._days===0?"Dziś!":p._days===1?"Jutro":"Za "+p._days+" dni"}</Badge>
             </div>
@@ -615,7 +615,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
             return <Card key={cas.id} onClick={()=>goToWozki(cas.id)} style={{padding:"9px 14px",marginBottom:6}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
                 <div style={{minWidth:0,overflow:"hidden"}}>
-                  <span style={{fontWeight:600,fontSize:13}}>🦽 {cas.patientName}</span>
+                  <span style={{fontWeight:600,fontSize:13}}>🦽 {demo?"Pacjent":cas.patientName}</span>
                   <span style={{fontSize:12,color:"#7A8FA6"}}> · {cas.hasDisabilityCert?"Z orzeczeniem":"Bez orzeczenia"} · kolejne od {nd}</span>
                 </div>
                 <span style={{fontSize:13,fontWeight:600,color:"#1C2B3A"}}>{dl<=0?"można złożyć":"za "+dl+"d"}</span>

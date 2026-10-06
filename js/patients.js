@@ -33,6 +33,7 @@
     }
 
     function BirthdayCard({birthday, dk}) {
+      const demo=useDemo();
       const today = todayLocal();
       const mmdd=birthday.length===5?birthday:birthday.slice(5);
       const hasYear=birthday.length===10;
@@ -45,7 +46,7 @@
       return <Card style={{marginBottom:10,background:"#FFF5F0",border:"1.5px solid #F4A26130"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Urodziny</div>
         <div style={{fontSize:14,fontWeight:600,color:dk?"#E0F0F0":"#1A2E35"}}>
-          {hasYear?new Date(birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})+" · "+age+" lat":new Date(today.slice(0,4)+"-"+mmdd+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long"})}
+          {maskText(demo,hasYear?new Date(birthday+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"})+" · "+age+" lat":new Date(today.slice(0,4)+"-"+mmdd+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long"}))}
         </div>
         {daysTo<=7&&<div style={{fontSize:12,color:"#F4A261",fontWeight:700,marginTop:4}}>{daysTo===0?"🎂 Dzisiaj!":daysTo===1?"🎂 Jutro!":"🎂 Za "+daysTo+" dni"}</div>}
       </Card>;
@@ -159,8 +160,8 @@
             <div style={{padding:"16px 20px 0"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <Av name={pat.name}/>
-                  <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800}}>{pat.name}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{pat.phone}</div></div>
+                  <Av name={demo?"Pacjent":pat.name}/>
+                  <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800}}>{demo?"Pacjent":pat.name}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{maskPhone(demo,pat.phone)}</div></div>
                 </div>
                 <Btn small variant="secondary" onClick={()=>{setEditForm({...pat,phones:getPhones(pat)});setConfirmDelPat(false);setShowEdit(true);}}>✏️ Edytuj</Btn>
               </div>
@@ -168,28 +169,28 @@
               <Card style={{marginBottom:10}}>
                 {patPhones.length===0&&<div style={{fontSize:14,color:"#7A8FA6",marginBottom:pat.address?10:0}}>Brak telefonu</div>}
                 {patPhones.map((ph,i)=><div key={ph.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:(i<patPhones.length-1||pat.address)?10:0}}>
-                  <div style={{fontSize:14,color:"#7A8FA6"}}>{ph.number}{ph.label&&<span style={{color:"#3E6FB0",fontWeight:600}}> · {ph.label}</span>}</div>
-                  <div style={{display:"flex",gap:6}}>
+                  <div style={{fontSize:14,color:"#7A8FA6"}}>{maskPhone(demo,ph.number)}{ph.label&&<span style={{color:"#3E6FB0",fontWeight:600}}> · {maskText(demo,ph.label)}</span>}</div>
+                  {!demo&&<div style={{display:"flex",gap:6}}>
                     <a href={`tel:${ph.number.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#3E6FB0"/> Zadzwoń</Btn></a>
                     <a href={`sms:${ph.number.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#3E6FB0"/> SMS</Btn></a>
-                  </div>
+                  </div>}
                 </div>)}
                 {pat.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{pat.address}</div>
-                  {maps&&<a href={maps} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">🗺️ Trasa</Btn></a>}
+                  <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{maskAddr(demo,pat.address)}</div>
+                  {maps&&!demo&&<a href={maps} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">🗺️ Trasa</Btn></a>}
                 </div>}
               </Card>
               {pat.diagnosis&&<Card style={{marginBottom:10,background:"#F0EDFF",border:"1.5px solid #7C6AF430"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Diagnoza</div>
-                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{pat.diagnosis}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{maskText(demo,pat.diagnosis)}</div>
               </Card>}
               {pat.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
-                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{pat.notes}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{maskText(demo,pat.notes)}</div>
               </Card>}
               {pat.defaultPrice&&<Card style={{marginBottom:10,background:"#F0FFF8",border:"1.5px solid #3DAA7230"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#3DAA72",textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Domyślna cena wizyty</div>
-                <div style={{fontSize:18,fontWeight:800,color:"#3DAA72"}}>{pat.defaultPrice} zł</div>
+                <div style={{fontSize:18,fontWeight:800,color:"#3DAA72"}}>{maskAmt(demo,pat.defaultPrice)} zł</div>
               </Card>}
               {pat.birthday&&<BirthdayCard birthday={pat.birthday} dk={dk}/>}
 
@@ -198,7 +199,7 @@
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
                   {[
                     patDoneVisits.length>0?{l:"Wizyty",v:patDoneVisits.length,c:"#3E6FB0"}:{l:"Wypożyczenia",v:patRentals.length,c:"#7C6AF4"},
-                    patDoneVisits.length>0?{l:"Śr. cena",v:patAvgPrice+" zł",c:"#7C6AF4"}:{l:"Wózki NFZ",v:patWozki.length,c:"#F4A261"},
+                    patDoneVisits.length>0?{l:"Śr. cena",v:maskAmt(demo,patAvgPrice)+" zł",c:"#7C6AF4"}:{l:"Wózki NFZ",v:patWozki.length,c:"#F4A261"},
                     {l:"Klient od",v:patSinceMonths<1?"<1 mies.":patSinceMonths<12?patSinceMonths+" mies.":(patSinceMonths/12).toFixed(1).replace(".0","")+" lat",c:"#F4A261"},
                   ].map((x,i)=><div key={i} style={{background:x.c+"14",borderRadius:12,padding:"10px 8px",textAlign:"center",border:`1.5px solid ${x.c}30`}}>
                     <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:15,color:x.c}}>{x.v}</div>
@@ -211,7 +212,7 @@
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   {[{l:"Wizyty",v:patTotalVisits,c:"#3E6FB0"},{l:"Wypożyczenia",v:patTotalRentals,c:"#7C6AF4"},{l:"Wózki",v:patTotalWozki,c:"#F4A261"},{l:"Razem",v:patTotal,c:"#1C2B3A"}].map((x,i)=>(
                     <div key={i} style={{background:"#fff",borderRadius:12,padding:"10px 8px",textAlign:"center",border:"1.5px solid #D9E2F0"}}>
-                      <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v} zł</div>
+                      <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{maskAmt(demo,x.v)} zł</div>
                       <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
                     </div>
                   ))}
@@ -232,15 +233,15 @@
                 ? <Card key={"v"+item.id} onClick={()=>setEditV({...item,price:String(item.price)})}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div><div style={{fontSize:11,fontWeight:700,color:"#3E6FB0",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div><div style={{fontWeight:600}}>{item.date} · {item.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div></div>
-                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{item.price} zł</div><Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(item)}</Badge></div>
+                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{maskAmt(demo,item.price)} zł</div><Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(item)}</Badge></div>
                     </div>
-                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
+                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {maskText(demo,item.notes)}</div>}
                   </Card>
                 : item._t==="r"
                 ? <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div><div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wypożyczenie</div><div style={{fontWeight:600}}>{item.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.startDate}{item.endDate?" → "+item.endDate:""}</div></div>
-                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{item.amount} zł</div><Badge color={item.status==="zakończone"?"#7A8FA6":"#7C6AF4"}>{item.status}</Badge></div>
+                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{maskAmt(demo,item.amount)} zł</div><Badge color={item.status==="zakończone"?"#7A8FA6":"#7C6AF4"}>{item.status}</Badge></div>
                     </div>
                   </Card>
                 : <Card key={"w"+item.id} style={{background:"#FFF7ED"}}>
@@ -248,7 +249,7 @@
                       <div><div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wózek NFZ</div><div style={{fontWeight:600}}>{item.wheelchairModel||"Model nieznany"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.orderDate||"Brak daty"}{item.hasDisabilityCert?" · orzeczenie":""}</div></div>
                       <Badge color={item.realized?"#3DAA72":"#F4A261"}>{item.realized?"zrealizowany":"oczekuje"}</Badge>
                     </div>
-                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {item.notes}</div>}
+                    {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {maskText(demo,item.notes)}</div>}
                   </Card>
               )}
             </div>
@@ -395,7 +396,7 @@
             {sorted.map((p,pi)=>{const lv=lastVisitDate(p);return(<Card key={p.id} onClick={()=>setSelId(p.id)}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                  <Av name={p.name}/>
+                  <Av name={maskName(demo,p.name,pi)}/>
                   <div>
                     <div style={{fontWeight:600}}>{maskName(demo,p.name,pi)}</div>
                     <div style={{fontSize:13,color:"#7A8FA6"}}>{maskPhone(demo,p.phone)}</div>
@@ -407,7 +408,7 @@
                   <Ico d="M9 18l6-6-6-6" s={20} c="#7A8FA6"/>
                 </div>
               </div>
-              {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #D9E2F0",whiteSpace:"pre-wrap"}}>{p.diagnosis}</div>}
+              {p.diagnosis&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #D9E2F0",whiteSpace:"pre-wrap"}}>{maskText(demo,p.diagnosis)}</div>}
             </Card>);})}
           </>}
           {pTab==="sprzet"&&<>
@@ -422,7 +423,7 @@
               }}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                    <Av name={c.name}/>
+                    <Av name={demo?"Klient":c.name}/>
                     <div>
                       <div style={{fontWeight:600}}>{demo?"Klient":c.name}</div>
                       <div style={{fontSize:13,color:"#7A8FA6"}}>{demo?"***-***-***":c.phone||"Brak telefonu"}</div>
@@ -450,7 +451,7 @@
           <BirthdayInput value={newForm.birthday||""} onChange={v=>setNewForm(f=>({...f,birthday:v}))}/>
           <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;const phones=(newForm.phones||[]).filter(ph=>ph.number.trim());setPatients(ps=>[...ps,{...newForm,phones,phone:phones[0]?.number||"",id:Date.now()}]);setNewForm({name:"",phone:"",phones:[],address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
         </Modal>}
-        {showQuickV&&quickV&&<Modal title={"Wizyta – "+quickV.patientName} onClose={()=>setShowQuickV(false)}>
+        {showQuickV&&quickV&&<Modal title={"Wizyta – "+(demo?"Pacjent":quickV.patientName)} onClose={()=>setShowQuickV(false)}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Data" value={quickV.date} onChange={v=>setQuickV(f=>({...f,date:v}))} type="date"/>
             <TimeSel label="Godzina" value={quickV.time} onChange={v=>setQuickV(f=>({...f,time:v}))}/>

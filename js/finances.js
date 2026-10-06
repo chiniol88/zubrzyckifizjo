@@ -564,8 +564,8 @@
         const noSrcRentals=rentals.filter(r=>!r.reserved&&!r.source);
         const noSrcWozki=(nfzCases||[]).filter(c=>!c.source);
         if(noSrcRentals.length+noSrcWozki.length>0)issues.push({k:"nosrc",l:"Brak oznaczonego źródła",n:noSrcRentals.length+noSrcWozki.length,
-          rows:[...noSrcRentals.map(r=>({label:r.patientName||"—",sub:(r.equipment||"")+" · "+(r.startDate||""),go:goR(r.id)})),
-                ...noSrcWozki.map(c=>({label:c.patientName||"—",sub:"🦽 wózek · "+(c.orderDate||""),go:goW(c.id)}))]});
+          rows:[...noSrcRentals.map(r=>({person:true,label:r.patientName||"—",sub:(r.equipment||"")+" · "+(r.startDate||""),go:goR(r.id)})),
+                ...noSrcWozki.map(c=>({person:true,label:c.patientName||"—",sub:"🦽 wózek · "+(c.orderDate||""),go:goW(c.id)}))]});
 
         const eqNoAdded=equipmentAll.filter(eq=>catOf(eq)==="szyny"&&!(stock&&stock.addedDate&&stock.addedDate[eq])&&rentals.some(r=>r.equipment===eq));
         if(eqNoAdded.length)issues.push({k:"noadded",l:"Brak daty dodania sprzętu (szyny)",n:eqNoAdded.length,
@@ -574,11 +574,11 @@
 
         const noEnd=rentals.filter(r=>r.status==="zakończone"&&!r.renewable&&!r.endDate);
         if(noEnd.length)issues.push({k:"noend",l:"Zakończone wypożyczenia bez daty końca",n:noEnd.length,
-          rows:noEnd.map(r=>({label:r.patientName||"—",sub:r.equipment||"",go:goR(r.id)}))});
+          rows:noEnd.map(r=>({person:true,label:r.patientName||"—",sub:r.equipment||"",go:goR(r.id)}))});
 
         const oldRes=rentals.filter(r=>r.reserved&&r.reservedAt&&dateDiff(r.reservedAt,today)>14);
         if(oldRes.length)issues.push({k:"oldres",l:"Rezerwacje czekające ponad 14 dni",n:oldRes.length,
-          rows:oldRes.map(r=>({label:r.patientName||"—",sub:dateDiff(r.reservedAt,today)+" dni czekania",go:goR(r.id)}))});
+          rows:oldRes.map(r=>({person:true,label:r.patientName||"—",sub:dateDiff(r.reservedAt,today)+" dni czekania",go:goR(r.id)}))});
 
         const overdueByRental={};
         rentals.forEach(r=>{
@@ -590,7 +590,7 @@
         });
         const overdueList=Object.values(overdueByRental);
         if(overdueList.length)issues.push({k:"overdue",l:"Zaległe okresy cykliczne",n:overdueList.reduce((s,x)=>s+x.n,0),
-          rows:overdueList.map(x=>({label:x.r.patientName||"—",sub:x.n+" okres"+(x.n===1?"":"y")+" · "+Z(x.sum),go:goR(x.r.id)}))});
+          rows:overdueList.map(x=>({person:true,label:x.r.patientName||"—",sub:x.n+" okres"+(x.n===1?"":"y")+" · "+Z(x.sum),go:goR(x.r.id)}))});
 
         return {issues,total:issues.reduce((s,i)=>s+i.n,0)};
       },[rentals,nfzCases,stock,occStats,equipmentAll,today,goToRental,goToWozki]);
@@ -1040,7 +1040,7 @@
                 const Tag=row.go?"button":"div";
                 return <Tag key={ri} onClick={row.go||undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",gap:8,padding:"7px 8px",marginBottom:2,borderRadius:9,border:"none",background:row.go?(dk?"#1E2F4A":"#F0F4FA"):"transparent",cursor:row.go?"pointer":"default",fontFamily:"inherit",textAlign:"left"}}>
                   <span style={{minWidth:0}}>
-                    <span style={{display:"block",fontSize:12,fontWeight:600,color:row.go?(dk?"#9CB8E8":"#3E6FB0"):textC,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.label}</span>
+                    <span style={{display:"block",fontSize:12,fontWeight:600,color:row.go?(dk?"#9CB8E8":"#3E6FB0"):textC,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.person?maskName(demo,row.label,ri):row.label}</span>
                     {row.sub&&<span style={{display:"block",fontSize:10,color:subC}}>{row.sub}</span>}
                   </span>
                   {row.go&&<span style={{fontSize:11,color:subC,flexShrink:0}}>otwórz ›</span>}

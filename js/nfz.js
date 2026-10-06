@@ -106,7 +106,7 @@
               </Card>}
               {cas.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
-                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{cas.notes}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{maskText(demo,cas.notes)}</div>
               </Card>}
               <Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:4}} onClick={()=>setConfirmDel(true)}>🗑️ Usuń</Btn>
             </div>
@@ -148,7 +148,7 @@
             </div>
           </Modal>}
           {payModal&&<Modal title="Kwota przychodu" onClose={()=>setPayModal(null)}>
-            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{payModal.name} · {payModal.date}</div>
+            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{demo?"Pacjent":payModal.name} · {payModal.date}</div>
             <Inp label="Kwota (zł) *" value={payAmount} onChange={setPayAmount} type="number" placeholder="0"/>
             <Btn disabled={!payAmount||+payAmount<=0} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const sid="wozek-"+payModal.casId;

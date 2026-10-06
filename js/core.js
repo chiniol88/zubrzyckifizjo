@@ -14,6 +14,9 @@ const maskName=(demo,name,idx)=>demo?demoName(name,idx||0):name;
 const maskPhone=(demo,phone)=>demo?demoPhone():phone;
 const maskAddr=(demo,addr)=>demo?demoAddr():addr;
 const maskAmt=(demo,amt)=>demo?demoAmt():amt;
+// diagnozy, notatki, opisy numerów (np. "córka"), daty urodzin: w trybie demo zamiast treści same kropki
+const demoText=()=>"••••••";
+const maskText=(demo,t)=>demo&&t?demoText():t;
 
 const SUPA_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co";
 const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxanJsenNkZnlqZWFqZmthdGh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NjUzMzgsImV4cCI6MjA4ODE0MTMzOH0.sFWfnIV0tpNnwB65du9dNYTMSelrlEpMXxWf4Mcww4g";

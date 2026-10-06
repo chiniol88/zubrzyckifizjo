@@ -81,6 +81,7 @@
     }
 
     function CycleRow({r,cycle,setRentals,setFinances}) {
+      const demo=useDemo();
       const key=cycle.dueDate||cycle.month;
       const [amt,setAmt]=useState(String(cycle.amount||""));
       const [payDate,setPayDate]=useState(todayLocal);
@@ -179,7 +180,7 @@
                   {periodCaption}
                   <div style={{fontWeight:600,fontSize:14}}>{rangeLabel}</div>
                   {!editAmt
-                    ? <div onClick={()=>{setPaidAmtDraft(String(cycle.amount||""));setPaidDateDraft(cycle.paidDate||todayLocal());setEditAmt(true);}} style={{fontSize:12,color:"#7A8FA6",cursor:"pointer"}}>{cycle.amount>0?cycle.amount+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate} ✏️</div>
+                    ? <div onClick={()=>{setPaidAmtDraft(String(cycle.amount||""));setPaidDateDraft(cycle.paidDate||todayLocal());setEditAmt(true);}} style={{fontSize:12,color:"#7A8FA6",cursor:"pointer"}}>{cycle.amount>0?maskAmt(demo,cycle.amount)+" zł · "+cycle.paidDate:"🏥 NFZ — bez opłaty · "+cycle.paidDate} ✏️</div>
                     : <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2,flexWrap:"wrap"}}>
                         <input type="number" autoFocus value={paidAmtDraft} onChange={e=>setPaidAmtDraft(e.target.value)} style={{width:80,padding:"5px 8px",border:"1.5px solid #D9E2F0",borderRadius:8,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
                         <input type="date" value={paidDateDraft} onChange={e=>setPaidDateDraft(e.target.value)} style={{padding:"5px 8px",border:"1.5px solid #D9E2F0",borderRadius:8,fontSize:12,outline:"none",fontFamily:"inherit"}}/>
@@ -270,7 +271,7 @@
             {hasReceipt&&<span style={{fontSize:11,fontWeight:600,color:"#3E6FB0",background:"#E1E9F5",borderRadius:6,padding:"2px 8px"}}>🧾 Paragon</span>}
             {hasInvoice&&<span style={{fontSize:11,fontWeight:600,color:"#7C6AF4",background:"#F0EEFF",borderRadius:6,padding:"2px 8px"}}>📄 Faktura</span>}
           </div>}
-          {r.notes&&<div style={{fontSize:12,color:"#7A8FA6",lineHeight:1.4,whiteSpace:"pre-wrap"}}>📝 {r.notes}</div>}
+          {r.notes&&<div style={{fontSize:12,color:"#7A8FA6",lineHeight:1.4,whiteSpace:"pre-wrap"}}>📝 {maskText(demo,r.notes)}</div>}
         </div>}
       </Card>;
     }
@@ -499,18 +500,18 @@ p{margin:2px 0}.bold7{font-weight:bold}
                       <div style={{fontSize:13,color:"#3E6FB0",fontWeight:600}}>Przedłużenie {i+1}</div>
                       <div style={{fontSize:13}}>{ext.prevEndDate} → {ext.newEndDate}</div>
                       {(ext.amountDue||ext.amount||0)>0&&<div style={{fontSize:12,marginTop:2}}>
-                        <span style={{color:"#7A8FA6"}}>Należne: </span><span style={{fontWeight:600}}>{ext.amountDue||ext.amount} zł</span>
+                        <span style={{color:"#7A8FA6"}}>Należne: </span><span style={{fontWeight:600}}>{maskAmt(demo,ext.amountDue||ext.amount)} zł</span>
                         {(()=>{
                           const cd=(+r.amount||0)+(r.extensions||[]).slice(0,i+1).reduce((s,e)=>s+(+e.amountDue||+e.amount||0),0);
                           const cov=calcRentalPaid(r)>=cd;
                           return (ext.amountPaid||0)>0
-                            ? <><span style={{color:"#3DAA72",marginLeft:8}}>✓ Zapłacono: {ext.amountPaid} zł</span>{(ext.amountPaid)<(ext.amountDue||ext.amount||0)&&<span style={{color:"#E05C5C",marginLeft:8}}>Pozostało: {(ext.amountDue||ext.amount||0)-ext.amountPaid} zł</span>}</>
+                            ? <><span style={{color:"#3DAA72",marginLeft:8}}>✓ Zapłacono: {maskAmt(demo,ext.amountPaid)} zł</span>{(ext.amountPaid)<(ext.amountDue||ext.amount||0)&&<span style={{color:"#E05C5C",marginLeft:8}}>Pozostało: {maskAmt(demo,(ext.amountDue||ext.amount||0)-ext.amountPaid)} zł</span>}</>
                             : cov
                               ? <span style={{color:"#3DAA72",marginLeft:8}}>✓ pokryte wpłatą</span>
                               : <span style={{color:"#F4A261",marginLeft:8}}>· do zapłaty</span>;
                         })()}
                       </div>}
-                      {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic",whiteSpace:"pre-wrap"}}>{ext.notes}</div>}
+                      {ext.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:2,fontStyle:"italic",whiteSpace:"pre-wrap"}}>{maskText(demo,ext.notes)}</div>}
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
                       <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,endTime:ext.endTime||"10:00",amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),payDate:ext.paidDate||"",notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E1E9F5",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
@@ -595,7 +596,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                                 <div style={{width:8,height:8,borderRadius:"50%",background:p._type==="extension"?"#7C6AF4":"#3DAA72",flexShrink:0}}/>
                                 <div>
                                   <div style={{fontWeight:600,fontSize:14}}>{demo?"****":p.amount+" zł"}{p._label&&<span style={{fontSize:12,color:"#7C6AF4",fontWeight:400,marginLeft:6}}>{p._label}</span>}</div>
-                                  <div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}{p._due>0&&p._due!==p.amount&&<span style={{marginLeft:6,color:"#F4A261"}}>należne: {p._due} zł</span>}</div>
+                                  <div style={{fontSize:12,color:"#7A8FA6"}}>{p.date}{p._due>0&&p._due!==p.amount&&<span style={{marginLeft:6,color:"#F4A261"}}>należne: {maskAmt(demo,p._due)} zł</span>}</div>
                                 </div>
                               </div>
                               <button onClick={()=>{
@@ -642,7 +643,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                 return <Card style={{marginBottom:10,background:"#E1E9F5",border:"1.5px solid #3E6FB030"}}>
                   <div style={{fontSize:11,fontWeight:700,color:"#3E6FB0",textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Podsumowanie wypożyczenia</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-                    {[{l:"Mies. łącznie",v:paid.length,c:"#3E6FB0",suf:""},{l:"Łącznie wpłacono",v:total,c:"#3DAA72",suf:" zł"},{l:"Do opłacenia",v:unpaidN,c:unpaidN>0?"#E05C5C":"#3DAA72",suf:" mies."}].map((x,i)=>(
+                    {[{l:"Mies. łącznie",v:paid.length,c:"#3E6FB0",suf:""},{l:"Łącznie wpłacono",v:maskAmt(demo,total),c:"#3DAA72",suf:" zł"},{l:"Do opłacenia",v:unpaidN,c:unpaidN>0?"#E05C5C":"#3DAA72",suf:" mies."}].map((x,i)=>(
                       <div key={i} style={{background:"#fff",borderRadius:12,padding:"10px 8px",textAlign:"center",border:"1.5px solid #D9E2F0"}}>
                         <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:14,color:x.c}}>{x.v}{x.suf}</div>
                         <div style={{fontSize:11,color:"#7A8FA6",marginTop:2}}>{x.l}</div>
@@ -654,7 +655,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
 
               {r.notes&&<Card style={{marginBottom:10,background:"#FFFBF5",border:"1.5px solid #F4A26130"}}>
                 <div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:6}}>Notatki</div>
-                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{r.notes}</div>
+                <div style={{fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{maskText(demo,r.notes)}</div>
               </Card>}
 
               {r.status==="aktywne"&&<>
@@ -809,7 +810,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           </Modal>}
 
           {showExtend&&<Modal title={extForm.editId!=null?"Edytuj przedłużenie":"Przedłuż wypożyczenie"} onClose={()=>setShowExtend(false)}>
-            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{r.patientName} · {r.equipment||"❓ Do ustalenia"}</div>
+            <div style={{fontSize:14,color:"#7A8FA6",marginBottom:14}}>{demo?"Pacjent":r.patientName} · {r.equipment||"❓ Do ustalenia"}</div>
             {extForm.editId==null&&<div style={{marginBottom:12,padding:"10px 14px",background:"#EFF3FA",borderRadius:10,fontSize:13}}>
               <span style={{color:"#7A8FA6"}}>Aktualna data do: </span><span style={{fontWeight:700}}>{r.endDate}</span>
             </div>}
