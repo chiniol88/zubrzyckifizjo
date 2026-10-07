@@ -170,25 +170,43 @@
         return()=>window.removeEventListener("fizjo-conflict",h);
       },[]);
 
-      const exportData=()=>{
-        const data={visits,patients,rentals,finances,stock,nfzCases,todos,events,budget,wealth,machines,exportedAt:new Date().toISOString()};
+      const buildBackup=()=>({visits,patients,rentals,finances,stock,nfzCases,todos,events,budget,wealth,machines,exportedAt:new Date().toISOString()});
+      const downloadJson=(data,name)=>{
         const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
         const url=URL.createObjectURL(blob);
         const a=document.createElement("a");
         a.href=url;
-        a.download="fizjo-backup-"+new Date().toISOString().slice(0,10)+".json";
+        a.download=name;
         a.click();
         URL.revokeObjectURL(url);
+      };
+      const exportData=()=>{
+        downloadJson(buildBackup(),"fizjo-backup-"+new Date().toISOString().slice(0,10)+".json");
         setShowBackupBanner(false);
       };
 
+      // Wczytanie kopii: sprawdza plik, pokazuje co zostanie zastąpione, prosi o zgodę i zapisuje kopię obecnych danych
       const importData=(e)=>{
-        const file=e.target.files[0];
+        const input=e.target;
+        const file=input.files[0];
         if(!file)return;
         const reader=new FileReader();
         reader.onload=(ev)=>{
           try{
-            const d=JSON.parse(ev.target.result);
+            let d;
+            try{d=JSON.parse(ev.target.result);}catch{alert("To nie jest poprawny plik kopii (nie da się go odczytać). Nic nie zostało zmienione.");return;}
+            const LISTS=[["visits","wizyty",visits],["patients","pacjenci",patients],["rentals","wypożyczenia",rentals],["finances","wpisy finansowe",finances],["nfzCases","sprawy wózków",nfzCases],["todos","zadania",todos],["events","wydarzenia",events],["machines","sztuki sprzętu",machines]];
+            const OBJS=[["stock","magazyn",stock],["budget","budżet",budget],["wealth","majątek",wealth]];
+            if(!d||typeof d!=="object"||Array.isArray(d)||![...LISTS,...OBJS].some(([k])=>d[k]!==undefined)){alert("W tym pliku nie ma danych z tej aplikacji. Nic nie zostało zmienione.");return;}
+            const bad=[...LISTS.filter(([k])=>d[k]!==undefined&&!Array.isArray(d[k])),...OBJS.filter(([k])=>d[k]!==undefined&&(d[k]===null||typeof d[k]!=="object"||Array.isArray(d[k])))];
+            if(bad.length){alert("Plik jest uszkodzony (zły format: "+bad.map(x=>x[1]).join(", ")+"). Nic nie zostało zmienione.");return;}
+            const lines=LISTS.filter(([k])=>d[k]!==undefined).map(([k,label,cur])=>"• "+label+": teraz "+(cur||[]).length+", w pliku "+d[k].length);
+            const objNames=OBJS.filter(([k])=>d[k]!==undefined).map(x=>x[1]);
+            const when=d.exportedAt?String(d.exportedAt).slice(0,10):"nieznanej daty";
+            const msg="Wczytujesz kopię z dnia "+when+".\n\nTo ZASTĄPI obecne dane:\n"+lines.join("\n")+(objNames.length?"\n• oraz: "+objNames.join(", "):"")+"\n\nPrzed wczytaniem pobiorę kopię obecnych danych. Kontynuować?";
+            if(!window.confirm(msg))return;
+            try{downloadJson(buildBackup(),"fizjo-backup-PRZED-importem-"+new Date().toISOString().slice(0,16).replace(":","-")+".json");}catch{}
+            allowShrinkFor(15000);
             if(d.visits)setVisits(d.visits);
             if(d.patients)setPatients(d.patients);
             if(d.rentals)setRentals(d.rentals);
@@ -200,10 +218,11 @@
             if(d.budget)setBudget(d.budget);
             if(d.wealth)setWealth(d.wealth);
             if(d.machines)setMachines(d.machines);
-            alert("Import zakończony pomyślnie!");
+            alert("Kopia wczytana. Kopia poprzednich danych została pobrana jako plik fizjo-backup-PRZED-importem-….");
           }catch(err){alert("Błąd importu: "+err.message);}
         };
         reader.readAsText(file);
+        input.value="";
       };
 
       // Backup reminder at 20:00 Warsaw time
