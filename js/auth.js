@@ -116,21 +116,16 @@
       const [visits,setVisits,v1]=usePersistedState("fizjo-visits",[],unlocked);
       const [patients,setPatients,v2]=usePersistedState("fizjo-patients",[],unlocked);
       // Migracja: nadaj id wizytom które go nie mają — uruchamia się po załadowaniu z Supabase
+      // Zapis tylko gdy naprawdę jest co uzupełnić (inaczej każde otwarcie apki przepisywałoby dane w bazie)
       React.useEffect(()=>{
         if(!v1) return; // czekaj na załadowanie
-        setVisits(vs=>{
-          const needsMigration=vs.some(v=>!v.id);
-          if(!needsMigration) return vs;
-          return vs.map(v=>v.id?v:{...v,id:Date.now()+Math.random()});
-        });
+        if(!(visits||[]).some(v=>!v.id)) return;
+        setVisits(vs=>vs.map(v=>v.id?v:{...v,id:Date.now()+Math.random()}));
       },[v1]);
       React.useEffect(()=>{
         if(!v2) return;
-        setPatients(ps=>{
-          const needsMigration=ps.some(p=>!p.id);
-          if(!needsMigration) return ps;
-          return ps.map(p=>p.id?p:{...p,id:Date.now()+Math.random()});
-        });
+        if(!(patients||[]).some(p=>!p.id)) return;
+        setPatients(ps=>ps.map(p=>p.id?p:{...p,id:Date.now()+Math.random()}));
       },[v2]);
       const [rentals,setRentals,v3]=usePersistedState("fizjo-rentals",[],unlocked);
       const [finances,setFinances,v4]=usePersistedState("fizjo-finances",[],unlocked);
