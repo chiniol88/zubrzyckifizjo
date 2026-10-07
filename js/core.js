@@ -75,9 +75,10 @@ async function dbGet(key) {
   try {
     const r = await fetch(`${SUPA_URL}/rest/v1/app_data?key=eq.${key}&select=value`,
       {headers: getHeaders()});
-    if(r.status === 401) return {data: null, ts: 0, error: true};
+    if(!r.ok) return {data: null, ts: 0, error: true};
     const d = await r.json();
-    const raw = d?.[0]?.value ?? null;
+    if(!Array.isArray(d)) return {data: null, ts: 0, error: true};
+    const raw = d[0]?.value ?? null;
     if(raw === null) return {data: null, ts: 0, error: false};
     if(raw && typeof raw === 'object' && '_ts' in raw) return {data: raw._d, ts: raw._ts, error: false};
     return {data: raw, ts: 0, error: false};
@@ -104,6 +105,15 @@ let _savingCount=0;
 const _failingKeys=new Set();
 const _notifySave=()=>window.dispatchEvent(new CustomEvent("fizjo-save",{detail:_savingCount>0}));
 const _notifySaveError=()=>window.dispatchEvent(new CustomEvent("fizjo-save-error",{detail:_failingKeys.size>0}));
+// Klucze, których nie udało się wczytać z bazy (apka ponawia próbę i niczego wtedy nie zapisuje)
+const _loadFailKeys=new Set();
+const _notifyLoadError=()=>window.dispatchEvent(new CustomEvent("fizjo-load-error",{detail:[..._loadFailKeys]}));
+// Bezpiecznik: zapis, który skraca listę o połowę (albo do zera), wymaga potwierdzenia.
+// Świadome operacje masowe (np. wczytanie kopii po potwierdzeniu) wyłączają go na chwilę.
+let _allowShrinkUntil=0;
+const allowShrinkFor=ms=>{_allowShrinkUntil=Date.now()+ms;};
+const SHRINK_LABELS={"fizjo-visits":"wizyty","fizjo-patients":"pacjenci","fizjo-rentals":"wypożyczenia","fizjo-finances":"wpisy w finansach","fizjo-nfz":"sprawy wózków","fizjo-todos":"zadania","fizjo-events":"wydarzenia","fizjo-machines":"sztuki sprzętu"};
+const _shrinks=(prev,cur)=>Array.isArray(cur)&&(prev>=10?cur.length<=prev/2:prev>=3?cur.length===0:false);
 
 function usePersistedState(key, initial, ready=true) {
   const [state, setState] = useState(initial);
@@ -113,6 +123,10 @@ function usePersistedState(key, initial, ready=true) {
   const loadedTsRef = React.useRef(0);
   const initialLoadOk = React.useRef(false);
   const savingRef = React.useRef(false);
+  const [retry,setRetry] = useState(0);
+  const baseLenRef = React.useRef(0);        // ile wpisów miała lista przy ostatnim wczytaniu/zapisie
+  const lastGoodRef = React.useRef(initial); // ostatnia wersja znana jako zgodna z bazą (do cofnięcia odrzuconej zmiany)
+  const shrinkOkRef = React.useRef(null);    // wersja, którą użytkownik już potwierdził mimo skrócenia listy
   stateRef.current = state;
 
   // Initial load
@@ -121,26 +135,41 @@ function usePersistedState(key, initial, ready=true) {
     setLoaded(false);
     userChanged.current=false;
     initialLoadOk.current=false;
+    let dead=false,timer=null;
     dbGet(key).then(({data:v,ts,error})=>{
-      if(!error){
-        initialLoadOk.current=true;
-        if(!userChanged.current&&v!==null){setState(v);loadedTsRef.current=ts;}
+      if(dead)return;
+      if(error){
+        // Nie udało się wczytać: nie udajemy, że danych nie ma, niczego nie zapisujemy i próbujemy ponownie
+        if(!_loadFailKeys.has(key)){_loadFailKeys.add(key);_notifyLoadError();}
+        timer=setTimeout(()=>setRetry(n=>n+1),4000);
+        return;
       }
+      if(_loadFailKeys.delete(key))_notifyLoadError();
+      initialLoadOk.current=true;
+      if(!userChanged.current&&v!==null){setState(v);loadedTsRef.current=ts;lastGoodRef.current=v;baseLenRef.current=Array.isArray(v)?v.length:0;}
       setLoaded(true);
     });
-  },[ready]);
+    return()=>{dead=true;clearTimeout(timer);};
+  },[ready,retry]);
 
   // Próba zapisu — NIE czyści flagi "do zapisania" jeśli zapis się nie powiódł (np. brak internetu),
   // dzięki czemu polling (niżej) nigdy nie nadpisze lokalnej, jeszcze niezapisanej zmiany danymi z serwera
   const attemptSave=React.useCallback(()=>{
     if(!loaded||!ready||!userChanged.current||!initialLoadOk.current||savingRef.current)return;
+    const cur=stateRef.current;
+    if(_shrinks(baseLenRef.current,cur)&&Date.now()>_allowShrinkUntil&&shrinkOkRef.current!==cur){
+      const ok=window.confirm('Ta zmiana zmniejsza listę "'+(SHRINK_LABELS[key]||key)+'" z '+baseLenRef.current+' do '+cur.length+' wpisów.\n\nOK = zapisz zmianę, Anuluj = cofnij zmianę.');
+      if(!ok){userChanged.current=false;setState(lastGoodRef.current);return;}
+      shrinkOkRef.current=cur;
+    }
     savingRef.current=true;
     _savingCount++;_notifySave();
     const saveTs=Date.now();
-    dbSet(key,stateRef.current).then(ok=>{
+    dbSet(key,cur).then(ok=>{
       if(ok){
         userChanged.current=false;
         loadedTsRef.current=saveTs;
+        lastGoodRef.current=cur;baseLenRef.current=Array.isArray(cur)?cur.length:0;
         if(_failingKeys.delete(key))_notifySaveError();
       } else if(!_failingKeys.has(key)){
         _failingKeys.add(key);_notifySaveError();
@@ -173,7 +202,9 @@ function usePersistedState(key, initial, ready=true) {
     };
     const flushClose=()=>{
       if(loaded&&ready&&userChanged.current&&initialLoadOk.current){
-        dbSet(key,stateRef.current,true);
+        const cur=stateRef.current;
+        if(_shrinks(baseLenRef.current,cur)&&Date.now()>_allowShrinkUntil&&shrinkOkRef.current!==cur)return;
+        dbSet(key,cur,true);
       }
     };
     document.addEventListener("visibilitychange",flushBg);
@@ -203,6 +234,7 @@ function usePersistedState(key, initial, ready=true) {
         if(JSON.stringify(v)!==JSON.stringify(stateRef.current)){
           setState(v);
           loadedTsRef.current=ts;
+          lastGoodRef.current=v;baseLenRef.current=Array.isArray(v)?v.length:0;
         }
       }catch{}
     });

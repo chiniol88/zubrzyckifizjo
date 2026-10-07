@@ -149,6 +149,12 @@
       },[settings]);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
       const [showConflictBanner,setShowConflictBanner]=useState(false);
+      const [loadFail,setLoadFail]=useState([]);
+      React.useEffect(()=>{
+        const h=e=>setLoadFail(e.detail||[]);
+        window.addEventListener("fizjo-load-error",h);
+        return()=>window.removeEventListener("fizjo-load-error",h);
+      },[]);
 
       React.useEffect(()=>{
         const h=()=>setShowConflictBanner(true);
@@ -210,7 +216,13 @@
       if(!authChecked)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div></div>;
       if(isRecovery)return<DarkCtx.Provider value={dark}><PasswordResetScreen/></DarkCtx.Provider>;
       if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
-      if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10||!v11)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div><div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div></div>;
+      if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10||!v11)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div>{loadFail.length>0
+        ? <div style={{maxWidth:320,textAlign:"center",padding:"0 20px"}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#E05C5C",marginBottom:6}}>Nie udało się wczytać danych</div>
+            <div style={{fontSize:13,color:"#7A8FA6",marginBottom:12}}>Nic nie zostało zmienione ani zapisane. Próbuję ponownie co kilka sekund.</div>
+            <button onClick={()=>window.location.reload()} style={{background:"#3E6FB0",color:"#fff",border:"none",borderRadius:10,padding:"9px 18px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Spróbuj teraz</button>
+          </div>
+        : <div style={{fontSize:13,color:"#7A8FA6"}}>Wczytywanie danych...</div>}</div>;
       return <DarkCtx.Provider value={dark}><DemoCtx.Provider value={demo}>
       <MachinesCtx.Provider value={{machines,setMachines}}>
       <FinancesCtx.Provider value={{finances,setFinances}}>
@@ -223,6 +235,9 @@
               <button onClick={()=>window.location.reload()} style={{background:"#fff",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Odśwież</button>
               <button onClick={()=>setShowConflictBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#fff"}}>×</button>
             </div>
+          </div>}
+          {loadFail.length>0&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#E05C5C",zIndex:10001,padding:"10px 16px"}}>
+            <span style={{fontWeight:700,fontSize:13,color:"#fff"}}>⚠️ Nie udało się wczytać części danych. Zmiany w tej części nie będą zapisane. Próbuję ponownie…</span>
           </div>}
           {showBackupBanner&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#F4A261",zIndex:9999,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontWeight:700,fontSize:13,color:"#1C2B3A"}}>💾 Czas na backup!</span>
