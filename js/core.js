@@ -23,6 +23,8 @@ const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIs
 
 // Token sesji — ustawiany po zalogowaniu przez Supabase Auth
 let _supaToken = null;
+let _lastAuthTs = 0;       // kiedy token był ostatnio odnowiony/pobrany (0 = nieznane, odnowimy wkrótce po starcie)
+let _refreshPromise = null;
 const getHeaders = () => ({
   "apikey": SUPA_ANON,
   "Authorization": `Bearer ${_supaToken || SUPA_ANON}`,
@@ -42,6 +44,7 @@ async function supaSignIn(email, password) {
     // Zapisz refresh token w sessionStorage (znika po zamknięciu przeglądarki)
     sessionStorage.setItem("fizjo-refresh", d.refresh_token);
     sessionStorage.setItem("fizjo-token", d.access_token);
+    _lastAuthTs = Date.now();
     return {ok: true};
   }
   return {ok: false, error: d.error_description || d.msg || "Błąd logowania"};
@@ -50,19 +53,43 @@ async function supaSignIn(email, password) {
 async function supaRefresh() {
   const refresh = sessionStorage.getItem("fizjo-refresh");
   if(!refresh) return false;
-  const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST",
-    headers: {"apikey": SUPA_ANON, "Content-Type": "application/json"},
-    body: JSON.stringify({refresh_token: refresh})
-  });
-  const d = await r.json();
-  if(d.access_token) {
-    _supaToken = d.access_token;
-    sessionStorage.setItem("fizjo-token", d.access_token);
-    sessionStorage.setItem("fizjo-refresh", d.refresh_token);
-    return true;
-  }
-  return false;
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: {"apikey": SUPA_ANON, "Content-Type": "application/json"},
+      body: JSON.stringify({refresh_token: refresh})
+    });
+    const d = await r.json();
+    if(d.access_token) {
+      _supaToken = d.access_token;
+      sessionStorage.setItem("fizjo-token", d.access_token);
+      sessionStorage.setItem("fizjo-refresh", d.refresh_token);
+      _lastAuthTs = Date.now();
+      return true;
+    }
+    // Serwer odrzucił odnowienie (a nie brak internetu): sesja naprawdę wygasła, trzeba się zalogować ponownie
+    if(r.status>=400&&r.status<500) window.dispatchEvent(new CustomEvent("fizjo-session-expired"));
+    return false;
+  } catch { return false; } // brak internetu: spróbujemy później
+}
+// Jedno odnowienie naraz (11 kluczy danych może dostać odmowę w tej samej chwili, a token odświeżający jest jednorazowy)
+function supaRefreshOnce() {
+  if(!_refreshPromise) _refreshPromise = supaRefresh().finally(()=>{_refreshPromise=null;});
+  return _refreshPromise;
+}
+// Zapytanie do bazy: po odmowie 401 (wygasła przepustka) odnawia logowanie i ponawia zapytanie raz
+async function apiFetch(url, mk) {
+  let r = await fetch(url, mk());
+  if(r.status === 401 && await supaRefreshOnce()) r = await fetch(url, mk());
+  return r;
+}
+// Cicho odnawia logowanie, zanim wygaśnie (co kilka minut sprawdza wiek tokenu; odnawia po 40 min i po powrocie do apki)
+function startAuthKeepAlive() {
+  const tick = () => { if(Date.now()-_lastAuthTs > 40*60*1000) supaRefreshOnce(); };
+  const iv = setInterval(tick, 5*60*1000);
+  const vis = () => { if(document.visibilityState==="visible") tick(); };
+  document.addEventListener("visibilitychange", vis);
+  return () => { clearInterval(iv); document.removeEventListener("visibilitychange", vis); };
 }
 
 async function supaSignOut() {
@@ -73,8 +100,8 @@ async function supaSignOut() {
 
 async function dbGet(key) {
   try {
-    const r = await fetch(`${SUPA_URL}/rest/v1/app_data?key=eq.${key}&select=value`,
-      {headers: getHeaders()});
+    const r = await apiFetch(`${SUPA_URL}/rest/v1/app_data?key=eq.${key}&select=value`,
+      ()=>({headers: getHeaders()}));
     if(!r.ok) return {data: null, ts: 0, error: true};
     const d = await r.json();
     if(!Array.isArray(d)) return {data: null, ts: 0, error: true};
@@ -86,10 +113,10 @@ async function dbGet(key) {
 }
 async function dbSet(key, value, keepalive=false) {
   try {
-    const r=await fetch(`${SUPA_URL}/rest/v1/app_data`, {method: "POST",
+    const r=await apiFetch(`${SUPA_URL}/rest/v1/app_data`, ()=>({method: "POST",
       headers: {...getHeaders(), "Prefer": "resolution=merge-duplicates"},
       body: JSON.stringify({key, value: {_d: value, _ts: Date.now()}}),
-      keepalive});
+      keepalive}));
     if(r.ok){
       // Cichy zapis historii — nie blokuje ani nie wpływa na wynik głównego zapisu.
       // Przycinanie do ostatnich N wersji per klucz robi trigger w bazie (patrz SQL do wdrożenia w Supabase).

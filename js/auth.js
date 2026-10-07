@@ -149,6 +149,14 @@
       },[settings]);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
       const [showConflictBanner,setShowConflictBanner]=useState(false);
+      const [sessionExpired,setSessionExpired]=useState(false);
+      React.useEffect(()=>{
+        const h=()=>setSessionExpired(true);
+        window.addEventListener("fizjo-session-expired",h);
+        return()=>window.removeEventListener("fizjo-session-expired",h);
+      },[]);
+      // Cichy keep-alive: odnawia logowanie, dopóki apka jest otwarta (nic nie wylogowuje)
+      React.useEffect(()=>{ if(unlocked) return startAuthKeepAlive(); },[unlocked]);
       const [loadFail,setLoadFail]=useState([]);
       React.useEffect(()=>{
         const h=e=>setLoadFail(e.detail||[]);
@@ -215,7 +223,7 @@
 
       if(!authChecked)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div></div>;
       if(isRecovery)return<DarkCtx.Provider value={dark}><PasswordResetScreen/></DarkCtx.Provider>;
-      if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>setUnlocked(true)}/></DarkCtx.Provider>;
+      if(!unlocked)return<DarkCtx.Provider value={dark}><LockScreen onUnlock={()=>{setSessionExpired(false);setUnlocked(true);}}/></DarkCtx.Provider>;
       if(!v1||!v2||!v3||!v4||!v5||!v6||!v7||!v10||!v11)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div>{loadFail.length>0
         ? <div style={{maxWidth:320,textAlign:"center",padding:"0 20px"}}>
             <div style={{fontSize:14,fontWeight:700,color:"#E05C5C",marginBottom:6}}>Nie udało się wczytać danych</div>
@@ -235,6 +243,10 @@
               <button onClick={()=>window.location.reload()} style={{background:"#fff",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit"}}>Odśwież</button>
               <button onClick={()=>setShowConflictBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#fff"}}>×</button>
             </div>
+          </div>}
+          {sessionExpired&&<div style={{position:"fixed",inset:0,zIndex:20000,background:dark?"#0E141F":"#EFF3FA",overflowY:"auto"}}>
+            <div style={{background:"#E05C5C",color:"#fff",padding:"10px 16px",fontSize:13,fontWeight:700,textAlign:"center"}}>Sesja wygasła. Zaloguj się ponownie. Wpisane zmiany czekają i zapiszą się zaraz po zalogowaniu.</div>
+            <LockScreen onUnlock={()=>setSessionExpired(false)}/>
           </div>}
           {loadFail.length>0&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#E05C5C",zIndex:10001,padding:"10px 16px"}}>
             <span style={{fontWeight:700,fontSize:13,color:"#fff"}}>⚠️ Nie udało się wczytać części danych. Zmiany w tej części nie będą zapisane. Próbuję ponownie…</span>
