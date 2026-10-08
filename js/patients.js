@@ -136,6 +136,7 @@
       const patSinceMonths = patFirstDate ? Math.round((new Date(todayLocal())-new Date(patFirstDate))/2592000000) : 0;
 
       const syncFinance = (v,isNew) => {
+        if(v.skipFinance) return;
         const done = v.status==="zakończona"||new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
         if(!done) return;
         const sid="visit-"+v.id;

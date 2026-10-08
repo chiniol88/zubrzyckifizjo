@@ -399,6 +399,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
   },[patients,today]);
 
   const syncFinance = (v, isNew=false) => {
+    if(v.skipFinance) return;
     const done = v.status==="zakończona" || new Date(v.date+"T"+(v.time||"00:00")+":00")<=new Date();
     if(!done) return;
     const sid = "visit-"+v.id;

@@ -1136,7 +1136,7 @@
       // visitMap już zbudowany wyżej
 
       // Wizyty w okresie (źródło: visits)
-      const periodVisits=useMemo(()=>(visits||[]).filter(v=>inPeriod(v.date)&&v.status!=="anulowana"&&visitStatus(v)==="zakończona"),[visits,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const periodVisits=useMemo(()=>(visits||[]).filter(v=>inPeriod(v.date)&&v.status!=="anulowana"&&!v.skipFinance&&visitStatus(v)==="zakończona"),[visits,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const visitCount=periodVisits.length;
       const visitAvg=visitCount>0?periodVisits.reduce((s,v)=>s+(+v.price||0),0)/visitCount:0;
 
@@ -1220,8 +1220,16 @@
 
       const deleteWithSource=(entry)=>{
         const sid=entry.sourceId;
+        const msg=!sid?"Usunąć ten wpis z Finansów?"
+          :sid.startsWith("visit-")?"Usunąć ten przychód z Finansów?\n\nSama wizyta (z notatkami) zostanie, tylko przestanie być liczona w przychodach."
+          :/^(payment|cycle|extend|transport)-/.test(sid)?"Usunąć ten wpis?\n\nCofnie to też powiązaną wpłatę w wypożyczeniu."
+          :sid.startsWith("wozek-")?"Usunąć ten wpis?\n\nSprawa wózka wróci do statusu niezrealizowanej."
+          :/^(serwis|naprawa)-/.test(sid)?"Usunąć ten wpis?\n\nZniknie też powiązany wpis serwisowy w Magazynie."
+          :"Usunąć ten wpis z Finansów?";
+        if(!window.confirm(msg))return false;
         if(!sid){setFinances(fs=>fs.filter(f=>f.id!==entry.id));return;}
-        if(sid.startsWith("visit-")){const vid=+sid.replace("visit-","");setVisits(vs=>vs.filter(v=>+v.id!==vid));}
+        // Przychód z wizyty: usuwamy tylko wiersz finansowy, wizytę zostawiamy (znacznik chroni przed ponownym utworzeniem wiersza)
+        if(sid.startsWith("visit-")){const vid=+sid.replace("visit-","");setVisits(vs=>vs.map(v=>+v.id===vid?{...v,skipFinance:true}:v));setFinances(fs=>fs.filter(f=>f.sourceId!==sid));}
         else if(sid.startsWith("payment-")){const pid=+sid.replace("payment-","");setRentals(rs=>rs.map(r=>{const found=(r.payments||[]).find(p=>+p.id===pid);if(!found)return r;const newPmts=(r.payments||[]).filter(p=>+p.id!==pid);return{...r,payments:newPmts,amountPaid:newPmts.reduce((s,p)=>s+(+p.amount||0),0)};}));}
         else if(sid.startsWith("extend-")){const rest=sid.slice(7);const di=rest.indexOf("-");const rid=+rest.slice(0,di);const eid=+rest.slice(di+1);setRentals(rs=>rs.map(r=>+r.id!==rid?r:{...r,extensions:(r.extensions||[]).map(e=>+e.id===eid?{...e,amountPaid:0,paidDate:null}:e)}));}
         else if(sid.startsWith("cycle-")){const {rentalId,cycleKey}=parseCycleSourceId(sid);setRentals(rs=>rs.map(r=>+r.id!==rentalId?r:{...r,cycles:(r.cycles||[]).map(c=>(c.dueDate||c.month)===cycleKey?{...c,paid:false,paidDate:null}:c)}));}
@@ -1379,7 +1387,7 @@
             }
             setEditE(null);setToast("Zmiany zapisane");
           }}>Zapisz zmiany</Btn>
-          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{deleteWithSource(editE);setEditE(null);}}>🗑️ Usuń wpis</Btn>
+          <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(deleteWithSource(editE)!==false)setEditE(null);}}>🗑️ Usuń wpis</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </>;

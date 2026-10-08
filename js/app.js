@@ -155,7 +155,7 @@
         if(!rentalsLoaded||!financesLoaded||!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];
         visits.forEach(v=>{
-          const sid="visit-"+v.id; if(ex.has(sid))return;
+          const sid="visit-"+v.id; if(ex.has(sid)||v.skipFinance)return;
           const done=v.status==="zakończona"||new Date(v.date+"T"+(v.time||"00:00")+":00")<=now;
           if(done)toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:v.date,type:"przychód",category:"Wizyta",amount:v.price||0,description:"Wizyta – "+v.patientName});
         });
