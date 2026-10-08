@@ -61,6 +61,87 @@
     const ymAdd=(ym,n)=>{let y=+ym.slice(0,4),m=+ym.slice(5,7)-1+n;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+"-"+String(m+1).padStart(2,"0");};
     const PL_MON=["sty","lut","mar","kwi","maj","cze","lip","sie","wrz","paź","lis","gru"];
     const fmtNum=n=>{const s=String(Math.round(Math.abs(n)));let o="";for(let i=0;i<s.length;i++){if(i&&(s.length-i)%3===0)o+=String.fromCharCode(160);o+=s[i];}return (n<0?"-":"")+o;};
+    // ── DOCHÓD PASYWNY: wpłaty z cykli od 2. wzwyż i z przedłużeń, wg daty wpłaty ──
+    const cycKey=c=>c.dueDate||(c.month+"-01");
+    const passiveEvents=rentals=>{
+      const out=[];
+      (rentals||[]).forEach(r=>{
+        if(r.reserved)return;
+        (r.cycles||[]).filter(c=>!c.cancelled).sort((a,b)=>cycKey(a).localeCompare(cycKey(b))).forEach((c,i)=>{
+          if(i===0||!c.paid||!(+c.amount>0))return;
+          out.push({date:c.paidDate||c.dueDate||(c.month+"-15"),amount:+c.amount,r});
+        });
+        (r.extensions||[]).forEach(e=>{
+          const a=+e.amountPaid||0,d=e.paidDate||e.date;
+          if(a>0&&d)out.push({date:d,amount:a,r});
+        });
+      });
+      return out;
+    };
+    // zapowiedź na 30 dni: niezapłacone cykle 2+ (też zaległe) + następny cykl aktywnych cyklicznych
+    const passiveForecast=(rentals,today)=>{
+      const horizon=addDays(today,30);let sum=0,n=0;
+      (rentals||[]).forEach(r=>{
+        if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
+        const act=(r.cycles||[]).filter(c=>!c.cancelled).sort((a,b)=>cycKey(a).localeCompare(cycKey(b)));
+        if(!act.length)return;
+        act.forEach((c,i)=>{if(i===0||c.paid)return;if(cycKey(c)<=horizon){sum+=+c.amount||0;n++;}});
+        const last=act[act.length-1],next=nextCycleDueDate(cycKey(last));
+        if(!act.some(c=>cycKey(c)===next)&&next>=today&&next<=horizon){sum+=(+last.amount||+r.amount||0);n++;}
+      });
+      return {sum,n};
+    };
+    function PassiveCard({rentals,inPeriod,inPrevPeriod,viewMode,month,year,today,incTotal,bg2,border,sub,goToRental}) {
+      const demo=useDemo();
+      const dk=useContext(DarkCtx);
+      const [open,setOpen]=useState(false);
+      const ev=useMemo(()=>passiveEvents(rentals),[rentals]);
+      const fc=useMemo(()=>passiveForecast(rentals,today),[rentals,today]);
+      const cur=ev.filter(e=>inPeriod(e.date));
+      const sum=cur.reduce((s,e)=>s+e.amount,0);
+      const prev=ev.filter(e=>inPrevPeriod(e.date)).reduce((s,e)=>s+e.amount,0);
+      const diff=prev>0?Math.round((sum-prev)/prev*100):null;
+      const pct=incTotal>0?Math.round(sum/incTotal*100):0;
+      const byR={};cur.forEach(e=>{const o=byR[e.r.id]||(byR[e.r.id]={r:e.r,sum:0});o.sum+=e.amount;});
+      const list=Object.values(byR).sort((a,b)=>b.sum-a.sum);
+      const endYm=viewMode==="month"?month:viewMode==="year"?(year===today.slice(0,4)?today.slice(0,7):year+"-12"):today.slice(0,7);
+      const bars=[];for(let i=11;i>=0;i--){const ym=ymAdd(endYm,-i);bars.push({ym,v:ev.filter(e=>e.date.startsWith(ym)).reduce((s,e)=>s+e.amount,0)});}
+      const maxV=Math.max(1,...bars.map(b=>b.v));
+      const Z=n=>demo?"****":fmtNum(n)+" zł";
+      const txt=dk?"#C8E8E8":"#1C2B3A";
+      return <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
+        <div onClick={()=>setOpen(o=>!o)} style={{cursor:"pointer"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontSize:11,color:sub,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Dochód pasywny <span style={{fontSize:10}}>{open?"▲":"▼"}</span></div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:28,color:"#2E86AB",lineHeight:1}}>{Z(sum)}</div>
+              <div style={{fontSize:12,color:sub,marginTop:6}}>{pct}% przychodu · z <b style={{color:txt}}>{list.length}</b> {list.length===1?"wypożyczenia":"wypożyczeń"}</div>
+            </div>
+            {diff!==null&&<div style={{background:diff>=0?"#3DAA7220":"#E05C5C20",borderRadius:10,padding:"6px 10px",textAlign:"center"}}>
+              <div style={{fontWeight:700,fontSize:14,color:diff>=0?"#3DAA72":"#E05C5C"}}>{diff>=0?"+":""}{diff}%</div>
+              <div style={{fontSize:10,color:sub}}>vs poprz.</div>
+            </div>}
+          </div>
+        </div>
+        {!demo&&<div style={{display:"flex",alignItems:"flex-end",gap:3,height:64,marginTop:14}}>
+          {bars.map(b=><div key={b.ym} title={b.ym+": "+fmtNum(b.v)+" zł"} style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",height:"100%"}}>
+            <div style={{width:"100%",height:Math.max(b.v>0?4:1,Math.round(b.v/maxV*48)),borderRadius:3,background:b.v>0?(b.ym===endYm?"#2E86AB":"#2E86AB66"):(dk?"#2A3A56":"#D9E2F0")}}/>
+            <div style={{fontSize:9,color:sub,marginTop:3}}>{PL_MON[+b.ym.slice(5,7)-1]}</div>
+          </div>)}
+        </div>}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:12,paddingTop:10,borderTop:`1px solid ${border}`}}>
+          <span style={{fontSize:12,color:sub,fontWeight:600}}>Zapowiedź na 30 dni</span>
+          <span style={{fontSize:14,fontWeight:800,color:txt}}>{Z(fc.sum)} <span style={{fontSize:11,color:sub,fontWeight:600}}>({fc.n})</span></span>
+        </div>
+        {open&&<div style={{marginTop:10}}>
+          {list.length===0&&<div style={{fontSize:13,color:sub}}>Brak wpłat z drugiego cyklu i przedłużeń w tym okresie.</div>}
+          {list.map((x,ri)=><div key={x.r.id} onClick={goToRental?()=>goToRental(x.r.id):undefined} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"7px 0",borderBottom:`1px solid ${border}`,cursor:goToRental?"pointer":"default"}}>
+            <span style={{fontSize:13,color:txt,fontWeight:600,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{maskName(demo,x.r.patientName||"—",ri)} <span style={{color:sub,fontWeight:400}}>{x.r.equipment||""}</span></span>
+            <span style={{fontSize:13,color:sub,whiteSpace:"nowrap"}}>{Z(x.sum)}</span>
+          </div>)}
+        </div>}
+      </div>;
+    }
     const plWozek=n=>n===1?"wózek":(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?"wózki":"wózków";
     // procenty sumujące się do 100 (metoda największych reszt)
     const pctSplit=vals=>{const t=vals.reduce((a,b)=>a+b,0);if(t<=0)return vals.map(()=>0);const raw=vals.map(v=>v/t*100),fl=raw.map(Math.floor);let rest=100-fl.reduce((a,b)=>a+b,0);raw.map((r,i)=>[r-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{if(rest>0){fl[i]++;rest--;}});return fl;};
@@ -1306,6 +1387,8 @@
                   <span style={{fontSize:14,fontWeight:800,color:"#E05C5C"}}>{demo?"****":(viewMode==="month"?monthMarketingSpend:yearMarketingSpend).toFixed(2)+" zł"}</span>
                 </div>}
               </div>
+
+              <PassiveCard rentals={rentals} inPeriod={inPeriod} inPrevPeriod={inPrevPeriod} viewMode={viewMode} month={month} year={year} today={todayLocal()} incTotal={incTotal} bg2={bg2} border={border} sub={sub} goToRental={goToRental}/>
 
               {catBreakdown.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
                 <SectionLabel style={{marginBottom:12}}>Kategorie</SectionLabel>
