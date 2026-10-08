@@ -71,6 +71,15 @@
           if(i===0||!c.paid||!(+c.amount>0))return;
           out.push({date:c.paidDate||c.dueDate||(c.month+"-15"),amount:+c.amount,r,what:"cykl "+(i+1)});
         });
+        // jednorazowe: wpłaty ponad cenę wypożyczenia (dopłata za przedłużenie wpisana później jako zwykła wpłata)
+        if(!r.renewable){
+          const base=+r.amount||0;let cum=0;
+          (r.payments||[]).slice().sort((x,y)=>(x.date||"").localeCompare(y.date||"")).forEach(pm=>{
+            const amt=+pm.amount||0,before=cum;cum+=amt;
+            const over=Math.min(amt,cum-Math.max(base,before));
+            if(over>0&&pm.date)out.push({date:pm.date,amount:over,r,what:"przedłużenie"});
+          });
+        }
         (r.extensions||[]).forEach(e=>{
           const a=+e.amountPaid||0,d=e.paidDate||e.date;
           if(a>0&&d)out.push({date:d,amount:a,r,what:"przedłużenie"});
