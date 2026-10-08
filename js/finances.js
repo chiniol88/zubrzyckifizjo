@@ -78,33 +78,15 @@
       });
       return out;
     };
-    // zapowiedź na 30 dni: niezapłacone cykle 2+ (też zaległe) + następny cykl aktywnych cyklicznych
-    const passiveForecast=(rentals,today)=>{
-      const horizon=addDays(today,30);let sum=0,n=0;
-      (rentals||[]).forEach(r=>{
-        if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
-        const act=(r.cycles||[]).filter(c=>!c.cancelled).sort((a,b)=>cycKey(a).localeCompare(cycKey(b)));
-        if(!act.length)return;
-        act.forEach((c,i)=>{if(i===0||c.paid)return;if(cycKey(c)<=horizon){sum+=+c.amount||0;n++;}});
-        const last=act[act.length-1],next=nextCycleDueDate(cycKey(last));
-        if(!act.some(c=>cycKey(c)===next)&&next>=today&&next<=horizon){sum+=(+last.amount||+r.amount||0);n++;}
-      });
-      return {sum,n};
-    };
-    function PassiveRow({rentals,inPeriod,inPrevPeriod,viewMode,month,year,today,base,isOpen,onToggle,border,sub,goToRental}) {
+    function PassiveRow({rentals,inPeriod,inPrevPeriod,base,isOpen,onToggle,border,sub,goToRental}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const ev=useMemo(()=>passiveEvents(rentals),[rentals]);
-      const fc=useMemo(()=>passiveForecast(rentals,today),[rentals,today]);
       const cur=ev.filter(e=>inPeriod(e.date)).sort((a,b)=>b.date.localeCompare(a.date));
       const sum=cur.reduce((s,e)=>s+e.amount,0);
       const prev=ev.filter(e=>inPrevPeriod(e.date)).reduce((s,e)=>s+e.amount,0);
       const diff=prev>0?Math.round((sum-prev)/prev*100):null;
       const pct=base>0?Math.min(100,sum/base*100):0;
-      const nR=new Set(cur.map(e=>e.r.id)).size;
-      const endYm=viewMode==="month"?month:viewMode==="year"?(year===today.slice(0,4)?today.slice(0,7):year+"-12"):today.slice(0,7);
-      const bars=[];for(let i=11;i>=0;i--){const ym=ymAdd(endYm,-i);bars.push({ym,v:ev.filter(e=>e.date.startsWith(ym)).reduce((s,e)=>s+e.amount,0)});}
-      const maxV=Math.max(1,...bars.map(b=>b.v));
       const Z=n=>demo?"****":fmtNum(n)+" zł";
       const txt=dk?"#C8E8E8":"#1C2B3A";
       const color="#3DAA72";
@@ -120,12 +102,6 @@
           <div style={{fontSize:11,color:sub,marginTop:4}}>cykle od 2. i przedłużenia — to część Wypożyczalni{diff!==null?" · "+(diff>=0?"+":"")+diff+"% vs poprz.":""}</div>
         </div>
         {isOpen&&<div style={{marginTop:8,paddingLeft:2}}>
-          {!demo&&<div style={{display:"flex",alignItems:"flex-end",gap:3,height:64,margin:"4px 0 10px"}}>
-            {bars.map(b=><div key={b.ym} title={b.ym+": "+fmtNum(b.v)+" zł"} style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",height:"100%"}}>
-              <div style={{width:"100%",height:Math.max(b.v>0?4:1,Math.round(b.v/maxV*48)),borderRadius:3,background:b.v>0?(b.ym===endYm?color:color+"77"):(dk?"#2A3A56":"#D9E2F0")}}/>
-              <div style={{fontSize:9,color:sub,marginTop:3}}>{PL_MON[+b.ym.slice(5,7)-1]}</div>
-            </div>)}
-          </div>}
           {cur.length===0&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak wpłat z drugiego cyklu i przedłużeń w tym okresie</div>}
           {cur.map((e,i)=><div key={i} onClick={goToRental?()=>goToRental(e.r.id):undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${border}`,cursor:goToRental?"pointer":"default"}}>
             <div style={{minWidth:0,flex:1,paddingRight:8}}>
@@ -134,10 +110,6 @@
             </div>
             <span style={{fontSize:12,fontWeight:700,color,flexShrink:0}}>+{Z(e.amount)}</span>
           </div>)}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingTop:8}}>
-            <span style={{fontSize:12,color:sub,fontWeight:600}}>Zapowiedź na 30 dni ({fc.n})</span>
-            <span style={{fontSize:13,fontWeight:800,color:txt}}>{Z(fc.sum)}</span>
-          </div>
         </div>}
       </div>;
     }
@@ -1417,7 +1389,7 @@
                     </div>}
                   </div>;
                 })}
-                <PassiveRow rentals={rentals} inPeriod={inPeriod} inPrevPeriod={inPrevPeriod} viewMode={viewMode} month={month} year={year} today={todayLocal()} base={inc} isOpen={expandedCat==="__passive"} onToggle={()=>setExpandedCat(expandedCat==="__passive"?null:"__passive")} border={border} sub={sub} goToRental={goToRental}/>
+                <PassiveRow rentals={rentals} inPeriod={inPeriod} inPrevPeriod={inPrevPeriod} base={inc} isOpen={expandedCat==="__passive"} onToggle={()=>setExpandedCat(expandedCat==="__passive"?null:"__passive")} border={border} sub={sub} goToRental={goToRental}/>
               </div>}
 
               {topPats.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
