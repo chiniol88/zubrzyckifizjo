@@ -91,6 +91,20 @@
       const [showArchived,setShowArchived]=useState(false);
       const [pTab,setPTab]=useState("fizjo");
       const [toast,setToast]=useState(null);
+      // rekordy należące do pacjenta: po numerze, a po nazwisku tylko gdy rekord nie ma numeru (starsze wpisy)
+      const ownerOf=(pid,pn)=>x=>x.patientId===pid||(!x.patientId&&!!pn&&x.patientName===pn);
+      // czy wiersz finansów (po sourceId) pochodzi z wizyty/wypożyczenia/wózka tego pacjenta
+      const ownSidMatcher=(pid,pn)=>{
+        const mineR=ownerOf(pid,pn);
+        const vids=new Set(visits.filter(mineR).map(v=>"visit-"+v.id));
+        const pr=rentals.filter(mineR);
+        const pids=new Set(pr.flatMap(r=>(r.payments||[]).map(p=>"payment-"+p.id)));
+        const cids=new Set(pr.flatMap(r=>(r.cycles||[]).map(c=>"cycle-"+r.id+"-"+(c.dueDate||c.month))));
+        const tids=new Set(pr.map(r=>"transport-"+r.id));
+        const xp=pr.map(r=>"extend-"+r.id+"-");
+        const nids=new Set((nfzCases||[]).filter(mineR).map(c=>"wozek-"+c.id));
+        return sid=>!!sid&&(vids.has(sid)||pids.has(sid)||cids.has(sid)||tids.has(sid)||nids.has(sid)||xp.some(pf=>sid.startsWith(pf)));
+      };
       const [showQuickV,setShowQuickV]=useState(false);
       const [quickV,setQuickV]=useState(null);
       const [contactSyncPending,setContactSyncPending]=useState(null);
@@ -277,7 +291,8 @@
                     setPatients(ps=>ps.map(p=>p.id===_pid?{...p,...editForm,phones:_phones,phone:_phone}:p));
                     if(_new!==_old){
                       setVisits(vs=>vs.map(v=>v.patientId===_pid?{...v,patientName:_new}:v));
-                      setFinances(fs=>fs.map(f=>f.description?{...f,description:f.description.split(_old).join(_new)}:f));
+                      const _mineSid=ownSidMatcher(_pid,_old);
+                      setFinances(fs=>fs.map(f=>(f.description&&_old&&_mineSid(f.sourceId))?{...f,description:f.description.split(_old).join(_new)}:f));
                     }
                     // dowiąż patientId + zaktualizuj nazwę wszędzie, gdzie ta osoba jest rozpoznana (po ID lub starej nazwie)
                     setRentals(rs=>rs.map(r=>(r.patientId===_pid||r.patientName===_old)?{...r,patientName:_new,patientId:_pid}:r));
@@ -292,31 +307,29 @@
                     setToast("Zapisano zmiany");
                   }}>Zapisz zmiany</Btn>
                   <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={()=>{setPatients(ps=>ps.map(p=>p.id===editForm.id?{...p,archived:!p.archived}:p));setShowEdit(false);setEditForm(null);setSelId(null);setToast(editForm.archived?"Pacjent przywrócony":"Pacjent zarchiwizowany");}}>📦 {editForm.archived?"Przywróć pacjenta":"Archiwizuj pacjenta"}</Btn>
-                  <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>setConfirmDelPat(true)}>🗑️ Usuń pacjenta</Btn>
+                  <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>setConfirmDelPat(true)}>🗑️ Usuń dane osobowe pacjenta</Btn>
                 </>
               : <>
-                  <div style={{background:"#FEE2E2",borderRadius:12,padding:14,marginBottom:12,fontSize:14,color:"#E05C5C",textAlign:"center",fontWeight:600}}>Na pewno usunąć pacjenta i wszystkie jego dane?</div>
+                  <div style={{background:"#FEE2E2",borderRadius:12,padding:14,marginBottom:12,fontSize:14,color:"#E05C5C",textAlign:"center",fontWeight:600}}>Usunąć dane osobowe pacjenta? Imię, telefon, adres, diagnoza i notatki znikną bezpowrotnie. Daty i kwoty zostają, więc raporty finansowe się nie zmienią.</div>
                   <div style={{display:"flex",gap:10}}>
                     <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDelPat(false)}>Anuluj</Btn>
                     <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{
+                      // Anonimizacja zamiast kasowania: zostają daty i kwoty (raporty), znikają dane osobowe i notatki
                       const _pid=editForm.id;
                       const _pn=editForm.name;
-                      const _pr=rentals.filter(r=>r.patientId===_pid||r.patientName===_pn);
-                      const _vids=visits.filter(v=>v.patientId===_pid).map(v=>v.id);
-                      const _pids=_pr.flatMap(r=>(r.payments||[]).map(p=>p.id));
-                      const _cids=_pr.flatMap(r=>(r.cycles||[]).map(c=>"cycle-"+r.id+"-"+(c.dueDate||c.month)));
-                      const _extPrefixes=_pr.map(r=>"extend-"+r.id+"-");
-                      const _transportIds=new Set(_pr.filter(r=>r.transport>0).map(r=>"transport-"+r.id));
-                      const _nfzIds=(nfzCases||[]).filter(c=>c.patientId===_pid||c.patientName===_pn).map(c=>"wozek-"+c.id);
-                      setVisits(vs=>vs.filter(v=>v.patientId!==_pid));
-                      setRentals(rs=>rs.filter(r=>r.patientId!==_pid&&r.patientName!==_pn));
-                      setFinances(fs=>fs.filter(f=>!_vids.some(id=>f.sourceId==="visit-"+id)&&!_pids.some(id=>f.sourceId==="payment-"+id)&&!_cids.some(cid=>f.sourceId===cid)&&!_transportIds.has(f.sourceId)&&!_nfzIds.includes(f.sourceId)&&!_extPrefixes.some(pfx=>f.sourceId&&f.sourceId.startsWith(pfx))));
-                      if(setNfzCases)setNfzCases(cs=>(cs||[]).filter(c=>c.patientId!==_pid&&c.patientName!==_pn));
-                      setPatients(ps=>ps.filter(p=>p.id!==_pid));
+                      const anon="Pacjent usunięty "+((patients||[]).filter(p=>(p.name||"").startsWith("Pacjent usunięty")).length+1);
+                      const isMine=ownerOf(_pid,_pn);
+                      const mine=ownSidMatcher(_pid,_pn);
+                      setVisits(vs=>vs.map(v=>isMine(v)?{...v,patientName:anon,notes:""}:v));
+                      setRentals(rs=>rs.map(r=>isMine(r)?{...r,patientName:anon,phone:"",address:"",notes:"",extensions:(r.extensions||[]).map(e=>({...e,notes:""}))}:r));
+                      setFinances(fs=>fs.map(f=>(mine(f.sourceId)&&_pn&&f.description)?{...f,description:f.description.split(_pn).join(anon)}:f));
+                      if(setNfzCases)setNfzCases(cs=>(cs||[]).map(c=>isMine(c)?{...c,patientName:anon,phone:"",address:"",notes:""}:c));
+                      setPatients(ps=>ps.map(p=>p.id===_pid?{id:p.id,name:anon,archived:true,anonymized:true,phone:"",phones:[],address:"",diagnosis:"",notes:"",birthday:"",defaultPrice:""}:p));
                       setShowEdit(false);
                       setEditForm(null);
                       setSelId(null);
-                    }}>Tak, usuń</Btn>
+                      setToast("Dane osobowe pacjenta usunięte");
+                    }}>Tak, usuń dane osobowe</Btn>
                   </div>
                 </>
             }
