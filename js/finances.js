@@ -1175,7 +1175,7 @@
       const inPrevPeriod=(date)=>{
         if(!date)return false;
         if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()-1);return date.startsWith(d.toISOString().slice(0,7));}
-        if(viewMode==="week"){const ps=new Date(weekStart);ps.setDate(ps.getDate()-7);const pe=new Date(weekEnd);pe.setDate(pe.getDate()-7);return date>=ps.toISOString().slice(0,10)&&date<=pe.toISOString().slice(0,10);}
+        if(viewMode==="week"){return date>=addDays(weekStart,-7)&&date<=addDays(weekEnd,-7);}
         if(viewMode==="range")return false;
         return date.startsWith(String(+year-1));
       };
@@ -1327,7 +1327,7 @@
 
             {(viewMode==="week"||viewMode==="month"||viewMode==="year")&&<div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
               <button onClick={()=>{
-                if(viewMode==="week"){const d=new Date(weekStart);d.setDate(d.getDate()-7);setWeekStart(d.toISOString().slice(0,10));}
+                if(viewMode==="week"){setWeekStart(addDays(weekStart,-7));}
                 else if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()-1);setMonth(d.toISOString().slice(0,7));}
                 else setYear(String(+year-1));
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#18202F":"#EFF3FA",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>‹</button>
@@ -1335,7 +1335,7 @@
                 {viewMode==="week"?weekStart+" – "+weekEnd:viewMode==="month"?new Date(month+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"}):year}
               </div>
               <button onClick={()=>{
-                if(viewMode==="week"){const d=new Date(weekStart);d.setDate(d.getDate()+7);setWeekStart(d.toISOString().slice(0,10));}
+                if(viewMode==="week"){setWeekStart(addDays(weekStart,7));}
                 else if(viewMode==="month"){const d=new Date(month+"-15");d.setMonth(d.getMonth()+1);setMonth(d.toISOString().slice(0,7));}
                 else setYear(String(+year+1));
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#18202F":"#EFF3FA",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>

@@ -406,8 +406,8 @@
       const practiceTotal=practiceCats.reduce((s,c)=>s+(c.v||0),0);
       const manualIncTotal=(monthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
       // totalInc/Exp including recurring — defined below after recurring state
-      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
-      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
+      const recurringIncTotalEarly=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
+      const recurringExpTotalEarly=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>{const ov=(monthData.recurringOverrides||{})[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
       const totalInc=practiceTotal+manualIncTotal+recurringIncTotalEarly;
       const totalExp=(monthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recurringExpTotalEarly;
 
@@ -423,8 +423,8 @@
           const m=d.toISOString().slice(0,7);
           const mData=(budget.months||{})[m]||{};
           const mOverrides=(mData.recurringOverrides||{});
-          const mRecExp=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=mOverrides[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0)*(r.cycle==="weekly"?4:1);},0);
-          const mRecInc=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=mOverrides[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0)*(r.cycle==="weekly"?4:1);},0);
+          const mRecExp=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=mOverrides[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
+          const mRecInc=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=mOverrides[r.id];return s+(ov!==undefined?+ov.amount:+r.amount||0)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
           const mManInc=(mData.income||[]).reduce((s,i)=>s+(+i.amount||0),0);
           const mExp=(mData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0);
           let mPrac=0;
@@ -457,9 +457,9 @@
       const recOverrides=useMemo(()=>monthData.recurringOverrides||{},[monthData]);
       const recAmt=(r)=>recOverrides[r.id]!==undefined?+recOverrides[r.id].amount:+r.amount;
       const recDesc=(r)=>recOverrides[r.id]!==undefined?(recOverrides[r.id].desc||r.desc||r.cat):(r.desc||r.cat);
-      // monthly equivalent: weekly×4, monthly×1
-      const recurringIncTotal=recurringInc.reduce((s,r)=>s+recAmt(r)*(r.cycle==="weekly"?4:1),0);
-      const recurringExpTotal=recurringExp.reduce((s,r)=>s+recAmt(r)*(r.cycle==="weekly"?4:1),0);
+      // monthly equivalent: weekly×(52/12), monthly×1
+      const recurringIncTotal=recurringInc.reduce((s,r)=>s+recAmt(r)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1),0);
+      const recurringExpTotal=recurringExp.reduce((s,r)=>s+recAmt(r)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1),0);
 
       const saveRecurring=()=>{
         if(!rForm.cat||!rForm.amount)return;
@@ -493,8 +493,8 @@
         return total;
       },[finances,visits,prevMonth]);
       const prevOv=useMemo(()=>prevMonthData.recurringOverrides||{},[prevMonthData]);
-      const prevRecInc=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0),[budget,prevMonth,prevOv]);
-      const prevRecExp=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0),[budget,prevMonth,prevOv]);
+      const prevRecInc=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0),[budget,prevMonth,prevOv]);
+      const prevRecExp=useMemo(()=>(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=prevMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=prevMonth)).reduce((s,r)=>{const ov=prevOv[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0),[budget,prevMonth,prevOv]);
       const prevTotalInc=prevPracticeTotal+(prevMonthData.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+prevRecInc;
       const prevTotalExp=(prevMonthData.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+prevRecExp;
       const diffInc=prevTotalInc>0?Math.round((totalInc-prevTotalInc)/prevTotalInc*100):null;
@@ -718,10 +718,10 @@
             // Buduj grupy kategorii z sumami, sortuj od największej
             const catGroups=[...new Set(recs.map(r=>r.cat))].map(cat=>{
               const catRecs=recs.filter(r=>r.cat===cat).slice().sort((a,b)=>(+b.amount||0)-(+a.amount||0));
-              const catActiveSum=catRecs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
+              const catActiveSum=catRecs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1),0);
               return {cat,catRecs,catActiveSum};
             }).sort((a,b)=>b.catActiveSum-a.catActiveSum);
-            const totalActiveSum=recs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?4:1),0);
+            const totalActiveSum=recs.filter(r=>(!r.startMonth||r.startMonth.slice(0,7)<=selMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=selMonth)).reduce((s,r)=>s+(+r.amount||0)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1),0);
             return <div key={typ}>
               <div style={{padding:"6px 16px",background:dk?"#111826":typ==="income"?"#F0F9F5":"#FDF7F7",fontSize:10,fontWeight:700,color:col,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>
               {catGroups.map(({cat,catRecs,catActiveSum})=>{
@@ -786,8 +786,8 @@
               return f.date&&f.date.startsWith(safeCompareMonth);
             }).forEach(f=>{prac2+=(+f.amount||0);});
             const ov2=(md2.recurringOverrides||{});
-            const recInc2=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
-            const recExp2=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
+            const recInc2=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
+            const recExp2=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=safeCompareMonth)&&(!r.endMonth||r.endMonth.slice(0,7)>=safeCompareMonth)).reduce((s,r)=>{const ov=ov2[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
             const inc2=prac2+(md2.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc2;
             const exp2=(md2.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp2;
             const rows=[
@@ -830,8 +830,8 @@
               return f.date&&f.date.startsWith(m);
             }).forEach(f=>{prac+=(+f.amount||0);});
             const ovm=(md.recurringOverrides||{});
-            const recInc=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
-            const recExp=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?4:1);},0);
+            const recInc=(budget.recurring||[]).filter(r=>r.type==="income"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
+            const recExp=(budget.recurring||[]).filter(r=>r.type==="expense"&&(!r.startMonth||r.startMonth.slice(0,7)<=m)&&(!r.endMonth||r.endMonth.slice(0,7)>=m)).reduce((s,r)=>{const ov=ovm[r.id];const amt=ov!==undefined?+ov.amount:+r.amount||0;return s+amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);},0);
             const inc2=prac+(md.income||[]).reduce((s,i)=>s+(+i.amount||0),0)+recInc;
             const exp2=(md.expenses||[]).reduce((s,i)=>s+(+i.amount||0),0)+recExp;
             const isSelected=m===selMonth;

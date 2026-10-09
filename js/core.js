@@ -305,6 +305,8 @@ function usePersistedState(key, initial, ready=true) {
 
 // ── UTILS ─────────────────────────────────────────────────────────────────
 const todayLocal = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+// tygodnie → miesiąc: 52/12 (≈4,33), a nie 4
+const WEEKS_PER_MONTH = 52/12;
 const dateDiff = (a,b) => { const [ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.round((Date.UTC(by,bm-1,bd)-Date.UTC(ay,am-1,ad))/86400000); };
 const visitStatus = v => {
   if(v.status==="zakończona") return "zakończona";
@@ -356,7 +358,7 @@ const marketingSpendForMonth = (budget, stock, ym) => {
     if(ym>=rStart&&ym<=rEnd){
       const ov=((budget.months||{})[ym]||{}).recurringOverrides||{};
       const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
-      total+=amt*(r.cycle==="weekly"?4:1);
+      total+=amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);
     }
   });
   return total;

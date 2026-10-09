@@ -104,8 +104,8 @@
 
       const saveDate=()=>{
         if(!newDate||newDate===key){setEditDate(false);return;}
-        const conflict=(r.cycles||[]).some(c=>(c.dueDate||c.month)!==key&&!c.cancelled&&c.month===newDate.slice(0,7));
-        if(conflict){alert("Na ten miesiąc już istnieje okres w tym wypożyczeniu — jeden miesiąc może mieć tylko jeden okres.");return;}
+        const conflict=(r.cycles||[]).some(c=>(c.dueDate||c.month)!==key&&!c.cancelled&&(c.dueDate?c.dueDate===newDate:c.month===newDate.slice(0,7)));
+        if(conflict){alert("Okres z tą datą już istnieje w tym wypożyczeniu.");return;}
         updateCycle({dueDate:newDate,month:newDate.slice(0,7)});
         if(cycle.paid){
           const newSid="cycle-"+r.id+"-"+newDate;
@@ -665,7 +665,7 @@
             </div>
             {!(ef.endAllDay!==undefined?ef.endAllDay:(ef.allDay||false))&&<TimeSel label="Godzina odbioru" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}</>}
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
-            {!ef.renewable&&<Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>}
+            {!ef.renewable&&!(ef.payments||[]).length&&<Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>}
             {ef.renewable&&<div style={{fontSize:12,color:"#7A8FA6",padding:"10px 14px",background:"#EFF3FA",borderRadius:12,marginBottom:14}}>Płatności zarządzane przez cykle miesięczne</div>}
             <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
             <Txa label="Notatki" value={ef.notes||""} onChange={v=>setEf(f=>({...f,notes:v}))} rows={2}/>
@@ -674,7 +674,7 @@
               if(ef.endDate&&ef.startDate&&ef.endDate<ef.startDate){alert("Data zakończenia jest wcześniejsza niż data rozpoczęcia — popraw datę.");return;}
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
               const cur=rentals.find(x=>x.id===effectiveDetail);
-              const newPaid=ef.renewable?(cur?.amountPaid||0):Math.min(+(ef.amountPaid||0),raw);
+              const newPaid=ef.renewable?(cur?.amountPaid||0):((cur&&(cur.payments||[]).length>0)?(cur.payments||[]).reduce((t,q)=>t+(+q.amount||0),0):Math.min(+(ef.amountPaid||0),raw));
               const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null,machineId:whValidMachineId(machines,ef.equipment,ef.machineId)};
               // Dla jednorazowych bez payments: jeśli wpisano zapłacono → utwórz wpłatę i wpis finansowy
               const hasPayments=cur&&(cur.payments||[]).length>0;
@@ -781,8 +781,8 @@
             <Btn disabled={!addCycleForm.date} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const d=addCycleForm.date;
               if(!d)return;
-              const conflict=(r.cycles||[]).some(c=>!c.cancelled&&c.month===d.slice(0,7));
-              if(conflict){alert("Na ten miesiąc już istnieje okres w tym wypożyczeniu — jeden miesiąc może mieć tylko jeden okres. Edytuj istniejący zamiast dodawać nowy.");return;}
+              const conflict=(r.cycles||[]).some(c=>!c.cancelled&&(c.dueDate?c.dueDate===d:c.month===d.slice(0,7)));
+              if(conflict){alert("Okres z tą datą już istnieje w tym wypożyczeniu. Edytuj istniejący zamiast dodawać nowy.");return;}
               const amount=+addCycleForm.amount||0;
               const label=new Date(d+"T12:00:00").toLocaleDateString("pl-PL",{day:"numeric",month:"long",year:"numeric"});
               const nc={dueDate:d,month:d.slice(0,7),amount,paid:!!addCycleForm.paid,paidDate:addCycleForm.paid?(addCycleForm.payDate||todayLocal()):null,note:addCycleForm.note||""};
@@ -904,7 +904,8 @@
                     const dataDoRaw=toYMD(cells[5]);
                     const dataDo=/^\d{4}-\d{2}-\d{2}$/.test(dataDoRaw)?dataDoRaw:"";
                     const skadRaw=String(cells[9]||"").trim().toLowerCase();
-                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres,sprzet,dataOd,dataDo:dataDo||dataOd,kwota:+(cells[6]||0),zaplacono:+(cells[7]||0),dowoz:+(cells[8]||0),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
+                    const num=v=>{if(typeof v==="number")return v;const n=parseFloat(String(v||"").replace(/\s/g,"").replace(",","."));return isNaN(n)?0:n;};
+                    rows.push({pacjent,telefon:String(cells[1]||"").trim(),adres,sprzet,dataOd,dataDo:dataDo||dataOd,kwota:num(cells[6]),zaplacono:num(cells[7]),dowoz:num(cells[8]),skad:skadMap[skadRaw]||"",notatki:String(cells[10]||"").trim()});
                   }
                   setCsvRows(rows);setCsvError(errs.length?"⚠️ "+errs.join("\n"):"");
                   if(importRef.current)importRef.current.value="";
@@ -955,19 +956,19 @@
           </div>}
           <Btn disabled={csvRows.length===0} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             const now=Date.now();
-            const existingByKey={};
-            rentals.forEach(r=>{const k=(r.patientName||"")+"|"+(r.startDate||"");if(!existingByKey[k])existingByKey[k]=r;});
+            // ta sama osoba + ten sam start: to samo wypożyczenie tylko gdy ten sam sprzęt (albo któraś strona nie ma sprzętu)
+            const findExisting=row=>{const m=rentals.filter(r=>(r.patientName||"")===(row.pacjent||"")&&(r.startDate||"")===(row.dataOd||"")&&(!r.equipment||!row.sprzet||r.equipment===row.sprzet));return m.find(r=>r.equipment===row.sprzet)||m[0];};
             const newRentals=[];
             const updatedMap={};
             const financeUpserts=[];
             const seenInBatch=new Set();
             let dupSkipped=0;
             csvRows.forEach((row,i)=>{
-              const k=(row.pacjent||"")+"|"+(row.dataOd||"");
+              const k=(row.pacjent||"")+"|"+(row.dataOd||"")+"|"+(row.sprzet||"");
               if(seenInBatch.has(k)){dupSkipped++;return;} // ten sam pacjent+data już w tym imporcie — pomija powtórzony wiersz
               seenInBatch.add(k);
               const paid=+row.zaplacono;
-              const existing=existingByKey[k];
+              const existing=findExisting(row);
               if(existing){
                 const payId=(existing.payments&&existing.payments[0]&&existing.payments[0].id)||(now+i*100+1);
                 updatedMap[existing.id]={...existing,
