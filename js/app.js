@@ -171,5 +171,18 @@
         }));
         if(toAdd.length)setFinances(prev=>[...toAdd,...prev]);
       },[visits,rentals,rentalsLoaded,financesLoaded]);
+      // Zdublowane wpisy finansów (to samo sourceId, ta sama kwota/typ/kategoria) → zostaje jeden, najlepiej z datą
+      useEffect(()=>{
+        if(!financesLoaded)return;
+        const key=f=>f.sourceId+"|"+f.type+"|"+f.category+"|"+(+f.amount||0);
+        const dedupe=list=>{
+          const best=new Map();
+          list.forEach(f=>{if(!f.sourceId)return;const k=key(f),o=best.get(k);if(!o||(!o.date&&f.date))best.set(k,f);});
+          return list.filter(f=>!f.sourceId||best.get(key(f))===f);
+        };
+        const cur=finances||[];
+        if(dedupe(cur).length===cur.length)return;
+        setFinances(prev=>dedupe(prev||[]));
+      },[finances,financesLoaded]);
       return <App visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth}/>;
     }

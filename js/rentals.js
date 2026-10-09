@@ -516,6 +516,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
                       <button onClick={()=>{setExtForm({newEndDate:ext.newEndDate,endTime:ext.endTime||"10:00",amountDue:String(ext.amountDue||ext.amount||""),amountPaid:String(ext.amountPaid||""),payDate:ext.paidDate||"",notes:ext.notes||"",editId:ext.id||i});setShowExtend(true);}} style={{background:"#E1E9F5",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,fontWeight:600,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>✏️</button>
                       <button onClick={()=>{
+                        if(!window.confirm("Usunąć przedłużenie "+ext.prevEndDate+" → "+ext.newEndDate+"?"+((ext.amountPaid||0)>0&&!demo?" Wpłata "+ext.amountPaid+" zł zniknie też z Finansów.":""))) return;
                         const prevEnd = i===0 ? (r.extensions||[])[0].prevEndDate : (r.extensions||[])[i-1].newEndDate;
                         const newExts = (r.extensions||[]).filter((_,j)=>j!==i);
                         const newEndDate = newExts.length>0 ? newExts[newExts.length-1].newEndDate : prevEnd;
@@ -600,6 +601,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
                                 </div>
                               </div>
                               <button onClick={()=>{
+                                if(!window.confirm("Usunąć wpłatę"+(demo?"":" "+p.amount+" zł")+" z dnia "+p.date+"? Zniknie też z Finansów.")) return;
                                 if(p._type==="payment"){
                                   setRentals(rs=>rs.map(x=>{
                                     if(x.id!==r.id)return x;
@@ -769,6 +771,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
             <Txa label="Notatki" value={ef.notes||""} onChange={v=>setEf(f=>({...f,notes:v}))} rows={2}/>
             <Sel label="Skąd dowiedział się o wypożyczeniu?" value={ef.source||""} onChange={v=>setEf(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+              if(ef.endDate&&ef.startDate&&ef.endDate<ef.startDate){alert("Data zakończenia jest wcześniejsza niż data rozpoczęcia — popraw datę.");return;}
               const raw=+ef.amount,pat=patients.find(p=>p.name===ef.patientName);
               const cur=rentals.find(x=>x.id===effectiveDetail);
               const newPaid=ef.renewable?(cur?.amountPaid||0):Math.min(+(ef.amountPaid||0),raw);
@@ -945,6 +948,7 @@ p{margin:2px 0}.bold7{font-weight:bold}
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
           <Sel label="Skąd dowiedział się o wypożyczeniu?" value={form.source||""} onChange={v=>setForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
+            if(form.endDate&&form.startDate&&form.endDate<form.startDate){alert("Data zakończenia jest wcześniejsza niż data rozpoczęcia — popraw datę.");return;}
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
             const firstCycle=form.renewable?[{dueDate:form.startDate,month:form.startDate.slice(0,7),amount:+form.amount||0,paid:false,paidDate:null}]:[];
