@@ -305,7 +305,7 @@ function usePersistedState(key, initial, ready=true) {
 
 // ── UTILS ─────────────────────────────────────────────────────────────────
 const todayLocal = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
-const dateDiff = (a,b) => { const [ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.ceil((new Date(by,bm-1,bd)-new Date(ay,am-1,ad))/86400000); };
+const dateDiff = (a,b) => { const [ay,am,ad]=a.split("-").map(Number),[by,bm,bd]=b.split("-").map(Number); return Math.round((Date.UTC(by,bm-1,bd)-Date.UTC(ay,am-1,ad))/86400000); };
 const visitStatus = v => {
   if(v.status==="zakończona") return "zakończona";
   if(v.status==="anulowana") return "anulowana";
