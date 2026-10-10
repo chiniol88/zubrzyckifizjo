@@ -68,6 +68,26 @@
       const totalQty=activeNames.reduce((s,eq)=>s+whQty(stock,eq),0);
       const totalOut=activeNames.reduce((s,eq)=>s+(activeCount[eq]||0),0);
       const att=whAttention(stock,machines,today,activeNames);
+      // Gdzie jest sztuka z uwagą i do kiedy trwa wypożyczenie (żeby zaplanować pracę po odbiorze)
+      const fmtD=d=>d?d.split("-").reverse().join("."):"";
+      const endTxt=r=>{
+        const who=demo?"klient":(r.patientName||"?");
+        if(r.renewable&&!r.endDate)return who+" · cykliczne, bez daty końca";
+        return who+" · koniec "+(fmtD(r.endDate)||"bez daty")+(r.plannedReturn?" · odbiór "+fmtD(r.plannedReturn):"");
+      };
+      const whereOf=i=>{
+        if(i.machineId){
+          const card=(machines||[]).find(m=>m.id===i.machineId);
+          if(!card)return {code:"",txt:"w magazynie",out:false};
+          const st=whCardState(card,rentals);
+          if(st.kind==="out")return {code:card.code||"",txt:"u: "+endTxt(st.rental),out:true};
+          if(st.kind==="reserved")return {code:card.code||"",txt:"zarezerwowana: "+(demo?"klient":(st.rental.patientName||"?"))+" od "+(fmtD(st.rental.startDate)||"?"),out:false};
+          return {code:card.code||"",txt:"w magazynie",out:false};
+        }
+        const out=(rentals||[]).filter(r=>r.status==="aktywne"&&!r.reserved&&r.equipment===i.eq).sort((a,b)=>(a.endDate||"9999").localeCompare(b.endDate||"9999"));
+        if(out.length===0)return {code:"",txt:"wszystkie w magazynie",out:false};
+        return {code:"",txt:"wypożyczone: "+out.slice(0,3).map(endTxt).join("; ")+(out.length>3?" i "+(out.length-3)+" więcej":""),out:true};
+      };
       const archivedCards=(machines||[]).filter(m=>m.archived).sort((a,b)=>(b.retiredDate||"").localeCompare(a.retiredDate||"")||(b.id-a.id));
       const issuesOf=eq=>((((stock||{}).issues||{})[eq])||[]);
 
@@ -417,8 +437,11 @@
         {att.issues.length>0&&<div style={{padding:"0 20px"}}><Card style={{padding:"12px 16px"}}>
           <SectionLabel style={{marginBottom:6}}>Do załatwienia przy sprzęcie ({att.issues.length})</SectionLabel>
           {att.issues.slice(0,5).map(i=><div key={i.eq+"-"+i.id} onClick={()=>{setOpen(o=>({...o,[i.eq]:true}));setGroup("all");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",cursor:"pointer",gap:8}}>
-            <span style={{fontSize:13,minWidth:0}}>{i.text}</span>
-            <span style={{fontSize:11,color:subC,flexShrink:0,textAlign:"right"}}>{i.eq}</span>
+            <span style={{fontSize:13,minWidth:0}}>
+              {i.text}
+              {(()=>{const w=whereOf(i);return <span style={{display:"block",fontSize:11,color:w.out?"#D9822B":subC,marginTop:2}}>{w.txt}</span>;})()}
+            </span>
+            <span style={{fontSize:11,color:subC,flexShrink:0,textAlign:"right"}}>{i.eq}{(()=>{const w=whereOf(i);return w.code?<span style={{display:"block"}}>{w.code}</span>:null;})()}</span>
           </div>)}
           {att.issues.length>5&&<div style={{fontSize:11,color:subC,marginTop:2}}>…i {att.issues.length-5} więcej</div>}
         </Card></div>}
