@@ -1,0 +1,21 @@
+{
+ "build.py": "b5aadb9273236fb4dab7a98424b73183c0cc1470b735b7c9ba38cb6da5796cdc",
+ "js/app.js": "a2a81e289fbbc8c0e8d446c18aa47ec5a08803be0c8f3f10c99a614e9700f960",
+ "js/auth.js": "96f12f63a1a3eea69fdd97fc6e391902626815cc1af260ac40f6c1416cef2c39",
+ "js/boot.js": "ee4fef78923eef40f7e4168a78c52cc8b972e7857c6144378498dcd82b681a47",
+ "js/budget.js": "ae88898335e3b44efbd7ff3a8aeacc219cb277e6f05d3629e820d7dbf86a1026",
+ "js/core.js": "e8a67710d5544cc8579a67c8276d88bb7fea079b41434bc7ed9af3fd513bdb7f",
+ "js/crypto.js": "a0c1d2ac67a3b22c23359e810d07f4e8f248ae65faf4651b1f2e1adbeec82068",
+ "js/dashboard.js": "5f8a28094bd95126a36251300c9d2d14c801fc4731b862c1fb668e2e47ef27e2",
+ "js/finances.js": "ea3446cd513c7b58728aadd9d49d8cd6497321a95598112d41ef8a61ea429ea8",
+ "js/magazyn.js": "3d1de6c03aee59dfe88a9e1d3403c21c60cf437640b6c636252cf28a905182db",
+ "js/nfz.js": "54aacb8cdf487553da363cc84fd6e7fe4c7a6917ee2fb880b5147a90ee8e37ff",
+ "js/patients.js": "3bff4c044d30c5b7f77e4bbfa3452f9930b0cc7d105c772d539f04ee438f4835",
+ "js/privacy.js": "fb6d9c3edd6b844e39afe28a132a52c1308f6f362e73d126c1e7ed191eff8907",
+ "js/rentals.js": "e876a4df7ec8fe94691acc530c5e7f4394ab00da0cc0eb9450b1bd42a741e895",
+ "js/settings.js": "abd3f8ba0c9cbe5529ba71a33c5f67260ff1ada63faa0d74ec5693bedc74a3ac",
+ "js/ui.js": "018eadb2b09daf5585ea2fbac84b9128d2ab620a283b536eec89477a9c7f773a",
+ "js/warehouse.js": "5281d0c0311bbbd34a2dd190e07ef760fa4210b4f1754ee74a6235f4d55341c2",
+ "js/wealth.js": "47fe38b7a9656ce8d6ea177b9d33a3e0b00369bd2135eb2105e6a6b0e40c93b6",
+ "vendor/babel.min.js": "8cfb9a97fa211f8de7c5af8605e90be1b3a4ad2ba6d328bd03cc9a1f2240dfc2"
+}

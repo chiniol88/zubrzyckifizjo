@@ -155,6 +155,7 @@
         if(!rentalsLoaded||!financesLoaded||!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];
         visits.forEach(v=>{
+          if(v.id==null)return; // wizyta bez numeru dałaby wiersz "visit-undefined" wspólny dla wszystkich takich wizyt
           const sid="visit-"+v.id; if(ex.has(sid)||v.skipFinance)return;
           const done=v.status==="zakończona"||new Date(v.date+"T"+(v.time||"00:00")+":00")<=now;
           if(done)toAdd.push({id:Date.now()+Math.random(),sourceId:sid,date:v.date,type:"przychód",category:"Wizyta",amount:v.price||0,description:"Wizyta – "+v.patientName});
@@ -175,10 +176,12 @@
       useEffect(()=>{
         if(!financesLoaded)return;
         const key=f=>f.sourceId+"|"+f.type+"|"+f.category+"|"+(+f.amount||0);
+        // wiersz wizyty z uszkodzonym numerem (visit-undefined) nie wskazuje żadnej wizyty - jest tylko zbędnym duplikatem
+        const orphan=f=>/^visit-(undefined|null|NaN)$/.test(String(f.sourceId||""));
         const dedupe=list=>{
           const best=new Map();
           list.forEach(f=>{if(!f.sourceId)return;const k=key(f),o=best.get(k);if(!o||(!o.date&&f.date))best.set(k,f);});
-          return list.filter(f=>!f.sourceId||best.get(key(f))===f);
+          return list.filter(f=>!orphan(f)&&(!f.sourceId||best.get(key(f))===f));
         };
         const cur=finances||[];
         if(dedupe(cur).length===cur.length)return;
