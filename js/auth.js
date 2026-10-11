@@ -238,6 +238,7 @@
         }
       },[settings]);
       const [showBackupBanner,setShowBackupBanner]=useState(false);
+      const [backupAgeDays,setBackupAgeDays]=useState(null);
       const [showConflictBanner,setShowConflictBanner]=useState(false);
       const [sessionExpired,setSessionExpired]=useState(false);
       React.useEffect(()=>{
@@ -278,8 +279,10 @@
           czEncrypt("fizjo-export",snap).then(env=>downloadJson({format:"fizjo-enc-backup",v:1,kdf:m.kdf,wrapPass:m.wrapPass,wrapRec:m.wrapRec,check:m.check,env},name.replace(".json","-ZASZYFROWANA.json")));
         } else downloadJson(snap,name);
       };
+      const markBackupDone=()=>setSettings(s=>({...s,lastBackupAt:new Date().toISOString()}));
       const exportData=()=>{
         downloadSafetyBackup("fizjo-backup-"+new Date().toISOString().slice(0,10)+".json");
+        markBackupDone();
         setShowBackupBanner(false);
       };
 
@@ -377,24 +380,23 @@
         listSnaps:czListSnapshots,
         restoreSnap:(snap)=>applyBackup(snap.data),
         snapshotNow:async()=>{const slot=new Date().getDay();return dbSet("fizjo-backup-"+slot,{savedAt:new Date().toISOString(),data:buildBackup()});},
-        exportPlain:()=>{downloadJson(buildBackup(),"fizjo-backup-JAWNA-"+new Date().toISOString().slice(0,10)+".json");},
+        exportPlain:()=>{downloadJson(buildBackup(),"fizjo-backup-JAWNA-"+new Date().toISOString().slice(0,10)+".json");markBackupDone();},
         buildBackup,downloadJson
       };
 
-      // Backup reminder at 20:00 Warsaw time
+      // Przypomnienie o kopii poza bazą: przy otwarciu apki, gdy ostatnia pobrana kopia jest starsza niż 7 dni (lub nigdy nie pobrano)
+      const reminderShown=React.useRef(false);
       React.useEffect(()=>{
+        if(!dataReady||!v8||reminderShown.current)return;
         if(settings&&settings.backupReminder===false)return;
-        const check=()=>{
-          const now=new Date();
-          const warsaw=new Date(now.toLocaleString("en-US",{timeZone:"Europe/Warsaw"}));
-          const h=warsaw.getHours();
-          const m=warsaw.getMinutes();
-          if(h===20&&m<5)setShowBackupBanner(true);
-        };
-        check();
-        const id=setInterval(check,60000);
-        return()=>clearInterval(id);
-      },[settings]);
+        const last=settings&&settings.lastBackupAt?new Date(settings.lastBackupAt).getTime():0;
+        const days=last?Math.floor((Date.now()-last)/86400000):null;
+        if(days!==null&&days<7)return;
+        try{if(localStorage.getItem("fizjo-backup-snooze")===todayLocal())return;}catch{}
+        reminderShown.current=true;
+        setBackupAgeDays(days);
+        setShowBackupBanner(true);
+      },[dataReady,v8,settings]);
 
       if(!authChecked)return<div className="loader"><div className="spinner"/><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,color:"#3E6FB0",fontSize:18}}>ZubrzyckiFizjo</div></div>;
       if(isRecovery)return<DarkCtx.Provider value={dark}><PasswordResetScreen/></DarkCtx.Provider>;
@@ -430,10 +432,10 @@
             <span style={{fontWeight:700,fontSize:13,color:"#fff"}}>⚠️ Nie udało się wczytać części danych. Zmiany w tej części nie będą zapisane. Próbuję ponownie…</span>
           </div>}
           {showBackupBanner&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#F4A261",zIndex:9999,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,fontSize:13,color:"#1C2B3A"}}>💾 Czas na backup!</span>
+            <span style={{fontWeight:700,fontSize:13,color:"#1C2B3A"}}>💾 {backupAgeDays===null?"Nie pobrano jeszcze kopii zapasowej.":"Ostatnia kopia sprzed "+backupAgeDays+" dni."}</span>
             <div style={{display:"flex",gap:8}}>
               <button onClick={exportData} style={{background:"#1C2B3A",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Pobierz</button>
-              <button onClick={()=>setShowBackupBanner(false)} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#1C2B3A"}}>×</button>
+              <button onClick={()=>{setShowBackupBanner(false);try{localStorage.setItem("fizjo-backup-snooze",todayLocal());}catch{}}} style={{background:"transparent",border:"none",fontSize:18,cursor:"pointer",color:"#1C2B3A"}}>×</button>
             </div>
           </div>}
           <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth} rentalsLoaded={v3} financesLoaded={v4}/>

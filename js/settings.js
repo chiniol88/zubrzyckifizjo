@@ -187,7 +187,10 @@
               <input type="file" accept=".json" onChange={importData} style={{display:"none"}}/>
             </label>
           </Row>
-          <Row label="Auto-przypomnienie o backupie o 20:00">
+          <Row label="Ostatnia pobrana kopia">
+            <span style={{fontSize:13,color:sub}}>{settings.lastBackupAt?(()=>{const d=Math.floor((Date.now()-new Date(settings.lastBackupAt).getTime())/86400000);return (d<=0?"dziś":d===1?"wczoraj":d+" dni temu")+" ("+new Date(settings.lastBackupAt).toLocaleDateString("pl-PL")+")";})():"jeszcze nie pobrano"}</span>
+          </Row>
+          <Row label="Przypomnienie o kopii (raz w tygodniu)">
             <Toggle val={settings.backupReminder!==false} onToggle={()=>setSettings(s=>({...s,backupReminder:s.backupReminder===false?true:false}))}/>
           </Row>
         </Sec>
