@@ -72,7 +72,7 @@
       </div>;
     }
 
-    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,setNfzCases,allClients}) {
+    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,setNfzCases,allClients,priv}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
       const [selId,setSelId]=useState(null);
@@ -91,8 +91,10 @@
       const [showArchived,setShowArchived]=useState(false);
       const [pTab,setPTab]=useState("fizjo");
       const [toast,setToast]=useState(null);
+      // pełny stan zbiorów, w których mogą być dane pacjenta (przekazujemy do privacy.js)
+      const privState=()=>({patients,visits,rentals,nfzCases,finances,events:priv&&priv.events,todos:priv&&priv.todos,stock:priv&&priv.stock,machines:priv&&priv.machines,budget:priv&&priv.budget,wealth:priv&&priv.wealth});
       // rekordy należące do pacjenta: po numerze, a po nazwisku tylko gdy rekord nie ma numeru (starsze wpisy)
-      const ownerOf=(pid,pn)=>x=>x.patientId===pid||(!x.patientId&&!!pn&&x.patientName===pn);
+      const ownerOf=(pid,pn)=>privOwner(pid,pn,new Set((patients||[]).map(x=>x&&x.id)));
       // czy wiersz finansów (po sourceId) pochodzi z wizyty/wypożyczenia/wózka tego pacjenta
       const ownSidMatcher=(pid,pn)=>{
         const mineR=ownerOf(pid,pn);
@@ -310,21 +312,34 @@
                   <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={()=>setConfirmDelPat(true)}>🗑️ Usuń dane osobowe pacjenta</Btn>
                 </>
               : <>
-                  <div style={{background:"#FEE2E2",borderRadius:12,padding:14,marginBottom:12,fontSize:14,color:"#E05C5C",textAlign:"center",fontWeight:600}}>Usunąć dane osobowe pacjenta? Imię, telefon, adres, diagnoza i notatki znikną bezpowrotnie. Daty i kwoty zostają, więc raporty finansowe się nie zmienią.</div>
+                  {(()=>{
+                    const rep=privAnonymize(privState(),editForm.id);
+                    const where=rep?privDescribe(rep.stats):"";
+                    return <div style={{background:"#FEE2E2",borderRadius:12,padding:14,marginBottom:12,fontSize:14,color:"#E05C5C",textAlign:"center",fontWeight:600}}>
+                      Usunąć dane osobowe pacjenta? Imię, telefon, adres, diagnoza i notatki znikną bezpowrotnie. Daty i kwoty zostają, więc raporty finansowe się nie zmienią.
+                      {where&&<div style={{fontWeight:500,fontSize:13,marginTop:8}}>Dane pacjenta są też w wolnym tekście ({where}) i tam również zostaną usunięte.</div>}
+                    </div>;
+                  })()}
                   <div style={{display:"flex",gap:10}}>
                     <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setConfirmDelPat(false)}>Anuluj</Btn>
                     <Btn variant="danger" style={{flex:1,justifyContent:"center"}} onClick={()=>{
-                      // Anonimizacja zamiast kasowania: zostają daty i kwoty (raporty), znikają dane osobowe i notatki
-                      const _pid=editForm.id;
-                      const _pn=editForm.name;
-                      const anon="Pacjent usunięty "+((patients||[]).filter(p=>(p.name||"").startsWith("Pacjent usunięty")).length+1);
-                      const isMine=ownerOf(_pid,_pn);
-                      const mine=ownSidMatcher(_pid,_pn);
-                      setVisits(vs=>vs.map(v=>isMine(v)?{...v,patientName:anon,notes:""}:v));
-                      setRentals(rs=>rs.map(r=>isMine(r)?{...r,patientName:anon,phone:"",address:"",notes:"",extensions:(r.extensions||[]).map(e=>({...e,notes:""}))}:r));
-                      setFinances(fs=>fs.map(f=>(mine(f.sourceId)&&_pn&&f.description)?{...f,description:f.description.split(_pn).join(anon)}:f));
-                      if(setNfzCases)setNfzCases(cs=>(cs||[]).map(c=>isMine(c)?{...c,patientName:anon,phone:"",address:"",notes:""}:c));
-                      setPatients(ps=>ps.map(p=>p.id===_pid?{id:p.id,name:anon,archived:true,anonymized:true,phone:"",phones:[],address:"",diagnosis:"",notes:"",birthday:"",defaultPrice:""}:p));
+                      // Anonimizacja zamiast kasowania: jedno miejsce (privacy.js) czyści własne rekordy i wolny tekst we wszystkich zbiorach
+                      const res=privAnonymize(privState(),editForm.id);
+                      if(!res)return;
+                      const n=res.next;
+                      if(n.visits!==visits)setVisits(n.visits);
+                      if(n.rentals!==rentals)setRentals(n.rentals);
+                      if(n.finances!==finances)setFinances(n.finances);
+                      if(setNfzCases&&n.nfzCases!==nfzCases)setNfzCases(n.nfzCases);
+                      if(n.patients!==patients)setPatients(n.patients);
+                      if(priv){
+                        if(priv.setEvents&&n.events!==priv.events)priv.setEvents(n.events);
+                        if(priv.setTodos&&n.todos!==priv.todos)priv.setTodos(n.todos);
+                        if(priv.setStock&&n.stock!==priv.stock)priv.setStock(n.stock);
+                        if(priv.setMachines&&n.machines!==priv.machines)priv.setMachines(n.machines);
+                        if(priv.setBudget&&n.budget!==priv.budget)priv.setBudget(n.budget);
+                        if(priv.setWealth&&n.wealth!==priv.wealth)priv.setWealth(n.wealth);
+                      }
                       setShowEdit(false);
                       setEditForm(null);
                       setSelId(null);
