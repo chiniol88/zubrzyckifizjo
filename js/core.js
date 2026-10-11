@@ -5,6 +5,7 @@ const MachinesCtx = createContext(null);
 const FinancesCtx = createContext(null);
 const RentalsCtx = createContext(null);
 const StockCtx = createContext(null);
+const SecCtx = createContext(null);   // stan i operacje szyfrowania/kopii (dla Ustawień)
 const demoName=(name,idx)=>name?`Pacjent ${idx+1}`:"—";
 const demoPhone=()=>"***-***-***";
 const demoAddr=()=>"*** **";
@@ -107,22 +108,40 @@ async function dbGet(key) {
     if(!Array.isArray(d)) return {data: null, ts: 0, error: true};
     const raw = d[0]?.value ?? null;
     if(raw === null) return {data: null, ts: 0, error: false};
+    // Zaszyfrowany wiersz: bez klucza NIE udajemy, że danych nie ma (to byłby błąd wczytania), ze złym kluczem też błąd
+    if(raw && typeof raw === 'object' && raw._e){
+      if(!FZ_CRYPTO.dek){
+        if(FZ_CRYPTO.state==="off") window.dispatchEvent(new CustomEvent("fizjo-crypto-changed"));
+        return {data: null, ts: 0, error: true};
+      }
+      try{ return {data: await czDecrypt(key, raw._e), ts: raw._ts||0, error: false}; }
+      catch{ return {data: null, ts: 0, error: true}; }
+    }
     if(raw && typeof raw === 'object' && '_ts' in raw) return {data: raw._d, ts: raw._ts, error: false};
     return {data: raw, ts: 0, error: false};
   } catch { return {data: null, ts: 0, error: true}; }
 }
 async function dbSet(key, value, keepalive=false) {
   try {
+    // Gdy dane są szyfrowane (albo jeszcze nie wiemy), NIGDY nie zapisujemy jawnego tekstu ani niczego nie nadpisujemy
+    const st=FZ_CRYPTO.state;
+    if(st==="locked"||st==="checking"||st==="error") return false;
+    if(st==="on"&&!FZ_CRYPTO.dek) return false;
+    let stored={_d: value, _ts: Date.now()}, hist=value;
+    if(st==="on"){
+      const env=await czEncrypt(key, value);
+      stored={_e: env, _ts: Date.now()}; hist={_e: env};
+    }
     const r=await apiFetch(`${SUPA_URL}/rest/v1/app_data`, ()=>({method: "POST",
       headers: {...getHeaders(), "Prefer": "resolution=merge-duplicates"},
-      body: JSON.stringify({key, value: {_d: value, _ts: Date.now()}}),
+      body: JSON.stringify({key, value: stored}),
       keepalive}));
     if(r.ok){
       // Cichy zapis historii — nie blokuje ani nie wpływa na wynik głównego zapisu.
       // Przycinanie do ostatnich N wersji per klucz robi trigger w bazie (patrz SQL do wdrożenia w Supabase).
       fetch(`${SUPA_URL}/rest/v1/app_data_history`, {method:"POST",
         headers: getHeaders(),
-        body: JSON.stringify({key, value}),
+        body: JSON.stringify({key, value: hist}),
         keepalive}).catch(()=>{});
     }
     return r.ok;
