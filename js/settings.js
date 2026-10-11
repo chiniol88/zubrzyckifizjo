@@ -19,118 +19,6 @@
       </div>;
     }
 
-    function ImportCSV({setRentals,setFinances,dk,txt,sub}) {
-      const [csv,setCsv]=useState("");
-      const [parsed,setParsed]=useState(null);
-      const [done,setDone]=useState(false);
-
-      const parseDate=s=>{
-        if(!s||!s.trim())return"";
-        s=s.trim();
-        if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
-        const m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})$/);
-        if(m)return`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
-        return s;
-      };
-
-      const parseNum=s=>{
-        if(!s||!String(s).trim())return 0;
-        return parseFloat(String(s).trim().replace(",","."))||0;
-      };
-
-      const parseRows=()=>{
-        const lines=csv.trim().split("\n").filter(l=>l.trim());
-        const rows=[];
-        for(const line of lines){
-          const sep=line.includes("\t")?"\t":line.includes(";")?";":","
-          const cols=line.split(sep).map(c=>c.trim().replace(/^"|"$/g,""));
-          if(!cols[0]&&!cols[2])continue;
-          rows.push({
-            patientName:cols[0]||"",
-            phone:cols[1]||"",
-            equipment:cols[2]||"",
-            startDate:parseDate(cols[3]),
-            endDate:parseDate(cols[4]||""),
-            amount:parseNum(cols[5]),
-            amountPaid:parseNum(cols[6]),
-            notes:cols[7]||""
-          });
-        }
-        setParsed(rows);
-        setDone(false);
-      };
-
-      const doImport=()=>{
-        const now=Date.now();
-        const today=todayLocal();
-        const newRentals=parsed.map((r,i)=>{
-          const pid=now+i;
-          const isFinished=r.endDate&&r.endDate<today;
-          const payId=now+10000+i;
-          const payments=r.amountPaid>0?[{id:payId,amount:r.amountPaid,date:r.endDate||r.startDate||today}]:[];
-          return{
-            id:pid,status:isFinished?"zakończone":"aktywne",
-            equipment:r.equipment,patientName:r.patientName,phone:r.phone,
-            address:"",startDate:r.startDate,startAllDay:true,endDate:r.endDate,endAllDay:true,
-            renewable:false,amount:r.amount||"",amountPaid:r.amountPaid||0,
-            payments,transport:"",notes:r.notes,source:"import"
-          };
-        });
-        const newFinances=[];
-        parsed.forEach((r,i)=>{
-          if(r.amountPaid>0){
-            const payId=now+10000+i;
-            newFinances.push({
-              id:now+20000+i,sourceId:"payment-"+payId,
-              date:r.endDate||r.startDate||today,
-              type:"przychód",category:"Wypożyczalnia",amount:r.amountPaid,
-              description:"Wypożyczenie – "+r.patientName+(r.equipment?" ("+r.equipment+")":"")
-            });
-          }
-        });
-        setRentals(rs=>[...newRentals,...(rs||[])]);
-        if(newFinances.length>0)setFinances(fs=>[...newFinances,...(fs||[])]);
-        setDone(true);setCsv("");setParsed(null);
-      };
-
-      const rowCount=csv.trim()?csv.trim().split("\n").filter(l=>l.trim()).length:0;
-      return <div style={{padding:"12px 0"}}>
-        <div style={{fontSize:12,color:sub,marginBottom:8,lineHeight:1.6}}>
-          Wklej dane z Excela lub Google Sheets (Tab lub średnik jako separator):<br/>
-          <b style={{color:txt}}>Kolumny:</b> pacjent · telefon · sprzęt · data_od · data_do · kwota · zapłacono · notatki
-        </div>
-        {done&&<div style={{fontSize:13,color:"#3DAA72",marginBottom:8,fontWeight:600}}>✓ Import zakończony pomyślnie!</div>}
-        <textarea value={csv} onChange={e=>{setCsv(e.target.value);setParsed(null);setDone(false);}} rows={6}
-          placeholder={"Jan Kowalski\t600123456\tCPM Artromot K1\t01.03.2024\t14.03.2024\t420\t420"}
-          style={{width:"100%",padding:"10px 12px",borderRadius:10,border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:13,fontFamily:"inherit",boxSizing:"border-box",resize:"vertical"}}
-        />
-        <div style={{display:"flex",gap:8,marginTop:8}}>
-          <button onClick={parseRows} disabled={!csv.trim()} style={{flex:1,padding:"9px",borderRadius:10,background:"#E1E9F5",border:"none",fontWeight:700,fontSize:13,color:"#3E6FB0",cursor:csv.trim()?"pointer":"default",fontFamily:"inherit"}}>
-            Podgląd ({rowCount} {rowCount===1?"wiersz":rowCount<5?"wiersze":"wierszy"})
-          </button>
-          {parsed&&parsed.length>0&&<button onClick={doImport} style={{flex:1,padding:"9px",borderRadius:10,background:"#3E6FB0",border:"none",fontWeight:700,fontSize:13,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
-            Importuj {parsed.length} →
-          </button>}
-        </div>
-        {parsed&&parsed.length>0&&<div style={{marginTop:12,overflowX:"auto"}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr>{["Pacjent","Sprzęt","Od","Do","Kwota","Zapłacono"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 6px",color:sub,fontWeight:700,borderBottom:`1px solid ${dk?"#2A3A56":"#D9E2F0"}`}}>{h}</th>)}</tr></thead>
-            <tbody>
-              {parsed.slice(0,6).map((r,i)=><tr key={i}>
-                <td style={{padding:"4px 6px",color:txt}}>{r.patientName||"—"}</td>
-                <td style={{padding:"4px 6px",color:txt}}>{r.equipment||"—"}</td>
-                <td style={{padding:"4px 6px",color:txt}}>{r.startDate||"—"}</td>
-                <td style={{padding:"4px 6px",color:txt}}>{r.endDate||"—"}</td>
-                <td style={{padding:"4px 6px",color:txt}}>{r.amount||"—"}</td>
-                <td style={{padding:"4px 6px",color:txt}}>{r.amountPaid||"—"}</td>
-              </tr>)}
-              {parsed.length>6&&<tr><td colSpan={6} style={{padding:"4px 6px",color:sub,fontStyle:"italic"}}>...i {parsed.length-6} więcej</td></tr>}
-            </tbody>
-          </table>
-        </div>}
-      </div>;
-    }
-
     function SecuritySection({dk,txt,sub,Row,Sec}) {
       const sec=useContext(SecCtx);
       const [wiz,setWiz]=useState(null);           // null | {step,...}
@@ -288,9 +176,6 @@
         <Sec title="WYGLĄD">
           <Row label="Tryb ciemny"><Toggle val={dark} onToggle={()=>setDark(d=>!d)}/></Row>
           <Row label="Tryb demo (ukryj dane)"><Toggle val={demo} onToggle={()=>setDemo(d=>!d)}/></Row>
-        </Sec>
-        <Sec title="IMPORT ZALEGŁYCH WYPOŻYCZEŃ">
-          <ImportCSV setRentals={setRentals} setFinances={setFinances} dk={dk} txt={txt} sub={sub}/>
         </Sec>
         <Sec title="DANE">
           <Row label="Eksport kopii zapasowej">
