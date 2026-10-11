@@ -137,34 +137,6 @@ function ClockDisplay() {
   return <span>{t}</span>;
 }
 
-const ICS_URL = "https://xqjrlzsdfyjeajfkathx.supabase.co/functions/v1/ics";
-function openICS(arg) {
-  const p = new URLSearchParams();
-  p.set("title", arg.summary||"");
-  const hasTime = (arg.dtStart||"").includes("T");
-  if(hasTime) {
-    const [d,t] = arg.dtStart.split("T");
-    p.set("date", d); p.set("time", t.slice(0,5));
-    if(arg.dtEnd&&arg.dtEnd.includes("T")){const[d2,t2]=arg.dtEnd.split("T");p.set("endDate",d2);p.set("endTime",t2.slice(0,5));}
-  } else {
-    p.set("date", arg.dtStart||""); p.set("allDay","1");
-  }
-  if(arg.description) p.set("desc", arg.description);
-  // Use <a> click — Safari handles text/calendar from real URL correctly
-  const a = document.createElement("a");
-  a.href = ICS_URL+"?"+p.toString();
-  a.rel = "noopener";
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(()=>document.body.removeChild(a), 1000);
-}
-function makeICS(summary, dtStart, dtEnd, description, allDay) {
-  return {summary, dtStart, dtEnd, description, allDay};
-}
-function openGCal(summary, dtStart, dtEnd, description, allDay) {
-  openICS({summary, dtStart, dtEnd, description, allDay});
-}
-
 function getHolidays(year) {
   const a=year%19,b=Math.floor(year/100),c=year%100;
   const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);

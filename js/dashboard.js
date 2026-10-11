@@ -199,7 +199,6 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
             <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Wydarzenie":ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{maskText(demo,ev.notes)}</div>}</div>
           </div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
-            <button onClick={()=>openICS(makeICS(ev.title, ev.date, ev.date, ev.notes||"", true))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
             <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",address:ev.address||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
             <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
           </div>
@@ -242,7 +241,6 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{maskAmt(demo,v.price)} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(v)}</Badge></div>
-            <button onClick={()=>openICS(makeICS(v.patientName+" – "+v.type, v.date+"T"+v.time, v.date+"T"+(()=>{const[h,m]=v.time.split(":").map(Number);const e=h*60+m+60;return String(Math.floor(e/60)%24).padStart(2,"0")+":"+String(e%60).padStart(2,"0");})(), "Cena: "+v.price+" zł"+(addr?"\\nAdres: "+addr:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px",color:"#7A8FA6"}}>📅</button>
           </div>
         </div>;}
         if(item._kind==="event"){const ev=item.e;return <div key={"e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
@@ -251,7 +249,6 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
             <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {demo?"Wydarzenie":ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{maskText(demo,ev.notes)}</div>}</div>
           </div>
           <div style={{display:"flex",gap:4,alignItems:"center"}}>
-            <button onClick={()=>openICS(makeICS(ev.title, ev.date+"T"+ev.time, ev.date+"T"+ev.time, ev.notes||"", false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>
             <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",address:ev.address||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
             <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
           </div>
@@ -283,7 +280,6 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
                 {sub&&<Badge color={color}>{sub}</Badge>}
                 {ev.r.status==="zakończone"&&<Badge color="#3DAA72">✅ Zwrócono</Badge>}
               </div>
-              {ev.type!=="cyclePreview"&&<button onClick={()=>openICS(makeICS(label+" – "+ev.r.patientName+" ("+(ev.r.equipment||"Do ustalenia")+")", icsStart, icsEnd, "Tel: "+(ev.r.phone||"brak")+(ev.r.address?"\\nAdres: "+ev.r.address:""), false))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>📅</button>}
             </div>
           </div>;
         }

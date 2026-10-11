@@ -609,15 +609,6 @@
                 }}><Ico d={I.chk} s={16} c="#fff"/> Sprzęt zwrócony — zakończ</Btn>
               </>}
               {r.status==="zakończone"&&<Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"aktywne"}:x))}>↩️ Cofnij zakończenie</Btn>}
-              {!r.renewable&&(()=>{
-                const lastExt=(r.extensions||[]).at(-1);
-                const dtStart=r.startDate+"T"+(r.startTime||"10:00")+":00";
-                const endDate=lastExt?lastExt.newEndDate:r.endDate;
-                const endTime=lastExt?(lastExt.endTime||"10:00"):(r.endTime||"10:00");
-                const dtEnd=endDate?""+endDate+"T"+endTime+":00":dtStart;
-                const desc="Tel: "+(r.phone||"brak")+(r.address?"\nAdres: "+r.address:"")+(r.notes?"\nNotatki: "+r.notes:"");
-                return <Btn variant="secondary" style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>openGCal("Wypożyczenie \u2013 "+r.patientName+" ("+r.equipment+")", dtStart, dtEnd, desc, false)}>📅 Dodaj do kalendarza</Btn>;
-              })()}
               {(()=>{
                 const tpl=(settings&&settings.reviewTemplate)||"Hej, dziękuję za wypożyczenie! Będę wdzięczny za opinię:";
                 const msg=tpl;
