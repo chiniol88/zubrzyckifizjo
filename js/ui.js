@@ -166,3 +166,22 @@ function getHolidays(year) {
   ]);
   return holidays;
 }
+
+// ── Bezpiecznik jednej zakładki ──────────────────────────────────────────────
+// Błąd w wyświetlaniu jednej zakładki (np. przez uszkodzony wpis) nie zabiera reszty apki:
+// nawigacja zostaje, a zakładka pokazuje komunikat. Dane w bazie nie są ruszane.
+class TabBoundary extends React.Component {
+  constructor(props){super(props);this.state={err:null};}
+  static getDerivedStateFromError(e){return {err:e};}
+  componentDidCatch(e){try{console.error("Błąd zakładki "+(this.props.name||""),e);}catch{}}
+  render(){
+    if(!this.state.err)return this.props.children;
+    const msg=String((this.state.err&&this.state.err.message)||this.state.err);
+    return <div style={{padding:20,margin:16,background:"#FEE2E2",border:"1.5px solid #E05C5C",borderRadius:14,color:"#1C2B3A"}}>
+      <div style={{fontWeight:700,fontSize:16,color:"#B3261E",marginBottom:8}}>Ta zakładka nie mogła się wyświetlić</div>
+      <div style={{fontSize:14,lineHeight:1.5,marginBottom:10}}>Prawdopodobnie któryś zapis ma uszkodzone dane. Nic nie zostało usunięte ani zmienione, a pozostałe zakładki działają.</div>
+      <div style={{fontSize:12,fontFamily:"monospace",color:"#4E5D6E",wordBreak:"break-all",marginBottom:12}}>{msg}</div>
+      <button onClick={()=>this.setState({err:null})} style={{background:"#3E6FB0",color:"#fff",border:"none",borderRadius:10,padding:"9px 16px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Spróbuj ponownie</button>
+    </div>;
+  }
+}

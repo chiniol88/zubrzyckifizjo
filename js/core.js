@@ -161,6 +161,33 @@ const allowShrinkFor=ms=>{_allowShrinkUntil=Date.now()+ms;};
 const SHRINK_LABELS={"fizjo-visits":"wizyty","fizjo-patients":"pacjenci","fizjo-rentals":"wypożyczenia","fizjo-finances":"wpisy w finansach","fizjo-nfz":"sprawy wózków","fizjo-todos":"zadania","fizjo-events":"wydarzenia","fizjo-machines":"sztuki sprzętu"};
 const _shrinks=(prev,cur)=>Array.isArray(cur)&&(prev>=10?cur.length<=prev/2:prev>=3?cur.length===0:false);
 
+// ── USZKODZONE WPISY: jeden zły rekord nie może wywalać całej apki ────────────────
+// Czyścimy tylko w pamięci, przy wczytaniu z bazy i przy wczytaniu kopii: pusty wpis (null, {}, tekst) znika z listy,
+// a listy wpłat/cykli/przedłużeń i nazwisko pacjenta dostają bezpieczną wartość. Baza zmienia się dopiero przy
+// następnym zapisie tej listy przez użytkownika. Gdy cały zbiór nie jest listą, NIE zgadujemy (ok:false → apka
+// nic nie zapisuje i pokazuje ekran "Nie udało się wczytać danych").
+const FZ_LIST_KEYS=["fizjo-visits","fizjo-patients","fizjo-rentals","fizjo-finances","fizjo-nfz","fizjo-todos","fizjo-events","fizjo-machines"];
+const _isRec=x=>!!x&&typeof x==="object"&&!Array.isArray(x);
+const _recs=a=>{const f=a.filter(x=>_isRec(x)&&Object.keys(x).length>0);return f.length===a.length?a:f;};
+const _fixRental=r=>{
+  let o=r;
+  for(const k of ["payments","cycles","extensions"]){
+    if(!(k in r)||r[k]==null)continue;
+    const v=r[k],f=Array.isArray(v)?_recs(v):[];
+    if(f!==v){if(o===r)o={...r};o[k]=f;}
+  }
+  return o;
+};
+const _fixPatient=p=>typeof p.name==="string"?p:{...p,name:p.name==null?"":String(p.name)};
+function fzClean(key,v){
+  if(!FZ_LIST_KEYS.includes(key))return {ok:true,value:v};
+  if(!Array.isArray(v))return {ok:false};
+  let a=_recs(v);
+  const fix=key==="fizjo-rentals"?_fixRental:key==="fizjo-patients"?_fixPatient:null;
+  if(fix){let ch=false;const m=a.map(x=>{const y=fix(x);if(y!==x)ch=true;return y;});if(ch)a=m;}
+  return {ok:true,value:a};
+}
+
 function usePersistedState(key, initial, ready=true) {
   const [state, setState] = useState(initial);
   const [loaded, setLoaded] = useState(false);
@@ -182,10 +209,12 @@ function usePersistedState(key, initial, ready=true) {
     userChanged.current=false;
     initialLoadOk.current=false;
     let dead=false,timer=null;
-    dbGet(key).then(({data:v,ts,error})=>{
+    dbGet(key).then(({data:raw,ts,error})=>{
       if(dead)return;
-      if(error){
-        // Nie udało się wczytać: nie udajemy, że danych nie ma, niczego nie zapisujemy i próbujemy ponownie
+      let v=raw,bad=error;
+      if(!bad&&raw!==null){const c=fzClean(key,raw);if(c.ok)v=c.value;else bad=true;}
+      if(bad){
+        // Nie udało się wczytać (albo zbiór ma nieznany kształt): nie udajemy, że danych nie ma, niczego nie zapisujemy i próbujemy ponownie
         if(!_loadFailKeys.has(key)){_loadFailKeys.add(key);_notifyLoadError();}
         timer=setTimeout(()=>setRetry(n=>n+1),4000);
         return;
@@ -274,8 +303,11 @@ function usePersistedState(key, initial, ready=true) {
   // nie mamy lokalnej niezapisanej zmiany (nigdy nie nadpisuje czegoś co czeka na zapis)
   const pullFromServer=React.useCallback(()=>{
     if(userChanged.current)return;
-    dbGet(key).then(({data:v,ts})=>{
-      if(v===null||userChanged.current)return;
+    dbGet(key).then(({data:raw,ts})=>{
+      if(raw===null||userChanged.current)return;
+      const c=fzClean(key,raw);
+      if(!c.ok)return;
+      const v=c.value;
       try{
         if(JSON.stringify(v)!==JSON.stringify(stateRef.current)){
           setState(v);
@@ -318,7 +350,16 @@ function usePersistedState(key, initial, ready=true) {
     return()=>document.removeEventListener("visibilitychange",onVisible);
   },[loaded,ready]);
 
-  const setStateUser = React.useCallback((v)=>{userChanged.current=true;setState(v);},[]);
+  // Wartość podana wprost (np. z wczytanej kopii) przechodzi przez to samo czyszczenie co dane z bazy;
+  // zbiór o złym kształcie jest ignorowany (lepiej nic nie zmienić niż wywalić apkę)
+  const setStateUser = React.useCallback((v)=>{
+    if(typeof v!=="function"){
+      const c=fzClean(key,v);
+      if(!c.ok){try{console.warn("Pominięto zbiór o nieznanym kształcie:",key);}catch{}return;}
+      v=c.value;
+    }
+    userChanged.current=true;setState(v);
+  },[key]);
   return [state,setStateUser,loaded];
 }
 

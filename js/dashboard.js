@@ -4,6 +4,7 @@ function nextCycleEnd(r, today) {
   const lastDue=lastCycle?(lastCycle.dueDate||lastCycle.month+"-01"):null;
   if(lastCycle&&lastDue>=today) return {date:lastDue,cycle:lastCycle};
   let date=lastDue||r.startDate;
+  if(!date) return {date:null,cycle:null};
   while(date<today) date=nextCycleDueDate(date);
   return {date,cycle:null};
 }
@@ -34,7 +35,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
     const add=(dateStr,ev)=>{if(!m[dateStr])m[dateStr]=[];m[dateStr].push(ev);};
     const visibleMonths=[prevMonthStr,monthStr,nextMonthStr];
     rentals.forEach(r=>{
-      if(r.status==="zakończone"&&!visibleMonths.some(ms=>r.startDate.startsWith(ms))&&!visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))return;
+      if(r.status==="zakończone"&&!visibleMonths.some(ms=>(r.startDate||"").startsWith(ms))&&!visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))return;
       if(!r.renewable){
         if(visibleMonths.some(ms=>(r.startDate||"").startsWith(ms)))add(r.startDate,{type:"start",r});
         if(!r.plannedReturn&&visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))add(r.endDate,{type:"end",r});
@@ -48,7 +49,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
             add(cd,{type:"cycle",c,r});
           }
         });
-        if(visibleMonths.some(ms=>r.startDate.startsWith(ms))){
+        if(visibleMonths.some(ms=>(r.startDate||"").startsWith(ms))){
           add(r.startDate,{type:"start",r});
         }
         if(r.plannedReturn&&visibleMonths.some(ms=>r.plannedReturn.startsWith(ms))){
@@ -59,8 +60,8 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const activeCycles=(r.cycles||[]).filter(c=>!c.cancelled);
           const anchor=activeCycles.length?activeCycles.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a):null;
           const anchorDate=anchor?(anchor.dueDate||anchor.month+"-01"):r.startDate;
-          const previewDate=nextCycleDueDate(anchorDate);
-          if(!activeCycles.some(c=>(c.dueDate||c.month+"-01")===previewDate)&&visibleMonths.includes(previewDate.slice(0,7))){
+          const previewDate=anchorDate?nextCycleDueDate(anchorDate):null;
+          if(previewDate&&!activeCycles.some(c=>(c.dueDate||c.month+"-01")===previewDate)&&visibleMonths.includes(previewDate.slice(0,7))){
             add(previewDate,{type:"cyclePreview",r});
           }
         }
@@ -346,7 +347,7 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
   const upcoming = useMemo(()=>{
     const planned=rentals.filter(r=>r.status==="aktywne"&&r.plannedReturn&&!r.reserved).map(r=>({kind:"return",r,date:r.plannedReturn}));
     const szyny=rentals.filter(r=>r.status==="aktywne"&&r.endDate&&!r.renewable&&!r.reserved&&!r.plannedReturn).map(r=>({kind:"szyny",r,date:r.endDate}));
-    const cykle=rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved&&!r.plannedReturn).map(r=>({kind:"cykl",r,date:nextCycleEnd(r,today).date}));
+    const cykle=rentals.filter(r=>r.status==="aktywne"&&r.renewable&&!r.reserved&&!r.plannedReturn).map(r=>({kind:"cykl",r,date:nextCycleEnd(r,today).date})).filter(x=>x.date);
     return [...planned,...szyny,...cykle].sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10);
   },[rentals,today]);
 

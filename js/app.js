@@ -51,7 +51,7 @@
       const todayVisits=(visits||[]).filter(v=>v.date===todayLocal()).length;
       const unpaidCount=(rentals||[]).filter(r=>r.status==="aktywne"&&r.renewable&&(r.cycles||[]).some(c=>!c.paid&&!c.cancelled)).length;
 
-      const content = <>
+      const content = <TabBoundary key={tab} name={tab}>
         {tab==="dashboard"&&<Dashboard visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} allClients={allClients} goToRental={id=>goToRental(id,"dashboard")} onAddRental={goToAddRental} nfzCases={nfzCases} goToWozki={goToWozki} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} stock={stock} machines={machines} goToMagazyn={goToMagazyn}/>}
         {tab==="patients"&&<Patients patients={patients} setPatients={setPatients} visits={visits} setVisits={setVisits} finances={finances} setFinances={setFinances} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients} priv={{events,setEvents,todos,setTodos,stock,setStock,machines,setMachines,budget,setBudget,wealth,setWealth}}/>}
         {tab==="rentals"&&<Rentals key={dlRental??0} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} patients={patients} setPatients={setPatients} nfzCases={nfzCases} setNfzCases={setNfzCases} allClients={allClients} initialDetail={dlRental} backLabel={dlBackLabel} onDetailClosed={()=>{setDlRental(null);setDlBackLabel("Wypożyczalnia");setDlReturnTab("rentals");setTab(dlReturnTab);}} initialAddDate={addRentalDate} onAddDateHandled={()=>setAddRentalDate(null)} rentalsView={rentalsView} setRentalsView={setRentalsView} stock={stock} setStock={setStock} settings={settings}/>}
@@ -59,7 +59,7 @@
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} allClients={allClients}/>}
         {tab==="magazyn"&&<Magazyn rentals={rentals} setRentals={setRentals} machines={machines} setMachines={setMachines} stock={stock} setStock={setStock} setFinances={setFinances} goToRental={id=>goToRental(id,"magazyn")}/>}
         {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
-      </>;
+      </TabBoundary>;
 
       if(desk) {
         const sb=dk?"#0A1220":"#0E1B30";

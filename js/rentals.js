@@ -33,7 +33,7 @@
       const [cy,cmn]=cm.split("-").map(Number);
       const startDay=r.startDate.split("-")[2]; // e.g. "08"
       let y=sy,m=sm;
-      while(y<cy||(y===cy&&m<=cmn)){
+      while((y<cy||(y===cy&&m<=cmn))&&months.length<600){
         const mStr=y+"-"+String(m).padStart(2,"0");
         // paidDate = same day as startDate but capped to last day of that month
         const lastDay=new Date(y,m,0).getDate();
@@ -439,7 +439,7 @@
                 <div style={{borderTop:"1px solid #D9E2F0",paddingTop:12}}>
                   {r.renewable ? <>
                     <SectionLabel>Cykle miesięczne</SectionLabel>
-                    {(r.cycles||[]).length===0&&r.startDate<todayLocal().slice(0,7)
+                    {(r.cycles||[]).length===0&&r.startDate&&r.startDate<todayLocal().slice(0,7)
                       ? <HistoryFill r={r} setRentals={setRentals} setFinances={setFinances}/>
                       : <>
                           {(r.cycles||[]).length===0&&<div style={{fontSize:14,color:"#7A8FA6",textAlign:"center",padding:"12px 0"}}>Brak cykli — dodaj pierwszy okres poniżej</div>}
