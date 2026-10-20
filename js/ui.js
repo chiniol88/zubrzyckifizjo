@@ -83,14 +83,15 @@ function Sel({label,value,onChange,options}) {
     </select>
   </div>;
 }
-function TimeSel({label,value,onChange}) {
+function TimeSel({label,value,onChange,allowEmpty}) {
   const dk=useContext(DarkCtx);
   const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
   const opts=[];
   for(let h=0;h<24;h++)for(let m=0;m<60;m+=5){const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");opts.push(hh+":"+mm);}
   return <div style={{marginBottom:14}}>
     {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
-    <select value={value||"10:00"} onChange={e=>onChange(e.target.value)} style={s}>
+    <select value={allowEmpty?(value||""):(value||"10:00")} onChange={e=>onChange(e.target.value)} style={s}>
+      {allowEmpty&&<option value="">— brak —</option>}
       {opts.map(o=><option key={o} value={o}>{o}</option>)}
     </select>
   </div>;

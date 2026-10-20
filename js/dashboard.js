@@ -9,6 +9,38 @@ function nextCycleEnd(r, today) {
   return {date,cycle:null};
 }
 
+// ── Wydarzenia: zwykłe i cykliczne co tydzień (np. zajęcia dzieci) ──────────────────────────────
+// Rekord wydarzenia: {id,title,date,allDay,time,endTime,notes,address, cat:"dzieci"|"", repeat:{days:[getDay],until}|null, skip:[daty]}.
+// Wydarzenie cykliczne to JEDEN rekord (date = pierwszy dzień); w kalendarzu rozwijamy go na kolejne dni.
+const EVT_DAYS=[{d:1,l:"Pn"},{d:2,l:"Wt"},{d:3,l:"Śr"},{d:4,l:"Cz"},{d:5,l:"Pt"},{d:6,l:"Sb"},{d:0,l:"Nd"}];
+const EVT_KID_COLOR="#E0559B";
+const evtIsDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d||"");
+const evtBlank=date=>({title:"",date:date||"",allDay:false,time:"10:00",endTime:"",notes:"",address:"",cat:"",repeat:false,days:[],until:"",skip:[],editId:null});
+const evtFromRecord=e=>{
+  const rep=e&&e.repeat&&Array.isArray(e.repeat.days)&&e.repeat.days.length?e.repeat:null;
+  return {title:e.title||"",date:e.date||"",allDay:!!e.allDay,time:e.time||"10:00",endTime:e.endTime||"",notes:e.notes||"",address:e.address||"",cat:e.cat||"",
+    repeat:!!rep,days:rep?[...rep.days]:[],until:rep&&evtIsDate(rep.until)?rep.until:"",skip:Array.isArray(e.skip)?e.skip.filter(evtIsDate):[],editId:e.id};
+};
+const evtToRecord=f=>({title:f.title.trim(),date:f.date,allDay:f.allDay,time:f.allDay?"":f.time,endTime:(f.allDay||!f.endTime)?"":f.endTime,notes:f.notes,address:f.address||"",cat:f.cat||"",
+  repeat:f.repeat&&f.days.length?{days:[...f.days].sort((a,b)=>a-b),until:evtIsDate(f.until)?f.until:""}:null,skip:f.repeat&&f.days.length?(f.skip||[]):[]});
+// wydarzenia z zakresu dat [from,to] pogrupowane po dniu; cykliczne rozwinięte (każde wystąpienie ma _series:true)
+function evtByDay(events,from,to){
+  const m={},add=(d,e)=>{(m[d]=m[d]||[]).push(e);};
+  (events||[]).forEach(e=>{
+    if(!e||typeof e!=="object"||!evtIsDate(e.date))return;
+    const rep=e.repeat&&Array.isArray(e.repeat.days)&&e.repeat.days.length?e.repeat:null;
+    if(!rep){if(e.date>=from&&e.date<=to)add(e.date,e);return;}
+    const until=evtIsDate(rep.until)?rep.until:"",skip=Array.isArray(e.skip)?e.skip:[];
+    let d=e.date>from?e.date:from;
+    for(let n=0;n<400&&d<=to;n++){
+      if(until&&d>until)break;
+      if(rep.days.includes(new Date(d+"T12:00:00").getDay())&&!skip.includes(d))add(d,{...e,date:d,_series:true});
+      d=addDays(d,1);
+    }
+  });
+  return m;
+}
+
 function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,onAddRental,events,setEvents,patients}) {
   const dk=useContext(DarkCtx);
   const demo=useDemo();
@@ -16,7 +48,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
   const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
   const [openDay,setOpenDay]=useState(()=>today);
   const [showEvtModal,setShowEvtModal]=useState(false);
-  const [evtForm,setEvtForm]=useState({title:"",date:"",allDay:false,time:"10:00",notes:"",address:"",editId:null});
+  const [evtForm,setEvtForm]=useState(()=>evtBlank(""));
   const [quickRental,setQuickRental]=useState(null);
 
   const daysInMonth=new Date(calYear,calMonth,0).getDate();
@@ -81,23 +113,46 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
   },[visits,monthStr,prevMonthStr,nextMonthStr]);
 
   const eventsByDay=useMemo(()=>{
-    const m={};
-    const visibleMonths=[prevMonthStr,monthStr,nextMonthStr];
-    (events||[]).filter(e=>e.date&&visibleMonths.some(ms=>e.date.startsWith(ms))).forEach(e=>{
-      if(!m[e.date])m[e.date]=[];
-      m[e.date].push(e);
-    });
-    return m;
+    return evtByDay(events,prevMonthStr+"-01",nextMonthStr+"-31");
   },[events,monthStr,prevMonthStr,nextMonthStr]);
 
   const saveEvt=()=>{
     if(!evtForm.title.trim()||!evtForm.date)return;
+    if(evtForm.repeat&&evtForm.days.length===0){alert("Wybierz co najmniej jeden dzień tygodnia.");return;}
+    if(evtForm.repeat&&evtIsDate(evtForm.until)&&evtForm.until<evtForm.date){alert("Data końca powtarzania jest wcześniejsza niż data początku — popraw datę.");return;}
+    if(!evtForm.allDay&&evtForm.endTime&&evtForm.endTime<=evtForm.time){alert("Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia.");return;}
+    const rec=evtToRecord(evtForm);
     if(evtForm.editId){
-      setEvents(es=>(es||[]).map(e=>e.id===evtForm.editId?{...e,title:evtForm.title.trim(),date:evtForm.date,allDay:evtForm.allDay,time:evtForm.allDay?"":evtForm.time,notes:evtForm.notes,address:evtForm.address||""}:e));
+      setEvents(es=>(es||[]).map(e=>e&&e.id===evtForm.editId?{...e,...rec}:e));
     } else {
-      setEvents(es=>[...(es||[]),{id:Date.now(),title:evtForm.title.trim(),date:evtForm.date,allDay:evtForm.allDay,time:evtForm.allDay?"":evtForm.time,notes:evtForm.notes,address:evtForm.address||""}]);
+      setEvents(es=>[...(es||[]),{id:Date.now(),...rec}]);
     }
     setShowEvtModal(false);
+  };
+
+  // jeden wiersz wydarzenia (zwykłego albo wystąpienia serii) w liście dnia
+  const renderEvt=(ev,timed)=>{
+    const kid=ev.cat==="dzieci";
+    const base=(events||[]).find(x=>x&&x.id===ev.id)||ev;
+    return <div key={(timed?"e":"ad-e")+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
+        <div style={{width:6,height:6,borderRadius:timed?"50%":2,background:kid?EVT_KID_COLOR:"#F4A261",flexShrink:0}}/>
+        <div>
+          <div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>
+            {timed?(ev.time||"")+(ev.endTime?"–"+ev.endTime:"")+" · ":"🗓 "}{demo?"Wydarzenie":ev.title}
+            {kid&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:"#fff",background:EVT_KID_COLOR,borderRadius:6,padding:"1px 6px",verticalAlign:"middle"}}>Dzieci</span>}
+            {ev._series&&<span title="Powtarza się co tydzień" style={{marginLeft:6,fontSize:12}}>🔁</span>}
+          </div>
+          {ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{maskText(demo,ev.notes)}</div>}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+        <button onClick={()=>{setEvtForm(evtFromRecord(base));setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
+        {ev._series
+          ? <button title="Pomiń tylko ten dzień" onClick={()=>{if(!window.confirm("Pominąć to wydarzenie tylko w dniu "+cpmDate(ev.date)+"?\n\nPozostałe dni serii zostają."))return;setEvents(es=>(es||[]).map(e=>e&&e.id===ev.id?{...e,skip:[...(Array.isArray(e.skip)?e.skip:[]),ev.date]}:e));}} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#E05C5C",padding:"2px 4px",fontFamily:"inherit",fontWeight:700}}>pomiń</button>
+          : <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>}
+      </div>
+    </div>;
   };
 
   const DOW=["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
@@ -163,7 +218,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
             <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
               {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#3DAA72"}}/>)}
               {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
-              {ec>0&&[...Array(Math.min(ec,2))].map((_,j)=><div key={"e"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#F4A261"}}/>)}
+              {ec>0&&(eventsByDay[dateStr]||[]).slice(0,2).map((ev,j)=><div key={"e"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":ev.cat==="dzieci"?EVT_KID_COLOR:"#F4A261"}}/>)}
             </div>
           </div>;
         })}
@@ -179,7 +234,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
         <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>{setEvtForm({title:"",date:openDateStr,allDay:false,time:"10:00",notes:"",address:"",editId:null});setShowEvtModal(true);}} style={{background:"#FFF4E8",color:"#F4A261",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wydarzenie</button>
+          <button onClick={()=>{setEvtForm(evtBlank(openDateStr));setShowEvtModal(true);}} style={{background:"#FFF4E8",color:"#F4A261",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wydarzenie</button>
           <button onClick={()=>onAddVisit(openDateStr)} style={{background:"#3DAA72",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
           {onAddRental&&<button onClick={()=>onAddRental(openDateStr)} style={{background:"#7C6AF4",color:"#fff",border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Sprzęt</button>}
         </div>
@@ -194,16 +249,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         <div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak zdarzeń tego dnia</div>}
 
       {dayAllDay.map((item,idx)=>{
-        if(item._kind==="event"){const ev=item.e;return <div key={"ad-e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
-            <div style={{width:6,height:6,borderRadius:2,background:"#F4A261",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>🗓 {demo?"Wydarzenie":ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{maskText(demo,ev.notes)}</div>}</div>
-          </div>
-          <div style={{display:"flex",gap:4,alignItems:"center"}}>
-            <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",address:ev.address||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
-            <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
-          </div>
-        </div>;}
+        if(item._kind==="event")return renderEvt(item.e,false);
         if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"ad-v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
             <div style={{width:6,height:6,borderRadius:2,background:"#3DAA72",flexShrink:0}}/>
@@ -244,16 +290,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
             <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{maskAmt(demo,v.price)} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(v)}</Badge></div>
           </div>
         </div>;}
-        if(item._kind==="event"){const ev=item.e;return <div key={"e"+ev.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
-            <div style={{width:6,height:6,borderRadius:"50%",background:"#F4A261",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{ev.time} · {demo?"Wydarzenie":ev.title}</div>{ev.notes&&<div style={{fontSize:12,color:"#7A8FA6",whiteSpace:"pre-wrap"}}>{maskText(demo,ev.notes)}</div>}</div>
-          </div>
-          <div style={{display:"flex",gap:4,alignItems:"center"}}>
-            <button onClick={()=>{setEvtForm({title:ev.title,date:ev.date,allDay:ev.allDay,time:ev.time||"10:00",notes:ev.notes||"",address:ev.address||"",editId:ev.id});setShowEvtModal(true);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#7A8FA6",padding:"2px 4px"}}>✏️</button>
-            <button onClick={()=>setEvents(es=>(es||[]).filter(e=>e.id!==ev.id))} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#E05C5C",padding:"2px 4px"}}>×</button>
-          </div>
-        </div>;}
+        if(item._kind==="event")return renderEvt(item.e,true);
         if(item._kind==="rental"){const ev=item.ev;
           const label=ev.type==="start"?"📦 Wydanie":ev.type==="end"?"🔙 Zwrot":ev.type==="plannedReturn"?"🔙 Planowany odbiór":ev.type==="cycle"?"💳 Opłata cykliczna":ev.type==="cyclePreview"?"👀 Podgląd":"🔄 Opłata";
           const isEndType2=ev.type==="end"||ev.type==="plannedReturn";
@@ -316,17 +353,45 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
 
     {showEvtModal&&<Modal title={evtForm.editId?"Edytuj wydarzenie":"Nowe wydarzenie"} onClose={()=>setShowEvtModal(false)}>
       <Inp label="Tytuł *" value={evtForm.title} onChange={v=>setEvtForm(f=>({...f,title:v}))} placeholder="np. Konferencja, Urlop..."/>
-      <Inp label="Data *" value={evtForm.date} onChange={v=>setEvtForm(f=>({...f,date:v}))} type="date"/>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Rodzaj</div>
+        <div style={{display:"flex",gap:8}}>
+          {[{v:"",l:"Zwykłe",c:"#F4A261",bg:"#FFF4E8"},{v:"dzieci",l:"👧 Zajęcia dzieci",c:EVT_KID_COLOR,bg:"#FDEBF4"}].map(o=><button key={o.v||"zwykle"} type="button" onClick={()=>setEvtForm(f=>({...f,cat:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${(evtForm.cat||"")===o.v?o.c:"#D9E2F0"}`,background:(evtForm.cat||"")===o.v?o.bg:"#fff",color:(evtForm.cat||"")===o.v?o.c:"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}
+        </div>
+      </div>
+      <Inp label={evtForm.repeat?"Od dnia *":"Data *"} value={evtForm.date} onChange={v=>setEvtForm(f=>({...f,date:v}))} type="date"/>
       <div style={{marginBottom:14}}>
         <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
         <div style={{display:"flex",gap:8}}>
           {[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEvtForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${evtForm.allDay===o.v?"#F4A261":"#D9E2F0"}`,background:evtForm.allDay===o.v?"#FFF4E8":"#fff",color:evtForm.allDay===o.v?"#F4A261":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}
         </div>
       </div>
-      {!evtForm.allDay&&<TimeSel label="Godzina" value={evtForm.time||"10:00"} onChange={v=>setEvtForm(f=>({...f,time:v}))}/>}
+      {!evtForm.allDay&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <TimeSel label="Od godziny" value={evtForm.time||"10:00"} onChange={v=>setEvtForm(f=>({...f,time:v}))}/>
+        <TimeSel label="Do godziny" allowEmpty value={evtForm.endTime||""} onChange={v=>setEvtForm(f=>({...f,endTime:v}))}/>
+      </div>}
+      <div style={{marginBottom:14,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${evtForm.repeat?EVT_KID_COLOR:"#D9E2F0"}`,background:evtForm.repeat?(dk?"#2A1A24":"#FFF7FB"):"transparent"}}>
+        <button type="button" onClick={()=>setEvtForm(f=>f.repeat?{...f,repeat:false}:{...f,repeat:true,days:f.days.length?f.days:(evtIsDate(f.date)?[new Date(f.date+"T12:00:00").getDay()]:[])})} style={{display:"flex",alignItems:"center",gap:8,background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:evtForm.repeat?EVT_KID_COLOR:"#7A8FA6"}}>
+          <span style={{width:20,height:20,borderRadius:6,border:`2px solid ${evtForm.repeat?EVT_KID_COLOR:"#B8C6D9"}`,background:evtForm.repeat?EVT_KID_COLOR:"transparent",color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,lineHeight:1}}>{evtForm.repeat?"✓":""}</span>
+          🔁 Powtarzaj co tydzień
+        </button>
+        {evtForm.repeat&&<div style={{marginTop:12}}>
+          <div style={{display:"flex",gap:5,marginBottom:12}}>
+            {EVT_DAYS.map(o=>{const on=evtForm.days.includes(o.d);return <button key={o.d} type="button" onClick={()=>setEvtForm(f=>({...f,days:f.days.includes(o.d)?f.days.filter(x=>x!==o.d):[...f.days,o.d]}))} style={{flex:1,padding:"9px 0",borderRadius:10,border:`1.5px solid ${on?EVT_KID_COLOR:"#D9E2F0"}`,background:on?EVT_KID_COLOR:"#fff",color:on?"#fff":"#7A8FA6",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>;})}
+          </div>
+          <Inp label="Powtarzaj do dnia (puste = bez końca)" value={evtForm.until||""} onChange={v=>setEvtForm(f=>({...f,until:v}))} type="date"/>
+          {evtForm.skip.length>0&&<div style={{marginBottom:4}}>
+            <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>Pominięte dni</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {[...evtForm.skip].sort().map(d=><button key={d} type="button" title="Przywróć ten dzień" onClick={()=>setEvtForm(f=>({...f,skip:f.skip.filter(x=>x!==d)}))} style={{background:"#EFF3FA",border:"none",borderRadius:8,padding:"5px 9px",fontSize:12,color:"#3E5578",cursor:"pointer",fontFamily:"inherit"}}>{cpmDate(d)} ×</button>)}
+            </div>
+          </div>}
+        </div>}
+      </div>
       <Txa label="Notatka" value={evtForm.notes||""} onChange={v=>setEvtForm(f=>({...f,notes:v}))} rows={2} placeholder="Opcjonalnie..."/>
       <Inp label="Adres" value={evtForm.address||""} onChange={v=>setEvtForm(f=>({...f,address:v}))} placeholder="Opcjonalnie..."/>
-      <Btn disabled={!evtForm.title.trim()||!evtForm.date} style={{width:"100%",justifyContent:"center"}} onClick={saveEvt}>{evtForm.editId?"Zapisz zmiany":"Dodaj wydarzenie"}</Btn>
+      <Btn disabled={!evtForm.title.trim()||!evtForm.date||(evtForm.repeat&&evtForm.days.length===0)} style={{width:"100%",justifyContent:"center"}} onClick={saveEvt}>{evtForm.editId?"Zapisz zmiany":"Dodaj wydarzenie"}</Btn>
+      {evtForm.editId&&evtForm.repeat&&<Btn variant="danger" style={{width:"100%",justifyContent:"center",marginTop:10}} onClick={()=>{if(!window.confirm("Usunąć całą serię wydarzeń (wszystkie dni)?"))return;setEvents(es=>(es||[]).filter(e=>!e||e.id!==evtForm.editId));setShowEvtModal(false);}}>🗑 Usuń całą serię</Btn>}
     </Modal>}
   </div>;
 }

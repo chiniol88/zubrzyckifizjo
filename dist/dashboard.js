@@ -1,22 +1,22 @@
 // Plik wygenerowany z js/dashboard.js przez build.py - nie edytowac recznie.
 "use strict";
 
-function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
-function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, e) { if ("object" != _typeof(t) || !t) return t; var r; if ("undefined" != typeof Symbol && void 0 !== (r = t[Symbol.toPrimitive])) { var i = r.call(t, e || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === e ? String : Number)(t); }
-function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
-function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function nextCycleEnd(r, today) {
   var activeCycles = (r.cycles || []).filter(function (c) {
     return !c.cancelled;
@@ -39,6 +39,117 @@ function nextCycleEnd(r, today) {
     date: date,
     cycle: null
   };
+}
+
+// ── Wydarzenia: zwykłe i cykliczne co tydzień (np. zajęcia dzieci) ──────────────────────────────
+// Rekord wydarzenia: {id,title,date,allDay,time,endTime,notes,address, cat:"dzieci"|"", repeat:{days:[getDay],until}|null, skip:[daty]}.
+// Wydarzenie cykliczne to JEDEN rekord (date = pierwszy dzień); w kalendarzu rozwijamy go na kolejne dni.
+var EVT_DAYS = [{
+  d: 1,
+  l: "Pn"
+}, {
+  d: 2,
+  l: "Wt"
+}, {
+  d: 3,
+  l: "Śr"
+}, {
+  d: 4,
+  l: "Cz"
+}, {
+  d: 5,
+  l: "Pt"
+}, {
+  d: 6,
+  l: "Sb"
+}, {
+  d: 0,
+  l: "Nd"
+}];
+var EVT_KID_COLOR = "#E0559B";
+var evtIsDate = function evtIsDate(d) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(d || "");
+};
+var evtBlank = function evtBlank(date) {
+  return {
+    title: "",
+    date: date || "",
+    allDay: false,
+    time: "10:00",
+    endTime: "",
+    notes: "",
+    address: "",
+    cat: "",
+    repeat: false,
+    days: [],
+    until: "",
+    skip: [],
+    editId: null
+  };
+};
+var evtFromRecord = function evtFromRecord(e) {
+  var rep = e && e.repeat && Array.isArray(e.repeat.days) && e.repeat.days.length ? e.repeat : null;
+  return {
+    title: e.title || "",
+    date: e.date || "",
+    allDay: !!e.allDay,
+    time: e.time || "10:00",
+    endTime: e.endTime || "",
+    notes: e.notes || "",
+    address: e.address || "",
+    cat: e.cat || "",
+    repeat: !!rep,
+    days: rep ? _toConsumableArray(rep.days) : [],
+    until: rep && evtIsDate(rep.until) ? rep.until : "",
+    skip: Array.isArray(e.skip) ? e.skip.filter(evtIsDate) : [],
+    editId: e.id
+  };
+};
+var evtToRecord = function evtToRecord(f) {
+  return {
+    title: f.title.trim(),
+    date: f.date,
+    allDay: f.allDay,
+    time: f.allDay ? "" : f.time,
+    endTime: f.allDay || !f.endTime ? "" : f.endTime,
+    notes: f.notes,
+    address: f.address || "",
+    cat: f.cat || "",
+    repeat: f.repeat && f.days.length ? {
+      days: _toConsumableArray(f.days).sort(function (a, b) {
+        return a - b;
+      }),
+      until: evtIsDate(f.until) ? f.until : ""
+    } : null,
+    skip: f.repeat && f.days.length ? f.skip || [] : []
+  };
+};
+// wydarzenia z zakresu dat [from,to] pogrupowane po dniu; cykliczne rozwinięte (każde wystąpienie ma _series:true)
+function evtByDay(events, from, to) {
+  var m = {},
+    add = function add(d, e) {
+      (m[d] = m[d] || []).push(e);
+    };
+  (events || []).forEach(function (e) {
+    if (!e || _typeof(e) !== "object" || !evtIsDate(e.date)) return;
+    var rep = e.repeat && Array.isArray(e.repeat.days) && e.repeat.days.length ? e.repeat : null;
+    if (!rep) {
+      if (e.date >= from && e.date <= to) add(e.date, e);
+      return;
+    }
+    var until = evtIsDate(rep.until) ? rep.until : "",
+      skip = Array.isArray(e.skip) ? e.skip : [];
+    var d = e.date > from ? e.date : from;
+    for (var n = 0; n < 400 && d <= to; n++) {
+      if (until && d > until) break;
+      if (rep.days.includes(new Date(d + "T12:00:00").getDay()) && !skip.includes(d)) add(d, _objectSpread(_objectSpread({}, e), {}, {
+        date: d,
+        _series: true
+      }));
+      d = addDays(d, 1);
+    }
+  });
+  return m;
 }
 function MiniCalendar(_ref) {
   var visits = _ref.visits,
@@ -75,14 +186,8 @@ function MiniCalendar(_ref) {
     _useState8 = _slicedToArray(_useState7, 2),
     showEvtModal = _useState8[0],
     setShowEvtModal = _useState8[1];
-  var _useState9 = useState({
-      title: "",
-      date: "",
-      allDay: false,
-      time: "10:00",
-      notes: "",
-      address: "",
-      editId: null
+  var _useState9 = useState(function () {
+      return evtBlank("");
     }),
     _useState0 = _slicedToArray(_useState9, 2),
     evtForm = _useState0[0],
@@ -220,47 +325,156 @@ function MiniCalendar(_ref) {
     return m;
   }, [visits, monthStr, prevMonthStr, nextMonthStr]);
   var eventsByDay = useMemo(function () {
-    var m = {};
-    var visibleMonths = [prevMonthStr, monthStr, nextMonthStr];
-    (events || []).filter(function (e) {
-      return e.date && visibleMonths.some(function (ms) {
-        return e.date.startsWith(ms);
-      });
-    }).forEach(function (e) {
-      if (!m[e.date]) m[e.date] = [];
-      m[e.date].push(e);
-    });
-    return m;
+    return evtByDay(events, prevMonthStr + "-01", nextMonthStr + "-31");
   }, [events, monthStr, prevMonthStr, nextMonthStr]);
   var saveEvt = function saveEvt() {
     if (!evtForm.title.trim() || !evtForm.date) return;
+    if (evtForm.repeat && evtForm.days.length === 0) {
+      alert("Wybierz co najmniej jeden dzień tygodnia.");
+      return;
+    }
+    if (evtForm.repeat && evtIsDate(evtForm.until) && evtForm.until < evtForm.date) {
+      alert("Data końca powtarzania jest wcześniejsza niż data początku — popraw datę.");
+      return;
+    }
+    if (!evtForm.allDay && evtForm.endTime && evtForm.endTime <= evtForm.time) {
+      alert("Godzina zakończenia musi być późniejsza niż godzina rozpoczęcia.");
+      return;
+    }
+    var rec = evtToRecord(evtForm);
     if (evtForm.editId) {
       setEvents(function (es) {
         return (es || []).map(function (e) {
-          return e.id === evtForm.editId ? _objectSpread(_objectSpread({}, e), {}, {
-            title: evtForm.title.trim(),
-            date: evtForm.date,
-            allDay: evtForm.allDay,
-            time: evtForm.allDay ? "" : evtForm.time,
-            notes: evtForm.notes,
-            address: evtForm.address || ""
-          }) : e;
+          return e && e.id === evtForm.editId ? _objectSpread(_objectSpread({}, e), rec) : e;
         });
       });
     } else {
       setEvents(function (es) {
-        return [].concat(_toConsumableArray(es || []), [{
-          id: Date.now(),
-          title: evtForm.title.trim(),
-          date: evtForm.date,
-          allDay: evtForm.allDay,
-          time: evtForm.allDay ? "" : evtForm.time,
-          notes: evtForm.notes,
-          address: evtForm.address || ""
-        }]);
+        return [].concat(_toConsumableArray(es || []), [_objectSpread({
+          id: Date.now()
+        }, rec)]);
       });
     }
     setShowEvtModal(false);
+  };
+
+  // jeden wiersz wydarzenia (zwykłego albo wystąpienia serii) w liście dnia
+  var renderEvt = function renderEvt(ev, timed) {
+    var kid = ev.cat === "dzieci";
+    var base = (events || []).find(function (x) {
+      return x && x.id === ev.id;
+    }) || ev;
+    return /*#__PURE__*/React.createElement("div", {
+      key: (timed ? "e" : "ad-e") + ev.id,
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "9px 0",
+        borderBottom: "1px solid ".concat(dk ? "#2A3A56" : "#EFF3FA")
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 6,
+        height: 6,
+        borderRadius: timed ? "50%" : 2,
+        background: kid ? EVT_KID_COLOR : "#F4A261",
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 600,
+        fontSize: 14,
+        color: dk ? "#E8F5F5" : "#1C2B3A"
+      }
+    }, timed ? (ev.time || "") + (ev.endTime ? "–" + ev.endTime : "") + " · " : "🗓 ", demo ? "Wydarzenie" : ev.title, kid && /*#__PURE__*/React.createElement("span", {
+      style: {
+        marginLeft: 6,
+        fontSize: 10,
+        fontWeight: 700,
+        color: "#fff",
+        background: EVT_KID_COLOR,
+        borderRadius: 6,
+        padding: "1px 6px",
+        verticalAlign: "middle"
+      }
+    }, "Dzieci"), ev._series && /*#__PURE__*/React.createElement("span", {
+      title: "Powtarza si\u0119 co tydzie\u0144",
+      style: {
+        marginLeft: 6,
+        fontSize: 12
+      }
+    }, "\uD83D\uDD01")), ev.notes && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#7A8FA6",
+        whiteSpace: "pre-wrap"
+      }
+    }, maskText(demo, ev.notes)))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 4,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        setEvtForm(evtFromRecord(base));
+        setShowEvtModal(true);
+      },
+      style: {
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        fontSize: 14,
+        color: "#7A8FA6",
+        padding: "2px 4px"
+      }
+    }, "\u270F\uFE0F"), ev._series ? /*#__PURE__*/React.createElement("button", {
+      title: "Pomi\u0144 tylko ten dzie\u0144",
+      onClick: function onClick() {
+        if (!window.confirm("Pominąć to wydarzenie tylko w dniu " + cpmDate(ev.date) + "?\n\nPozostałe dni serii zostają.")) return;
+        setEvents(function (es) {
+          return (es || []).map(function (e) {
+            return e && e.id === ev.id ? _objectSpread(_objectSpread({}, e), {}, {
+              skip: [].concat(_toConsumableArray(Array.isArray(e.skip) ? e.skip : []), [ev.date])
+            }) : e;
+          });
+        });
+      },
+      style: {
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        fontSize: 13,
+        color: "#E05C5C",
+        padding: "2px 4px",
+        fontFamily: "inherit",
+        fontWeight: 700
+      }
+    }, "pomi\u0144") : /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return setEvents(function (es) {
+          return (es || []).filter(function (e) {
+            return e.id !== ev.id;
+          });
+        });
+      },
+      style: {
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        fontSize: 14,
+        color: "#E05C5C",
+        padding: "2px 4px"
+      }
+    }, "\xD7")));
   };
   var DOW = ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"];
   var cells = [];
@@ -501,14 +715,14 @@ function MiniCalendar(_ref) {
           background: isOpen ? "rgba(255,255,255,.6)" : "#7C6AF4"
         }
       });
-    }), ec > 0 && _toConsumableArray(Array(Math.min(ec, 2))).map(function (_, j) {
+    }), ec > 0 && (eventsByDay[dateStr] || []).slice(0, 2).map(function (ev, j) {
       return /*#__PURE__*/React.createElement("div", {
         key: "e" + j,
         style: {
           width: 4,
           height: 4,
           borderRadius: "50%",
-          background: isOpen ? "rgba(255,255,255,.6)" : "#F4A261"
+          background: isOpen ? "rgba(255,255,255,.6)" : ev.cat === "dzieci" ? EVT_KID_COLOR : "#F4A261"
         }
       });
     })));
@@ -601,15 +815,7 @@ function MiniCalendar(_ref) {
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
-      setEvtForm({
-        title: "",
-        date: openDateStr,
-        allDay: false,
-        time: "10:00",
-        notes: "",
-        address: "",
-        editId: null
-      });
+      setEvtForm(evtBlank(openDateStr));
       setShowEvtModal(true);
     },
     style: {
@@ -680,89 +886,7 @@ function MiniCalendar(_ref) {
       padding: "10px 0"
     }
   }, "Brak zdarze\u0144 tego dnia"), dayAllDay.map(function (item, idx) {
-    if (item._kind === "event") {
-      var ev = item.e;
-      return /*#__PURE__*/React.createElement("div", {
-        key: "ad-e" + ev.id,
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "9px 0",
-          borderBottom: "1px solid ".concat(dk ? "#2A3A56" : "#EFF3FA")
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flex: 1
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 6,
-          height: 6,
-          borderRadius: 2,
-          background: "#F4A261",
-          flexShrink: 0
-        }
-      }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontWeight: 600,
-          fontSize: 14,
-          color: dk ? "#E8F5F5" : "#1C2B3A"
-        }
-      }, "\uD83D\uDDD3 ", demo ? "Wydarzenie" : ev.title), ev.notes && /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12,
-          color: "#7A8FA6",
-          whiteSpace: "pre-wrap"
-        }
-      }, maskText(demo, ev.notes)))), /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: "flex",
-          gap: 4,
-          alignItems: "center"
-        }
-      }, /*#__PURE__*/React.createElement("button", {
-        onClick: function onClick() {
-          setEvtForm({
-            title: ev.title,
-            date: ev.date,
-            allDay: ev.allDay,
-            time: ev.time || "10:00",
-            notes: ev.notes || "",
-            address: ev.address || "",
-            editId: ev.id
-          });
-          setShowEvtModal(true);
-        },
-        style: {
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 14,
-          color: "#7A8FA6",
-          padding: "2px 4px"
-        }
-      }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
-        onClick: function onClick() {
-          return setEvents(function (es) {
-            return (es || []).filter(function (e) {
-              return e.id !== ev.id;
-            });
-          });
-        },
-        style: {
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 14,
-          color: "#E05C5C",
-          padding: "2px 4px"
-        }
-      }, "\xD7")));
-    }
+    if (item._kind === "event") return renderEvt(item.e, false);
     if (item._kind === "visit") {
       var v = item.v;
       var pat = (patients || []).find(function (p) {
@@ -819,21 +943,21 @@ function MiniCalendar(_ref) {
       }, visitStatus(v))));
     }
     if (item._kind === "rental") {
-      var _ev = item.ev;
-      var label = _ev.type === "start" ? "📦 Wydanie" : _ev.type === "end" ? "🔙 Zwrot" : _ev.type === "plannedReturn" ? "🔙 Planowany odbiór" : "🔄 Opłata";
-      var extDue2 = (_ev.r.extensions || []).reduce(function (s, e) {
+      var ev = item.ev;
+      var label = ev.type === "start" ? "📦 Wydanie" : ev.type === "end" ? "🔙 Zwrot" : ev.type === "plannedReturn" ? "🔙 Planowany odbiór" : "🔄 Opłata";
+      var extDue2 = (ev.r.extensions || []).reduce(function (s, e) {
         return s + (+e.amountDue || 0);
       }, 0);
-      var totalAmt2 = (+_ev.r.amount || 0) + extDue2;
-      var totalPaid2 = calcRentalPaid(_ev.r);
+      var totalAmt2 = (+ev.r.amount || 0) + extDue2;
+      var totalPaid2 = calcRentalPaid(ev.r);
       var remaining2 = totalAmt2 - totalPaid2;
-      var isEndType = _ev.type === "end" || _ev.type === "plannedReturn";
+      var isEndType = ev.type === "end" || ev.type === "plannedReturn";
       var isPaidEnd = isEndType && remaining2 <= 0;
-      var adSub = _ev.r.renewable ? null : isEndType ? remaining2 > 0 ? "do zap\u0142aty: ".concat(maskAmt(demo, remaining2), " z\u0142") : "\u2705 Op\u0142acono: ".concat(maskAmt(demo, totalAmt2), " z\u0142") : _ev.type === "start" ? maskAmt(demo, totalAmt2) + " zł" : null;
+      var adSub = ev.r.renewable ? null : isEndType ? remaining2 > 0 ? "do zap\u0142aty: ".concat(maskAmt(demo, remaining2), " z\u0142") : "\u2705 Op\u0142acono: ".concat(maskAmt(demo, totalAmt2), " z\u0142") : ev.type === "start" ? maskAmt(demo, totalAmt2) + " zł" : null;
       return /*#__PURE__*/React.createElement("div", {
         key: "ad-r" + idx,
         onClick: function onClick() {
-          return setQuickRental(_ev.r);
+          return setQuickRental(ev.r);
         },
         style: {
           display: "flex",
@@ -864,17 +988,17 @@ function MiniCalendar(_ref) {
           fontSize: 14,
           color: dk ? "#E8F5F5" : "#1C2B3A"
         }
-      }, "\uD83D\uDDD3 ", label, " \xB7 ", demo ? "Pacjent" : _ev.r.patientName), _ev.r.address && /*#__PURE__*/React.createElement("div", {
+      }, "\uD83D\uDDD3 ", label, " \xB7 ", demo ? "Pacjent" : ev.r.patientName), ev.r.address && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 12,
           color: "#7A8FA6"
         }
-      }, "\uD83D\uDCCD ", maskAddr(demo, _ev.r.address)), /*#__PURE__*/React.createElement("div", {
+      }, "\uD83D\uDCCD ", maskAddr(demo, ev.r.address)), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 12,
           color: "#7A8FA6"
         }
-      }, _ev.r.equipment || "❓ Do ustalenia"))), /*#__PURE__*/React.createElement("div", {
+      }, ev.r.equipment || "❓ Do ustalenia"))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
           flexDirection: "column",
@@ -883,7 +1007,7 @@ function MiniCalendar(_ref) {
         }
       }, adSub && /*#__PURE__*/React.createElement(Badge, {
         color: isPaidEnd ? "#3DAA72" : isEndType ? "#F4A261" : "#7C6AF4"
-      }, adSub), _ev.r.status === "zakończone" && /*#__PURE__*/React.createElement(Badge, {
+      }, adSub), ev.r.status === "zakończone" && /*#__PURE__*/React.createElement(Badge, {
         color: "#3DAA72"
       }, "\u2705 Zwr\xF3cono")));
     }
@@ -955,108 +1079,26 @@ function MiniCalendar(_ref) {
         color: visitStatus(v) === "zakończona" ? "#3DAA72" : "#3E6FB0"
       }, visitStatus(v)))));
     }
-    if (item._kind === "event") {
-      var ev = item.e;
-      return /*#__PURE__*/React.createElement("div", {
-        key: "e" + ev.id,
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "9px 0",
-          borderBottom: "1px solid ".concat(dk ? "#2A3A56" : "#EFF3FA")
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flex: 1
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: "#F4A261",
-          flexShrink: 0
-        }
-      }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontWeight: 600,
-          fontSize: 14,
-          color: dk ? "#E8F5F5" : "#1C2B3A"
-        }
-      }, ev.time, " \xB7 ", demo ? "Wydarzenie" : ev.title), ev.notes && /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12,
-          color: "#7A8FA6",
-          whiteSpace: "pre-wrap"
-        }
-      }, maskText(demo, ev.notes)))), /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: "flex",
-          gap: 4,
-          alignItems: "center"
-        }
-      }, /*#__PURE__*/React.createElement("button", {
-        onClick: function onClick() {
-          setEvtForm({
-            title: ev.title,
-            date: ev.date,
-            allDay: ev.allDay,
-            time: ev.time || "10:00",
-            notes: ev.notes || "",
-            address: ev.address || "",
-            editId: ev.id
-          });
-          setShowEvtModal(true);
-        },
-        style: {
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 14,
-          color: "#7A8FA6",
-          padding: "2px 4px"
-        }
-      }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
-        onClick: function onClick() {
-          return setEvents(function (es) {
-            return (es || []).filter(function (e) {
-              return e.id !== ev.id;
-            });
-          });
-        },
-        style: {
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          fontSize: 14,
-          color: "#E05C5C",
-          padding: "2px 4px"
-        }
-      }, "\xD7")));
-    }
+    if (item._kind === "event") return renderEvt(item.e, true);
     if (item._kind === "rental") {
-      var _ev2 = item.ev;
-      var label = _ev2.type === "start" ? "📦 Wydanie" : _ev2.type === "end" ? "🔙 Zwrot" : _ev2.type === "plannedReturn" ? "🔙 Planowany odbiór" : _ev2.type === "cycle" ? "💳 Opłata cykliczna" : _ev2.type === "cyclePreview" ? "👀 Podgląd" : "🔄 Opłata";
-      var isEndType2 = _ev2.type === "end" || _ev2.type === "plannedReturn";
-      var extDue = (_ev2.r.extensions || []).reduce(function (s, e) {
+      var ev = item.ev;
+      var label = ev.type === "start" ? "📦 Wydanie" : ev.type === "end" ? "🔙 Zwrot" : ev.type === "plannedReturn" ? "🔙 Planowany odbiór" : ev.type === "cycle" ? "💳 Opłata cykliczna" : ev.type === "cyclePreview" ? "👀 Podgląd" : "🔄 Opłata";
+      var isEndType2 = ev.type === "end" || ev.type === "plannedReturn";
+      var extDue = (ev.r.extensions || []).reduce(function (s, e) {
         return s + (+e.amountDue || 0);
       }, 0);
-      var totalAmt = (+_ev2.r.amount || 0) + extDue;
-      var totalPaid = calcRentalPaid(_ev2.r);
+      var totalAmt = (+ev.r.amount || 0) + extDue;
+      var totalPaid = calcRentalPaid(ev.r);
       var remaining = totalAmt - totalPaid;
       var isPaidEnd2 = isEndType2 && remaining <= 0;
       // Okres cykliczny, którego termin jeszcze nie nadszedł, nie jest "zaległy" — nie ma co go pokazywać na czerwono
-      var cycleFuture = _ev2.type === "cycle" && !_ev2.c.paid && !_ev2.c.cancelled && (_ev2.c.dueDate || _ev2.c.month + "-01") > today;
-      var color = isPaidEnd2 ? "#3DAA72" : isEndType2 ? "#F4A261" : _ev2.type === "cycle" ? _ev2.c.cancelled ? "#7A8FA6" : _ev2.c.paid ? "#3DAA72" : cycleFuture ? "#7C6AF4" : "#E05C5C" : _ev2.type === "cyclePreview" ? "#7A8FA6" : "#7C6AF4";
+      var cycleFuture = ev.type === "cycle" && !ev.c.paid && !ev.c.cancelled && (ev.c.dueDate || ev.c.month + "-01") > today;
+      var color = isPaidEnd2 ? "#3DAA72" : isEndType2 ? "#F4A261" : ev.type === "cycle" ? ev.c.cancelled ? "#7A8FA6" : ev.c.paid ? "#3DAA72" : cycleFuture ? "#7C6AF4" : "#E05C5C" : ev.type === "cyclePreview" ? "#7A8FA6" : "#7C6AF4";
       var endSub = remaining > 0 ? "do zap\u0142aty: ".concat(maskAmt(demo, remaining), " z\u0142") : "\u2705 Op\u0142acono: ".concat(maskAmt(demo, totalAmt), " z\u0142");
-      var sub = _ev2.type === "cycle" ? _ev2.c.cancelled ? "anulowany" : _ev2.c.paid ? "op\u0142acono ".concat(maskAmt(demo, _ev2.c.amount), " z\u0142") : cycleFuture ? "zaplanowane: ".concat(maskAmt(demo, _ev2.c.amount), " z\u0142") : "do op\u0142acenia ".concat(maskAmt(demo, _ev2.c.amount), " z\u0142") : _ev2.type === "cyclePreview" ? "~".concat(maskAmt(demo, _ev2.r.amount || 0), " z\u0142") : isEndType2 ? endSub : maskAmt(demo, totalAmt) + " zł";
-      var timeLabel = _ev2.type === "start" ? _ev2.r.startTime || "" : _ev2.type === "end" ? _ev2.r.endTime || "" : _ev2.type === "plannedReturn" ? _ev2.r.plannedReturnAllDay === false ? _ev2.r.plannedReturnTime || "10:00" : "" : "";
-      var icsStart = _ev2.type === "start" ? _ev2.r.startDate + "T" + (_ev2.r.startTime || "10:00") : _ev2.type === "plannedReturn" ? _ev2.r.plannedReturn + "T" + (_ev2.r.plannedReturnTime || "10:00") : _ev2.r.endDate + "T" + (_ev2.r.endTime || "10:00");
-      var icsEnd = _ev2.type === "start" ? _ev2.r.startDate + "T" + (_ev2.r.startTime || "10:00") : _ev2.type === "plannedReturn" ? _ev2.r.plannedReturn + "T" + (_ev2.r.plannedReturnTime || "10:00") : _ev2.r.endDate + "T" + (_ev2.r.endTime || "10:00");
+      var sub = ev.type === "cycle" ? ev.c.cancelled ? "anulowany" : ev.c.paid ? "op\u0142acono ".concat(maskAmt(demo, ev.c.amount), " z\u0142") : cycleFuture ? "zaplanowane: ".concat(maskAmt(demo, ev.c.amount), " z\u0142") : "do op\u0142acenia ".concat(maskAmt(demo, ev.c.amount), " z\u0142") : ev.type === "cyclePreview" ? "~".concat(maskAmt(demo, ev.r.amount || 0), " z\u0142") : isEndType2 ? endSub : maskAmt(demo, totalAmt) + " zł";
+      var timeLabel = ev.type === "start" ? ev.r.startTime || "" : ev.type === "end" ? ev.r.endTime || "" : ev.type === "plannedReturn" ? ev.r.plannedReturnAllDay === false ? ev.r.plannedReturnTime || "10:00" : "" : "";
+      var icsStart = ev.type === "start" ? ev.r.startDate + "T" + (ev.r.startTime || "10:00") : ev.type === "plannedReturn" ? ev.r.plannedReturn + "T" + (ev.r.plannedReturnTime || "10:00") : ev.r.endDate + "T" + (ev.r.endTime || "10:00");
+      var icsEnd = ev.type === "start" ? ev.r.startDate + "T" + (ev.r.startTime || "10:00") : ev.type === "plannedReturn" ? ev.r.plannedReturn + "T" + (ev.r.plannedReturnTime || "10:00") : ev.r.endDate + "T" + (ev.r.endTime || "10:00");
       return /*#__PURE__*/React.createElement("div", {
         key: "r" + idx,
         style: {
@@ -1068,7 +1110,7 @@ function MiniCalendar(_ref) {
         }
       }, /*#__PURE__*/React.createElement("div", {
         onClick: function onClick() {
-          return setQuickRental(_ev2.r);
+          return setQuickRental(ev.r);
         },
         style: {
           display: "flex",
@@ -1091,12 +1133,12 @@ function MiniCalendar(_ref) {
           fontSize: 14,
           color: dk ? "#E8F5F5" : "#1C2B3A"
         }
-      }, timeLabel ? timeLabel + " · " : "", label, " \xB7 ", demo ? "Pacjent" : _ev2.r.patientName), /*#__PURE__*/React.createElement("div", {
+      }, timeLabel ? timeLabel + " · " : "", label, " \xB7 ", demo ? "Pacjent" : ev.r.patientName), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 12,
           color: "#7A8FA6"
         }
-      }, _ev2.r.equipment || "❓ Do ustalenia", _ev2.r.address ? " · 📍" + maskAddr(demo, _ev2.r.address) : ""))), /*#__PURE__*/React.createElement("div", {
+      }, ev.r.equipment || "❓ Do ustalenia", ev.r.address ? " · 📍" + maskAddr(demo, ev.r.address) : ""))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
           alignItems: "center",
@@ -1111,7 +1153,7 @@ function MiniCalendar(_ref) {
         }
       }, sub && /*#__PURE__*/React.createElement(Badge, {
         color: color
-      }, sub), _ev2.r.status === "zakończone" && /*#__PURE__*/React.createElement(Badge, {
+      }, sub), ev.r.status === "zakończone" && /*#__PURE__*/React.createElement(Badge, {
         color: "#3DAA72"
       }, "\u2705 Zwr\xF3cono"))));
     }
@@ -1327,8 +1369,60 @@ function MiniCalendar(_ref) {
       });
     },
     placeholder: "np. Konferencja, Urlop..."
-  }), /*#__PURE__*/React.createElement(Inp, {
-    label: "Data *",
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 600,
+      color: "#7A8FA6",
+      marginBottom: 8,
+      textTransform: "uppercase",
+      letterSpacing: .5
+    }
+  }, "Rodzaj"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, [{
+    v: "",
+    l: "Zwykłe",
+    c: "#F4A261",
+    bg: "#FFF4E8"
+  }, {
+    v: "dzieci",
+    l: "👧 Zajęcia dzieci",
+    c: EVT_KID_COLOR,
+    bg: "#FDEBF4"
+  }].map(function (o) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: o.v || "zwykle",
+      type: "button",
+      onClick: function onClick() {
+        return setEvtForm(function (f) {
+          return _objectSpread(_objectSpread({}, f), {}, {
+            cat: o.v
+          });
+        });
+      },
+      style: {
+        flex: 1,
+        padding: "10px 8px",
+        borderRadius: 12,
+        border: "2px solid ".concat((evtForm.cat || "") === o.v ? o.c : "#D9E2F0"),
+        background: (evtForm.cat || "") === o.v ? o.bg : "#fff",
+        color: (evtForm.cat || "") === o.v ? o.c : "#7A8FA6",
+        fontWeight: 600,
+        fontSize: 13,
+        cursor: "pointer",
+        fontFamily: "inherit"
+      }
+    }, o.l);
+  }))), /*#__PURE__*/React.createElement(Inp, {
+    label: evtForm.repeat ? "Od dnia *" : "Data *",
     value: evtForm.date,
     onChange: function onChange(v) {
       return setEvtForm(function (f) {
@@ -1385,8 +1479,14 @@ function MiniCalendar(_ref) {
         fontFamily: "inherit"
       }
     }, o.l);
-  }))), !evtForm.allDay && /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Godzina",
+  }))), !evtForm.allDay && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(TimeSel, {
+    label: "Od godziny",
     value: evtForm.time || "10:00",
     onChange: function onChange(v) {
       return setEvtForm(function (f) {
@@ -1395,7 +1495,157 @@ function MiniCalendar(_ref) {
         });
       });
     }
-  }), /*#__PURE__*/React.createElement(Txa, {
+  }), /*#__PURE__*/React.createElement(TimeSel, {
+    label: "Do godziny",
+    allowEmpty: true,
+    value: evtForm.endTime || "",
+    onChange: function onChange(v) {
+      return setEvtForm(function (f) {
+        return _objectSpread(_objectSpread({}, f), {}, {
+          endTime: v
+        });
+      });
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14,
+      padding: "12px 14px",
+      borderRadius: 12,
+      border: "1.5px solid ".concat(evtForm.repeat ? EVT_KID_COLOR : "#D9E2F0"),
+      background: evtForm.repeat ? dk ? "#2A1A24" : "#FFF7FB" : "transparent"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      return setEvtForm(function (f) {
+        return f.repeat ? _objectSpread(_objectSpread({}, f), {}, {
+          repeat: false
+        }) : _objectSpread(_objectSpread({}, f), {}, {
+          repeat: true,
+          days: f.days.length ? f.days : evtIsDate(f.date) ? [new Date(f.date + "T12:00:00").getDay()] : []
+        });
+      });
+    },
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      background: "none",
+      border: "none",
+      padding: 0,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      fontSize: 14,
+      fontWeight: 700,
+      color: evtForm.repeat ? EVT_KID_COLOR : "#7A8FA6"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 20,
+      height: 20,
+      borderRadius: 6,
+      border: "2px solid ".concat(evtForm.repeat ? EVT_KID_COLOR : "#B8C6D9"),
+      background: evtForm.repeat ? EVT_KID_COLOR : "transparent",
+      color: "#fff",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 13,
+      lineHeight: 1
+    }
+  }, evtForm.repeat ? "✓" : ""), "\uD83D\uDD01 Powtarzaj co tydzie\u0144"), evtForm.repeat && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 5,
+      marginBottom: 12
+    }
+  }, EVT_DAYS.map(function (o) {
+    var on = evtForm.days.includes(o.d);
+    return /*#__PURE__*/React.createElement("button", {
+      key: o.d,
+      type: "button",
+      onClick: function onClick() {
+        return setEvtForm(function (f) {
+          return _objectSpread(_objectSpread({}, f), {}, {
+            days: f.days.includes(o.d) ? f.days.filter(function (x) {
+              return x !== o.d;
+            }) : [].concat(_toConsumableArray(f.days), [o.d])
+          });
+        });
+      },
+      style: {
+        flex: 1,
+        padding: "9px 0",
+        borderRadius: 10,
+        border: "1.5px solid ".concat(on ? EVT_KID_COLOR : "#D9E2F0"),
+        background: on ? EVT_KID_COLOR : "#fff",
+        color: on ? "#fff" : "#7A8FA6",
+        fontWeight: 700,
+        fontSize: 13,
+        cursor: "pointer",
+        fontFamily: "inherit"
+      }
+    }, o.l);
+  })), /*#__PURE__*/React.createElement(Inp, {
+    label: "Powtarzaj do dnia (puste = bez ko\u0144ca)",
+    value: evtForm.until || "",
+    onChange: function onChange(v) {
+      return setEvtForm(function (f) {
+        return _objectSpread(_objectSpread({}, f), {}, {
+          until: v
+        });
+      });
+    },
+    type: "date"
+  }), evtForm.skip.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 600,
+      color: "#7A8FA6",
+      marginBottom: 6,
+      textTransform: "uppercase",
+      letterSpacing: .5
+    }
+  }, "Pomini\u0119te dni"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 6
+    }
+  }, _toConsumableArray(evtForm.skip).sort().map(function (d) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: d,
+      type: "button",
+      title: "Przywr\xF3\u0107 ten dzie\u0144",
+      onClick: function onClick() {
+        return setEvtForm(function (f) {
+          return _objectSpread(_objectSpread({}, f), {}, {
+            skip: f.skip.filter(function (x) {
+              return x !== d;
+            })
+          });
+        });
+      },
+      style: {
+        background: "#EFF3FA",
+        border: "none",
+        borderRadius: 8,
+        padding: "5px 9px",
+        fontSize: 12,
+        color: "#3E5578",
+        cursor: "pointer",
+        fontFamily: "inherit"
+      }
+    }, cpmDate(d), " \xD7");
+  }))))), /*#__PURE__*/React.createElement(Txa, {
     label: "Notatka",
     value: evtForm.notes || "",
     onChange: function onChange(v) {
@@ -1419,13 +1669,29 @@ function MiniCalendar(_ref) {
     },
     placeholder: "Opcjonalnie..."
   }), /*#__PURE__*/React.createElement(Btn, {
-    disabled: !evtForm.title.trim() || !evtForm.date,
+    disabled: !evtForm.title.trim() || !evtForm.date || evtForm.repeat && evtForm.days.length === 0,
     style: {
       width: "100%",
       justifyContent: "center"
     },
     onClick: saveEvt
-  }, evtForm.editId ? "Zapisz zmiany" : "Dodaj wydarzenie")));
+  }, evtForm.editId ? "Zapisz zmiany" : "Dodaj wydarzenie"), evtForm.editId && evtForm.repeat && /*#__PURE__*/React.createElement(Btn, {
+    variant: "danger",
+    style: {
+      width: "100%",
+      justifyContent: "center",
+      marginTop: 10
+    },
+    onClick: function onClick() {
+      if (!window.confirm("Usunąć całą serię wydarzeń (wszystkie dni)?")) return;
+      setEvents(function (es) {
+        return (es || []).filter(function (e) {
+          return !e || e.id !== evtForm.editId;
+        });
+      });
+      setShowEvtModal(false);
+    }
+  }, "\uD83D\uDDD1 Usu\u0144 ca\u0142\u0105 seri\u0119")));
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────

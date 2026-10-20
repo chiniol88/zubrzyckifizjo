@@ -400,7 +400,8 @@ function Sel(_ref8) {
 function TimeSel(_ref9) {
   var label = _ref9.label,
     value = _ref9.value,
-    _onChange4 = _ref9.onChange;
+    _onChange4 = _ref9.onChange,
+    allowEmpty = _ref9.allowEmpty;
   var dk = useContext(DarkCtx);
   var s = {
     width: "100%",
@@ -433,12 +434,14 @@ function TimeSel(_ref9) {
       letterSpacing: .5
     }
   }, label), /*#__PURE__*/React.createElement("select", {
-    value: value || "10:00",
+    value: allowEmpty ? value || "" : value || "10:00",
     onChange: function onChange(e) {
       return _onChange4(e.target.value);
     },
     style: s
-  }, opts.map(function (o) {
+  }, allowEmpty && /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 brak \u2014"), opts.map(function (o) {
     return /*#__PURE__*/React.createElement("option", {
       key: o,
       value: o
