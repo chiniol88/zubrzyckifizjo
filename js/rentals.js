@@ -25,6 +25,40 @@
       </div>;
     }
 
+    // Ustawienia szyny CPM (udo / podudzie, cm) przy wypożyczeniu: szybki zapis na miejscu, wpis trafia do historii pacjenta
+    function RentalCpmCard({r,rentals,patients,setRentals}) {
+      const demo=useDemo();
+      const [edit,setEdit]=useState(false);
+      const [val,setVal]=useState(null);
+      const saved=cpmHas(r.cpm)?r.cpm:null;
+      if(!saved&&!cpmApplies(r.equipment))return null;
+      const pt=(patients||[]).find(p=>p.id===r.patientId)||(patients||[]).find(p=>p.name===r.patientName)||{id:r.patientId,name:r.patientName};
+      const start=()=>{setVal(saved?{brand:saved.brand,thigh:String(cpmInt(saved.thigh)||""),shank:String(cpmInt(saved.shank)||"")}:{});setEdit(true);};
+      const save=()=>{
+        const packed=cpmPack(val,r.equipment);
+        if(packed&&!packed.brand){alert("Wybierz markę szyny (Artromot lub Kinetec) albo wyczyść pola udo i podudzie.");return;}
+        setRentals(rs=>rs.map(x=>x.id===r.id?{...x,cpm:packed}:x));
+        setEdit(false);
+      };
+      return <Card style={{marginBottom:10}}>
+        <SectionLabel>🦿 Ustawienia szyny</SectionLabel>
+        {!edit
+          ? (saved
+              ? <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                  <div style={{fontWeight:600}}>{saved.brand||cpmBrandOf(r.equipment)||"Marka nie podana"} · {cpmText({thigh:cpmInt(saved.thigh),shank:cpmInt(saved.shank)},demo)}</div>
+                  <Btn small variant="secondary" onClick={start}>Zmień</Btn>
+                </div>
+              : <button onClick={start} style={{width:"100%",padding:"10px",borderRadius:10,border:"1.5px dashed #D9E2F0",background:"none",color:"#7C6AF4",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj ustawienia (udo / podudzie)</button>)
+          : <>
+              <CpmFields value={val} onChange={setVal} autoBrand={cpmBrandOf(r.equipment)} entries={cpmEntries(pt,rentals,r.id)}/>
+              <div style={{display:"flex",gap:8}}>
+                <Btn style={{flex:1,justifyContent:"center"}} onClick={save}>Zapisz</Btn>
+                <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setEdit(false)}>Anuluj</Btn>
+              </div>
+            </>}
+      </Card>;
+    }
+
     function HistoryFill({r,setRentals,setFinances}) {
       const cm=todayLocal().slice(0,7);
       // Generate all months from startDate month to current month
@@ -363,6 +397,8 @@
                   {maps&&!demo&&<a href={maps} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">🗺️ Trasa</Btn></a>}
                 </div>}
               </Card>
+
+              <RentalCpmCard r={r} rentals={rentals} patients={patients} setRentals={setRentals}/>
 
               <Card style={{marginBottom:10}}>
                 <SectionLabel>Wypożyczenie</SectionLabel>
@@ -818,6 +854,7 @@
           <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))}/>
+          {cpmApplies(form.equipment)&&(()=>{const pt=(patients||[]).find(p=>p.id===form.patientId)||(patients||[]).find(p=>p.name===form.patientName);return <CpmFields value={form.cpm} onChange={c=>setForm(f=>({...f,cpm:c}))} autoBrand={cpmBrandOf(form.equipment)} entries={cpmEntries(pt,rentals)}/>;})()}
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
             <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"🔄 Odnawialne miesięcznie"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,renewable:o.v,endDate:o.v?"":f.endDate}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${form.renewable===o.v?"#3E6FB0":"#D9E2F0"}`,background:form.renewable===o.v?"#E1E9F5":"#fff",color:form.renewable===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
@@ -840,10 +877,13 @@
           <Sel label="Skąd dowiedział się o wypożyczeniu?" value={form.source||""} onChange={v=>setForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
             if(form.endDate&&form.startDate&&form.endDate<form.startDate){alert("Data zakończenia jest wcześniejsza niż data rozpoczęcia — popraw datę.");return;}
+            const cpmOn=cpmApplies(form.equipment)&&cpmHas(form.cpm);
+            const cpmFinal=cpmOn?cpmPack(form.cpm,form.equipment):null;
+            if(cpmOn&&!cpmFinal.brand){alert("Wybierz markę szyny (Artromot lub Kinetec) w ustawieniach szyny albo wyczyść pola udo i podudzie.");return;}
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
             const firstCycle=form.renewable?[{dueDate:form.startDate,month:form.startDate.slice(0,7),amount:+form.amount||0,paid:false,paidDate:null}]:[];
-            const nr={...form,machineId:whValidMachineId(machines,form.equipment,form.machineId),id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:firstCycle,status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined};
+            const nr={...form,machineId:whValidMachineId(machines,form.equipment,form.machineId),id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:firstCycle,status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined,cpm:cpmFinal};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
             if(setPatients&&!pat){setPatients(ps=>[...(ps||[]),{id:Date.now()+2,name:form.patientName,phone:form.phone||"",address:form.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}

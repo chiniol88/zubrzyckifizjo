@@ -900,6 +900,87 @@ var EQUIPMENT_GROUPS = [{
   key: "balkoniki",
   label: "Balkoniki"
 }];
+
+// ── Ustawienia szyny CPM: udo i podudzie (pełne cm), osobno dla każdej marki (inna skala) ──────────────
+// Historia zamiast nadpisywania. Wpis przy wypożyczeniu = rental.cpm {brand,thigh,shank} (data = początek wypożyczenia),
+// wpis ręczny z karty pacjenta = patient.cpmLog [{id,date,brand,thigh,shank}]. "Ostatnie" = najnowszy wpis danej marki.
+var CPM_BRANDS = ["Artromot", "Kinetec"];
+var cpmBrandOf = function cpmBrandOf(name) {
+  var n = String(name || "").trim().toLowerCase();
+  return CPM_BRANDS.find(function (b) {
+    return n.startsWith(b.toLowerCase());
+  }) || null;
+};
+// pełne centymetry: 1–999, wszystko inne to brak wartości
+var cpmInt = function cpmInt(v) {
+  var n = parseInt(String(v == null ? "" : v).replace(/\D/g, ""), 10);
+  return n > 0 && n < 1000 ? n : null;
+};
+// tekst wpisany w polu: tylko cyfry (przecinek/kropka ucina ułamek, żeby wklejone "45,5" nie zamieniło się w 455)
+var cpmDigits = function cpmDigits(v) {
+  return String(v == null ? "" : v).split(/[.,]/)[0].replace(/\D/g, "").slice(0, 3);
+};
+var cpmHas = function cpmHas(c) {
+  return !!c && _typeof(c) === "object" && !Array.isArray(c) && !!(cpmInt(c.thigh) || cpmInt(c.shank));
+};
+// to, co zapisujemy: {brand,thigh,shank} albo null, gdy nic nie wpisano
+var cpmPack = function cpmPack(c, equipment) {
+  return cpmHas(c) ? {
+    brand: cpmBrandOf(equipment) || (CPM_BRANDS.includes(c.brand) ? c.brand : null),
+    thigh: cpmInt(c.thigh),
+    shank: cpmInt(c.shank)
+  } : null;
+};
+var cpmDate = function cpmDate(d) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(d || "") ? d.slice(8, 10) + "." + d.slice(5, 7) + "." + d.slice(0, 4) : d || "";
+};
+var cpmText = function cpmText(e, demo) {
+  return demo ? "udo •• · podudzie ••" : [e.thigh ? "udo " + e.thigh + " cm" : null, e.shank ? "podudzie " + e.shank + " cm" : null].filter(Boolean).join(" · ");
+};
+// wszystkie wpisy pacjenta (z wypożyczeń i z karty), najnowsze pierwsze; excludeRentalId pomija wpis z danego wypożyczenia
+function cpmEntries(pat, rentals, excludeRentalId) {
+  if (!pat) return [];
+  var out = [];
+  (Array.isArray(pat.cpmLog) ? pat.cpmLog : []).forEach(function (e) {
+    if (e && cpmHas(e) && /^\d{4}-\d{2}-\d{2}$/.test(e.date || "")) out.push({
+      key: "c" + e.id,
+      order: +e.id || 0,
+      id: e.id,
+      date: e.date,
+      brand: e.brand || null,
+      thigh: cpmInt(e.thigh),
+      shank: cpmInt(e.shank),
+      src: "karta"
+    });
+  });
+  (rentals || []).forEach(function (r) {
+    if (!r || r.id === excludeRentalId || !cpmHas(r.cpm) || !/^\d{4}-\d{2}-\d{2}$/.test(r.startDate || "")) return;
+    if (!(r.patientId != null && r.patientId === pat.id) && !(pat.name && r.patientName === pat.name)) return;
+    out.push({
+      key: "r" + r.id,
+      order: +r.id || 0,
+      rentalId: r.id,
+      date: r.startDate,
+      brand: r.cpm.brand || cpmBrandOf(r.equipment),
+      thigh: cpmInt(r.cpm.thigh),
+      shank: cpmInt(r.cpm.shank),
+      src: "wypożyczenie",
+      equipment: r.equipment || ""
+    });
+  });
+  return out.sort(function (a, b) {
+    return b.date.localeCompare(a.date) || b.order - a.order;
+  });
+}
+var cpmLast = function cpmLast(entries, brand) {
+  return entries.find(function (e) {
+    return e.brand === brand;
+  }) || null;
+};
+// ustawienia szyny pokazujemy tylko dla marek z listy CPM_BRANDS (rozpoznanych po nazwie sprzętu)
+var cpmApplies = function cpmApplies(equipment) {
+  return cpmBrandOf(equipment) !== null;
+};
 var getActiveEquipmentNames = function getActiveEquipmentNames(stock) {
   var base = stock && stock.equipment && stock.equipment.length ? _toConsumableArray(new Set([].concat(EQUIPMENT, _toConsumableArray(stock.equipment.map(function (e) {
     return e.name;

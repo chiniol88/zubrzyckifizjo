@@ -185,3 +185,38 @@ class TabBoundary extends React.Component {
     </div>;
   }
 }
+
+// ── Ustawienia szyny CPM: marka + udo + podudzie (pełne cm) + podpowiedź "ostatnio" ───────────────────
+// value = {brand,thigh,shank}; autoBrand = marka wynikająca z wybranego sprzętu (wtedy nie da się jej zmienić);
+// entries = historia ustawień pacjenta (cpmEntries). Podpowiedź niczego nie wpisuje sama: dopiero przycisk "Użyj".
+function CpmFields({value,onChange,autoBrand,entries}) {
+  const dk=useContext(DarkCtx);
+  const demo=useDemo();
+  const v=value||{};
+  const brand=autoBrand||(CPM_BRANDS.includes(v.brand)?v.brand:null);
+  const last=brand?cpmLast(entries||[],brand):null;
+  const other=(!last&&brand)||(!brand)?(entries||[]).find(e=>e.brand&&e.brand!==brand):null;
+  const same=!!last&&cpmInt(v.thigh)===last.thigh&&cpmInt(v.shank)===last.shank;
+  const set=patch=>onChange({...v,...patch});
+  const inp={width:"100%",padding:"11px 14px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FFFFFF",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+  const lbl={fontSize:12,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:4,textTransform:"uppercase",letterSpacing:.5};
+  return <div style={{marginBottom:14,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,background:dk?"#141C2B":"#F7FAFD"}}>
+    <div style={{fontSize:12,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:8}}>🦿 Ustawienia szyny (opcjonalnie)</div>
+    <div style={{display:"flex",gap:8,marginBottom:10}}>
+      {CPM_BRANDS.map(b=>{const on=brand===b,off=!!autoBrand&&autoBrand!==b;
+        return <button key={b} type="button" disabled={off} onClick={()=>set({brand:b})} style={{flex:1,padding:"9px 6px",borderRadius:10,border:`1.5px solid ${on?"#7C6AF4":dk?"#2A3A56":"#D9E2F0"}`,background:on?"#7C6AF4":dk?"#111826":"#fff",color:on?"#fff":dk?"#E8F5F5":"#1C2B3A",fontWeight:600,fontSize:14,cursor:off?"default":"pointer",opacity:off?.4:1,fontFamily:"inherit"}}>{b}</button>;})}
+    </div>
+    {last&&!same&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,padding:"8px 10px",borderRadius:10,background:dk?"#1B2740":"#EEF3FB"}}>
+      <div style={{flex:1,fontSize:13,color:dk?"#B8C8E0":"#3E5578"}}>Ostatnio ({brand}, {cpmDate(last.date)}): <b>{cpmText(last,demo)}</b></div>
+      <button type="button" onClick={()=>set({brand,thigh:last.thigh?String(last.thigh):"",shank:last.shank?String(last.shank):""})} style={{flexShrink:0,background:"#3E6FB0",color:"#fff",border:"none",borderRadius:8,padding:"7px 14px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Użyj</button>
+    </div>}
+    {last&&same&&<div style={{fontSize:12,color:"#3DAA72",fontWeight:600,marginBottom:8}}>✓ tak samo jak ostatnio ({cpmDate(last.date)})</div>}
+    {other&&<div style={{fontSize:12,color:dk?"#8FA3C0":"#5A6F8C",marginBottom:10}}>Na {other.brand} było ({cpmDate(other.date)}): {cpmText(other,demo)} (inna skala, nie przenoszę)</div>}
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <div><div style={lbl}>Udo (cm)</div><input inputMode="numeric" pattern="[0-9]*" maxLength={6} value={v.thigh||""} placeholder="np. 45" onChange={e=>set({thigh:cpmDigits(e.target.value)})} style={inp}/></div>
+      <div><div style={lbl}>Podudzie (cm)</div><input inputMode="numeric" pattern="[0-9]*" maxLength={6} value={v.shank||""} placeholder="np. 38" onChange={e=>set({shank:cpmDigits(e.target.value)})} style={inp}/></div>
+    </div>
+    {(v.thigh||v.shank)&&<button type="button" onClick={()=>set({thigh:"",shank:""})} style={{marginTop:8,background:"none",border:"none",color:"#E05C5C",fontSize:13,fontWeight:600,cursor:"pointer",padding:0,fontFamily:"inherit"}}>× wyczyść</button>}
+  </div>;
+}
+

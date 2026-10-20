@@ -133,10 +133,122 @@ function PaymentForm(_ref) {
     }
   }, "+ Dodaj wp\u0142at\u0119"));
 }
-function HistoryFill(_ref2) {
+
+// Ustawienia szyny CPM (udo / podudzie, cm) przy wypożyczeniu: szybki zapis na miejscu, wpis trafia do historii pacjenta
+function RentalCpmCard(_ref2) {
   var r = _ref2.r,
-    setRentals = _ref2.setRentals,
-    setFinances = _ref2.setFinances;
+    rentals = _ref2.rentals,
+    patients = _ref2.patients,
+    setRentals = _ref2.setRentals;
+  var demo = useDemo();
+  var _useState5 = useState(false),
+    _useState6 = _slicedToArray(_useState5, 2),
+    edit = _useState6[0],
+    setEdit = _useState6[1];
+  var _useState7 = useState(null),
+    _useState8 = _slicedToArray(_useState7, 2),
+    val = _useState8[0],
+    setVal = _useState8[1];
+  var saved = cpmHas(r.cpm) ? r.cpm : null;
+  if (!saved && !cpmApplies(r.equipment)) return null;
+  var pt = (patients || []).find(function (p) {
+    return p.id === r.patientId;
+  }) || (patients || []).find(function (p) {
+    return p.name === r.patientName;
+  }) || {
+    id: r.patientId,
+    name: r.patientName
+  };
+  var start = function start() {
+    setVal(saved ? {
+      brand: saved.brand,
+      thigh: String(cpmInt(saved.thigh) || ""),
+      shank: String(cpmInt(saved.shank) || "")
+    } : {});
+    setEdit(true);
+  };
+  var save = function save() {
+    var packed = cpmPack(val, r.equipment);
+    if (packed && !packed.brand) {
+      alert("Wybierz markę szyny (Artromot lub Kinetec) albo wyczyść pola udo i podudzie.");
+      return;
+    }
+    setRentals(function (rs) {
+      return rs.map(function (x) {
+        return x.id === r.id ? _objectSpread(_objectSpread({}, x), {}, {
+          cpm: packed
+        }) : x;
+      });
+    });
+    setEdit(false);
+  };
+  return /*#__PURE__*/React.createElement(Card, {
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement(SectionLabel, null, "\uD83E\uDDBF Ustawienia szyny"), !edit ? saved ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 600
+    }
+  }, saved.brand || cpmBrandOf(r.equipment) || "Marka nie podana", " \xB7 ", cpmText({
+    thigh: cpmInt(saved.thigh),
+    shank: cpmInt(saved.shank)
+  }, demo)), /*#__PURE__*/React.createElement(Btn, {
+    small: true,
+    variant: "secondary",
+    onClick: start
+  }, "Zmie\u0144")) : /*#__PURE__*/React.createElement("button", {
+    onClick: start,
+    style: {
+      width: "100%",
+      padding: "10px",
+      borderRadius: 10,
+      border: "1.5px dashed #D9E2F0",
+      background: "none",
+      color: "#7C6AF4",
+      fontWeight: 600,
+      fontSize: 13,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "+ Dodaj ustawienia (udo / podudzie)") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(CpmFields, {
+    value: val,
+    onChange: setVal,
+    autoBrand: cpmBrandOf(r.equipment),
+    entries: cpmEntries(pt, rentals, r.id)
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Btn, {
+    style: {
+      flex: 1,
+      justifyContent: "center"
+    },
+    onClick: save
+  }, "Zapisz"), /*#__PURE__*/React.createElement(Btn, {
+    variant: "secondary",
+    style: {
+      flex: 1,
+      justifyContent: "center"
+    },
+    onClick: function onClick() {
+      return setEdit(false);
+    }
+  }, "Anuluj"))));
+}
+function HistoryFill(_ref3) {
+  var r = _ref3.r,
+    setRentals = _ref3.setRentals,
+    setFinances = _ref3.setFinances;
   var cm = todayLocal().slice(0, 7);
   // Generate all months from startDate month to current month
   var months = [];
@@ -168,26 +280,26 @@ function HistoryFill(_ref2) {
       y++;
     }
   }
-  var _useState5 = useState(function () {
+  var _useState9 = useState(function () {
       return Object.fromEntries(months.map(function (x) {
         return [x.month, true];
       }));
     }),
-    _useState6 = _slicedToArray(_useState5, 2),
-    checked = _useState6[0],
-    setChecked = _useState6[1];
-  var _useState7 = useState(function () {
+    _useState0 = _slicedToArray(_useState9, 2),
+    checked = _useState0[0],
+    setChecked = _useState0[1];
+  var _useState1 = useState(function () {
       return Object.fromEntries(months.map(function (x) {
         return [x.month, String(r.amount || "")];
       }));
     }),
-    _useState8 = _slicedToArray(_useState7, 2),
-    amounts = _useState8[0],
-    setAmounts = _useState8[1];
-  var _useState9 = useState(String(r.amount || "")),
-    _useState0 = _slicedToArray(_useState9, 2),
-    bulkAmt = _useState0[0],
-    setBulkAmt = _useState0[1];
+    _useState10 = _slicedToArray(_useState1, 2),
+    amounts = _useState10[0],
+    setAmounts = _useState10[1];
+  var _useState11 = useState(String(r.amount || "")),
+    _useState12 = _slicedToArray(_useState11, 2),
+    bulkAmt = _useState12[0],
+    setBulkAmt = _useState12[1];
   var allChecked = months.every(function (x) {
     return checked[x.month];
   });
@@ -395,45 +507,45 @@ function HistoryFill(_ref2) {
     return checked[x.month];
   }).length, " mies.)"));
 }
-function CycleRow(_ref3) {
-  var r = _ref3.r,
-    cycle = _ref3.cycle,
-    setRentals = _ref3.setRentals,
-    setFinances = _ref3.setFinances;
+function CycleRow(_ref4) {
+  var r = _ref4.r,
+    cycle = _ref4.cycle,
+    setRentals = _ref4.setRentals,
+    setFinances = _ref4.setFinances;
   var demo = useDemo();
   var key = cycle.dueDate || cycle.month;
-  var _useState1 = useState(String(cycle.amount || "")),
-    _useState10 = _slicedToArray(_useState1, 2),
-    amt = _useState10[0],
-    setAmt = _useState10[1];
-  var _useState11 = useState(todayLocal),
-    _useState12 = _slicedToArray(_useState11, 2),
-    payDate = _useState12[0],
-    setPayDate = _useState12[1];
-  var _useState13 = useState(false),
+  var _useState13 = useState(String(cycle.amount || "")),
     _useState14 = _slicedToArray(_useState13, 2),
-    editDate = _useState14[0],
-    setEditDate = _useState14[1];
-  var _useState15 = useState(""),
+    amt = _useState14[0],
+    setAmt = _useState14[1];
+  var _useState15 = useState(todayLocal),
     _useState16 = _slicedToArray(_useState15, 2),
-    newDate = _useState16[0],
-    setNewDate = _useState16[1];
+    payDate = _useState16[0],
+    setPayDate = _useState16[1];
   var _useState17 = useState(false),
     _useState18 = _slicedToArray(_useState17, 2),
-    editAmt = _useState18[0],
-    setEditAmt = _useState18[1];
-  var _useState19 = useState(String(cycle.amount || "")),
+    editDate = _useState18[0],
+    setEditDate = _useState18[1];
+  var _useState19 = useState(""),
     _useState20 = _slicedToArray(_useState19, 2),
-    paidAmtDraft = _useState20[0],
-    setPaidAmtDraft = _useState20[1];
-  var _useState21 = useState(cycle.paidDate || todayLocal()),
+    newDate = _useState20[0],
+    setNewDate = _useState20[1];
+  var _useState21 = useState(false),
     _useState22 = _slicedToArray(_useState21, 2),
-    paidDateDraft = _useState22[0],
-    setPaidDateDraft = _useState22[1];
-  var _useState23 = useState(false),
+    editAmt = _useState22[0],
+    setEditAmt = _useState22[1];
+  var _useState23 = useState(String(cycle.amount || "")),
     _useState24 = _slicedToArray(_useState23, 2),
-    confirmDel = _useState24[0],
-    setConfirmDel = _useState24[1];
+    paidAmtDraft = _useState24[0],
+    setPaidAmtDraft = _useState24[1];
+  var _useState25 = useState(cycle.paidDate || todayLocal()),
+    _useState26 = _slicedToArray(_useState25, 2),
+    paidDateDraft = _useState26[0],
+    setPaidDateDraft = _useState26[1];
+  var _useState27 = useState(false),
+    _useState28 = _slicedToArray(_useState27, 2),
+    confirmDel = _useState28[0],
+    setConfirmDel = _useState28[1];
   var dueDt = cycle.dueDate || cycle.month + "-15";
   var label = new Date(dueDt + "T12:00:00").toLocaleDateString("pl-PL", {
     day: "numeric",
@@ -1105,9 +1217,9 @@ function CycleRow(_ref3) {
     }
   }, "Anuluj")), noteUi, dateEditUi, smallActions, confirmDelUi);
 }
-function RCard(_ref4) {
-  var r = _ref4.r,
-    onClick = _ref4.onClick;
+function RCard(_ref5) {
+  var r = _ref5.r,
+    onClick = _ref5.onClick;
   var demo = useDemo();
   var mctx = useContext(MachinesCtx);
   var card = r.machineId && mctx ? (mctx.machines || []).find(function (m) {
@@ -1259,49 +1371,49 @@ function RCard(_ref4) {
     }
   }, "\uD83D\uDCDD ", maskText(demo, r.notes))));
 }
-function Rentals(_ref5) {
-  var rentals = _ref5.rentals,
-    setRentals = _ref5.setRentals,
-    finances = _ref5.finances,
-    setFinances = _ref5.setFinances,
-    patients = _ref5.patients,
-    setPatients = _ref5.setPatients,
-    nfzCases = _ref5.nfzCases,
-    setNfzCases = _ref5.setNfzCases,
-    allClients = _ref5.allClients,
-    initialDetail = _ref5.initialDetail,
-    onDetailClosed = _ref5.onDetailClosed,
-    backLabel = _ref5.backLabel,
-    initialAddDate = _ref5.initialAddDate,
-    onAddDateHandled = _ref5.onAddDateHandled,
-    rentalsView = _ref5.rentalsView,
-    setRentalsView = _ref5.setRentalsView,
-    stock = _ref5.stock,
-    setStock = _ref5.setStock,
-    settings = _ref5.settings;
+function Rentals(_ref6) {
+  var rentals = _ref6.rentals,
+    setRentals = _ref6.setRentals,
+    finances = _ref6.finances,
+    setFinances = _ref6.setFinances,
+    patients = _ref6.patients,
+    setPatients = _ref6.setPatients,
+    nfzCases = _ref6.nfzCases,
+    setNfzCases = _ref6.setNfzCases,
+    allClients = _ref6.allClients,
+    initialDetail = _ref6.initialDetail,
+    onDetailClosed = _ref6.onDetailClosed,
+    backLabel = _ref6.backLabel,
+    initialAddDate = _ref6.initialAddDate,
+    onAddDateHandled = _ref6.onAddDateHandled,
+    rentalsView = _ref6.rentalsView,
+    setRentalsView = _ref6.setRentalsView,
+    stock = _ref6.stock,
+    setStock = _ref6.setStock,
+    settings = _ref6.settings;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
   var mctx = useContext(MachinesCtx);
   var machines = mctx && mctx.machines || [];
   var view = rentalsView || "aktywne",
     setView = setRentalsView;
-  var _useState25 = useState(false),
-    _useState26 = _slicedToArray(_useState25, 2),
-    showAdd = _useState26[0],
-    setShowAdd = _useState26[1];
-  var _useState27 = useState(false),
-    _useState28 = _slicedToArray(_useState27, 2),
-    showEdit = _useState28[0],
-    setShowEdit = _useState28[1];
-  var _useState29 = useState(null),
+  var _useState29 = useState(false),
     _useState30 = _slicedToArray(_useState29, 2),
-    detail = _useState30[0],
-    setDetail = _useState30[1];
+    showAdd = _useState30[0],
+    setShowAdd = _useState30[1];
   var _useState31 = useState(false),
     _useState32 = _slicedToArray(_useState31, 2),
-    showExtend = _useState32[0],
-    setShowExtend = _useState32[1];
-  var _useState33 = useState({
+    showEdit = _useState32[0],
+    setShowEdit = _useState32[1];
+  var _useState33 = useState(null),
+    _useState34 = _slicedToArray(_useState33, 2),
+    detail = _useState34[0],
+    setDetail = _useState34[1];
+  var _useState35 = useState(false),
+    _useState36 = _slicedToArray(_useState35, 2),
+    showExtend = _useState36[0],
+    setShowExtend = _useState36[1];
+  var _useState37 = useState({
       newEndDate: "",
       endTime: "10:00",
       amountDue: "",
@@ -1310,13 +1422,13 @@ function Rentals(_ref5) {
       notes: "",
       editId: null
     }),
-    _useState34 = _slicedToArray(_useState33, 2),
-    extForm = _useState34[0],
-    setExtForm = _useState34[1];
-  var _useState35 = useState(emptyRental),
-    _useState36 = _slicedToArray(_useState35, 2),
-    form = _useState36[0],
-    setForm = _useState36[1];
+    _useState38 = _slicedToArray(_useState37, 2),
+    extForm = _useState38[0],
+    setExtForm = _useState38[1];
+  var _useState39 = useState(emptyRental),
+    _useState40 = _slicedToArray(_useState39, 2),
+    form = _useState40[0],
+    setForm = _useState40[1];
   useEffect(function () {
     if (!initialAddDate) return;
     setForm(_objectSpread(_objectSpread({}, emptyRental()), {}, {
@@ -1325,60 +1437,60 @@ function Rentals(_ref5) {
     setShowAdd(true);
     if (onAddDateHandled) onAddDateHandled();
   }, [initialAddDate]);
-  var _useState37 = useState(null),
-    _useState38 = _slicedToArray(_useState37, 2),
-    ef = _useState38[0],
-    setEf = _useState38[1];
-  var _useState39 = useState(false),
-    _useState40 = _slicedToArray(_useState39, 2),
-    confirmDel = _useState40[0],
-    setConfirmDel = _useState40[1];
-  var _useState41 = useState(""),
+  var _useState41 = useState(null),
     _useState42 = _slicedToArray(_useState41, 2),
-    closeDate = _useState42[0],
-    setCloseDate = _useState42[1];
-  var _useState43 = useState(null),
+    ef = _useState42[0],
+    setEf = _useState42[1];
+  var _useState43 = useState(false),
     _useState44 = _slicedToArray(_useState43, 2),
-    toast = _useState44[0],
-    setToast = _useState44[1];
-  var _useState45 = useState("wszystkie"),
+    confirmDel = _useState44[0],
+    setConfirmDel = _useState44[1];
+  var _useState45 = useState(""),
     _useState46 = _slicedToArray(_useState45, 2),
-    zakSubView = _useState46[0],
-    setZakSubView = _useState46[1];
-  var _useState47 = useState(false),
+    closeDate = _useState46[0],
+    setCloseDate = _useState46[1];
+  var _useState47 = useState(null),
     _useState48 = _slicedToArray(_useState47, 2),
-    showImport = _useState48[0],
-    setShowImport = _useState48[1];
-  var _useState49 = useState([]),
+    toast = _useState48[0],
+    setToast = _useState48[1];
+  var _useState49 = useState("wszystkie"),
     _useState50 = _slicedToArray(_useState49, 2),
-    csvRows = _useState50[0],
-    setCsvRows = _useState50[1];
-  var _useState51 = useState(""),
+    zakSubView = _useState50[0],
+    setZakSubView = _useState50[1];
+  var _useState51 = useState(false),
     _useState52 = _slicedToArray(_useState51, 2),
-    csvError = _useState52[0],
-    setCsvError = _useState52[1];
-  var _useState53 = useState(null),
+    showImport = _useState52[0],
+    setShowImport = _useState52[1];
+  var _useState53 = useState([]),
     _useState54 = _slicedToArray(_useState53, 2),
-    contactSyncPending = _useState54[0],
-    setContactSyncPending = _useState54[1];
-  var _useState55 = useState(false),
+    csvRows = _useState54[0],
+    setCsvRows = _useState54[1];
+  var _useState55 = useState(""),
     _useState56 = _slicedToArray(_useState55, 2),
-    showAddCycle = _useState56[0],
-    setShowAddCycle = _useState56[1];
-  var _useState57 = useState({
+    csvError = _useState56[0],
+    setCsvError = _useState56[1];
+  var _useState57 = useState(null),
+    _useState58 = _slicedToArray(_useState57, 2),
+    contactSyncPending = _useState58[0],
+    setContactSyncPending = _useState58[1];
+  var _useState59 = useState(false),
+    _useState60 = _slicedToArray(_useState59, 2),
+    showAddCycle = _useState60[0],
+    setShowAddCycle = _useState60[1];
+  var _useState61 = useState({
       date: "",
       amount: "",
       paid: false,
       payDate: "",
       note: ""
     }),
-    _useState58 = _slicedToArray(_useState57, 2),
-    addCycleForm = _useState58[0],
-    setAddCycleForm = _useState58[1];
-  var _useState59 = useState(todayLocal),
-    _useState60 = _slicedToArray(_useState59, 2),
-    transportPayDate = _useState60[0],
-    setTransportPayDate = _useState60[1];
+    _useState62 = _slicedToArray(_useState61, 2),
+    addCycleForm = _useState62[0],
+    setAddCycleForm = _useState62[1];
+  var _useState63 = useState(todayLocal),
+    _useState64 = _slicedToArray(_useState63, 2),
+    transportPayDate = _useState64[0],
+    setTransportPayDate = _useState64[1];
   var importRef = useRef(null);
   var activeEq = getActiveEquipmentNames(stock);
   var eqSub = function eqSub(name) {
@@ -1587,7 +1699,12 @@ function Rentals(_ref5) {
     }, /*#__PURE__*/React.createElement(Btn, {
       small: true,
       variant: "secondary"
-    }, "\uD83D\uDDFA\uFE0F Trasa")))), /*#__PURE__*/React.createElement(Card, {
+    }, "\uD83D\uDDFA\uFE0F Trasa")))), /*#__PURE__*/React.createElement(RentalCpmCard, {
+      r: r,
+      rentals: rentals,
+      patients: patients,
+      setRentals: setRentals
+    }), /*#__PURE__*/React.createElement(Card, {
       style: {
         marginBottom: 10
       }
@@ -3893,7 +4010,25 @@ function Rentals(_ref5) {
         });
       });
     }
-  }), /*#__PURE__*/React.createElement("div", {
+  }), cpmApplies(form.equipment) && function () {
+    var pt = (patients || []).find(function (p) {
+      return p.id === form.patientId;
+    }) || (patients || []).find(function (p) {
+      return p.name === form.patientName;
+    });
+    return /*#__PURE__*/React.createElement(CpmFields, {
+      value: form.cpm,
+      onChange: function onChange(c) {
+        return setForm(function (f) {
+          return _objectSpread(_objectSpread({}, f), {}, {
+            cpm: c
+          });
+        });
+      },
+      autoBrand: cpmBrandOf(form.equipment),
+      entries: cpmEntries(pt, rentals)
+    });
+  }(), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
@@ -4177,6 +4312,12 @@ function Rentals(_ref5) {
         alert("Data zakończenia jest wcześniejsza niż data rozpoczęcia — popraw datę.");
         return;
       }
+      var cpmOn = cpmApplies(form.equipment) && cpmHas(form.cpm);
+      var cpmFinal = cpmOn ? cpmPack(form.cpm, form.equipment) : null;
+      if (cpmOn && !cpmFinal.brand) {
+        alert("Wybierz markę szyny (Artromot lub Kinetec) w ustawieniach szyny albo wyczyść pola udo i podudzie.");
+        return;
+      }
       var pid = Date.now(),
         rid = Date.now() + 1,
         paid = form.renewable ? 0 : +(form.amountPaid || 0);
@@ -4205,7 +4346,8 @@ function Rentals(_ref5) {
         status: "aktywne",
         startAllDay: form.startAllDay || false,
         endAllDay: form.endAllDay || false,
-        allDay: undefined
+        allDay: undefined,
+        cpm: cpmFinal
       });
       setRentals(function (r) {
         return [nr].concat(_toConsumableArray(r));

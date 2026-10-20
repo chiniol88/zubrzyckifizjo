@@ -95,7 +95,7 @@
       // numer-pseudonim "ac-Imię Nazwisko" zawiera nazwisko, więc zastępujemy go numerem (zanonimizowanej) karty
       const link=x=>(typeof x.patientId==="string"&&x.patientId.startsWith("ac-"))?{patientId:pid}:{};
       next.visits=(S.visits||[]).map(v=>mine(v)?{...v,...link(v),patientName:anon,notes:""}:v);
-      next.rentals=(S.rentals||[]).map(r=>mine(r)?{...r,...link(r),patientName:anon,phone:"",address:"",notes:"",extensions:(r.extensions||[]).map(e=>({...e,notes:""}))}:r);
+      next.rentals=(S.rentals||[]).map(r=>mine(r)?{...r,...link(r),patientName:anon,phone:"",address:"",notes:"",...(r.cpm?{cpm:null}:{}),extensions:(r.extensions||[]).map(e=>({...e,notes:""}))}:r);
       next.nfzCases=(S.nfzCases||[]).map(c=>mine(c)?{...c,...link(c),patientName:anon,phone:"",address:"",notes:""}:c);
       next.finances=(S.finances||[]).map(f=>(f&&f.description&&pn&&ownSid(f.sourceId))?{...f,description:f.description.split(pn).join(anon)}:f);
       next.patients=P.map(x=>x&&x.id===pid?{id:x.id,name:anon,archived:true,anonymized:true,phone:"",phones:[],address:"",diagnosis:"",notes:"",birthday:"",defaultPrice:""}:x);

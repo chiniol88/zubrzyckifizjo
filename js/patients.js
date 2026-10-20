@@ -32,6 +32,60 @@
       </div>;
     }
 
+    // Ustawienia szyny CPM w karcie pacjenta: ostatnie dla każdej marki + pełna historia (z wypożyczeń i wpisów ręcznych)
+    function PatientCpmCard({pat,rentals,setPatients}) {
+      const dk=useContext(DarkCtx);
+      const demo=useDemo();
+      const [adding,setAdding]=useState(false);
+      const [showAll,setShowAll]=useState(false);
+      const [val,setVal]=useState({});
+      const [date,setDate]=useState(todayLocal());
+      const entries=cpmEntries(pat,rentals);
+      const latest=CPM_BRANDS.map(b=>cpmLast(entries,b)).filter(Boolean);
+      const save=()=>{
+        const packed=cpmPack(val,null);
+        if(!packed){alert("Wpisz udo lub podudzie (pełne cm).");return;}
+        if(!packed.brand){alert("Wybierz markę szyny (Artromot lub Kinetec).");return;}
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(date||"")){alert("Podaj datę pomiaru.");return;}
+        setPatients(ps=>ps.map(p=>p.id===pat.id?{...p,cpmLog:[...(Array.isArray(p.cpmLog)?p.cpmLog:[]),{id:Date.now(),date,brand:packed.brand,thigh:packed.thigh,shank:packed.shank}]}:p));
+        setAdding(false);setVal({});setDate(todayLocal());
+      };
+      const del=id=>{
+        if(!window.confirm("Usunąć ten wpis z historii ustawień szyny?"))return;
+        setPatients(ps=>ps.map(p=>p.id===pat.id?{...p,cpmLog:(Array.isArray(p.cpmLog)?p.cpmLog:[]).filter(e=>!e||e.id!==id)}:p));
+      };
+      return <Card style={{marginBottom:10,background:dk?"#18202F":"#F7F5FF",border:"1.5px solid #7C6AF430"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:latest.length||adding?8:0}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5}}>🦿 Ustawienia szyny CPM</div>
+          {!adding&&<button onClick={()=>setAdding(true)} style={{background:"none",border:"none",color:"#7C6AF4",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",padding:0}}>+ Dodaj</button>}
+        </div>
+        {latest.length===0&&!adding&&<div style={{fontSize:13,color:"#7A8FA6",marginTop:4}}>Brak zapisanych ustawień</div>}
+        {latest.map(e=><div key={e.brand} style={{marginBottom:6}}>
+          <div style={{fontWeight:700,fontSize:14}}>{e.brand}: <span style={{fontWeight:600}}>{cpmText(e,demo)}</span></div>
+          <div style={{fontSize:12,color:"#7A8FA6"}}>ostatnio {cpmDate(e.date)}{e.src==="wypożyczenie"?" · przy wypożyczeniu":" · wpis z karty"}</div>
+        </div>)}
+        {adding&&<div style={{marginTop:4}}>
+          <CpmFields value={val} onChange={setVal} autoBrand={null} entries={entries}/>
+          <Inp label="Data pomiaru" value={date} onChange={setDate} type="date"/>
+          <div style={{display:"flex",gap:8}}>
+            <Btn style={{flex:1,justifyContent:"center"}} onClick={save}>Zapisz</Btn>
+            <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>{setAdding(false);setVal({});}}>Anuluj</Btn>
+          </div>
+        </div>}
+        {entries.length>0&&!adding&&<button onClick={()=>setShowAll(v=>!v)} style={{marginTop:4,background:"none",border:"none",color:"#3E6FB0",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:0}}>{showAll?"Ukryj historię":"Historia ustawień ("+entries.length+")"}</button>}
+        {showAll&&!adding&&<div style={{marginTop:8}}>
+          {entries.map(e=><div key={e.key} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"6px 0",borderTop:"1px solid #E3DDFB"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600}}>{cpmDate(e.date)} · {e.brand||"marka nie podana"}</div>
+              <div style={{fontSize:13}}>{cpmText(e,demo)}</div>
+              <div style={{fontSize:11,color:"#7A8FA6"}}>{e.src==="wypożyczenie"?"przy wypożyczeniu"+(e.equipment?": "+e.equipment:""):"wpis z karty"}</div>
+            </div>
+            {e.src==="karta"&&<button onClick={()=>del(e.id)} style={{background:"none",border:"none",color:"#E05C5C",fontSize:18,cursor:"pointer",padding:"0 4px",lineHeight:1}}>×</button>}
+          </div>)}
+        </div>}
+      </Card>;
+    }
+
     function BirthdayCard({birthday, dk}) {
       const demo=useDemo();
       const today = todayLocal();
@@ -210,6 +264,7 @@
                 <div style={{fontSize:18,fontWeight:800,color:"#3DAA72"}}>{maskAmt(demo,pat.defaultPrice)} zł</div>
               </Card>}
               {pat.birthday&&<BirthdayCard birthday={pat.birthday} dk={dk}/>}
+              <PatientCpmCard pat={pat} rentals={rentals} setPatients={setPatients}/>
 
               {(patDoneVisits.length>0||patRentals.length>0||patWozki.length>0)&&<Card style={{marginBottom:10,background:dk?"#18202F":"#F4F7FC",border:"1.5px solid #D9E2F0"}}>
                 <SectionLabel>Statystyki</SectionLabel>
@@ -260,6 +315,7 @@
                       <div><div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wypożyczenie</div><div style={{fontWeight:600}}>{item.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.startDate}{item.endDate?" → "+item.endDate:""}</div></div>
                       <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{maskAmt(demo,item.amount)} zł</div><Badge color={item.status==="zakończone"?"#7A8FA6":"#7C6AF4"}>{item.status}</Badge></div>
                     </div>
+                    {cpmHas(item.cpm)&&<div style={{fontSize:12,color:"#7C6AF4",marginTop:8,paddingTop:8,borderTop:"1px solid #E3DDFB",fontWeight:600}}>🦿 {item.cpm.brand||cpmBrandOf(item.equipment)||"Szyna"} · {cpmText({thigh:cpmInt(item.cpm.thigh),shank:cpmInt(item.cpm.shank)},demo)}</div>}
                   </Card>
                 : <Card key={"w"+item.id} style={{background:"#FFF7ED"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>

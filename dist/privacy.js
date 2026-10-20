@@ -281,11 +281,14 @@ function privAnonymize(S, pid) {
     }) : v;
   });
   next.rentals = (S.rentals || []).map(function (r) {
-    return mine(r) ? _objectSpread(_objectSpread(_objectSpread({}, r), link(r)), {}, {
+    return mine(r) ? _objectSpread(_objectSpread(_objectSpread(_objectSpread({}, r), link(r)), {}, {
       patientName: anon,
       phone: "",
       address: "",
-      notes: "",
+      notes: ""
+    }, r.cpm ? {
+      cpm: null
+    } : {}), {}, {
       extensions: (r.extensions || []).map(function (e) {
         return _objectSpread(_objectSpread({}, e), {}, {
           notes: ""

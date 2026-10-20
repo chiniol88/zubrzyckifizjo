@@ -2,16 +2,16 @@
 "use strict";
 
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
@@ -151,9 +151,242 @@ function BirthdayInput(_ref) {
     })
   }));
 }
-function BirthdayCard(_ref2) {
-  var birthday = _ref2.birthday,
-    dk = _ref2.dk;
+
+// Ustawienia szyny CPM w karcie pacjenta: ostatnie dla każdej marki + pełna historia (z wypożyczeń i wpisów ręcznych)
+function PatientCpmCard(_ref2) {
+  var pat = _ref2.pat,
+    rentals = _ref2.rentals,
+    setPatients = _ref2.setPatients;
+  var dk = useContext(DarkCtx);
+  var demo = useDemo();
+  var _useState = useState(false),
+    _useState2 = _slicedToArray(_useState, 2),
+    adding = _useState2[0],
+    setAdding = _useState2[1];
+  var _useState3 = useState(false),
+    _useState4 = _slicedToArray(_useState3, 2),
+    showAll = _useState4[0],
+    setShowAll = _useState4[1];
+  var _useState5 = useState({}),
+    _useState6 = _slicedToArray(_useState5, 2),
+    val = _useState6[0],
+    setVal = _useState6[1];
+  var _useState7 = useState(todayLocal()),
+    _useState8 = _slicedToArray(_useState7, 2),
+    date = _useState8[0],
+    setDate = _useState8[1];
+  var entries = cpmEntries(pat, rentals);
+  var latest = CPM_BRANDS.map(function (b) {
+    return cpmLast(entries, b);
+  }).filter(Boolean);
+  var save = function save() {
+    var packed = cpmPack(val, null);
+    if (!packed) {
+      alert("Wpisz udo lub podudzie (pełne cm).");
+      return;
+    }
+    if (!packed.brand) {
+      alert("Wybierz markę szyny (Artromot lub Kinetec).");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) {
+      alert("Podaj datę pomiaru.");
+      return;
+    }
+    setPatients(function (ps) {
+      return ps.map(function (p) {
+        return p.id === pat.id ? _objectSpread(_objectSpread({}, p), {}, {
+          cpmLog: [].concat(_toConsumableArray(Array.isArray(p.cpmLog) ? p.cpmLog : []), [{
+            id: Date.now(),
+            date: date,
+            brand: packed.brand,
+            thigh: packed.thigh,
+            shank: packed.shank
+          }])
+        }) : p;
+      });
+    });
+    setAdding(false);
+    setVal({});
+    setDate(todayLocal());
+  };
+  var del = function del(id) {
+    if (!window.confirm("Usunąć ten wpis z historii ustawień szyny?")) return;
+    setPatients(function (ps) {
+      return ps.map(function (p) {
+        return p.id === pat.id ? _objectSpread(_objectSpread({}, p), {}, {
+          cpmLog: (Array.isArray(p.cpmLog) ? p.cpmLog : []).filter(function (e) {
+            return !e || e.id !== id;
+          })
+        }) : p;
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement(Card, {
+    style: {
+      marginBottom: 10,
+      background: dk ? "#18202F" : "#F7F5FF",
+      border: "1.5px solid #7C6AF430"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: latest.length || adding ? 8 : 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: "#7C6AF4",
+      textTransform: "uppercase",
+      letterSpacing: .5
+    }
+  }, "\uD83E\uDDBF Ustawienia szyny CPM"), !adding && /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setAdding(true);
+    },
+    style: {
+      background: "none",
+      border: "none",
+      color: "#7C6AF4",
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      padding: 0
+    }
+  }, "+ Dodaj")), latest.length === 0 && !adding && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#7A8FA6",
+      marginTop: 4
+    }
+  }, "Brak zapisanych ustawie\u0144"), latest.map(function (e) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: e.brand,
+      style: {
+        marginBottom: 6
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 14
+      }
+    }, e.brand, ": ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 600
+      }
+    }, cpmText(e, demo))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#7A8FA6"
+      }
+    }, "ostatnio ", cpmDate(e.date), e.src === "wypożyczenie" ? " · przy wypożyczeniu" : " · wpis z karty"));
+  }), adding && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 4
+    }
+  }, /*#__PURE__*/React.createElement(CpmFields, {
+    value: val,
+    onChange: setVal,
+    autoBrand: null,
+    entries: entries
+  }), /*#__PURE__*/React.createElement(Inp, {
+    label: "Data pomiaru",
+    value: date,
+    onChange: setDate,
+    type: "date"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement(Btn, {
+    style: {
+      flex: 1,
+      justifyContent: "center"
+    },
+    onClick: save
+  }, "Zapisz"), /*#__PURE__*/React.createElement(Btn, {
+    variant: "secondary",
+    style: {
+      flex: 1,
+      justifyContent: "center"
+    },
+    onClick: function onClick() {
+      setAdding(false);
+      setVal({});
+    }
+  }, "Anuluj"))), entries.length > 0 && !adding && /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setShowAll(function (v) {
+        return !v;
+      });
+    },
+    style: {
+      marginTop: 4,
+      background: "none",
+      border: "none",
+      color: "#3E6FB0",
+      fontWeight: 600,
+      fontSize: 12,
+      cursor: "pointer",
+      fontFamily: "inherit",
+      padding: 0
+    }
+  }, showAll ? "Ukryj historię" : "Historia ustawień (" + entries.length + ")"), showAll && !adding && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, entries.map(function (e) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: e.key,
+      style: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        padding: "6px 0",
+        borderTop: "1px solid #E3DDFB"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600
+      }
+    }, cpmDate(e.date), " \xB7 ", e.brand || "marka nie podana"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13
+      }
+    }, cpmText(e, demo)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#7A8FA6"
+      }
+    }, e.src === "wypożyczenie" ? "przy wypożyczeniu" + (e.equipment ? ": " + e.equipment : "") : "wpis z karty")), e.src === "karta" && /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return del(e.id);
+      },
+      style: {
+        background: "none",
+        border: "none",
+        color: "#E05C5C",
+        fontSize: 18,
+        cursor: "pointer",
+        padding: "0 4px",
+        lineHeight: 1
+      }
+    }, "\xD7"));
+  })));
+}
+function BirthdayCard(_ref3) {
+  var birthday = _ref3.birthday,
+    dk = _ref3.dk;
   var demo = useDemo();
   var today = todayLocal();
   var mmdd = birthday.length === 5 ? birthday : birthday.slice(5);
@@ -209,9 +442,9 @@ function getPhones(pat) {
     label: ""
   }] : [];
 }
-function PhonesEditor(_ref3) {
-  var phones = _ref3.phones,
-    _onChange = _ref3.onChange;
+function PhonesEditor(_ref4) {
+  var phones = _ref4.phones,
+    _onChange = _ref4.onChange;
   var dk = useContext(DarkCtx);
   var list = phones || [];
   var inputStyle = {
@@ -313,42 +546,42 @@ function PhonesEditor(_ref3) {
     }
   }, "+ Dodaj numer"));
 }
-function Patients(_ref4) {
-  var patients = _ref4.patients,
-    setPatients = _ref4.setPatients,
-    visits = _ref4.visits,
-    setVisits = _ref4.setVisits,
-    finances = _ref4.finances,
-    setFinances = _ref4.setFinances,
-    rentals = _ref4.rentals,
-    setRentals = _ref4.setRentals,
-    nfzCases = _ref4.nfzCases,
-    setNfzCases = _ref4.setNfzCases,
-    allClients = _ref4.allClients,
-    priv = _ref4.priv;
+function Patients(_ref5) {
+  var patients = _ref5.patients,
+    setPatients = _ref5.setPatients,
+    visits = _ref5.visits,
+    setVisits = _ref5.setVisits,
+    finances = _ref5.finances,
+    setFinances = _ref5.setFinances,
+    rentals = _ref5.rentals,
+    setRentals = _ref5.setRentals,
+    nfzCases = _ref5.nfzCases,
+    setNfzCases = _ref5.setNfzCases,
+    allClients = _ref5.allClients,
+    priv = _ref5.priv;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
-  var _useState = useState(null),
-    _useState2 = _slicedToArray(_useState, 2),
-    selId = _useState2[0],
-    setSelId = _useState2[1];
-  var _useState3 = useState(false),
-    _useState4 = _slicedToArray(_useState3, 2),
-    showAdd = _useState4[0],
-    setShowAdd = _useState4[1];
-  var _useState5 = useState(false),
-    _useState6 = _slicedToArray(_useState5, 2),
-    showEdit = _useState6[0],
-    setShowEdit = _useState6[1];
-  var _useState7 = useState(false),
-    _useState8 = _slicedToArray(_useState7, 2),
-    confirmDelPat = _useState8[0],
-    setConfirmDelPat = _useState8[1];
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
-    editForm = _useState0[0],
-    setEditForm = _useState0[1];
-  var _useState1 = useState({
+    selId = _useState0[0],
+    setSelId = _useState0[1];
+  var _useState1 = useState(false),
+    _useState10 = _slicedToArray(_useState1, 2),
+    showAdd = _useState10[0],
+    setShowAdd = _useState10[1];
+  var _useState11 = useState(false),
+    _useState12 = _slicedToArray(_useState11, 2),
+    showEdit = _useState12[0],
+    setShowEdit = _useState12[1];
+  var _useState13 = useState(false),
+    _useState14 = _slicedToArray(_useState13, 2),
+    confirmDelPat = _useState14[0],
+    setConfirmDelPat = _useState14[1];
+  var _useState15 = useState(null),
+    _useState16 = _slicedToArray(_useState15, 2),
+    editForm = _useState16[0],
+    setEditForm = _useState16[1];
+  var _useState17 = useState({
       name: "",
       phone: "",
       phones: [],
@@ -358,49 +591,49 @@ function Patients(_ref4) {
       defaultPrice: "",
       birthday: ""
     }),
-    _useState10 = _slicedToArray(_useState1, 2),
-    newForm = _useState10[0],
-    setNewForm = _useState10[1];
-  var _useState11 = useState(false),
-    _useState12 = _slicedToArray(_useState11, 2),
-    showAddV = _useState12[0],
-    setShowAddV = _useState12[1];
-  var _useState13 = useState(emptyVisit),
-    _useState14 = _slicedToArray(_useState13, 2),
-    vf = _useState14[0],
-    setVf = _useState14[1];
-  var _useState15 = useState(null),
-    _useState16 = _slicedToArray(_useState15, 2),
-    editV = _useState16[0],
-    setEditV = _useState16[1];
-  var _useState17 = useState(null),
     _useState18 = _slicedToArray(_useState17, 2),
-    confirmDelV = _useState18[0],
-    setConfirmDelV = _useState18[1];
-  var _useState19 = useState(""),
+    newForm = _useState18[0],
+    setNewForm = _useState18[1];
+  var _useState19 = useState(false),
     _useState20 = _slicedToArray(_useState19, 2),
-    search = _useState20[0],
-    setSearch = _useState20[1];
-  var _useState21 = useState("alpha"),
+    showAddV = _useState20[0],
+    setShowAddV = _useState20[1];
+  var _useState21 = useState(emptyVisit),
     _useState22 = _slicedToArray(_useState21, 2),
-    sort = _useState22[0],
-    setSort = _useState22[1];
-  var _useState23 = useState("all"),
+    vf = _useState22[0],
+    setVf = _useState22[1];
+  var _useState23 = useState(null),
     _useState24 = _slicedToArray(_useState23, 2),
-    histFilter = _useState24[0],
-    setHistFilter = _useState24[1];
-  var _useState25 = useState(false),
+    editV = _useState24[0],
+    setEditV = _useState24[1];
+  var _useState25 = useState(null),
     _useState26 = _slicedToArray(_useState25, 2),
-    showArchived = _useState26[0],
-    setShowArchived = _useState26[1];
-  var _useState27 = useState("fizjo"),
+    confirmDelV = _useState26[0],
+    setConfirmDelV = _useState26[1];
+  var _useState27 = useState(""),
     _useState28 = _slicedToArray(_useState27, 2),
-    pTab = _useState28[0],
-    setPTab = _useState28[1];
-  var _useState29 = useState(null),
+    search = _useState28[0],
+    setSearch = _useState28[1];
+  var _useState29 = useState("alpha"),
     _useState30 = _slicedToArray(_useState29, 2),
-    toast = _useState30[0],
-    setToast = _useState30[1];
+    sort = _useState30[0],
+    setSort = _useState30[1];
+  var _useState31 = useState("all"),
+    _useState32 = _slicedToArray(_useState31, 2),
+    histFilter = _useState32[0],
+    setHistFilter = _useState32[1];
+  var _useState33 = useState(false),
+    _useState34 = _slicedToArray(_useState33, 2),
+    showArchived = _useState34[0],
+    setShowArchived = _useState34[1];
+  var _useState35 = useState("fizjo"),
+    _useState36 = _slicedToArray(_useState35, 2),
+    pTab = _useState36[0],
+    setPTab = _useState36[1];
+  var _useState37 = useState(null),
+    _useState38 = _slicedToArray(_useState37, 2),
+    toast = _useState38[0],
+    setToast = _useState38[1];
   // pełny stan zbiorów, w których mogą być dane pacjenta (przekazujemy do privacy.js)
   var privState = function privState() {
     return {
@@ -455,18 +688,18 @@ function Patients(_ref4) {
       }));
     };
   };
-  var _useState31 = useState(false),
-    _useState32 = _slicedToArray(_useState31, 2),
-    showQuickV = _useState32[0],
-    setShowQuickV = _useState32[1];
-  var _useState33 = useState(null),
-    _useState34 = _slicedToArray(_useState33, 2),
-    quickV = _useState34[0],
-    setQuickV = _useState34[1];
-  var _useState35 = useState(null),
-    _useState36 = _slicedToArray(_useState35, 2),
-    contactSyncPending = _useState36[0],
-    setContactSyncPending = _useState36[1];
+  var _useState39 = useState(false),
+    _useState40 = _slicedToArray(_useState39, 2),
+    showQuickV = _useState40[0],
+    setShowQuickV = _useState40[1];
+  var _useState41 = useState(null),
+    _useState42 = _slicedToArray(_useState41, 2),
+    quickV = _useState42[0],
+    setQuickV = _useState42[1];
+  var _useState43 = useState(null),
+    _useState44 = _slicedToArray(_useState43, 2),
+    contactSyncPending = _useState44[0],
+    setContactSyncPending = _useState44[1];
   var equipClients = useMemo(function () {
     var byName = {};
     (rentals || []).forEach(function (r) {
@@ -822,6 +1055,10 @@ function Patients(_ref4) {
     }, maskAmt(demo, pat.defaultPrice), " z\u0142")), pat.birthday && /*#__PURE__*/React.createElement(BirthdayCard, {
       birthday: pat.birthday,
       dk: dk
+    }), /*#__PURE__*/React.createElement(PatientCpmCard, {
+      pat: pat,
+      rentals: rentals,
+      setPatients: setPatients
     }), (patDoneVisits.length > 0 || patRentals.length > 0 || patWozki.length > 0) && /*#__PURE__*/React.createElement(Card, {
       style: {
         marginBottom: 10,
@@ -1102,7 +1339,19 @@ function Patients(_ref4) {
         }
       }, maskAmt(demo, item.amount), " z\u0142"), /*#__PURE__*/React.createElement(Badge, {
         color: item.status === "zakończone" ? "#7A8FA6" : "#7C6AF4"
-      }, item.status)))) : /*#__PURE__*/React.createElement(Card, {
+      }, item.status))), cpmHas(item.cpm) && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: "#7C6AF4",
+          marginTop: 8,
+          paddingTop: 8,
+          borderTop: "1px solid #E3DDFB",
+          fontWeight: 600
+        }
+      }, "\uD83E\uDDBF ", item.cpm.brand || cpmBrandOf(item.equipment) || "Szyna", " \xB7 ", cpmText({
+        thigh: cpmInt(item.cpm.thigh),
+        shank: cpmInt(item.cpm.shank)
+      }, demo))) : /*#__PURE__*/React.createElement(Card, {
         key: "w" + item.id,
         style: {
           background: "#FFF7ED"
