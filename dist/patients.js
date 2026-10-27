@@ -589,6 +589,7 @@ function Patients(_ref5) {
       name: "",
       phone: "",
       phones: [],
+      email: "",
       address: "",
       diagnosis: "",
       notes: "",
@@ -918,7 +919,7 @@ function Patients(_ref5) {
       style: {
         fontSize: 14,
         color: "#7A8FA6",
-        marginBottom: pat.address ? 10 : 0
+        marginBottom: pat.address || pat.email ? 10 : 0
       }
     }, "Brak telefonu"), patPhones.map(function (ph, i) {
       return /*#__PURE__*/React.createElement("div", {
@@ -927,7 +928,7 @@ function Patients(_ref5) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: i < patPhones.length - 1 || pat.address ? 10 : 0
+          marginBottom: i < patPhones.length - 1 || pat.address || pat.email ? 10 : 0
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
@@ -969,7 +970,31 @@ function Patients(_ref5) {
         s: 15,
         c: "#3E6FB0"
       }), " SMS"))));
-    }), pat.address && /*#__PURE__*/React.createElement("div", {
+    }), pat.email && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: pat.address ? 10 : 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: "#7A8FA6",
+        flex: 1,
+        paddingRight: 8,
+        overflowWrap: "anywhere"
+      }
+    }, "\u2709\uFE0F ", maskEmail(demo, pat.email)), !demo && /*#__PURE__*/React.createElement("a", {
+      href: "mailto:".concat(pat.email),
+      style: {
+        textDecoration: "none",
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement(Btn, {
+      small: true,
+      variant: "secondary"
+    }, "\u2709\uFE0F Napisz"))), pat.address && /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         justifyContent: "space-between",
@@ -1424,6 +1449,15 @@ function Patients(_ref5) {
           });
         });
       }
+    }), /*#__PURE__*/React.createElement(EmailInput, {
+      value: editForm.email || "",
+      onChange: function onChange(v) {
+        return setEditForm(function (f) {
+          return _objectSpread(_objectSpread({}, f), {}, {
+            email: v
+          });
+        });
+      }
     }), /*#__PURE__*/React.createElement(Inp, {
       label: "Adres",
       value: editForm.address || "",
@@ -1511,7 +1545,8 @@ function Patients(_ref5) {
           return ps.map(function (p) {
             return p.id === _pid ? _objectSpread(_objectSpread(_objectSpread({}, p), editForm), {}, {
               phones: _phones,
-              phone: _phone
+              phone: _phone,
+              email: (editForm.email || "").trim()
             }) : p;
           });
         });
@@ -1982,7 +2017,7 @@ function Patients(_ref5) {
   var filtered = patients.filter(function (p) {
     return !!p.archived === showArchived && (p.name.toLowerCase().includes(sl) || getPhones(p).some(function (ph) {
       return ph.number.replace(/\s/g, "").includes(sn);
-    }) || (p.address || "").toLowerCase().includes(sl) || (p.diagnosis || "").toLowerCase().includes(sl) || (p.notes || "").toLowerCase().includes(sl));
+    }) || (p.email || "").toLowerCase().includes(sl) || (p.address || "").toLowerCase().includes(sl) || (p.diagnosis || "").toLowerCase().includes(sl) || (p.notes || "").toLowerCase().includes(sl));
   });
   var lastVisitDate = function lastVisitDate(p) {
     return visits.filter(function (v) {
@@ -2317,6 +2352,15 @@ function Patients(_ref5) {
         });
       });
     }
+  }), /*#__PURE__*/React.createElement(EmailInput, {
+    value: newForm.email || "",
+    onChange: function onChange(v) {
+      return setNewForm(function (f) {
+        return _objectSpread(_objectSpread({}, f), {}, {
+          email: v
+        });
+      });
+    }
   }), /*#__PURE__*/React.createElement(Inp, {
     label: "Adres",
     value: newForm.address,
@@ -2398,6 +2442,7 @@ function Patients(_ref5) {
         return [].concat(_toConsumableArray(ps), [_objectSpread(_objectSpread({}, newForm), {}, {
           phones: phones,
           phone: ((_phones$2 = phones[0]) === null || _phones$2 === void 0 ? void 0 : _phones$2.number) || "",
+          email: (newForm.email || "").trim(),
           id: Date.now()
         })]);
       });
@@ -2405,6 +2450,7 @@ function Patients(_ref5) {
         name: "",
         phone: "",
         phones: [],
+        email: "",
         address: "",
         diagnosis: "",
         notes: "",

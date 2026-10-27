@@ -138,6 +138,22 @@ function privScrubString(s, ident) {
   } finally {
     _iterator2.f();
   }
+  var _iterator3 = _createForOfIteratorHelper(ident.emails || []),
+    _step3;
+  try {
+    for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+      var e = _step3.value;
+      var _privReplaceWord5 = privReplaceWord(t, e, ident.replEmail);
+      var _privReplaceWord6 = _slicedToArray(_privReplaceWord5, 2);
+      t = _privReplaceWord6[0];
+      r = _privReplaceWord6[1];
+      c += r;
+    }
+  } catch (err) {
+    _iterator3.e(err);
+  } finally {
+    _iterator3.f();
+  }
   return [t, c];
 }
 // przechodzi przez dowolną strukturę; zwraca TĘ SAMĄ referencję, gdy nic się nie zmieniło (żeby nie zapisywać zbędnie)
@@ -237,9 +253,15 @@ function privAnonymize(S, pid) {
     }).filter(function (a) {
       return a.length >= PRIV_MIN_ADDR;
     }))),
+    emails: _toConsumableArray(new Set([p.email].map(function (e) {
+      return String(e || "").trim();
+    }).filter(function (e) {
+      return e.length >= 5 && e.includes("@");
+    }))),
     repl: anon,
     replPhone: "(numer usunięty)",
-    replAddr: "(adres usunięty)"
+    replAddr: "(adres usunięty)",
+    replEmail: "(e-mail usunięty)"
   };
   // numery wierszy finansów, które pochodzą od tego pacjenta (wizyty, wpłaty, cykle, transport, przedłużenia, wózki)
   var sids = new Set();

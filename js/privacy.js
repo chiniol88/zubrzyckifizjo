@@ -44,6 +44,7 @@
       if(ident.name){[t,r]=privReplaceWord(t,ident.name,ident.repl);c+=r;}
       for(const k of ident.phoneKeys){[t,r]=privReplacePhone(t,k,ident.replPhone);c+=r;}
       for(const a of ident.addrs){[t,r]=privReplaceWord(t,a,ident.replAddr);c+=r;}
+      for(const e of (ident.emails||[])){[t,r]=privReplaceWord(t,e,ident.replEmail);c+=r;}
       return [t,c];
     }
     // przechodzi przez dowolną strukturę; zwraca TĘ SAMĄ referencję, gdy nic się nie zmieniło (żeby nie zapisywać zbędnie)
@@ -80,7 +81,8 @@
         name:pn.length>=PRIV_MIN_NAME?pn:"",
         phoneKeys:[...new Set(phones.map(privPhoneKey).filter(Boolean))],
         addrs:[...new Set(addrs.map(a=>String(a||"").trim()).filter(a=>a.length>=PRIV_MIN_ADDR))],
-        repl:anon,replPhone:"(numer usunięty)",replAddr:"(adres usunięty)"
+        emails:[...new Set([p.email].map(e=>String(e||"").trim()).filter(e=>e.length>=5&&e.includes("@")))],
+        repl:anon,replPhone:"(numer usunięty)",replAddr:"(adres usunięty)",replEmail:"(e-mail usunięty)"
       };
       // numery wierszy finansów, które pochodzą od tego pacjenta (wizyty, wpłaty, cykle, transport, przedłużenia, wózki)
       const sids=new Set();

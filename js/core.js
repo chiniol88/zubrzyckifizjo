@@ -15,6 +15,9 @@ const useDemo=()=>useContext(DemoCtx);
 const maskName=(demo,name,idx)=>demo?demoName(name,idx||0):name;
 const maskPhone=(demo,phone)=>demo?demoPhone():phone;
 const maskAddr=(demo,addr)=>demo?demoAddr():addr;
+const maskEmail=(demo,email)=>demo&&email?"***@***":email;
+// łagodna kontrola adresu e-mail (ostrzeżenie, nie blokada): coś@coś.coś bez spacji
+const emailOk=e=>{const s=String(e==null?"":e).trim();return !s||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);};
 const maskAmt=(demo,amt)=>demo?demoAmt():amt;
 // diagnozy, notatki, opisy numerów (np. "córka"), daty urodzin: w trybie demo zamiast treści same kropki
 const demoText=()=>"••••••";

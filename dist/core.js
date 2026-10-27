@@ -65,6 +65,14 @@ var maskPhone = function maskPhone(demo, phone) {
 var maskAddr = function maskAddr(demo, addr) {
   return demo ? demoAddr() : addr;
 };
+var maskEmail = function maskEmail(demo, email) {
+  return demo && email ? "***@***" : email;
+};
+// łagodna kontrola adresu e-mail (ostrzeżenie, nie blokada): coś@coś.coś bez spacji
+var emailOk = function emailOk(e) {
+  var s = String(e == null ? "" : e).trim();
+  return !s || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+};
 var maskAmt = function maskAmt(demo, amt) {
   return demo ? demoAmt() : amt;
 };

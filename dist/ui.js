@@ -1111,3 +1111,52 @@ function CityInput(_ref12) {
     }
   }, "Nie rozpozna\u0142em miasta w adresie. Wpisz je tutaj."));
 }
+
+// ── Pole "E-mail" (z łagodnym ostrzeżeniem o literówce; zapis nie jest blokowany) ───────────────────────────
+function EmailInput(_ref13) {
+  var value = _ref13.value,
+    _onChange8 = _ref13.onChange;
+  var dk = useContext(DarkCtx);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: dk ? "#6B84AC" : "#3E5578",
+      marginBottom: 5,
+      textTransform: "uppercase",
+      letterSpacing: .5
+    }
+  }, "E-mail"), /*#__PURE__*/React.createElement("input", {
+    type: "email",
+    inputMode: "email",
+    autoCapitalize: "none",
+    autoCorrect: "off",
+    spellCheck: false,
+    value: value || "",
+    onChange: function onChange(e) {
+      return _onChange8(e.target.value);
+    },
+    placeholder: "np. jan@example.com",
+    style: {
+      width: "100%",
+      padding: "13px 16px",
+      border: "1.5px solid ".concat(emailOk(value) ? dk ? "#2A3A56" : "#D9E2F0" : "#D9822B"),
+      borderRadius: 12,
+      fontSize: 16,
+      outline: "none",
+      background: dk ? "#111826" : "#FAFCFD",
+      color: dk ? "#E8F5F5" : "#1C2B3A",
+      fontFamily: "inherit"
+    }
+  }), !emailOk(value) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#D9822B",
+      marginTop: 4
+    }
+  }, "To nie wygl\u0105da na adres e-mail. Sprawd\u017A, czy nie ma liter\xF3wki."));
+}
