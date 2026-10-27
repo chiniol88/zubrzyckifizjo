@@ -230,6 +230,11 @@ function Magazyn(_ref3) {
     if (r.renewable && !r.endDate) return who + " · cykliczne, bez daty końca";
     return who + " · koniec " + (fmtD(r.endDate) || "bez daty") + (r.plannedReturn ? " · odbiór " + fmtD(r.plannedReturn) : "");
   };
+  // Kiedy sztuka wraca: planowany odbiór, a bez niego koniec wypożyczenia (tak samo liczy to Pulpit)
+  var retOf = function retOf(r) {
+    return r.plannedReturn || r.endDate || "";
+  };
+  // grp: 0 = już w magazynie (można zająć się od razu), 1 = wypożyczona z datą zwrotu (ret), 2 = wypożyczona bez daty końca (np. cykliczne)
   var whereOf = function whereOf(i) {
     if (i.machineId) {
       var card = (machines || []).find(function (m) {
@@ -238,41 +243,69 @@ function Magazyn(_ref3) {
       if (!card) return {
         code: "",
         txt: "w magazynie",
-        out: false
+        out: false,
+        grp: 0,
+        ret: ""
       };
       var st = whCardState(card, rentals);
-      if (st.kind === "out") return {
-        code: card.code || "",
-        txt: "u: " + endTxt(st.rental),
-        out: true
-      };
+      if (st.kind === "out") {
+        var _ret = retOf(st.rental);
+        return {
+          code: card.code || "",
+          txt: "u: " + endTxt(st.rental),
+          out: true,
+          grp: _ret ? 1 : 2,
+          ret: _ret
+        };
+      }
       if (st.kind === "reserved") return {
         code: card.code || "",
         txt: "zarezerwowana: " + (demo ? "klient" : st.rental.patientName || "?") + " od " + (fmtD(st.rental.startDate) || "?"),
-        out: false
+        out: false,
+        grp: 0,
+        ret: ""
       };
       return {
         code: card.code || "",
         txt: "w magazynie",
-        out: false
+        out: false,
+        grp: 0,
+        ret: ""
       };
     }
     var out = (rentals || []).filter(function (r) {
       return r.status === "aktywne" && !r.reserved && r.equipment === i.eq;
     }).sort(function (a, b) {
-      return (a.endDate || "9999").localeCompare(b.endDate || "9999");
+      return (retOf(a) || "9999").localeCompare(retOf(b) || "9999");
     });
     if (out.length === 0) return {
       code: "",
       txt: "wszystkie w magazynie",
-      out: false
+      out: false,
+      grp: 0,
+      ret: ""
     };
+    var ret = retOf(out[0]);
     return {
       code: "",
       txt: "wypożyczone: " + out.slice(0, 3).map(endTxt).join("; ") + (out.length > 3 ? " i " + (out.length - 3) + " więcej" : ""),
-      out: true
+      out: true,
+      grp: ret ? 1 : 2,
+      ret: ret
     };
   };
+  // Panel na górze: najpierw sztuki już w magazynie, potem według najbliższego zwrotu, na końcu bez daty końca;
+  // przy remisie starsza uwaga wyżej
+  var issuesSorted = att.issues.map(function (i) {
+    return {
+      i: i,
+      w: whereOf(i)
+    };
+  }).sort(function (a, b) {
+    return a.w.grp - b.w.grp || (a.w.ret || "").localeCompare(b.w.ret || "") || (a.i.created || "").localeCompare(b.i.created || "") || (+a.i.id || 0) - (+b.i.id || 0);
+  }).map(function (x) {
+    return x.i;
+  });
   var archivedCards = (machines || []).filter(function (m) {
     return m.archived;
   }).sort(function (a, b) {
@@ -1728,9 +1761,15 @@ function Magazyn(_ref3) {
     }
   }, /*#__PURE__*/React.createElement(SectionLabel, {
     style: {
+      marginBottom: 2
+    }
+  }, "Do za\u0142atwienia przy sprz\u0119cie (", att.issues.length, ")"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: subC,
       marginBottom: 6
     }
-  }, "Do za\u0142atwienia przy sprz\u0119cie (", att.issues.length, ")"), att.issues.slice(0, 5).map(function (i) {
+  }, "najpierw sztuki w magazynie, potem wed\u0142ug najbli\u017Cszego zwrotu"), issuesSorted.slice(0, 5).map(function (i) {
     return /*#__PURE__*/React.createElement("div", {
       key: i.eq + "-" + i.id,
       onClick: function onClick() {

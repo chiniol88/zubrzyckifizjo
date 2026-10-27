@@ -75,19 +75,26 @@
         if(r.renewable&&!r.endDate)return who+" · cykliczne, bez daty końca";
         return who+" · koniec "+(fmtD(r.endDate)||"bez daty")+(r.plannedReturn?" · odbiór "+fmtD(r.plannedReturn):"");
       };
+      // Kiedy sztuka wraca: planowany odbiór, a bez niego koniec wypożyczenia (tak samo liczy to Pulpit)
+      const retOf=r=>r.plannedReturn||r.endDate||"";
+      // grp: 0 = już w magazynie (można zająć się od razu), 1 = wypożyczona z datą zwrotu (ret), 2 = wypożyczona bez daty końca (np. cykliczne)
       const whereOf=i=>{
         if(i.machineId){
           const card=(machines||[]).find(m=>m.id===i.machineId);
-          if(!card)return {code:"",txt:"w magazynie",out:false};
+          if(!card)return {code:"",txt:"w magazynie",out:false,grp:0,ret:""};
           const st=whCardState(card,rentals);
-          if(st.kind==="out")return {code:card.code||"",txt:"u: "+endTxt(st.rental),out:true};
-          if(st.kind==="reserved")return {code:card.code||"",txt:"zarezerwowana: "+(demo?"klient":(st.rental.patientName||"?"))+" od "+(fmtD(st.rental.startDate)||"?"),out:false};
-          return {code:card.code||"",txt:"w magazynie",out:false};
+          if(st.kind==="out"){const ret=retOf(st.rental);return {code:card.code||"",txt:"u: "+endTxt(st.rental),out:true,grp:ret?1:2,ret};}
+          if(st.kind==="reserved")return {code:card.code||"",txt:"zarezerwowana: "+(demo?"klient":(st.rental.patientName||"?"))+" od "+(fmtD(st.rental.startDate)||"?"),out:false,grp:0,ret:""};
+          return {code:card.code||"",txt:"w magazynie",out:false,grp:0,ret:""};
         }
-        const out=(rentals||[]).filter(r=>r.status==="aktywne"&&!r.reserved&&r.equipment===i.eq).sort((a,b)=>(a.endDate||"9999").localeCompare(b.endDate||"9999"));
-        if(out.length===0)return {code:"",txt:"wszystkie w magazynie",out:false};
-        return {code:"",txt:"wypożyczone: "+out.slice(0,3).map(endTxt).join("; ")+(out.length>3?" i "+(out.length-3)+" więcej":""),out:true};
+        const out=(rentals||[]).filter(r=>r.status==="aktywne"&&!r.reserved&&r.equipment===i.eq).sort((a,b)=>(retOf(a)||"9999").localeCompare(retOf(b)||"9999"));
+        if(out.length===0)return {code:"",txt:"wszystkie w magazynie",out:false,grp:0,ret:""};
+        const ret=retOf(out[0]);
+        return {code:"",txt:"wypożyczone: "+out.slice(0,3).map(endTxt).join("; ")+(out.length>3?" i "+(out.length-3)+" więcej":""),out:true,grp:ret?1:2,ret};
       };
+      // Panel na górze: najpierw sztuki już w magazynie, potem według najbliższego zwrotu, na końcu bez daty końca;
+      // przy remisie starsza uwaga wyżej
+      const issuesSorted=att.issues.map(i=>({i,w:whereOf(i)})).sort((a,b)=>a.w.grp-b.w.grp||(a.w.ret||"").localeCompare(b.w.ret||"")||(a.i.created||"").localeCompare(b.i.created||"")||((+a.i.id||0)-(+b.i.id||0))).map(x=>x.i);
       const archivedCards=(machines||[]).filter(m=>m.archived).sort((a,b)=>(b.retiredDate||"").localeCompare(a.retiredDate||"")||(b.id-a.id));
       const issuesOf=eq=>((((stock||{}).issues||{})[eq])||[]);
 
@@ -435,8 +442,9 @@
           </div>)}
         </Card></div>}
         {att.issues.length>0&&<div style={{padding:"0 20px"}}><Card style={{padding:"12px 16px"}}>
-          <SectionLabel style={{marginBottom:6}}>Do załatwienia przy sprzęcie ({att.issues.length})</SectionLabel>
-          {att.issues.slice(0,5).map(i=><div key={i.eq+"-"+i.id} onClick={()=>{setOpen(o=>({...o,[i.eq]:true}));setGroup("all");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",cursor:"pointer",gap:8}}>
+          <SectionLabel style={{marginBottom:2}}>Do załatwienia przy sprzęcie ({att.issues.length})</SectionLabel>
+          <div style={{fontSize:11,color:subC,marginBottom:6}}>najpierw sztuki w magazynie, potem według najbliższego zwrotu</div>
+          {issuesSorted.slice(0,5).map(i=><div key={i.eq+"-"+i.id} onClick={()=>{setOpen(o=>({...o,[i.eq]:true}));setGroup("all");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",cursor:"pointer",gap:8}}>
             <span style={{fontSize:13,minWidth:0}}>
               {i.text}
               {(()=>{const w=whereOf(i);return <span style={{display:"block",fontSize:11,color:w.out?"#D9822B":subC,marginTop:2}}>{w.txt}</span>;})()}
