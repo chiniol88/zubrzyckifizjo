@@ -442,9 +442,131 @@ function getPhones(pat) {
     label: ""
   }] : [];
 }
-function PhonesEditor(_ref4) {
-  var phones = _ref4.phones,
+
+// Adresy e-mail pacjenta: wiele, z opisem (np. "żona", "córka"), jak telefony. Łagodne ostrzeżenie o literówce, zapis nie jest blokowany.
+function EmailsEditor(_ref4) {
+  var emails = _ref4.emails,
     _onChange = _ref4.onChange;
+  var dk = useContext(DarkCtx);
+  var list = emails || [];
+  var inputStyle = {
+    padding: "11px 14px",
+    border: "1.5px solid ".concat(dk ? "#2A3A56" : "#D9E2F0"),
+    borderRadius: 12,
+    fontSize: 15,
+    outline: "none",
+    background: dk ? "#111826" : "#FAFCFD",
+    color: dk ? "#E8F5F5" : "#1C2B3A",
+    fontFamily: "inherit"
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: dk ? "#6B84AC" : "#3E5578",
+      marginBottom: 6,
+      textTransform: "uppercase",
+      letterSpacing: .5
+    }
+  }, "E-maile"), list.map(function (em) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: em.id,
+      style: {
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "email",
+      inputMode: "email",
+      autoCapitalize: "none",
+      autoCorrect: "off",
+      spellCheck: false,
+      value: em.address,
+      onChange: function onChange(e) {
+        return _onChange(list.map(function (x) {
+          return x.id === em.id ? _objectSpread(_objectSpread({}, x), {}, {
+            address: e.target.value
+          }) : x;
+        }));
+      },
+      placeholder: "jan@example.com",
+      style: _objectSpread(_objectSpread({}, inputStyle), {}, {
+        flex: 1.3,
+        minWidth: 0,
+        borderColor: emailOk(em.address) ? dk ? "#2A3A56" : "#D9E2F0" : "#D9822B"
+      })
+    }), /*#__PURE__*/React.createElement("input", {
+      value: em.label || "",
+      onChange: function onChange(e) {
+        return _onChange(list.map(function (x) {
+          return x.id === em.id ? _objectSpread(_objectSpread({}, x), {}, {
+            label: e.target.value
+          }) : x;
+        }));
+      },
+      placeholder: "np. \u017Cona, c\xF3rka...",
+      style: _objectSpread(_objectSpread({}, inputStyle), {}, {
+        flex: 1,
+        minWidth: 0
+      })
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return _onChange(list.filter(function (x) {
+          return x.id !== em.id;
+        }));
+      },
+      style: {
+        flexShrink: 0,
+        background: "none",
+        border: "none",
+        color: "#E05C5C",
+        fontSize: 22,
+        cursor: "pointer",
+        padding: "0 4px",
+        lineHeight: 1,
+        fontFamily: "inherit"
+      }
+    }, "\xD7")), !emailOk(em.address) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#D9822B",
+        marginTop: 3
+      }
+    }, "To nie wygl\u0105da na adres e-mail. Sprawd\u017A, czy nie ma liter\xF3wki."));
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return _onChange([].concat(_toConsumableArray(list), [{
+        id: Date.now() + Math.random(),
+        address: "",
+        label: ""
+      }]));
+    },
+    style: {
+      width: "100%",
+      padding: "10px",
+      borderRadius: 10,
+      border: "1.5px dashed #D9E2F0",
+      background: "none",
+      color: "#3E6FB0",
+      fontWeight: 600,
+      fontSize: 13,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "+ Dodaj e-mail"));
+}
+function PhonesEditor(_ref5) {
+  var phones = _ref5.phones,
+    _onChange2 = _ref5.onChange;
   var dk = useContext(DarkCtx);
   var list = phones || [];
   var inputStyle = {
@@ -483,7 +605,7 @@ function PhonesEditor(_ref4) {
       type: "tel",
       value: ph.number,
       onChange: function onChange(e) {
-        return _onChange(list.map(function (x) {
+        return _onChange2(list.map(function (x) {
           return x.id === ph.id ? _objectSpread(_objectSpread({}, x), {}, {
             number: e.target.value
           }) : x;
@@ -496,7 +618,7 @@ function PhonesEditor(_ref4) {
     }), /*#__PURE__*/React.createElement("input", {
       value: ph.label,
       onChange: function onChange(e) {
-        return _onChange(list.map(function (x) {
+        return _onChange2(list.map(function (x) {
           return x.id === ph.id ? _objectSpread(_objectSpread({}, x), {}, {
             label: e.target.value
           }) : x;
@@ -508,7 +630,7 @@ function PhonesEditor(_ref4) {
       })
     }), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
-        return _onChange(list.filter(function (x) {
+        return _onChange2(list.filter(function (x) {
           return x.id !== ph.id;
         }));
       },
@@ -526,7 +648,7 @@ function PhonesEditor(_ref4) {
     }, "\xD7"));
   }), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
-      return _onChange([].concat(_toConsumableArray(list), [{
+      return _onChange2([].concat(_toConsumableArray(list), [{
         id: Date.now() + Math.random(),
         number: "",
         label: ""
@@ -546,19 +668,19 @@ function PhonesEditor(_ref4) {
     }
   }, "+ Dodaj numer"));
 }
-function Patients(_ref5) {
-  var patients = _ref5.patients,
-    setPatients = _ref5.setPatients,
-    visits = _ref5.visits,
-    setVisits = _ref5.setVisits,
-    finances = _ref5.finances,
-    setFinances = _ref5.setFinances,
-    rentals = _ref5.rentals,
-    setRentals = _ref5.setRentals,
-    nfzCases = _ref5.nfzCases,
-    setNfzCases = _ref5.setNfzCases,
-    allClients = _ref5.allClients,
-    priv = _ref5.priv;
+function Patients(_ref6) {
+  var patients = _ref6.patients,
+    setPatients = _ref6.setPatients,
+    visits = _ref6.visits,
+    setVisits = _ref6.setVisits,
+    finances = _ref6.finances,
+    setFinances = _ref6.setFinances,
+    rentals = _ref6.rentals,
+    setRentals = _ref6.setRentals,
+    nfzCases = _ref6.nfzCases,
+    setNfzCases = _ref6.setNfzCases,
+    allClients = _ref6.allClients,
+    priv = _ref6.priv;
   var demo = useDemo();
   var durs = useContext(DurCtx);
   var knownCities = useMemo(function () {
@@ -589,6 +711,7 @@ function Patients(_ref5) {
       name: "",
       phone: "",
       phones: [],
+      emails: [],
       email: "",
       address: "",
       diagnosis: "",
@@ -850,6 +973,7 @@ function Patients(_ref5) {
   if (pat) {
     var maps = pat.address ? "https://www.google.com/maps/dir/?api=1&destination=".concat(encodeURIComponent(pat.address)) : null;
     var patPhones = getPhones(pat);
+    var patEmails = getEmails(pat);
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         return setSelId(null);
@@ -906,7 +1030,8 @@ function Patients(_ref5) {
       variant: "secondary",
       onClick: function onClick() {
         setEditForm(_objectSpread(_objectSpread({}, pat), {}, {
-          phones: getPhones(pat)
+          phones: getPhones(pat),
+          emails: getEmails(pat)
         }));
         setConfirmDelPat(false);
         setShowEdit(true);
@@ -919,7 +1044,7 @@ function Patients(_ref5) {
       style: {
         fontSize: 14,
         color: "#7A8FA6",
-        marginBottom: pat.address || pat.email ? 10 : 0
+        marginBottom: pat.address || patEmails.length ? 10 : 0
       }
     }, "Brak telefonu"), patPhones.map(function (ph, i) {
       return /*#__PURE__*/React.createElement("div", {
@@ -928,7 +1053,7 @@ function Patients(_ref5) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: i < patPhones.length - 1 || pat.address || pat.email ? 10 : 0
+          marginBottom: i < patPhones.length - 1 || patEmails.length || pat.address ? 10 : 0
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
@@ -970,31 +1095,39 @@ function Patients(_ref5) {
         s: 15,
         c: "#3E6FB0"
       }), " SMS"))));
-    }), pat.email && /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: pat.address ? 10 : 0
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 14,
-        color: "#7A8FA6",
-        flex: 1,
-        paddingRight: 8,
-        overflowWrap: "anywhere"
-      }
-    }, "\u2709\uFE0F ", maskEmail(demo, pat.email)), !demo && /*#__PURE__*/React.createElement("a", {
-      href: "mailto:".concat(pat.email),
-      style: {
-        textDecoration: "none",
-        flexShrink: 0
-      }
-    }, /*#__PURE__*/React.createElement(Btn, {
-      small: true,
-      variant: "secondary"
-    }, "\u2709\uFE0F Napisz"))), pat.address && /*#__PURE__*/React.createElement("div", {
+    }), patEmails.map(function (em, i) {
+      return /*#__PURE__*/React.createElement("div", {
+        key: em.id,
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: i < patEmails.length - 1 || pat.address ? 10 : 0
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 14,
+          color: "#7A8FA6",
+          flex: 1,
+          paddingRight: 8,
+          overflowWrap: "anywhere"
+        }
+      }, "\u2709\uFE0F ", maskEmail(demo, em.address), em.label && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: "#3E6FB0",
+          fontWeight: 600
+        }
+      }, " \xB7 ", maskText(demo, em.label))), !demo && /*#__PURE__*/React.createElement("a", {
+        href: "mailto:".concat(em.address),
+        style: {
+          textDecoration: "none",
+          flexShrink: 0
+        }
+      }, /*#__PURE__*/React.createElement(Btn, {
+        small: true,
+        variant: "secondary"
+      }, "\u2709\uFE0F Napisz")));
+    }), pat.address && /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         justifyContent: "space-between",
@@ -1449,12 +1582,12 @@ function Patients(_ref5) {
           });
         });
       }
-    }), /*#__PURE__*/React.createElement(EmailInput, {
-      value: editForm.email || "",
-      onChange: function onChange(v) {
+    }), /*#__PURE__*/React.createElement(EmailsEditor, {
+      emails: editForm.emails || [],
+      onChange: function onChange(emails) {
         return setEditForm(function (f) {
           return _objectSpread(_objectSpread({}, f), {}, {
-            email: v
+            emails: emails
           });
         });
       }
@@ -1541,12 +1674,22 @@ function Patients(_ref5) {
           return ph.number.trim();
         });
         var _phone = ((_phones$ = _phones[0]) === null || _phones$ === void 0 ? void 0 : _phones$.number) || "";
+        var _emails = (editForm.emails || []).map(function (e) {
+          return _objectSpread(_objectSpread({}, e), {}, {
+            address: String(e.address || "").trim(),
+            label: String(e.label || "").trim()
+          });
+        }).filter(function (e) {
+          return e.address;
+        });
         setPatients(function (ps) {
           return ps.map(function (p) {
+            var _emails$;
             return p.id === _pid ? _objectSpread(_objectSpread(_objectSpread({}, p), editForm), {}, {
               phones: _phones,
               phone: _phone,
-              email: (editForm.email || "").trim()
+              emails: _emails,
+              email: ((_emails$ = _emails[0]) === null || _emails$ === void 0 ? void 0 : _emails$.address) || ""
             }) : p;
           });
         });
@@ -2017,7 +2160,9 @@ function Patients(_ref5) {
   var filtered = patients.filter(function (p) {
     return !!p.archived === showArchived && (p.name.toLowerCase().includes(sl) || getPhones(p).some(function (ph) {
       return ph.number.replace(/\s/g, "").includes(sn);
-    }) || (p.email || "").toLowerCase().includes(sl) || (p.address || "").toLowerCase().includes(sl) || (p.diagnosis || "").toLowerCase().includes(sl) || (p.notes || "").toLowerCase().includes(sl));
+    }) || getEmails(p).some(function (e) {
+      return e.address.toLowerCase().includes(sl);
+    }) || (p.address || "").toLowerCase().includes(sl) || (p.diagnosis || "").toLowerCase().includes(sl) || (p.notes || "").toLowerCase().includes(sl));
   });
   var lastVisitDate = function lastVisitDate(p) {
     return visits.filter(function (v) {
@@ -2352,12 +2497,12 @@ function Patients(_ref5) {
         });
       });
     }
-  }), /*#__PURE__*/React.createElement(EmailInput, {
-    value: newForm.email || "",
-    onChange: function onChange(v) {
+  }), /*#__PURE__*/React.createElement(EmailsEditor, {
+    emails: newForm.emails || [],
+    onChange: function onChange(emails) {
       return setNewForm(function (f) {
         return _objectSpread(_objectSpread({}, f), {}, {
-          email: v
+          emails: emails
         });
       });
     }
@@ -2437,12 +2582,21 @@ function Patients(_ref5) {
       var phones = (newForm.phones || []).filter(function (ph) {
         return ph.number.trim();
       });
+      var emails = (newForm.emails || []).map(function (e) {
+        return _objectSpread(_objectSpread({}, e), {}, {
+          address: String(e.address || "").trim(),
+          label: String(e.label || "").trim()
+        });
+      }).filter(function (e) {
+        return e.address;
+      });
       setPatients(function (ps) {
-        var _phones$2;
+        var _phones$2, _emails$2;
         return [].concat(_toConsumableArray(ps), [_objectSpread(_objectSpread({}, newForm), {}, {
           phones: phones,
           phone: ((_phones$2 = phones[0]) === null || _phones$2 === void 0 ? void 0 : _phones$2.number) || "",
-          email: (newForm.email || "").trim(),
+          emails: emails,
+          email: ((_emails$2 = emails[0]) === null || _emails$2 === void 0 ? void 0 : _emails$2.address) || "",
           id: Date.now()
         })]);
       });
@@ -2450,6 +2604,7 @@ function Patients(_ref5) {
         name: "",
         phone: "",
         phones: [],
+        emails: [],
         email: "",
         address: "",
         diagnosis: "",

@@ -111,6 +111,25 @@
       return pat.phone?[{id:"legacy",number:pat.phone,label:""}]:[];
     }
 
+    // Adresy e-mail pacjenta: wiele, z opisem (np. "żona", "córka"), jak telefony. Łagodne ostrzeżenie o literówce, zapis nie jest blokowany.
+    function EmailsEditor({emails, onChange}) {
+      const dk=useContext(DarkCtx);
+      const list=emails||[];
+      const inputStyle={padding:"11px 14px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:15,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
+      return <div style={{marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:6,textTransform:"uppercase",letterSpacing:.5}}>E-maile</div>
+        {list.map(em=><div key={em.id} style={{marginBottom:8}}>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <input type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={em.address} onChange={e=>onChange(list.map(x=>x.id===em.id?{...x,address:e.target.value}:x))} placeholder="jan@example.com" style={{...inputStyle,flex:1.3,minWidth:0,borderColor:emailOk(em.address)?(dk?"#2A3A56":"#D9E2F0"):"#D9822B"}}/>
+            <input value={em.label||""} onChange={e=>onChange(list.map(x=>x.id===em.id?{...x,label:e.target.value}:x))} placeholder="np. żona, córka..." style={{...inputStyle,flex:1,minWidth:0}}/>
+            <button onClick={()=>onChange(list.filter(x=>x.id!==em.id))} style={{flexShrink:0,background:"none",border:"none",color:"#E05C5C",fontSize:22,cursor:"pointer",padding:"0 4px",lineHeight:1,fontFamily:"inherit"}}>×</button>
+          </div>
+          {!emailOk(em.address)&&<div style={{fontSize:12,color:"#D9822B",marginTop:3}}>To nie wygląda na adres e-mail. Sprawdź, czy nie ma literówki.</div>}
+        </div>)}
+        <button onClick={()=>onChange([...list,{id:Date.now()+Math.random(),address:"",label:""}])} style={{width:"100%",padding:"10px",borderRadius:10,border:"1.5px dashed #D9E2F0",background:"none",color:"#3E6FB0",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>+ Dodaj e-mail</button>
+      </div>;
+    }
+
     function PhonesEditor({phones, onChange}) {
       const dk=useContext(DarkCtx);
       const list=phones||[];
@@ -136,7 +155,7 @@
       const [showEdit,setShowEdit]=useState(false);
       const [confirmDelPat,setConfirmDelPat]=useState(false);
       const [editForm,setEditForm]=useState(null);
-      const [newForm,setNewForm]=useState({name:"",phone:"",phones:[],email:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});
+      const [newForm,setNewForm]=useState({name:"",phone:"",phones:[],emails:[],email:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});
       const [showAddV,setShowAddV]=useState(false);
       const [vf,setVf]=useState(emptyVisit);
       const [editV,setEditV]=useState(null);
@@ -225,6 +244,7 @@
       if(pat) {
         const maps=pat.address?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pat.address)}`:null;
         const patPhones=getPhones(pat);
+        const patEmails=getEmails(pat);
         return <>
           <div>
             <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#3E6FB0",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
@@ -236,22 +256,22 @@
                   <Av name={demo?"Pacjent":pat.name}/>
                   <div><div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800}}>{demo?"Pacjent":pat.name}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{maskPhone(demo,pat.phone)}</div></div>
                 </div>
-                <Btn small variant="secondary" onClick={()=>{setEditForm({...pat,phones:getPhones(pat)});setConfirmDelPat(false);setShowEdit(true);}}>✏️ Edytuj</Btn>
+                <Btn small variant="secondary" onClick={()=>{setEditForm({...pat,phones:getPhones(pat),emails:getEmails(pat)});setConfirmDelPat(false);setShowEdit(true);}}>✏️ Edytuj</Btn>
               </div>
 
               <Card style={{marginBottom:10}}>
-                {patPhones.length===0&&<div style={{fontSize:14,color:"#7A8FA6",marginBottom:(pat.address||pat.email)?10:0}}>Brak telefonu</div>}
-                {patPhones.map((ph,i)=><div key={ph.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:(i<patPhones.length-1||pat.address||pat.email)?10:0}}>
+                {patPhones.length===0&&<div style={{fontSize:14,color:"#7A8FA6",marginBottom:(pat.address||patEmails.length)?10:0}}>Brak telefonu</div>}
+                {patPhones.map((ph,i)=><div key={ph.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:(i<patPhones.length-1||patEmails.length||pat.address)?10:0}}>
                   <div style={{fontSize:14,color:"#7A8FA6"}}>{maskPhone(demo,ph.number)}{ph.label&&<span style={{color:"#3E6FB0",fontWeight:600}}> · {maskText(demo,ph.label)}</span>}</div>
                   {!demo&&<div style={{display:"flex",gap:6}}>
                     <a href={`tel:${ph.number.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d={I.ph} s={15} c="#3E6FB0"/> Zadzwoń</Btn></a>
                     <a href={`sms:${ph.number.replace(/\s/g,"")}`} style={{textDecoration:"none"}}><Btn small variant="secondary"><Ico d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" s={15} c="#3E6FB0"/> SMS</Btn></a>
                   </div>}
                 </div>)}
-                {pat.email&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:pat.address?10:0}}>
-                  <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8,overflowWrap:"anywhere"}}>✉️ {maskEmail(demo,pat.email)}</div>
-                  {!demo&&<a href={`mailto:${pat.email}`} style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">✉️ Napisz</Btn></a>}
-                </div>}
+                {patEmails.map((em,i)=><div key={em.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:(i<patEmails.length-1||pat.address)?10:0}}>
+                  <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8,overflowWrap:"anywhere"}}>✉️ {maskEmail(demo,em.address)}{em.label&&<span style={{color:"#3E6FB0",fontWeight:600}}> · {maskText(demo,em.label)}</span>}</div>
+                  {!demo&&<a href={`mailto:${em.address}`} style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">✉️ Napisz</Btn></a>}
+                </div>)}
                 {pat.address&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div style={{fontSize:14,color:"#7A8FA6",flex:1,paddingRight:8}}>{maskAddr(demo,pat.address)}</div>
                   {maps&&!demo&&<a href={maps} target="_blank" rel="noreferrer" style={{textDecoration:"none",flexShrink:0}}><Btn small variant="secondary">🗺️ Trasa</Btn></a>}
@@ -338,7 +358,7 @@
           {showEdit&&editForm&&<Modal title="Edytuj pacjenta" onClose={()=>{setShowEdit(false);setEditForm(null);setConfirmDelPat(false);}}>
             <Inp label="Imię i nazwisko" value={editForm.name||""} onChange={v=>setEditForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
             <PhonesEditor phones={editForm.phones||[]} onChange={phones=>setEditForm(f=>({...f,phones}))}/>
-            <EmailInput value={editForm.email||""} onChange={v=>setEditForm(f=>({...f,email:v}))}/>
+            <EmailsEditor emails={editForm.emails||[]} onChange={emails=>setEditForm(f=>({...f,emails}))}/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <CityInput value={editForm.city||""} onChange={v=>setEditForm(f=>({...f,city:v}))} address={editForm.address} extra={knownCities}/>
             <Txa label="Diagnoza" value={editForm.diagnosis||""} onChange={v=>setEditForm(f=>({...f,diagnosis:v}))} rows={2}/>
@@ -354,7 +374,8 @@
                     const _new=editForm.name||_old;
                     const _phones=(editForm.phones||[]).filter(ph=>ph.number.trim());
                     const _phone=_phones[0]?.number||"";
-                    setPatients(ps=>ps.map(p=>p.id===_pid?{...p,...editForm,phones:_phones,phone:_phone,email:(editForm.email||"").trim()}:p));
+                    const _emails=(editForm.emails||[]).map(e=>({...e,address:String(e.address||"").trim(),label:String(e.label||"").trim()})).filter(e=>e.address);
+                    setPatients(ps=>ps.map(p=>p.id===_pid?{...p,...editForm,phones:_phones,phone:_phone,emails:_emails,email:_emails[0]?.address||""}:p));
                     if(_new!==_old){
                       setVisits(vs=>vs.map(v=>v.patientId===_pid?{...v,patientName:_new}:v));
                       const _mineSid=ownSidMatcher(_pid,_old);
@@ -458,7 +479,7 @@
 
       // Lista pacjentów
       const sl=search.toLowerCase(),sn=search.replace(/\s/g,"");
-      const filtered=patients.filter(p=>(!!p.archived)===showArchived&&(p.name.toLowerCase().includes(sl)||getPhones(p).some(ph=>ph.number.replace(/\s/g,"").includes(sn))||(p.email||"").toLowerCase().includes(sl)||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl)));
+      const filtered=patients.filter(p=>(!!p.archived)===showArchived&&(p.name.toLowerCase().includes(sl)||getPhones(p).some(ph=>ph.number.replace(/\s/g,"").includes(sn))||getEmails(p).some(e=>e.address.toLowerCase().includes(sl))||(p.address||"").toLowerCase().includes(sl)||(p.diagnosis||"").toLowerCase().includes(sl)||(p.notes||"").toLowerCase().includes(sl)));
       const lastVisitDate=p=>visits.filter(v=>v.patientId===p.id).map(v=>v.date).sort((a,b)=>b.localeCompare(a))[0]||"";
       const sorted=[...filtered].sort((a,b)=>sort==="alpha"?a.name.localeCompare(b.name,"pl"):lastVisitDate(b).localeCompare(lastVisitDate(a)));
 
@@ -533,14 +554,14 @@
         {showAdd&&<Modal title="Nowy pacjent" onClose={()=>setShowAdd(false)}>
           <Inp label="Imię i nazwisko *" value={newForm.name} onChange={v=>setNewForm(f=>({...f,name:v}))} placeholder="Jan Kowalski"/>
           <PhonesEditor phones={newForm.phones} onChange={phones=>setNewForm(f=>({...f,phones}))}/>
-          <EmailInput value={newForm.email||""} onChange={v=>setNewForm(f=>({...f,email:v}))}/>
+          <EmailsEditor emails={newForm.emails||[]} onChange={emails=>setNewForm(f=>({...f,emails}))}/>
           <Inp label="Adres" value={newForm.address} onChange={v=>setNewForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <CityInput value={newForm.city||""} onChange={v=>setNewForm(f=>({...f,city:v}))} address={newForm.address} extra={knownCities}/>
           <Txa label="Diagnoza" value={newForm.diagnosis} onChange={v=>setNewForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={newForm.notes} onChange={v=>setNewForm(f=>({...f,notes:v}))} rows={2}/>
           <Inp label="Domyślna cena wizyty (zł)" value={newForm.defaultPrice||""} onChange={v=>setNewForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>
           <BirthdayInput value={newForm.birthday||""} onChange={v=>setNewForm(f=>({...f,birthday:v}))}/>
-          <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;const phones=(newForm.phones||[]).filter(ph=>ph.number.trim());setPatients(ps=>[...ps,{...newForm,phones,phone:phones[0]?.number||"",email:(newForm.email||"").trim(),id:Date.now()}]);setNewForm({name:"",phone:"",phones:[],email:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
+          <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;const phones=(newForm.phones||[]).filter(ph=>ph.number.trim());const emails=(newForm.emails||[]).map(e=>({...e,address:String(e.address||"").trim(),label:String(e.label||"").trim()})).filter(e=>e.address);setPatients(ps=>[...ps,{...newForm,phones,phone:phones[0]?.number||"",emails,email:emails[0]?.address||"",id:Date.now()}]);setNewForm({name:"",phone:"",phones:[],emails:[],email:"",address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
         </Modal>}
         {showQuickV&&quickV&&<Modal title={"Wizyta – "+(demo?"Pacjent":quickV.patientName)} onClose={()=>setShowQuickV(false)}>
           <Inp label="Data" value={quickV.date} onChange={v=>setQuickV(f=>({...f,date:v}))} type="date"/>

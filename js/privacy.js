@@ -81,7 +81,7 @@
         name:pn.length>=PRIV_MIN_NAME?pn:"",
         phoneKeys:[...new Set(phones.map(privPhoneKey).filter(Boolean))],
         addrs:[...new Set(addrs.map(a=>String(a||"").trim()).filter(a=>a.length>=PRIV_MIN_ADDR))],
-        emails:[...new Set([p.email].map(e=>String(e||"").trim()).filter(e=>e.length>=5&&e.includes("@")))],
+        emails:[...new Set([p.email,...(Array.isArray(p.emails)?p.emails:[]).map(x=>x&&x.address)].map(e=>String(e||"").trim()).filter(e=>e.length>=5&&e.includes("@")))],
         repl:anon,replPhone:"(numer usunięty)",replAddr:"(adres usunięty)",replEmail:"(e-mail usunięty)"
       };
       // numery wierszy finansów, które pochodzą od tego pacjenta (wizyty, wpłaty, cykle, transport, przedłużenia, wózki)

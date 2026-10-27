@@ -17,6 +17,13 @@ const maskPhone=(demo,phone)=>demo?demoPhone():phone;
 const maskAddr=(demo,addr)=>demo?demoAddr():addr;
 const maskEmail=(demo,email)=>demo&&email?"***@***":email;
 // łagodna kontrola adresu e-mail (ostrzeżenie, nie blokada): coś@coś.coś bez spacji
+// adresy e-mail pacjenta: lista emails [{id,address,label}] albo (starsze dane) pojedyncze pole email; pierwszy adres jest też w pat.email
+const getEmails=pat=>{
+  const list=pat&&Array.isArray(pat.emails)?pat.emails.filter(x=>x&&typeof x==="object"&&String(x.address||"").trim()):[];
+  if(list.length)return list;
+  const one=pat&&typeof pat.email==="string"?pat.email.trim():"";
+  return one?[{id:"legacy",address:one,label:""}]:[];
+};
 const emailOk=e=>{const s=String(e==null?"":e).trim();return !s||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);};
 const maskAmt=(demo,amt)=>demo?demoAmt():amt;
 // diagnozy, notatki, opisy numerów (np. "córka"), daty urodzin: w trybie demo zamiast treści same kropki

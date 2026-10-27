@@ -253,7 +253,9 @@ function privAnonymize(S, pid) {
     }).filter(function (a) {
       return a.length >= PRIV_MIN_ADDR;
     }))),
-    emails: _toConsumableArray(new Set([p.email].map(function (e) {
+    emails: _toConsumableArray(new Set([p.email].concat(_toConsumableArray((Array.isArray(p.emails) ? p.emails : []).map(function (x) {
+      return x && x.address;
+    }))).map(function (e) {
       return String(e || "").trim();
     }).filter(function (e) {
       return e.length >= 5 && e.includes("@");
