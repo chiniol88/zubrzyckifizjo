@@ -2,6 +2,10 @@
 "use strict";
 
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _classCallCheck(a, n) { if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function"); }
 function _defineProperties(e, r) { for (var t = 0; t < r.length; t++) { var o = r[t]; o.enumerable = o.enumerable || !1, o.configurable = !0, "value" in o && (o.writable = !0), Object.defineProperty(e, _toPropertyKey(o.key), o); } }
 function _createClass(e, r, t) { return r && _defineProperties(e.prototype, r), t && _defineProperties(e, t), Object.defineProperty(e, "prototype", { writable: !1 }), e; }
@@ -1036,4 +1040,74 @@ function TimeRange(_ref11) {
       return _onChange6(start, v);
     }
   }));
+}
+
+// ── Pole "Miasto" ─────────────────────────────────────────────────────────────────────────────────────
+// Wpisane ręcznie ma pierwszeństwo; puste = miasto wyłuskane z adresu (widoczne w podpowiedzi pola). extra = miasta już zapisane w bazie.
+function CityInput(_ref12) {
+  var value = _ref12.value,
+    _onChange7 = _ref12.onChange,
+    address = _ref12.address,
+    extra = _ref12.extra,
+    fallback = _ref12.fallback;
+  var dk = useContext(DarkCtx);
+  var K = useMemo(function () {
+    return cityKnown(extra);
+  }, [extra]);
+  var d = cityFromAddress(address, K);
+  var guess = d.city || fallback || "";
+  var idRef = useRef("fz-city-" + Math.random().toString(36).slice(2, 9));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: dk ? "#6B84AC" : "#3E5578",
+      marginBottom: 5,
+      textTransform: "uppercase",
+      letterSpacing: .5
+    }
+  }, "Miasto"), /*#__PURE__*/React.createElement("input", {
+    list: idRef.current,
+    value: value || "",
+    onChange: function onChange(e) {
+      return _onChange7(e.target.value);
+    },
+    placeholder: guess ? "z adresu: " + guess : "np. Katowice",
+    style: {
+      width: "100%",
+      padding: "13px 16px",
+      border: "1.5px solid ".concat(dk ? "#2A3A56" : "#D9E2F0"),
+      borderRadius: 12,
+      fontSize: 16,
+      outline: "none",
+      background: dk ? "#111826" : "#FAFCFD",
+      color: dk ? "#E8F5F5" : "#1C2B3A",
+      fontFamily: "inherit"
+    }
+  }), /*#__PURE__*/React.createElement("datalist", {
+    id: idRef.current
+  }, _toConsumableArray(K.values()).sort(function (a, b) {
+    return a.localeCompare(b, "pl");
+  }).map(function (c) {
+    return /*#__PURE__*/React.createElement("option", {
+      key: c,
+      value: c
+    });
+  })), !value && d.conf === "guess" && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#D9822B",
+      marginTop: 4
+    }
+  }, "Domys\u0142 z adresu: ", d.city, ". Wpisz miasto, je\u015Bli to nie to."), !value && !guess && String(address || "").trim() && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#D9822B",
+      marginTop: 4
+    }
+  }, "Nie rozpozna\u0142em miasta w adresie. Wpisz je tutaj."));
 }

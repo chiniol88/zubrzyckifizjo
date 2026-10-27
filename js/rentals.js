@@ -313,6 +313,7 @@
     function Rentals({rentals,setRentals,finances,setFinances,patients,setPatients,nfzCases,setNfzCases,allClients,initialDetail,onDetailClosed,backLabel,initialAddDate,onAddDateHandled,rentalsView,setRentalsView,stock,setStock,settings}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
+      const knownCities=useMemo(()=>cityCollect(patients,rentals),[patients,rentals]);
       const mctx=useContext(MachinesCtx);
       const machines=(mctx&&mctx.machines)||[];
       const view=rentalsView||"aktywne",setView=setRentalsView;
@@ -672,9 +673,10 @@
             <EquipmentPicker label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v,machineId:v===f.equipment?f.machineId:whDefaultCardId(machines,rentals,stock,v,f.id)}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
             <CardPicker eq={ef.equipment} value={ef.machineId} onChange={v=>setEf(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={ef.id}/>
             <EqIssueHint eq={ef.equipment} machineId={ef.machineId} stock={stock}/>
-            <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
+            <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id,city:cityStored(p)}))} patients={allClients||patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
+            <CityInput value={ef.city||""} onChange={v=>setEf(f=>({...f,city:v}))} address={ef.address} extra={knownCities}/>
             <div style={{marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
               <div style={{display:"flex",gap:8}}>{[{v:false,l:"Jednorazowe"},{v:true,l:"Odnawialne"}].map(o=><button key={String(o.v)} onClick={()=>setEf(f=>({...f,renewable:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${ef.renewable===o.v?"#3E6FB0":"#D9E2F0"}`,background:ef.renewable===o.v?"#E1E9F5":"#fff",color:ef.renewable===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
@@ -851,9 +853,10 @@
           <CardPicker eq={form.equipment} value={form.machineId} onChange={v=>setForm(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={null}/>
           <EqIssueHint eq={form.equipment} machineId={form.machineId} stock={stock}/>
 
-          <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
+          <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id,city:cityStored(p)}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))}/>
+          <CityInput value={form.city||""} onChange={v=>setForm(f=>({...f,city:v}))} address={form.address} extra={knownCities}/>
           {cpmApplies(form.equipment)&&(()=>{const pt=(patients||[]).find(p=>p.id===form.patientId)||(patients||[]).find(p=>p.name===form.patientName);return <CpmFields value={form.cpm} onChange={c=>setForm(f=>({...f,cpm:c}))} autoBrand={cpmBrandOf(form.equipment)} entries={cpmEntries(pt,rentals)}/>;})()}
           <div style={{marginBottom:14}}>
             <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>

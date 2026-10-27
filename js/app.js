@@ -58,7 +58,7 @@
         {tab==="finances"&&<Finances finances={finances} setFinances={setFinances} visits={visits} setVisits={setVisits} rentals={rentals} setRentals={setRentals} nfzCases={nfzCases} setNfzCases={setNfzCases} budget={budget} setBudget={setBudget} desk={desk} stock={stock} setStock={setStock} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth} goToRental={id=>goToRental(id,"finances")} goToWozki={goToWozki}/>}
         {tab==="nfz"&&<NFZ nfzCases={nfzCases} setNfzCases={setNfzCases} initialSel={wozkiSel} onSelCleared={()=>setWozkiSel(null)} setFinances={setFinances} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} allClients={allClients}/>}
         {tab==="magazyn"&&<Magazyn rentals={rentals} setRentals={setRentals} machines={machines} setMachines={setMachines} stock={stock} setStock={setStock} setFinances={setFinances} goToRental={id=>goToRental(id,"magazyn")}/>}
-        {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances}/>}
+        {tab==="settings"&&<Settings dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} setRentals={setRentals} setFinances={setFinances} patients={patients} setPatients={setPatients} rentals={rentals}/>}
       </TabBoundary>;
 
       if(desk) {

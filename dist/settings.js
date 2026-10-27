@@ -948,15 +948,269 @@ function SecuritySection(_ref2) {
 }
 
 // pole "minuty" z zatwierdzaniem po wyjściu z pola (żeby wpisywanie np. "45" nie skakało po drodze)
+// ── Miasta: przegląd, co apka wyłuskała z adresów (do wspólnego kalendarza rodzinnego idzie samo miasto) ──
+// Własna ramka i własne komponenty (nie "Sec"/"Row" z Settings), żeby pola nie traciły fokusu przy zapisie.
+function CityRowInput(_ref0) {
+  var row = _ref0.row,
+    onCommit = _ref0.onCommit,
+    extra = _ref0.extra;
+  var _useState11 = useState(row.res.city || ""),
+    _useState12 = _slicedToArray(_useState11, 2),
+    val = _useState12[0],
+    setVal = _useState12[1];
+  useEffect(function () {
+    setVal(row.res.city || "");
+  }, [row.res.city]);
+  var idRef = useRef("fz-cr-" + Math.random().toString(36).slice(2, 9));
+  return /*#__PURE__*/React.createElement("input", {
+    list: idRef.current,
+    value: val,
+    placeholder: "wpisz miasto",
+    onChange: function onChange(e) {
+      return setVal(e.target.value);
+    },
+    onBlur: function onBlur() {
+      if (val.trim() !== (row.res.city || "")) onCommit(row, val.trim());
+    },
+    onKeyDown: function onKeyDown(e) {
+      if (e.key === "Enter") e.target.blur();
+    },
+    style: {
+      width: 150,
+      padding: "8px 10px",
+      border: "1.5px solid #D9E2F0",
+      borderRadius: 10,
+      fontSize: 14,
+      fontFamily: "inherit",
+      outline: "none",
+      flexShrink: 0
+    }
+  });
+}
+function CitySection(_ref1) {
+  var patients = _ref1.patients,
+    setPatients = _ref1.setPatients,
+    rentals = _ref1.rentals,
+    setRentals = _ref1.setRentals,
+    dk = _ref1.dk,
+    txt = _ref1.txt,
+    sub = _ref1.sub,
+    bg = _ref1.bg,
+    demo = _ref1.demo;
+  var _useState13 = useState(false),
+    _useState14 = _slicedToArray(_useState13, 2),
+    open = _useState14[0],
+    setOpen = _useState14[1];
+  var _useState15 = useState(false),
+    _useState16 = _slicedToArray(_useState15, 2),
+    showOk = _useState16[0],
+    setShowOk = _useState16[1];
+  var extra = useMemo(function () {
+    return cityCollect(patients, rentals);
+  }, [patients, rentals]);
+  var K = useMemo(function () {
+    return cityKnown(extra);
+  }, [extra]);
+  var rows = useMemo(function () {
+    var out = [];
+    (patients || []).filter(function (p) {
+      return p && !p.anonymized && !p.archived && (p.address || cityStored(p));
+    }).forEach(function (p) {
+      return out.push({
+        key: "p" + p.id,
+        kind: "p",
+        id: p.id,
+        name: p.name || "",
+        address: p.address || "",
+        res: cityOfPatient(p, K)
+      });
+    });
+    // aktywne wypożyczenia klientów bez karty pacjenta
+    (rentals || []).filter(function (r) {
+      return r && r.status === "aktywne" && r.address && !(patients || []).some(function (p) {
+        return r.patientId != null && p.id === r.patientId || r.patientName && p.name === r.patientName;
+      });
+    }).forEach(function (r) {
+      return out.push({
+        key: "r" + r.id,
+        kind: "r",
+        id: r.id,
+        name: r.patientName || "",
+        address: r.address,
+        res: cityOfRental(r, patients, K)
+      });
+    });
+    return out;
+  }, [patients, rentals, K]);
+  var todo = rows.filter(function (r) {
+    return !r.res.city || r.res.conf !== "ok";
+  });
+  var sure = rows.filter(function (r) {
+    return r.res.city && r.res.conf === "ok";
+  });
+  var commit = function commit(row, v) {
+    if (row.kind === "p") setPatients(function (ps) {
+      return ps.map(function (p) {
+        return p.id === row.id ? _objectSpread(_objectSpread({}, p), {}, {
+          city: v
+        }) : p;
+      });
+    });else setRentals(function (rs) {
+      return rs.map(function (r) {
+        return r.id === row.id ? _objectSpread(_objectSpread({}, r), {}, {
+          city: v
+        }) : r;
+      });
+    });
+  };
+  var line = function line(row) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: row.key,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 0",
+        borderBottom: "1px solid #EFF3FA"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        fontWeight: 600
+      }
+    }, demo ? "Pacjent" : row.name || "(bez nazwy)"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#7A8FA6",
+        overflowWrap: "anywhere"
+      }
+    }, maskAddr(demo, row.address) || "brak adresu"), row.res.city && row.res.conf === "guess" && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#D9822B"
+      }
+    }, "domys\u0142 z adresu")), /*#__PURE__*/React.createElement(CityRowInput, {
+      row: row,
+      extra: extra,
+      onCommit: commit
+    }), row.res.city && row.res.conf === "guess" && /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return commit(row, row.res.city);
+      },
+      style: {
+        background: "#3E6FB0",
+        color: "#fff",
+        border: "none",
+        borderRadius: 8,
+        padding: "7px 10px",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+        fontFamily: "inherit"
+      }
+    }, "OK"));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: bg,
+      borderRadius: 16,
+      padding: "4px 16px",
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: sub,
+      letterSpacing: 1,
+      paddingTop: 12,
+      paddingBottom: 4
+    }
+  }, "MIASTA (WSP\xD3LNY KALENDARZ RODZINNY)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: txt,
+      padding: "8px 0",
+      lineHeight: 1.5
+    }
+  }, "Do kalendarza rodzinnego trafia z pracy samo miasto, wy\u0142uskane z adres\xF3w w bazie. Rozpoznane: ", /*#__PURE__*/React.createElement("b", null, sure.length), " \xB7 do sprawdzenia: ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: todo.length ? "#D9822B" : "#3DAA72"
+    }
+  }, todo.length)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      paddingBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setOpen(true);
+    },
+    style: {
+      background: "#E1E9F5",
+      border: "none",
+      borderRadius: 8,
+      padding: "8px 14px",
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#3E6FB0",
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "Sprawd\u017A miasta", todo.length ? " (" + todo.length + ")" : "")), open && /*#__PURE__*/React.createElement(Modal, {
+    title: "Miasta z adres\xF3w",
+    onClose: function onClose() {
+      return setOpen(false);
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: "#7A8FA6",
+      marginBottom: 10,
+      lineHeight: 1.5
+    }
+  }, "Wpisz albo popraw miasto. Puste pole = miasto z adresu. \u201EOK\" przy domy\u015Ble zatwierdza podpowied\u017A."), todo.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: "#3DAA72",
+      fontWeight: 600,
+      padding: "8px 0"
+    }
+  }, "Wszystkie adresy maj\u0105 rozpoznane miasto."), todo.map(line), sure.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setShowOk(function (v) {
+        return !v;
+      });
+    },
+    style: {
+      background: "none",
+      border: "none",
+      color: "#3E6FB0",
+      fontWeight: 600,
+      fontSize: 13,
+      cursor: "pointer",
+      padding: 0,
+      fontFamily: "inherit"
+    }
+  }, showOk ? "Ukryj rozpoznane" : "Pokaż rozpoznane (" + sure.length + ")"), showOk && sure.map(line))));
+}
 // Sekcja domyślnych czasów trwania. Celowo osobny komponent z własną ramką (a nie "Sec"/"Row" zdefiniowane wewnątrz Settings,
 // które po każdej zmianie ustawień tworzą się na nowo i zabierałyby fokus z pola, do którego użytkownik właśnie przeszedł)
-function DurSection(_ref0) {
-  var settings = _ref0.settings,
-    setSettings = _ref0.setSettings,
-    dk = _ref0.dk,
-    txt = _ref0.txt,
-    sub = _ref0.sub,
-    bg = _ref0.bg;
+function DurSection(_ref10) {
+  var settings = _ref10.settings,
+    setSettings = _ref10.setSettings,
+    dk = _ref10.dk,
+    txt = _ref10.txt,
+    sub = _ref10.sub,
+    bg = _ref10.bg;
   var cur = durFromSettings(settings);
   var changed = JSON.stringify(cur) !== JSON.stringify(DUR_DEFAULTS);
   return /*#__PURE__*/React.createElement("div", {
@@ -1015,16 +1269,16 @@ function DurSection(_ref0) {
     }
   }, "Przywr\xF3\u0107 domy\u015Blne (60 / 30 / 10 / 60)")));
 }
-function DurRow(_ref1) {
-  var kind = _ref1.kind,
-    cur = _ref1.cur,
-    setSettings = _ref1.setSettings,
-    dk = _ref1.dk,
-    txt = _ref1.txt;
-  var _useState11 = useState(String(cur)),
-    _useState12 = _slicedToArray(_useState11, 2),
-    val = _useState12[0],
-    setVal = _useState12[1];
+function DurRow(_ref11) {
+  var kind = _ref11.kind,
+    cur = _ref11.cur,
+    setSettings = _ref11.setSettings,
+    dk = _ref11.dk,
+    txt = _ref11.txt;
+  var _useState17 = useState(String(cur)),
+    _useState18 = _slicedToArray(_useState17, 2),
+    val = _useState18[0],
+    setVal = _useState18[1];
   useEffect(function () {
     setVal(String(cur));
   }, [cur]);
@@ -1084,25 +1338,28 @@ function DurRow(_ref1) {
     }
   }, "min")));
 }
-function Settings(_ref10) {
-  var dark = _ref10.dark,
-    setDark = _ref10.setDark,
-    settings = _ref10.settings,
-    setSettings = _ref10.setSettings,
-    exportData = _ref10.exportData,
-    importData = _ref10.importData,
-    demo = _ref10.demo,
-    setDemo = _ref10.setDemo,
-    setRentals = _ref10.setRentals,
-    setFinances = _ref10.setFinances;
+function Settings(_ref12) {
+  var dark = _ref12.dark,
+    setDark = _ref12.setDark,
+    settings = _ref12.settings,
+    setSettings = _ref12.setSettings,
+    exportData = _ref12.exportData,
+    importData = _ref12.importData,
+    demo = _ref12.demo,
+    setDemo = _ref12.setDemo,
+    setRentals = _ref12.setRentals,
+    setFinances = _ref12.setFinances,
+    patients = _ref12.patients,
+    setPatients = _ref12.setPatients,
+    rentals = _ref12.rentals;
   var dk = dark;
   var bg = dk ? "#111826" : "#fff";
   var sec = dk ? "#0E141F" : "#EFF3FA";
   var txt = dk ? "#E8F5F5" : "#1C2B3A";
   var sub = "#7A8FA6";
-  var Row = function Row(_ref11) {
-    var label = _ref11.label,
-      children = _ref11.children;
+  var Row = function Row(_ref13) {
+    var label = _ref13.label,
+      children = _ref13.children;
     return /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -1118,9 +1375,9 @@ function Settings(_ref10) {
       }
     }, label), children);
   };
-  var Toggle = function Toggle(_ref12) {
-    var val = _ref12.val,
-      onToggle = _ref12.onToggle;
+  var Toggle = function Toggle(_ref14) {
+    var val = _ref14.val,
+      onToggle = _ref14.onToggle;
     return /*#__PURE__*/React.createElement("div", {
       onClick: onToggle,
       style: {
@@ -1146,9 +1403,9 @@ function Settings(_ref10) {
       }
     }));
   };
-  var Sec = function Sec(_ref13) {
-    var title = _ref13.title,
-      children = _ref13.children;
+  var Sec = function Sec(_ref15) {
+    var title = _ref15.title,
+      children = _ref15.children;
     return /*#__PURE__*/React.createElement("div", {
       style: {
         background: bg,
@@ -1293,6 +1550,16 @@ function Settings(_ref10) {
     txt: txt,
     sub: sub,
     bg: bg
+  }), /*#__PURE__*/React.createElement(CitySection, {
+    patients: patients,
+    setPatients: setPatients,
+    rentals: rentals,
+    setRentals: setRentals,
+    dk: dk,
+    txt: txt,
+    sub: sub,
+    bg: bg,
+    demo: demo
   }), /*#__PURE__*/React.createElement(SecuritySection, {
     dk: dk,
     txt: txt,

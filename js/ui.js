@@ -243,3 +243,21 @@ function TimeRange({kind,start,end,onChange,labelStart,labelEnd,autofill}) {
     <TimeSel label={labelEnd||"Do godziny"} value={effEnd} options={endOpts.length?endOpts:undefined} onChange={v=>onChange(start,v)}/>
   </div>;
 }
+
+// ── Pole "Miasto" ─────────────────────────────────────────────────────────────────────────────────────
+// Wpisane ręcznie ma pierwszeństwo; puste = miasto wyłuskane z adresu (widoczne w podpowiedzi pola). extra = miasta już zapisane w bazie.
+function CityInput({value,onChange,address,extra,fallback}) {
+  const dk=useContext(DarkCtx);
+  const K=useMemo(()=>cityKnown(extra),[extra]);
+  const d=cityFromAddress(address,K);
+  const guess=d.city||fallback||"";
+  const idRef=useRef("fz-city-"+Math.random().toString(36).slice(2,9));
+  return <div style={{marginBottom:14}}>
+    <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Miasto</div>
+    <input list={idRef.current} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={guess?"z adresu: "+guess:"np. Katowice"} style={{width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"}}/>
+    <datalist id={idRef.current}>{[...K.values()].sort((a,b)=>a.localeCompare(b,"pl")).map(c=><option key={c} value={c}/>)}</datalist>
+    {!value&&d.conf==="guess"&&<div style={{fontSize:12,color:"#D9822B",marginTop:4}}>Domysł z adresu: {d.city}. Wpisz miasto, jeśli to nie to.</div>}
+    {!value&&!guess&&String(address||"").trim()&&<div style={{fontSize:12,color:"#D9822B",marginTop:4}}>Nie rozpoznałem miasta w adresie. Wpisz je tutaj.</div>}
+  </div>;
+}
+

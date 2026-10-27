@@ -342,7 +342,10 @@ function App(_ref) {
     demo: demo,
     setDemo: setDemo,
     setRentals: setRentals,
-    setFinances: setFinances
+    setFinances: setFinances,
+    patients: patients,
+    setPatients: setPatients,
+    rentals: rentals
   }));
   if (desk) {
     var sb = dk ? "#0A1220" : "#0E1B30";

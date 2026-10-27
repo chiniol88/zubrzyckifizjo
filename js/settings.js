@@ -156,6 +156,56 @@
     }
 
     // pole "minuty" z zatwierdzaniem po wyjściu z pola (żeby wpisywanie np. "45" nie skakało po drodze)
+    // ── Miasta: przegląd, co apka wyłuskała z adresów (do wspólnego kalendarza rodzinnego idzie samo miasto) ──
+    // Własna ramka i własne komponenty (nie "Sec"/"Row" z Settings), żeby pola nie traciły fokusu przy zapisie.
+    function CityRowInput({row,onCommit,extra}) {
+      const [val,setVal]=useState(row.res.city||"");
+      useEffect(()=>{setVal(row.res.city||"");},[row.res.city]);
+      const idRef=useRef("fz-cr-"+Math.random().toString(36).slice(2,9));
+      return <input list={idRef.current} value={val} placeholder="wpisz miasto" onChange={e=>setVal(e.target.value)} onBlur={()=>{if(val.trim()!==(row.res.city||""))onCommit(row,val.trim());}} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} style={{width:150,padding:"8px 10px",border:"1.5px solid #D9E2F0",borderRadius:10,fontSize:14,fontFamily:"inherit",outline:"none",flexShrink:0}}/>;
+    }
+    function CitySection({patients,setPatients,rentals,setRentals,dk,txt,sub,bg,demo}) {
+      const [open,setOpen]=useState(false);
+      const [showOk,setShowOk]=useState(false);
+      const extra=useMemo(()=>cityCollect(patients,rentals),[patients,rentals]);
+      const K=useMemo(()=>cityKnown(extra),[extra]);
+      const rows=useMemo(()=>{
+        const out=[];
+        (patients||[]).filter(p=>p&&!p.anonymized&&!p.archived&&(p.address||cityStored(p))).forEach(p=>out.push({key:"p"+p.id,kind:"p",id:p.id,name:p.name||"",address:p.address||"",res:cityOfPatient(p,K)}));
+        // aktywne wypożyczenia klientów bez karty pacjenta
+        (rentals||[]).filter(r=>r&&r.status==="aktywne"&&r.address&&!(patients||[]).some(p=>(r.patientId!=null&&p.id===r.patientId)||(r.patientName&&p.name===r.patientName))).forEach(r=>out.push({key:"r"+r.id,kind:"r",id:r.id,name:r.patientName||"",address:r.address,res:cityOfRental(r,patients,K)}));
+        return out;
+      },[patients,rentals,K]);
+      const todo=rows.filter(r=>!r.res.city||r.res.conf!=="ok");
+      const sure=rows.filter(r=>r.res.city&&r.res.conf==="ok");
+      const commit=(row,v)=>{
+        if(row.kind==="p")setPatients(ps=>ps.map(p=>p.id===row.id?{...p,city:v}:p));
+        else setRentals(rs=>rs.map(r=>r.id===row.id?{...r,city:v}:r));
+      };
+      const line=row=><div key={row.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 0",borderBottom:"1px solid #EFF3FA"}}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:600}}>{demo?"Pacjent":(row.name||"(bez nazwy)")}</div>
+          <div style={{fontSize:12,color:"#7A8FA6",overflowWrap:"anywhere"}}>{maskAddr(demo,row.address)||"brak adresu"}</div>
+          {row.res.city&&row.res.conf==="guess"&&<div style={{fontSize:11,color:"#D9822B"}}>domysł z adresu</div>}
+        </div>
+        <CityRowInput row={row} extra={extra} onCommit={commit}/>
+        {row.res.city&&row.res.conf==="guess"&&<button onClick={()=>commit(row,row.res.city)} style={{background:"#3E6FB0",color:"#fff",border:"none",borderRadius:8,padding:"7px 10px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>OK</button>}
+      </div>;
+      return <div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>MIASTA (WSPÓLNY KALENDARZ RODZINNY)</div>
+        <div style={{fontSize:13,color:txt,padding:"8px 0",lineHeight:1.5}}>Do kalendarza rodzinnego trafia z pracy samo miasto, wyłuskane z adresów w bazie. Rozpoznane: <b>{sure.length}</b> · do sprawdzenia: <b style={{color:todo.length?"#D9822B":"#3DAA72"}}>{todo.length}</b></div>
+        <div style={{paddingBottom:12}}><button onClick={()=>setOpen(true)} style={{background:"#E1E9F5",border:"none",borderRadius:8,padding:"8px 14px",fontSize:13,fontWeight:700,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>Sprawdź miasta{todo.length?" ("+todo.length+")":""}</button></div>
+        {open&&<Modal title="Miasta z adresów" onClose={()=>setOpen(false)}>
+          <div style={{fontSize:13,color:"#7A8FA6",marginBottom:10,lineHeight:1.5}}>Wpisz albo popraw miasto. Puste pole = miasto z adresu. „OK" przy domyśle zatwierdza podpowiedź.</div>
+          {todo.length===0&&<div style={{fontSize:14,color:"#3DAA72",fontWeight:600,padding:"8px 0"}}>Wszystkie adresy mają rozpoznane miasto.</div>}
+          {todo.map(line)}
+          {sure.length>0&&<div style={{marginTop:12}}>
+            <button onClick={()=>setShowOk(v=>!v)} style={{background:"none",border:"none",color:"#3E6FB0",fontWeight:600,fontSize:13,cursor:"pointer",padding:0,fontFamily:"inherit"}}>{showOk?"Ukryj rozpoznane":"Pokaż rozpoznane ("+sure.length+")"}</button>
+            {showOk&&sure.map(line)}
+          </div>}
+        </Modal>}
+      </div>;
+    }
     // Sekcja domyślnych czasów trwania. Celowo osobny komponent z własną ramką (a nie "Sec"/"Row" zdefiniowane wewnątrz Settings,
     // które po każdej zmianie ustawień tworzą się na nowo i zabierałyby fokus z pola, do którego użytkownik właśnie przeszedł)
     function DurSection({settings,setSettings,dk,txt,sub,bg}) {
@@ -180,7 +230,7 @@
         </div>
       </div>;
     }
-    function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,setRentals,setFinances}) {
+    function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,setRentals,setFinances,patients,setPatients,rentals}) {
       const dk=dark;
       const bg=dk?"#111826":"#fff";
       const sec=dk?"#0E141F":"#EFF3FA";
@@ -220,6 +270,7 @@
           </Row>
         </Sec>
         <DurSection settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} bg={bg}/>
+        <CitySection patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} dk={dk} txt={txt} sub={sub} bg={bg} demo={demo}/>
         <SecuritySection dk={dk} txt={txt} sub={sub} Row={Row} Sec={Sec}/>
         <Sec title="LINKI — MEDIA SPOŁECZNOŚCIOWE"><SocialLinks settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A3A56":"#D9E2F0"}/></Sec>
         <Sec title="INFORMACJE">

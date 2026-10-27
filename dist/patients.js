@@ -561,6 +561,9 @@ function Patients(_ref5) {
     priv = _ref5.priv;
   var demo = useDemo();
   var durs = useContext(DurCtx);
+  var knownCities = useMemo(function () {
+    return cityCollect(patients, rentals);
+  }, [patients, rentals]);
   var dk = useContext(DarkCtx);
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
@@ -1432,6 +1435,17 @@ function Patients(_ref5) {
         });
       },
       placeholder: "ul. Przyk\u0142adowa 1, Gliwice"
+    }), /*#__PURE__*/React.createElement(CityInput, {
+      value: editForm.city || "",
+      onChange: function onChange(v) {
+        return setEditForm(function (f) {
+          return _objectSpread(_objectSpread({}, f), {}, {
+            city: v
+          });
+        });
+      },
+      address: editForm.address,
+      extra: knownCities
     }), /*#__PURE__*/React.createElement(Txa, {
       label: "Diagnoza",
       value: editForm.diagnosis || "",
@@ -2314,6 +2328,17 @@ function Patients(_ref5) {
       });
     },
     placeholder: "ul. Przyk\u0142adowa 1, Gliwice"
+  }), /*#__PURE__*/React.createElement(CityInput, {
+    value: newForm.city || "",
+    onChange: function onChange(v) {
+      return setNewForm(function (f) {
+        return _objectSpread(_objectSpread({}, f), {}, {
+          city: v
+        });
+      });
+    },
+    address: newForm.address,
+    extra: knownCities
   }), /*#__PURE__*/React.createElement(Txa, {
     label: "Diagnoza",
     value: newForm.diagnosis,

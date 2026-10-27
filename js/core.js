@@ -383,6 +383,63 @@ const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec
 const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"Wózki"},{key:"balkoniki",label:"Balkoniki"}];
 
+// ── Miasto z adresu ─────────────────────────────────────────────────────────────────────────────────
+// Do wspólnego kalendarza rodzinnego idzie z pracy tylko miasto (bez ulicy i nazwiska). Miasto bierzemy z adresu, który już jest w bazie:
+// zapisane ręcznie pole "city" (pacjent albo wypożyczenie) ma pierwszeństwo, bez niego miasto wyłuskujemy z adresu.
+// conf: "ok" = rozpoznane (znane miasto albo po kodzie pocztowym), "guess" = domysł (do sprawdzenia), "" = nie ma.
+const CITIES_BUILTIN = ["Katowice","Sosnowiec","Gliwice","Zabrze","Bytom","Bielsko-Biała","Rybnik","Ruda Śląska","Tychy","Dąbrowa Górnicza","Chorzów","Jaworzno","Jastrzębie-Zdrój","Mysłowice","Siemianowice Śląskie","Tarnowskie Góry","Piekary Śląskie","Świętochłowice","Knurów","Racibórz","Żory","Mikołów","Czeladź","Będzin","Zawiercie","Cieszyn","Częstochowa","Lubliniec","Pszczyna","Wodzisław Śląski","Czechowice-Dziedzice","Żywiec","Bieruń","Łaziska Górne","Orzesze","Radzionków","Rydułtowy","Pyskowice","Wojkowice","Siewierz","Czerwionka-Leszczyny","Imielin","Kobiór","Ożarowice","Psary","Bobrowniki","Sławków","Szczyrk","Wisła","Ustroń","Skoczów","Strumień","Pawłowice","Suszec","Chybie","Radlin","Pszów","Gierałtowice","Sośnicowice","Kuźnia Raciborska","Gaszowice","Mszana","Godów","Gorzyce","Tworóg","Kalety","Koszęcin","Miasteczko Śląskie","Zbrosławice","Świerklaniec","Kochanowice","Blachownia","Myszków","Kłobuck","Łazy","Poręba","Oświęcim","Brzeszcze","Libiąż","Chrzanów","Trzebinia","Olkusz","Bukowno","Kęty","Wadowice","Bochnia","Kraków","Warszawa","Łódź","Wrocław","Poznań","Gdańsk","Gdynia","Sopot","Szczecin","Bydgoszcz","Lublin","Białystok","Opole","Kielce","Rzeszów","Toruń","Olsztyn","Radom","Płock","Kalisz","Legnica","Wałbrzych","Zakopane","Nowy Sącz","Tarnów","Nysa","Kędzierzyn-Koźle","Strzelce Opolskie"];
+const cityNorm = s => String(s==null?"":s).toLowerCase().replace(/ł/g,"l").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\- ]/g," ").replace(/\s+/g," ").trim();
+const cityTitle = s => { s=String(s||"").trim(); if(s&&(s===s.toUpperCase()||s===s.toLowerCase()))return s.toLowerCase().replace(/(^|[ \-])(\S)/g,(m,a,b)=>a+b.toUpperCase()); return s; };
+// słownik znanych miast: wbudowana lista + miasta już zapisane w bazie (extra = lista nazw); klucz = nazwa bez ogonków i wielkości liter
+function cityKnown(extra){ const m=new Map(); CITIES_BUILTIN.concat(extra||[]).forEach(c=>{const n=cityNorm(c);if(n&&!m.has(n))m.set(n,String(c).trim());}); return m; }
+// miasto na końcu fragmentu adresu: okna 3,2,1 słów od końca; "Katowice-Ligota" daje "Katowice"
+function cityMatchSeg(seg,K){
+  const t=cityNorm(String(seg||"").replace(/\b\d{2}-\d{3}\b/g," ")).split(" ").filter(Boolean);
+  for(let w=Math.min(3,t.length);w>=1;w--){
+    for(let end=t.length;end>=w;end--){
+      const ph=t.slice(end-w,end).join(" ");
+      if(K.has(ph))return K.get(ph);
+      if(w===1&&ph.includes("-")){const pre=ph.split("-")[0];if(K.has(pre))return K.get(pre);}
+    }
+  }
+  return "";
+}
+// odrzuca coś, co wygląda na ulicę/numer; zwraca ładną nazwę albo ""
+function cityClean(str){
+  const c=String(str||"").replace(/\b\d{2}-\d{3}\b/g," ").replace(/\s+/g," ").trim();
+  if(!c||c.length>40||/\d/.test(c)||/(^|\s)(ul|ulica|al|aleja|os|osiedle|pl|plac|m|lok|lokal|bl|blok)\.?(\s|$)/i.test(c)||c.split(" ").length>3)return "";
+  return cityTitle(c);
+}
+function cityFromAddress(addr,known){
+  const raw=String(addr==null?"":addr).replace(/[\r\n]+/g,", ").trim();
+  if(!raw)return {city:"",conf:""};
+  const K=known||cityKnown([]);
+  const segs=raw.split(/[,;]/).map(x=>x.trim()).filter(Boolean);
+  for(let i=segs.length-1;i>=0;i--){const c=cityMatchSeg(segs[i],K);if(c)return {city:c,conf:"ok"};}
+  for(let i=segs.length-1;i>=0;i--){const m=/\b\d{2}-\d{3}\b\s*(.+)$/.exec(segs[i]);if(m){const c=cityClean(m[1]);if(c)return {city:c,conf:"ok"};}}
+  if(segs.length>1){const last=segs[segs.length-1];if(!/\d/.test(last)){const c=cityClean(last);if(c)return {city:c,conf:"guess"};}}
+  const tk=raw.split(/\s+/);let k=-1;tk.forEach((w,i)=>{if(/\d/.test(w))k=i;});
+  if(k>=0&&k<tk.length-1){const c=cityClean(tk.slice(k+1).join(" "));if(c)return {city:c,conf:"guess"};}
+  return {city:"",conf:""};
+}
+const cityStored = o => (o&&typeof o.city==="string"&&o.city.trim())?o.city.trim():"";
+// miasta już wpisane ręcznie w bazie (podpowiedzi i rozszerzenie słownika)
+const cityCollect = (patients,rentals) => { const set=new Set(); (patients||[]).forEach(p=>{const c=cityStored(p);if(c)set.add(c);}); (rentals||[]).forEach(r=>{const c=cityStored(r);if(c)set.add(c);}); return [...set].sort((a,b)=>a.localeCompare(b,"pl")); };
+// miasto pacjenta: zapisane ręcznie albo z adresu
+const cityOfPatient = (p,K) => { const c=cityStored(p); if(c)return {city:c,conf:"ok",stored:true}; const d=cityFromAddress(p&&p.address,K); return {city:d.city,conf:d.conf,stored:false}; };
+// miasto wypożyczenia: zapisane ręcznie, z adresu wypożyczenia, a na końcu z karty pacjenta
+function cityOfRental(r,patients,K){
+  const c=cityStored(r); if(c)return {city:c,conf:"ok",stored:true};
+  const d=cityFromAddress(r&&r.address,K); if(d.city)return {city:d.city,conf:d.conf,stored:false};
+  const pat=(patients||[]).find(p=>r&&((r.patientId!=null&&p.id===r.patientId)||(r.patientName&&p.name===r.patientName)));
+  return pat?cityOfPatient(pat,K):{city:"",conf:"",stored:false};
+}
+// miasto wizyty: z karty pacjenta (wizyty nie mają własnego adresu)
+function cityOfVisit(v,patients,K){
+  const pat=(patients||[]).find(p=>v&&((v.patientId!=null&&p.id===v.patientId)||(!v.patientId&&v.patientName&&p.name===v.patientName)));
+  return pat?cityOfPatient(pat,K):{city:"",conf:"",stored:false};
+}
+
 // ── Czas trwania wpisów w kalendarzu: każdy wpis ma godzinę początku i końca ──────────────────────────
 // Domyślne czasy (minuty) są w Ustawieniach; w każdym wpisie można je zmienić. Wizyta: time + endTime,
 // wydarzenie: time + endTime, wypożyczenie: dowóz startTime + startUntil, odbiór endTime + endUntil, planowany odbiór plannedReturnTime + plannedReturnUntil.
