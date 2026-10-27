@@ -44,6 +44,7 @@ function evtByDay(events,from,to){
 function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,onAddRental,events,setEvents,patients}) {
   const dk=useContext(DarkCtx);
   const demo=useDemo();
+  const durs=useContext(DurCtx);
   const [calYear,setCalYear]=useState(()=>+today.slice(0,4));
   const [calMonth,setCalMonth]=useState(()=>+today.slice(5,7));
   const [openDay,setOpenDay]=useState(()=>today);
@@ -139,7 +140,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         <div style={{width:6,height:6,borderRadius:timed?"50%":2,background:kid?EVT_KID_COLOR:"#F4A261",flexShrink:0}}/>
         <div>
           <div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>
-            {timed?(ev.time||"")+(ev.endTime?"–"+ev.endTime:"")+" · ":"🗓 "}{demo?"Wydarzenie":ev.title}
+            {timed?calRange(durs,"event",ev.time,ev.endTime)+" · ":"🗓 "}{demo?"Wydarzenie":ev.title}
             {kid&&<span style={{marginLeft:6,fontSize:10,fontWeight:700,color:"#fff",background:EVT_KID_COLOR,borderRadius:6,padding:"1px 6px",verticalAlign:"middle"}}>Dzieci</span>}
             {ev._series&&<span title="Powtarza się co tydzień" style={{marginLeft:6,fontSize:12}}>🔁</span>}
           </div>
@@ -284,7 +285,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         if(item._kind==="visit"){const v=item.v;const pat=(patients||[]).find(p=>p.id===v.patientId);const addr=pat?.address||"";return <div key={"v"+v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${dk?"#2A3A56":"#EFF3FA"}`}}>
           <div onClick={()=>onEditVisit(v)} style={{display:"flex",alignItems:"center",gap:10,flex:1,cursor:"pointer"}}>
             <div style={{width:6,height:6,borderRadius:"50%",background:"#3DAA72",flexShrink:0}}/>
-            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{v.time} · {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {maskAddr(demo,addr)}</div>}</div>
+            <div><div style={{fontWeight:600,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{calRange(durs,"visit",v.time,v.endTime)} · {demo?"Pacjent":v.patientName}</div>{addr&&<div style={{fontSize:12,color:"#7A8FA6"}}>📍 {maskAddr(demo,addr)}</div>}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <div style={{textAlign:"right"}}><div style={{fontWeight:600,fontSize:13,marginBottom:3,color:dk?"#E8F5F5":"#1C2B3A"}}>{maskAmt(demo,v.price)} zł</div><Badge color={visitStatus(v)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(v)}</Badge></div>
@@ -304,7 +305,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const color=isPaidEnd2?"#3DAA72":isEndType2?"#F4A261":ev.type==="cycle"?(ev.c.cancelled?"#7A8FA6":ev.c.paid?"#3DAA72":cycleFuture?"#7C6AF4":"#E05C5C"):ev.type==="cyclePreview"?"#7A8FA6":"#7C6AF4";
           const endSub=remaining>0?`do zapłaty: ${maskAmt(demo,remaining)} zł`:`✅ Opłacono: ${maskAmt(demo,totalAmt)} zł`;
           const sub=ev.type==="cycle"?(ev.c.cancelled?"anulowany":ev.c.paid?`opłacono ${maskAmt(demo,ev.c.amount)} zł`:cycleFuture?`zaplanowane: ${maskAmt(demo,ev.c.amount)} zł`:`do opłacenia ${maskAmt(demo,ev.c.amount)} zł`):ev.type==="cyclePreview"?`~${maskAmt(demo,ev.r.amount||0)} zł`:isEndType2?endSub:maskAmt(demo,totalAmt)+" zł";
-          const timeLabel=ev.type==="start"?(ev.r.startTime||""):ev.type==="end"?(ev.r.endTime||""):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?(ev.r.plannedReturnTime||"10:00"):""):"";
+          const timeLabel=ev.type==="start"?calRange(durs,"delivery",ev.r.startTime,ev.r.startUntil):ev.type==="end"?calRange(durs,"pickup",ev.r.endTime,ev.r.endUntil):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay===false?calRange(durs,"pickup",ev.r.plannedReturnTime||"10:00",ev.r.plannedReturnUntil):""):"";
 
           const icsStart=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
           const icsEnd=ev.type==="start"?ev.r.startDate+"T"+(ev.r.startTime||"10:00"):ev.type==="plannedReturn"?ev.r.plannedReturn+"T"+(ev.r.plannedReturnTime||"10:00"):ev.r.endDate+"T"+(ev.r.endTime||"10:00");
@@ -366,10 +367,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           {[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEvtForm(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"10px 8px",borderRadius:12,border:`2px solid ${evtForm.allDay===o.v?"#F4A261":"#D9E2F0"}`,background:evtForm.allDay===o.v?"#FFF4E8":"#fff",color:evtForm.allDay===o.v?"#F4A261":"#7A8FA6",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}
         </div>
       </div>
-      {!evtForm.allDay&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <TimeSel label="Od godziny" value={evtForm.time||"10:00"} onChange={v=>setEvtForm(f=>({...f,time:v}))}/>
-        <TimeSel label="Do godziny" allowEmpty value={evtForm.endTime||""} onChange={v=>setEvtForm(f=>({...f,endTime:v}))}/>
-      </div>}
+      {!evtForm.allDay&&<TimeRange kind="event" start={evtForm.time} end={evtForm.endTime} onChange={(t,e)=>setEvtForm(f=>({...f,time:t,endTime:e}))}/>}
       <div style={{marginBottom:14,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${evtForm.repeat?EVT_KID_COLOR:"#D9E2F0"}`,background:evtForm.repeat?(dk?"#2A1A24":"#FFF7FB"):"transparent"}}>
         <button type="button" onClick={()=>setEvtForm(f=>f.repeat?{...f,repeat:false}:{...f,repeat:true,days:f.days.length?f.days:(evtIsDate(f.date)?[new Date(f.date+"T12:00:00").getDay()]:[])})} style={{display:"flex",alignItems:"center",gap:8,background:"none",border:"none",padding:0,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:evtForm.repeat?EVT_KID_COLOR:"#7A8FA6"}}>
           <span style={{width:20,height:20,borderRadius:6,border:`2px solid ${evtForm.repeat?EVT_KID_COLOR:"#B8C6D9"}`,background:evtForm.repeat?EVT_KID_COLOR:"transparent",color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:13,lineHeight:1}}>{evtForm.repeat?"✓":""}</span>
@@ -691,10 +689,8 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
 
     {showAdd&&<Modal title="Nowa wizyta" onClose={()=>setShowAdd(false)}>
       <PatientPicker label="Pacjent *" value={vf.patientName} onChange={v=>setVf(f=>({...f,patientName:v}))} onSelect={p=>setVf(f=>({...f,patientName:p.name,patientId:p.id,price:p.defaultPrice?String(p.defaultPrice):f.price}))} patients={allClients||patients}/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
-        {!vf.allDay&&<TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>}
-      </div>
+      <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
+      {!vf.allDay&&<TimeRange kind="visit" start={vf.time} end={vf.endTime} onChange={(t,e)=>setVf(f=>({...f,time:t,endTime:e}))}/>}
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setVf(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(vf.allDay||false)===o.v?"#3E6FB0":"#D9E2F0"}`,background:(vf.allDay||false)===o.v?"#E1E9F5":"#fff",color:(vf.allDay||false)===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
       </div>
@@ -706,10 +702,8 @@ function Dashboard({visits,setVisits,rentals,setRentals,finances,setFinances,pat
     </Modal>}
 
     {editV&&<Modal title="Edytuj wizytę" onClose={()=>setEditV(null)}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <Inp label="Data" value={editV.date} onChange={v=>setEditV(f=>({...f,date:v}))} type="date"/>
-        {!editV.allDay&&<TimeSel label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))}/>}
-      </div>
+      <Inp label="Data" value={editV.date} onChange={v=>setEditV(f=>({...f,date:v}))} type="date"/>
+      {!editV.allDay&&<TimeRange kind="visit" start={editV.time} end={editV.endTime} onChange={(t,e)=>setEditV(f=>({...f,time:t,endTime:e}))}/>}
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",gap:8}}>{[{v:false,l:"⏰ Z godziną"},{v:true,l:"🗓 Całodniowe"}].map(o=><button key={String(o.v)} onClick={()=>setEditV(f=>({...f,allDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(editV.allDay||false)===o.v?"#3E6FB0":"#D9E2F0"}`,background:(editV.allDay||false)===o.v?"#E1E9F5":"#fff",color:(editV.allDay||false)===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
       </div>

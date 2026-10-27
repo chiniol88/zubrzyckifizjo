@@ -913,6 +913,9 @@ function AppWrapper() {
     settings = _usePersistedState16[0],
     setSettings = _usePersistedState16[1],
     v8 = _usePersistedState16[2];
+  var durs = React.useMemo(function () {
+    return durFromSettings(settings);
+  }, [settings]);
   var _usePersistedState17 = usePersistedState("fizjo-budget", {}, dataReady),
     _usePersistedState18 = _slicedToArray(_usePersistedState17, 3),
     budget = _usePersistedState18[0],
@@ -1636,6 +1639,8 @@ function AppWrapper() {
     }
   }, /*#__PURE__*/React.createElement(SecCtx.Provider, {
     value: sec
+  }, /*#__PURE__*/React.createElement(DurCtx.Provider, {
+    value: durs
   }, /*#__PURE__*/React.createElement("div", null, showConflictBanner && /*#__PURE__*/React.createElement("div", {
     style: {
       position: "fixed",
@@ -1816,5 +1821,5 @@ function AppWrapper() {
     setWealth: setWealth,
     rentalsLoaded: v3,
     financesLoaded: v4
-  })))))))));
+  }))))))))));
 }

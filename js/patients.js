@@ -128,6 +128,7 @@
 
     function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,setNfzCases,allClients,priv}) {
       const demo=useDemo();
+      const durs=useContext(DurCtx);
       const dk=useContext(DarkCtx);
       const [selId,setSelId]=useState(null);
       const [showAdd,setShowAdd]=useState(false);
@@ -304,7 +305,7 @@
                 item._t==="v"
                 ? <Card key={"v"+item.id} onClick={()=>setEditV({...item,price:String(item.price)})}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div><div style={{fontSize:11,fontWeight:700,color:"#3E6FB0",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div><div style={{fontWeight:600}}>{item.date} · {item.time}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div></div>
+                      <div><div style={{fontSize:11,fontWeight:700,color:"#3E6FB0",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wizyta</div><div style={{fontWeight:600}}>{item.date} · {calRange(durs,"visit",item.time,item.endTime)}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.type}</div></div>
                       <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{maskAmt(demo,item.price)} zł</div><Badge color={visitStatus(item)==="zakończona"?"#3DAA72":"#3E6FB0"}>{visitStatus(item)}</Badge></div>
                     </div>
                     {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {maskText(demo,item.notes)}</div>}
@@ -407,10 +408,8 @@
           </Modal>}
 
           {showAddV&&<Modal title="Nowa wizyta" onClose={()=>setShowAddV(false)}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
-              <TimeSel label="Godzina" value={vf.time} onChange={v=>setVf(f=>({...f,time:v}))}/>
-            </div>
+            <Inp label="Data" value={vf.date} onChange={v=>setVf(f=>({...f,date:v}))} type="date"/>
+            <TimeRange kind="visit" start={vf.time} end={vf.endTime} onChange={(t,e)=>setVf(f=>({...f,time:t,endTime:e}))}/>
             <Sel label="Typ" value={vf.type} onChange={v=>setVf(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={vf.price} onChange={v=>setVf(f=>({...f,price:v}))} type="number"/>
             <Sel label="Status" value={vf.status} onChange={v=>setVf(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
@@ -419,10 +418,8 @@
           </Modal>}
 
           {editV&&<Modal title="Edytuj wizytę" onClose={()=>setEditV(null)}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <Inp label="Data" value={editV.date} onChange={v=>setEditV(f=>({...f,date:v}))} type="date"/>
-              <TimeSel label="Godzina" value={editV.time} onChange={v=>setEditV(f=>({...f,time:v}))}/>
-            </div>
+            <Inp label="Data" value={editV.date} onChange={v=>setEditV(f=>({...f,date:v}))} type="date"/>
+            <TimeRange kind="visit" start={editV.time} end={editV.endTime} onChange={(t,e)=>setEditV(f=>({...f,time:t,endTime:e}))}/>
             <Sel label="Typ" value={editV.type} onChange={v=>setEditV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
             <Inp label="Cena (zł)" value={editV.price} onChange={v=>setEditV(f=>({...f,price:v}))} type="number"/>
             <Sel label="Status" value={editV.status||"zaplanowana"} onChange={v=>setEditV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>
@@ -537,10 +534,8 @@
           <Btn disabled={!newForm.name} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!newForm.name)return;const phones=(newForm.phones||[]).filter(ph=>ph.number.trim());setPatients(ps=>[...ps,{...newForm,phones,phone:phones[0]?.number||"",id:Date.now()}]);setNewForm({name:"",phone:"",phones:[],address:"",diagnosis:"",notes:"",defaultPrice:"",birthday:""});setShowAdd(false);}}>Dodaj pacjenta</Btn>
         </Modal>}
         {showQuickV&&quickV&&<Modal title={"Wizyta – "+(demo?"Pacjent":quickV.patientName)} onClose={()=>setShowQuickV(false)}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-            <Inp label="Data" value={quickV.date} onChange={v=>setQuickV(f=>({...f,date:v}))} type="date"/>
-            <TimeSel label="Godzina" value={quickV.time} onChange={v=>setQuickV(f=>({...f,time:v}))}/>
-          </div>
+          <Inp label="Data" value={quickV.date} onChange={v=>setQuickV(f=>({...f,date:v}))} type="date"/>
+          <TimeRange kind="visit" start={quickV.time} end={quickV.endTime} onChange={(t,e)=>setQuickV(f=>({...f,time:t,endTime:e}))}/>
           <Sel label="Typ" value={quickV.type} onChange={v=>setQuickV(f=>({...f,type:v}))} options={VISIT_TYPES.map(x=>({value:x,label:x}))}/>
           <Inp label="Cena (zł)" value={quickV.price} onChange={v=>setQuickV(f=>({...f,price:v}))} type="number"/>
           <Sel label="Status" value={quickV.status} onChange={v=>setQuickV(f=>({...f,status:v}))} options={[{value:"zaplanowana",label:"📅 Zaplanowana"},{value:"zakończona",label:"✅ Zakończona"}]}/>

@@ -560,6 +560,7 @@ function Patients(_ref5) {
     allClients = _ref5.allClients,
     priv = _ref5.priv;
   var demo = useDemo();
+  var durs = useContext(DurCtx);
   var dk = useContext(DarkCtx);
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
@@ -1273,7 +1274,7 @@ function Patients(_ref5) {
         style: {
           fontWeight: 600
         }
-      }, item.date, " \xB7 ", item.time), /*#__PURE__*/React.createElement("div", {
+      }, item.date, " \xB7 ", calRange(durs, "visit", item.time, item.endTime)), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 13,
           color: "#7A8FA6"
@@ -1658,12 +1659,6 @@ function Patients(_ref5) {
       onClose: function onClose() {
         return setShowAddV(false);
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 10
-      }
     }, /*#__PURE__*/React.createElement(Inp, {
       label: "Data",
       value: vf.date,
@@ -1675,17 +1670,19 @@ function Patients(_ref5) {
         });
       },
       type: "date"
-    }), /*#__PURE__*/React.createElement(TimeSel, {
-      label: "Godzina",
-      value: vf.time,
-      onChange: function onChange(v) {
+    }), /*#__PURE__*/React.createElement(TimeRange, {
+      kind: "visit",
+      start: vf.time,
+      end: vf.endTime,
+      onChange: function onChange(t, e) {
         return setVf(function (f) {
           return _objectSpread(_objectSpread({}, f), {}, {
-            time: v
+            time: t,
+            endTime: e
           });
         });
       }
-    })), /*#__PURE__*/React.createElement(Sel, {
+    }), /*#__PURE__*/React.createElement(Sel, {
       label: "Typ",
       value: vf.type,
       onChange: function onChange(v) {
@@ -1766,12 +1763,6 @@ function Patients(_ref5) {
       onClose: function onClose() {
         return setEditV(null);
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 10
-      }
     }, /*#__PURE__*/React.createElement(Inp, {
       label: "Data",
       value: editV.date,
@@ -1783,17 +1774,19 @@ function Patients(_ref5) {
         });
       },
       type: "date"
-    }), /*#__PURE__*/React.createElement(TimeSel, {
-      label: "Godzina",
-      value: editV.time,
-      onChange: function onChange(v) {
+    }), /*#__PURE__*/React.createElement(TimeRange, {
+      kind: "visit",
+      start: editV.time,
+      end: editV.endTime,
+      onChange: function onChange(t, e) {
         return setEditV(function (f) {
           return _objectSpread(_objectSpread({}, f), {}, {
-            time: v
+            time: t,
+            endTime: e
           });
         });
       }
-    })), /*#__PURE__*/React.createElement(Sel, {
+    }), /*#__PURE__*/React.createElement(Sel, {
       label: "Typ",
       value: editV.type,
       onChange: function onChange(v) {
@@ -2400,12 +2393,6 @@ function Patients(_ref5) {
     onClose: function onClose() {
       return setShowQuickV(false);
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 10
-    }
   }, /*#__PURE__*/React.createElement(Inp, {
     label: "Data",
     value: quickV.date,
@@ -2417,17 +2404,19 @@ function Patients(_ref5) {
       });
     },
     type: "date"
-  }), /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Godzina",
-    value: quickV.time,
-    onChange: function onChange(v) {
+  }), /*#__PURE__*/React.createElement(TimeRange, {
+    kind: "visit",
+    start: quickV.time,
+    end: quickV.endTime,
+    onChange: function onChange(t, e) {
       return setQuickV(function (f) {
         return _objectSpread(_objectSpread({}, f), {}, {
-          time: v
+          time: t,
+          endTime: e
         });
       });
     }
-  })), /*#__PURE__*/React.createElement(Sel, {
+  }), /*#__PURE__*/React.createElement(Sel, {
     label: "Typ",
     value: quickV.type,
     onChange: function onChange(v) {

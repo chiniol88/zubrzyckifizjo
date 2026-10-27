@@ -946,25 +946,163 @@ function SecuritySection(_ref2) {
     style: big
   }, "Gotowe"))));
 }
-function Settings(_ref0) {
-  var dark = _ref0.dark,
-    setDark = _ref0.setDark,
-    settings = _ref0.settings,
+
+// pole "minuty" z zatwierdzaniem po wyjściu z pola (żeby wpisywanie np. "45" nie skakało po drodze)
+// Sekcja domyślnych czasów trwania. Celowo osobny komponent z własną ramką (a nie "Sec"/"Row" zdefiniowane wewnątrz Settings,
+// które po każdej zmianie ustawień tworzą się na nowo i zabierałyby fokus z pola, do którego użytkownik właśnie przeszedł)
+function DurSection(_ref0) {
+  var settings = _ref0.settings,
     setSettings = _ref0.setSettings,
-    exportData = _ref0.exportData,
-    importData = _ref0.importData,
-    demo = _ref0.demo,
-    setDemo = _ref0.setDemo,
-    setRentals = _ref0.setRentals,
-    setFinances = _ref0.setFinances;
+    dk = _ref0.dk,
+    txt = _ref0.txt,
+    sub = _ref0.sub,
+    bg = _ref0.bg;
+  var cur = durFromSettings(settings);
+  var changed = JSON.stringify(cur) !== JSON.stringify(DUR_DEFAULTS);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: bg,
+      borderRadius: 16,
+      padding: "4px 16px",
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: sub,
+      letterSpacing: 1,
+      paddingTop: 12,
+      paddingBottom: 4
+    }
+  }, "KALENDARZ \u2014 DOMY\u015ALNY CZAS TRWANIA"), Object.keys(DUR_DEFAULTS).map(function (k) {
+    return /*#__PURE__*/React.createElement(DurRow, {
+      key: k,
+      kind: k,
+      cur: cur[k],
+      setSettings: setSettings,
+      dk: dk,
+      txt: txt
+    });
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: sub,
+      padding: "10px 0 12px",
+      lineHeight: 1.5
+    }
+  }, "Tyle minut trwa nowy wpis, gdy nie ustawisz inaczej. Przy ka\u017Cdym wpisie godzin\u0119 ko\u0144ca mo\u017Cna zmieni\u0107. Zmiana tutaj nie rusza wpis\xF3w z ju\u017C zapisan\u0105 godzin\u0105 ko\u0144ca."), changed && /*#__PURE__*/React.createElement("div", {
+    style: {
+      paddingBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setSettings(function (s) {
+        return _objectSpread(_objectSpread({}, s), {}, {
+          durations: _objectSpread({}, DUR_DEFAULTS)
+        });
+      });
+    },
+    style: {
+      background: "none",
+      border: "none",
+      color: "#3E6FB0",
+      fontWeight: 600,
+      fontSize: 13,
+      cursor: "pointer",
+      padding: 0,
+      fontFamily: "inherit"
+    }
+  }, "Przywr\xF3\u0107 domy\u015Blne (60 / 30 / 10 / 60)")));
+}
+function DurRow(_ref1) {
+  var kind = _ref1.kind,
+    cur = _ref1.cur,
+    setSettings = _ref1.setSettings,
+    dk = _ref1.dk,
+    txt = _ref1.txt;
+  var _useState11 = useState(String(cur)),
+    _useState12 = _slicedToArray(_useState11, 2),
+    val = _useState12[0],
+    setVal = _useState12[1];
+  useEffect(function () {
+    setVal(String(cur));
+  }, [cur]);
+  var commit = function commit() {
+    var n = durClamp(val);
+    setVal(String(n || cur));
+    if (n && n !== cur) setSettings(function (s) {
+      return _objectSpread(_objectSpread({}, s), {}, {
+        durations: _objectSpread(_objectSpread({}, durFromSettings(s)), {}, _defineProperty({}, kind, n))
+      });
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "14px 0",
+      borderBottom: "1px solid ".concat(dk ? "#1A2840" : "#F0F4F8")
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      color: txt
+    }
+  }, DUR_LABELS[kind]), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    inputMode: "numeric",
+    value: val,
+    onChange: function onChange(e) {
+      return setVal(e.target.value.replace(/\D/g, "").slice(0, 3));
+    },
+    onBlur: commit,
+    onKeyDown: function onKeyDown(e) {
+      if (e.key === "Enter") e.target.blur();
+    },
+    style: {
+      width: 64,
+      padding: "7px 8px",
+      textAlign: "right",
+      border: "1.5px solid ".concat(dk ? "#2A3A56" : "#D9E2F0"),
+      borderRadius: 10,
+      fontSize: 15,
+      background: dk ? "#111826" : "#FAFCFD",
+      color: txt,
+      fontFamily: "inherit"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: "#7A8FA6"
+    }
+  }, "min")));
+}
+function Settings(_ref10) {
+  var dark = _ref10.dark,
+    setDark = _ref10.setDark,
+    settings = _ref10.settings,
+    setSettings = _ref10.setSettings,
+    exportData = _ref10.exportData,
+    importData = _ref10.importData,
+    demo = _ref10.demo,
+    setDemo = _ref10.setDemo,
+    setRentals = _ref10.setRentals,
+    setFinances = _ref10.setFinances;
   var dk = dark;
   var bg = dk ? "#111826" : "#fff";
   var sec = dk ? "#0E141F" : "#EFF3FA";
   var txt = dk ? "#E8F5F5" : "#1C2B3A";
   var sub = "#7A8FA6";
-  var Row = function Row(_ref1) {
-    var label = _ref1.label,
-      children = _ref1.children;
+  var Row = function Row(_ref11) {
+    var label = _ref11.label,
+      children = _ref11.children;
     return /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -980,9 +1118,9 @@ function Settings(_ref0) {
       }
     }, label), children);
   };
-  var Toggle = function Toggle(_ref10) {
-    var val = _ref10.val,
-      onToggle = _ref10.onToggle;
+  var Toggle = function Toggle(_ref12) {
+    var val = _ref12.val,
+      onToggle = _ref12.onToggle;
     return /*#__PURE__*/React.createElement("div", {
       onClick: onToggle,
       style: {
@@ -1008,9 +1146,9 @@ function Settings(_ref0) {
       }
     }));
   };
-  var Sec = function Sec(_ref11) {
-    var title = _ref11.title,
-      children = _ref11.children;
+  var Sec = function Sec(_ref13) {
+    var title = _ref13.title,
+      children = _ref13.children;
     return /*#__PURE__*/React.createElement("div", {
       style: {
         background: bg,
@@ -1148,7 +1286,14 @@ function Settings(_ref0) {
         });
       });
     }
-  }))), /*#__PURE__*/React.createElement(SecuritySection, {
+  }))), /*#__PURE__*/React.createElement(DurSection, {
+    settings: settings,
+    setSettings: setSettings,
+    dk: dk,
+    txt: txt,
+    sub: sub,
+    bg: bg
+  }), /*#__PURE__*/React.createElement(SecuritySection, {
     dk: dk,
     txt: txt,
     sub: sub,

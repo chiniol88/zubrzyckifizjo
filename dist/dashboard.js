@@ -164,6 +164,7 @@ function MiniCalendar(_ref) {
     patients = _ref.patients;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
+  var durs = useContext(DurCtx);
   var _useState = useState(function () {
       return +today.slice(0, 4);
     }),
@@ -394,7 +395,7 @@ function MiniCalendar(_ref) {
         fontSize: 14,
         color: dk ? "#E8F5F5" : "#1C2B3A"
       }
-    }, timed ? (ev.time || "") + (ev.endTime ? "–" + ev.endTime : "") + " · " : "🗓 ", demo ? "Wydarzenie" : ev.title, kid && /*#__PURE__*/React.createElement("span", {
+    }, timed ? calRange(durs, "event", ev.time, ev.endTime) + " · " : "🗓 ", demo ? "Wydarzenie" : ev.title, kid && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 6,
         fontSize: 10,
@@ -1053,7 +1054,7 @@ function MiniCalendar(_ref) {
           fontSize: 14,
           color: dk ? "#E8F5F5" : "#1C2B3A"
         }
-      }, v.time, " \xB7 ", demo ? "Pacjent" : v.patientName), addr && /*#__PURE__*/React.createElement("div", {
+      }, calRange(durs, "visit", v.time, v.endTime), " \xB7 ", demo ? "Pacjent" : v.patientName), addr && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 12,
           color: "#7A8FA6"
@@ -1096,7 +1097,7 @@ function MiniCalendar(_ref) {
       var color = isPaidEnd2 ? "#3DAA72" : isEndType2 ? "#F4A261" : ev.type === "cycle" ? ev.c.cancelled ? "#7A8FA6" : ev.c.paid ? "#3DAA72" : cycleFuture ? "#7C6AF4" : "#E05C5C" : ev.type === "cyclePreview" ? "#7A8FA6" : "#7C6AF4";
       var endSub = remaining > 0 ? "do zap\u0142aty: ".concat(maskAmt(demo, remaining), " z\u0142") : "\u2705 Op\u0142acono: ".concat(maskAmt(demo, totalAmt), " z\u0142");
       var sub = ev.type === "cycle" ? ev.c.cancelled ? "anulowany" : ev.c.paid ? "op\u0142acono ".concat(maskAmt(demo, ev.c.amount), " z\u0142") : cycleFuture ? "zaplanowane: ".concat(maskAmt(demo, ev.c.amount), " z\u0142") : "do op\u0142acenia ".concat(maskAmt(demo, ev.c.amount), " z\u0142") : ev.type === "cyclePreview" ? "~".concat(maskAmt(demo, ev.r.amount || 0), " z\u0142") : isEndType2 ? endSub : maskAmt(demo, totalAmt) + " zł";
-      var timeLabel = ev.type === "start" ? ev.r.startTime || "" : ev.type === "end" ? ev.r.endTime || "" : ev.type === "plannedReturn" ? ev.r.plannedReturnAllDay === false ? ev.r.plannedReturnTime || "10:00" : "" : "";
+      var timeLabel = ev.type === "start" ? calRange(durs, "delivery", ev.r.startTime, ev.r.startUntil) : ev.type === "end" ? calRange(durs, "pickup", ev.r.endTime, ev.r.endUntil) : ev.type === "plannedReturn" ? ev.r.plannedReturnAllDay === false ? calRange(durs, "pickup", ev.r.plannedReturnTime || "10:00", ev.r.plannedReturnUntil) : "" : "";
       var icsStart = ev.type === "start" ? ev.r.startDate + "T" + (ev.r.startTime || "10:00") : ev.type === "plannedReturn" ? ev.r.plannedReturn + "T" + (ev.r.plannedReturnTime || "10:00") : ev.r.endDate + "T" + (ev.r.endTime || "10:00");
       var icsEnd = ev.type === "start" ? ev.r.startDate + "T" + (ev.r.startTime || "10:00") : ev.type === "plannedReturn" ? ev.r.plannedReturn + "T" + (ev.r.plannedReturnTime || "10:00") : ev.r.endDate + "T" + (ev.r.endTime || "10:00");
       return /*#__PURE__*/React.createElement("div", {
@@ -1479,34 +1480,19 @@ function MiniCalendar(_ref) {
         fontFamily: "inherit"
       }
     }, o.l);
-  }))), !evtForm.allDay && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Od godziny",
-    value: evtForm.time || "10:00",
-    onChange: function onChange(v) {
+  }))), !evtForm.allDay && /*#__PURE__*/React.createElement(TimeRange, {
+    kind: "event",
+    start: evtForm.time,
+    end: evtForm.endTime,
+    onChange: function onChange(t, e) {
       return setEvtForm(function (f) {
         return _objectSpread(_objectSpread({}, f), {}, {
-          time: v
+          time: t,
+          endTime: e
         });
       });
     }
-  }), /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Do godziny",
-    allowEmpty: true,
-    value: evtForm.endTime || "",
-    onChange: function onChange(v) {
-      return setEvtForm(function (f) {
-        return _objectSpread(_objectSpread({}, f), {}, {
-          endTime: v
-        });
-      });
-    }
-  })), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14,
       padding: "12px 14px",
@@ -2697,13 +2683,7 @@ function Dashboard(_ref3) {
       });
     },
     patients: allClients || patients
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement(Inp, {
+  }), /*#__PURE__*/React.createElement(Inp, {
     label: "Data",
     value: vf.date,
     onChange: function onChange(v) {
@@ -2714,17 +2694,19 @@ function Dashboard(_ref3) {
       });
     },
     type: "date"
-  }), !vf.allDay && /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Godzina",
-    value: vf.time,
-    onChange: function onChange(v) {
+  }), !vf.allDay && /*#__PURE__*/React.createElement(TimeRange, {
+    kind: "visit",
+    start: vf.time,
+    end: vf.endTime,
+    onChange: function onChange(t, e) {
       return setVf(function (f) {
         return _objectSpread(_objectSpread({}, f), {}, {
-          time: v
+          time: t,
+          endTime: e
         });
       });
     }
-  })), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
@@ -2830,12 +2812,6 @@ function Dashboard(_ref3) {
     onClose: function onClose() {
       return setEditV(null);
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: 10
-    }
   }, /*#__PURE__*/React.createElement(Inp, {
     label: "Data",
     value: editV.date,
@@ -2847,17 +2823,19 @@ function Dashboard(_ref3) {
       });
     },
     type: "date"
-  }), !editV.allDay && /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Godzina",
-    value: editV.time,
-    onChange: function onChange(v) {
+  }), !editV.allDay && /*#__PURE__*/React.createElement(TimeRange, {
+    kind: "visit",
+    start: editV.time,
+    end: editV.endTime,
+    onChange: function onChange(t, e) {
       return setEditV(function (f) {
         return _objectSpread(_objectSpread({}, f), {}, {
-          time: v
+          time: t,
+          endTime: e
         });
       });
     }
-  })), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }

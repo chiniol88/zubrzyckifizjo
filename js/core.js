@@ -6,6 +6,7 @@ const FinancesCtx = createContext(null);
 const RentalsCtx = createContext(null);
 const StockCtx = createContext(null);
 const SecCtx = createContext(null);   // stan i operacje szyfrowania/kopii (dla Ustawień)
+const DurCtx = createContext({visit:60,delivery:30,pickup:10,event:60});   // domyślny czas trwania wpisów w kalendarzu (minuty), z Ustawień
 const demoName=(name,idx)=>name?`Pacjent ${idx+1}`:"—";
 const demoPhone=()=>"***-***-***";
 const demoAddr=()=>"*** **";
@@ -381,6 +382,21 @@ const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","
 const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"Wózki"},{key:"balkoniki",label:"Balkoniki"}];
+
+// ── Czas trwania wpisów w kalendarzu: każdy wpis ma godzinę początku i końca ──────────────────────────
+// Domyślne czasy (minuty) są w Ustawieniach; w każdym wpisie można je zmienić. Wizyta: time + endTime,
+// wydarzenie: time + endTime, wypożyczenie: dowóz startTime + startUntil, odbiór endTime + endUntil, planowany odbiór plannedReturnTime + plannedReturnUntil.
+// Stare wpisy bez godziny końca liczą ją z bieżącego domyślnego czasu.
+const DUR_DEFAULTS = {visit:60,delivery:30,pickup:10,event:60};
+const DUR_LABELS = {visit:"Wizyta",delivery:"Dowóz / początek wypożyczenia",pickup:"Odbiór sprzętu",event:"Zwykłe wydarzenie"};
+const durClamp = v => { const n=Math.round((+v||0)/5)*5; return n>=5&&n<=480?n:null; };
+const durFromSettings = st => { const d=(st&&st.durations&&typeof st.durations==="object")?st.durations:{}; const o={}; Object.keys(DUR_DEFAULTS).forEach(k=>{o[k]=durClamp(d[k])||DUR_DEFAULTS[k];}); return o; };
+const hmToMin = t => { const m=/^(\d{1,2}):(\d{2})$/.exec(t||""); return m&&+m[1]<24&&+m[2]<60?(+m[1])*60+(+m[2]):null; };
+const minToHm = m => { m=Math.max(0,Math.min(Math.round(m),23*60+59)); return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); };
+// godzina końca: zapisana (gdy późniejsza niż początek), a bez niej początek + domyślny czas dla rodzaju (visit|delivery|pickup|event)
+const calEnd = (durs,kind,start,end) => { const s=hmToMin(start); if(s===null)return ""; const e=hmToMin(end); return e!==null&&e>s?end:minToHm(s+((durs&&durs[kind])||DUR_DEFAULTS[kind])); };
+// "16:00–17:00" (albo sama godzina początku, gdy nie ma godziny)
+const calRange = (durs,kind,start,end) => hmToMin(start)===null?(start||""):start+"–"+calEnd(durs,kind,start,end);
 
 // ── Ustawienia szyny CPM: udo i podudzie (pełne cm), osobno dla każdej marki (inna skala) ──────────────
 // Historia zamiast nadpisywania. Wpis przy wypożyczeniu = rental.cpm {brand,thigh,shank} (data = początek wypożyczenia),

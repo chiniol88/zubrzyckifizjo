@@ -83,11 +83,14 @@ function Sel({label,value,onChange,options}) {
     </select>
   </div>;
 }
-function TimeSel({label,value,onChange,allowEmpty}) {
+function TimeSel({label,value,onChange,allowEmpty,options}) {
   const dk=useContext(DarkCtx);
   const s={width:"100%",padding:"13px 16px",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:12,fontSize:16,outline:"none",background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontFamily:"inherit"};
-  const opts=[];
-  for(let h=0;h<24;h++)for(let m=0;m<60;m+=5){const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");opts.push(hh+":"+mm);}
+  let opts=[];
+  if(Array.isArray(options))opts=options.slice();
+  else for(let h=0;h<24;h++)for(let m=0;m<60;m+=5){const hh=String(h).padStart(2,"0"),mm=String(m).padStart(2,"0");opts.push(hh+":"+mm);}
+  // wartość spoza siatki co 5 minut (np. ze starego wpisu) zostaje na liście, żeby nic się nie zmieniło po cichu
+  if(value&&!opts.includes(value)){opts.push(value);opts.sort();}
   return <div style={{marginBottom:14}}>
     {label&&<div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</div>}
     <select value={allowEmpty?(value||""):(value||"10:00")} onChange={e=>onChange(e.target.value)} style={s}>
@@ -221,3 +224,22 @@ function CpmFields({value,onChange,autoBrand,entries}) {
   </div>;
 }
 
+// ── Od godziny / Do godziny z domyślnym czasem trwania ────────────────────────────────────────────────
+// kind: visit | delivery | pickup | event. Godzina końca jest zawsze ustawiona (domyślnie początek + czas z Ustawień),
+// zmiana początku przesuwa koniec o tyle samo, a lista "Do godziny" zawiera tylko godziny późniejsze niż początek.
+function TimeRange({kind,start,end,onChange,labelStart,labelEnd,autofill}) {
+  const durs=useContext(DurCtx);
+  const def=(durs&&durs[kind])||DUR_DEFAULTS[kind];
+  const s=hmToMin(start),e=hmToMin(end);
+  const validEnd=s!==null&&e!==null&&e>s;
+  const effEnd=s===null?"":(validEnd?end:minToHm(s+def));
+  // domyślną godzinę końca wpisujemy do formularza od razu, żeby trafiła do zapisu (i nie zmieniała się po zmianie ustawień)
+  useEffect(()=>{if(autofill!==false&&s!==null&&!validEnd&&effEnd)onChange(start,effEnd);},[start,end,def]);
+  const endOpts=[];
+  if(s!==null){for(let m=Math.floor(s/5)*5+5;m<24*60;m+=5)endOpts.push(minToHm(m));if(endOpts.length===0)endOpts.push("23:59");}
+  const changeStart=v=>{const ns=hmToMin(v);if(ns===null){onChange(v,end);return;}onChange(v,minToHm(ns+(validEnd?e-s:def)));};
+  return <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+    <TimeSel label={labelStart||"Od godziny"} value={start||"10:00"} onChange={changeStart}/>
+    <TimeSel label={labelEnd||"Do godziny"} value={effEnd} options={endOpts.length?endOpts:undefined} onChange={v=>onChange(start,v)}/>
+  </div>;
+}

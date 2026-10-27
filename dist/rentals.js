@@ -2639,14 +2639,19 @@ function Rentals(_ref6) {
           fontFamily: "inherit"
         }
       }, o.l);
-    })), r.plannedReturnAllDay === false && /*#__PURE__*/React.createElement(TimeSel, {
-      label: "Godzina odbioru",
-      value: r.plannedReturnTime || "10:00",
-      onChange: function onChange(v) {
+    })), r.plannedReturnAllDay === false && /*#__PURE__*/React.createElement(TimeRange, {
+      kind: "pickup",
+      autofill: false,
+      labelStart: "Odbi\xF3r od godziny",
+      labelEnd: "do godziny",
+      start: r.plannedReturnTime || "10:00",
+      end: r.plannedReturnUntil,
+      onChange: function onChange(t, e) {
         return setRentals(function (rs) {
           return rs.map(function (x) {
             return x.id === r.id ? _objectSpread(_objectSpread({}, x), {}, {
-              plannedReturnTime: v
+              plannedReturnTime: t,
+              plannedReturnUntil: e
             }) : x;
           });
         });
@@ -2658,7 +2663,8 @@ function Rentals(_ref6) {
             return x.id === r.id ? _objectSpread(_objectSpread({}, x), {}, {
               plannedReturn: null,
               plannedReturnAllDay: undefined,
-              plannedReturnTime: undefined
+              plannedReturnTime: undefined,
+              plannedReturnUntil: undefined
             }) : x;
           });
         });
@@ -3052,13 +3058,17 @@ function Rentals(_ref6) {
           fontFamily: "inherit"
         }
       }, o.l);
-    })), !(ef.startAllDay !== undefined ? ef.startAllDay : ef.allDay || false) && /*#__PURE__*/React.createElement(TimeSel, {
-      label: "Godzina dowozu",
-      value: ef.startTime || "10:00",
-      onChange: function onChange(v) {
+    })), !(ef.startAllDay !== undefined ? ef.startAllDay : ef.allDay || false) && /*#__PURE__*/React.createElement(TimeRange, {
+      kind: "delivery",
+      labelStart: "Dow\xF3z od godziny",
+      labelEnd: "do godziny",
+      start: ef.startTime || "10:00",
+      end: ef.startUntil,
+      onChange: function onChange(t, e) {
         return setEf(function (f) {
           return _objectSpread(_objectSpread({}, f), {}, {
-            startTime: v
+            startTime: t,
+            startUntil: e
           });
         });
       }
@@ -3119,13 +3129,17 @@ function Rentals(_ref6) {
           fontFamily: "inherit"
         }
       }, o.l);
-    })), !(ef.endAllDay !== undefined ? ef.endAllDay : ef.allDay || false) && /*#__PURE__*/React.createElement(TimeSel, {
-      label: "Godzina odbioru",
-      value: ef.endTime || "10:00",
-      onChange: function onChange(v) {
+    })), !(ef.endAllDay !== undefined ? ef.endAllDay : ef.allDay || false) && /*#__PURE__*/React.createElement(TimeRange, {
+      kind: "pickup",
+      labelStart: "Odbi\xF3r od godziny",
+      labelEnd: "do godziny",
+      start: ef.endTime || "10:00",
+      end: ef.endUntil,
+      onChange: function onChange(t, e) {
         return setEf(function (f) {
           return _objectSpread(_objectSpread({}, f), {}, {
-            endTime: v
+            endTime: t,
+            endUntil: e
           });
         });
       }
@@ -3480,7 +3494,8 @@ function Rentals(_ref6) {
               }, isLast ? {
                 plannedReturn: null,
                 plannedReturnAllDay: undefined,
-                plannedReturnTime: undefined
+                plannedReturnTime: undefined,
+                plannedReturnUntil: undefined
               } : {}), {}, {
                 extensions: (x.extensions || []).map(function (e) {
                   return e.id === extForm.editId ? _objectSpread(_objectSpread({}, e), {}, {
@@ -3540,7 +3555,8 @@ function Rentals(_ref6) {
                 extensions: [].concat(_toConsumableArray(x.extensions || []), [ext]),
                 plannedReturn: null,
                 plannedReturnAllDay: undefined,
-                plannedReturnTime: undefined
+                plannedReturnTime: undefined,
+                plannedReturnUntil: undefined
               }) : x;
             });
           });
@@ -4131,13 +4147,17 @@ function Rentals(_ref6) {
         fontFamily: "inherit"
       }
     }, o.l);
-  })), !form.startAllDay && /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Godzina dowozu",
-    value: form.startTime || "10:00",
-    onChange: function onChange(v) {
+  })), !form.startAllDay && /*#__PURE__*/React.createElement(TimeRange, {
+    kind: "delivery",
+    labelStart: "Dow\xF3z od godziny",
+    labelEnd: "do godziny",
+    start: form.startTime || "10:00",
+    end: form.startUntil,
+    onChange: function onChange(t, e) {
       return setForm(function (f) {
         return _objectSpread(_objectSpread({}, f), {}, {
-          startTime: v
+          startTime: t,
+          startUntil: e
         });
       });
     }
@@ -4196,13 +4216,17 @@ function Rentals(_ref6) {
         fontFamily: "inherit"
       }
     }, o.l);
-  })), !form.endAllDay && /*#__PURE__*/React.createElement(TimeSel, {
-    label: "Godzina odbioru",
-    value: form.endTime || "10:00",
-    onChange: function onChange(v) {
+  })), !form.endAllDay && /*#__PURE__*/React.createElement(TimeRange, {
+    kind: "pickup",
+    labelStart: "Odbi\xF3r od godziny",
+    labelEnd: "do godziny",
+    start: form.endTime || "10:00",
+    end: form.endUntil,
+    onChange: function onChange(t, e) {
       return setForm(function (f) {
         return _objectSpread(_objectSpread({}, f), {}, {
-          endTime: v
+          endTime: t,
+          endUntil: e
         });
       });
     }

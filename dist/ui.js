@@ -401,7 +401,8 @@ function TimeSel(_ref9) {
   var label = _ref9.label,
     value = _ref9.value,
     _onChange4 = _ref9.onChange,
-    allowEmpty = _ref9.allowEmpty;
+    allowEmpty = _ref9.allowEmpty,
+    options = _ref9.options;
   var dk = useContext(DarkCtx);
   var s = {
     width: "100%",
@@ -415,10 +416,15 @@ function TimeSel(_ref9) {
     fontFamily: "inherit"
   };
   var opts = [];
-  for (var h = 0; h < 24; h++) for (var m = 0; m < 60; m += 5) {
+  if (Array.isArray(options)) opts = options.slice();else for (var h = 0; h < 24; h++) for (var m = 0; m < 60; m += 5) {
     var hh = String(h).padStart(2, "0"),
       mm = String(m).padStart(2, "0");
     opts.push(hh + ":" + mm);
+  }
+  // wartość spoza siatki co 5 minut (np. ze starego wpisu) zostaje na liście, żeby nic się nie zmieniło po cichu
+  if (value && !opts.includes(value)) {
+    opts.push(value);
+    opts.sort();
   }
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -976,4 +982,58 @@ function CpmFields(_ref10) {
       fontFamily: "inherit"
     }
   }, "\xD7 wyczy\u015B\u0107"));
+}
+
+// ── Od godziny / Do godziny z domyślnym czasem trwania ────────────────────────────────────────────────
+// kind: visit | delivery | pickup | event. Godzina końca jest zawsze ustawiona (domyślnie początek + czas z Ustawień),
+// zmiana początku przesuwa koniec o tyle samo, a lista "Do godziny" zawiera tylko godziny późniejsze niż początek.
+function TimeRange(_ref11) {
+  var kind = _ref11.kind,
+    start = _ref11.start,
+    end = _ref11.end,
+    _onChange6 = _ref11.onChange,
+    labelStart = _ref11.labelStart,
+    labelEnd = _ref11.labelEnd,
+    autofill = _ref11.autofill;
+  var durs = useContext(DurCtx);
+  var def = durs && durs[kind] || DUR_DEFAULTS[kind];
+  var s = hmToMin(start),
+    e = hmToMin(end);
+  var validEnd = s !== null && e !== null && e > s;
+  var effEnd = s === null ? "" : validEnd ? end : minToHm(s + def);
+  // domyślną godzinę końca wpisujemy do formularza od razu, żeby trafiła do zapisu (i nie zmieniała się po zmianie ustawień)
+  useEffect(function () {
+    if (autofill !== false && s !== null && !validEnd && effEnd) _onChange6(start, effEnd);
+  }, [start, end, def]);
+  var endOpts = [];
+  if (s !== null) {
+    for (var m = Math.floor(s / 5) * 5 + 5; m < 24 * 60; m += 5) endOpts.push(minToHm(m));
+    if (endOpts.length === 0) endOpts.push("23:59");
+  }
+  var changeStart = function changeStart(v) {
+    var ns = hmToMin(v);
+    if (ns === null) {
+      _onChange6(v, end);
+      return;
+    }
+    _onChange6(v, minToHm(ns + (validEnd ? e - s : def)));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(TimeSel, {
+    label: labelStart || "Od godziny",
+    value: start || "10:00",
+    onChange: changeStart
+  }), /*#__PURE__*/React.createElement(TimeSel, {
+    label: labelEnd || "Do godziny",
+    value: effEnd,
+    options: endOpts.length ? endOpts : undefined,
+    onChange: function onChange(v) {
+      return _onChange6(start, v);
+    }
+  }));
 }

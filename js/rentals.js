@@ -616,8 +616,8 @@
                   <Inp label="" value={r.plannedReturn||""} onChange={v=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:v||null}:x))} type="date"/>
                   {r.plannedReturn&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
                   <div style={{display:"flex",gap:6,marginBottom:8}}>{[{v:true,l:"🗓 Całodniowy"},{v:false,l:"⏰ Konkretna godzina"}].map(o=><button key={String(o.v)} onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturnAllDay:o.v,...(o.v===false?{plannedReturnTime:x.plannedReturnTime||"10:00"}:{})}:x))} style={{flex:1,padding:"7px",borderRadius:10,border:`2px solid ${(r.plannedReturnAllDay!==false)===o.v?"#3E6FB0":"#D9E2F0"}`,background:(r.plannedReturnAllDay!==false)===o.v?"#E1E9F5":"#fff",color:(r.plannedReturnAllDay!==false)===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
-                  {r.plannedReturnAllDay===false&&<TimeSel label="Godzina odbioru" value={r.plannedReturnTime||"10:00"} onChange={v=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturnTime:v}:x))}/>}
-                  <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:x))} style={{background:"none",border:"none",fontSize:12,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>× Usuń planowany odbiór</button>
+                  {r.plannedReturnAllDay===false&&<TimeRange kind="pickup" autofill={false} labelStart="Odbiór od godziny" labelEnd="do godziny" start={r.plannedReturnTime||"10:00"} end={r.plannedReturnUntil} onChange={(t,e)=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturnTime:t,plannedReturnUntil:e}:x))}/>}
+                  <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined,plannedReturnUntil:undefined}:x))} style={{background:"none",border:"none",fontSize:12,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>× Usuń planowany odbiór</button>
                   </>}
                 </div>
                 {r.renewable&&<div style={{marginBottom:10}}>
@@ -684,13 +684,13 @@
             <div style={{display:"flex",gap:6,marginBottom:10}}>
               {[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=>{const cur=ef.startAllDay!==undefined?ef.startAllDay:(ef.allDay||false);return <button key={String(o.v)} onClick={()=>setEf(f=>({...f,startAllDay:o.v,allDay:undefined}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${cur===o.v?"#3E6FB0":"#D9E2F0"}`,background:cur===o.v?"#E1E9F5":"#fff",color:cur===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>;})}
             </div>
-            {!(ef.startAllDay!==undefined?ef.startAllDay:(ef.allDay||false))&&<TimeSel label="Godzina dowozu" value={ef.startTime||"10:00"} onChange={v=>setEf(f=>({...f,startTime:v}))}/>}
+            {!(ef.startAllDay!==undefined?ef.startAllDay:(ef.allDay||false))&&<TimeRange kind="delivery" labelStart="Dowóz od godziny" labelEnd="do godziny" start={ef.startTime||"10:00"} end={ef.startUntil} onChange={(t,e)=>setEf(f=>({...f,startTime:t,startUntil:e}))}/>}
             {!ef.renewable&&<Inp label="Data do" value={ef.endDate||""} onChange={v=>setEf(f=>({...f,endDate:v}))} type="date"/>}
             {!ef.renewable&&ef.endDate&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
             <div style={{display:"flex",gap:6,marginBottom:10}}>
               {[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=>{const cur=ef.endAllDay!==undefined?ef.endAllDay:(ef.allDay||false);return <button key={String(o.v)} onClick={()=>setEf(f=>({...f,endAllDay:o.v,allDay:undefined}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${cur===o.v?"#3E6FB0":"#D9E2F0"}`,background:cur===o.v?"#E1E9F5":"#fff",color:cur===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>;})}
             </div>
-            {!(ef.endAllDay!==undefined?ef.endAllDay:(ef.allDay||false))&&<TimeSel label="Godzina odbioru" value={ef.endTime||"10:00"} onChange={v=>setEf(f=>({...f,endTime:v}))}/>}</>}
+            {!(ef.endAllDay!==undefined?ef.endAllDay:(ef.allDay||false))&&<TimeRange kind="pickup" labelStart="Odbiór od godziny" labelEnd="do godziny" start={ef.endTime||"10:00"} end={ef.endUntil} onChange={(t,e)=>setEf(f=>({...f,endTime:t,endUntil:e}))}/>}</>}
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
             {!ef.renewable&&!(ef.payments||[]).length&&<Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>}
             {ef.renewable&&<div style={{fontSize:12,color:"#7A8FA6",padding:"10px 14px",background:"#EFF3FA",borderRadius:12,marginBottom:14}}>Płatności zarządzane przez cykle miesięczne</div>}
@@ -764,7 +764,7 @@
                 setRentals(rs=>rs.map(x=>x.id===r.id?{
                   ...x,
                   endDate: isLast ? extForm.newEndDate : x.endDate,
-                  ...(isLast?{plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:{}),
+                  ...(isLast?{plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined,plannedReturnUntil:undefined}:{}),
                   extensions:(x.extensions||[]).map(e=>e.id===extForm.editId?{...e,newEndDate:extForm.newEndDate,endTime:extForm.endTime||"10:00",amountDue:due,amountPaid:paid,notes:extForm.notes||"",paidDate:paid>0?(extForm.payDate||todayLocal()):e.paidDate}:e)
                 }:x));
                 // Sync finansów — wpis dotyczy amountPaid
@@ -776,7 +776,7 @@
               } else {
                 const extId = Date.now();
                 const ext={id:extId,prevEndDate:r.endDate,newEndDate:extForm.newEndDate,endTime:extForm.endTime||"10:00",amountDue:due,amountPaid:paid,notes:extForm.notes||"",date:todayLocal(),paidDate:paid>0?(extForm.payDate||todayLocal()):null};
-                setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext],plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined}:x));
+                setRentals(rs=>rs.map(x=>x.id===r.id?{...x,endDate:extForm.newEndDate,extensions:[...(x.extensions||[]),ext],plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined,plannedReturnUntil:undefined}:x));
                 if(paid>0){
                   setFinances(fs=>[{id:Date.now()+1,sourceId:"extend-"+r.id+"-"+extId,date:extForm.payDate||todayLocal(),type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Przedłużenie – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...(fs||[])]);
                 }
@@ -862,11 +862,11 @@
           <Inp label="Data od" value={form.startDate} onChange={v=>setForm(f=>({...f,startDate:v}))} type="date"/>
           <div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Dowóz</div>
           <div style={{display:"flex",gap:6,marginBottom:10}}>{[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,startAllDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.startAllDay||false)===o.v?"#3E6FB0":"#D9E2F0"}`,background:(form.startAllDay||false)===o.v?"#E1E9F5":"#fff",color:(form.startAllDay||false)===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
-          {!form.startAllDay&&<TimeSel label="Godzina dowozu" value={form.startTime||"10:00"} onChange={v=>setForm(f=>({...f,startTime:v}))}/>}
+          {!form.startAllDay&&<TimeRange kind="delivery" labelStart="Dowóz od godziny" labelEnd="do godziny" start={form.startTime||"10:00"} end={form.startUntil} onChange={(t,e)=>setForm(f=>({...f,startTime:t,startUntil:e}))}/>}
           {!form.renewable&&<Inp label="Data do (opcjonalna)" value={form.endDate} onChange={v=>setForm(f=>({...f,endDate:v}))} type="date"/>}
           {!form.renewable&&form.endDate&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
           <div style={{display:"flex",gap:6,marginBottom:10}}>{[{v:false,l:"⏰ Konkretna godzina"},{v:true,l:"🗓 Całodniowy"}].map(o=><button key={String(o.v)} onClick={()=>setForm(f=>({...f,endAllDay:o.v}))} style={{flex:1,padding:"8px",borderRadius:10,border:`2px solid ${(form.endAllDay||false)===o.v?"#3E6FB0":"#D9E2F0"}`,background:(form.endAllDay||false)===o.v?"#E1E9F5":"#fff",color:(form.endAllDay||false)===o.v?"#3E6FB0":"#7A8FA6",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>{o.l}</button>)}</div>
-          {!form.endAllDay&&<TimeSel label="Godzina odbioru" value={form.endTime||"10:00"} onChange={v=>setForm(f=>({...f,endTime:v}))}/>}</>}
+          {!form.endAllDay&&<TimeRange kind="pickup" labelStart="Odbiór od godziny" labelEnd="do godziny" start={form.endTime||"10:00"} end={form.endUntil} onChange={(t,e)=>setForm(f=>({...f,endTime:t,endUntil:e}))}/>}</>}
           <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="400"/>
           {!form.renewable&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>

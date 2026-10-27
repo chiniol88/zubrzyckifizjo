@@ -224,6 +224,7 @@
       const [todos,setTodos,v7]=usePersistedState("fizjo-todos",[],dataReady);
       const [events,setEvents,v9]=usePersistedState("fizjo-events",[],dataReady);
       const [settings,setSettings,v8]=usePersistedState("fizjo-settings",{backupReminder:true},dataReady);
+      const durs=React.useMemo(()=>durFromSettings(settings),[settings]);
       const [budget,setBudget,v10]=usePersistedState("fizjo-budget",{},dataReady);
       const [machines,setMachines,v11]=usePersistedState("fizjo-machines",[],dataReady);
       const [wealth,setWealth,v12]=usePersistedState("fizjo-wealth",emptyWealth(),dataReady);
@@ -415,7 +416,7 @@
       <FinancesCtx.Provider value={{finances,setFinances}}>
       <RentalsCtx.Provider value={{rentals,setRentals}}>
       <StockCtx.Provider value={{stock,setStock}}>
-      <SecCtx.Provider value={sec}>
+      <SecCtx.Provider value={sec}><DurCtx.Provider value={durs}>
         <div>
           {showConflictBanner&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#E05C5C",zIndex:10000,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
             <span style={{fontWeight:700,fontSize:13,color:"#fff",flex:1}}>⚠️ Inne urządzenie zapisało zmiany. Możesz stracić swoje dane.</span>
@@ -440,6 +441,6 @@
           </div>}
           <AppWithSync visits={visits} setVisits={setVisits} patients={patients} setPatients={setPatients} rentals={rentals} setRentals={setRentals} finances={finances} setFinances={setFinances} stock={stock} setStock={setStock} nfzCases={nfzCases} setNfzCases={setNfzCases} todos={todos} setTodos={setTodos} events={events} setEvents={setEvents} dark={dark} setDark={setDark} settings={settings} setSettings={setSettings} exportData={exportData} importData={importData} demo={demo} setDemo={setDemo} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} wealth={wealth} setWealth={setWealth} rentalsLoaded={v3} financesLoaded={v4}/>
         </div>
-      </SecCtx.Provider></StockCtx.Provider></RentalsCtx.Provider></FinancesCtx.Provider></MachinesCtx.Provider>
+      </DurCtx.Provider></SecCtx.Provider></StockCtx.Provider></RentalsCtx.Provider></FinancesCtx.Provider></MachinesCtx.Provider>
       </DemoCtx.Provider></DarkCtx.Provider>;
     }

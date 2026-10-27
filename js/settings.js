@@ -155,6 +155,31 @@
       </>;
     }
 
+    // pole "minuty" z zatwierdzaniem po wyjściu z pola (żeby wpisywanie np. "45" nie skakało po drodze)
+    // Sekcja domyślnych czasów trwania. Celowo osobny komponent z własną ramką (a nie "Sec"/"Row" zdefiniowane wewnątrz Settings,
+    // które po każdej zmianie ustawień tworzą się na nowo i zabierałyby fokus z pola, do którego użytkownik właśnie przeszedł)
+    function DurSection({settings,setSettings,dk,txt,sub,bg}) {
+      const cur=durFromSettings(settings);
+      const changed=JSON.stringify(cur)!==JSON.stringify(DUR_DEFAULTS);
+      return <div style={{background:bg,borderRadius:16,padding:"4px 16px",marginBottom:12}}>
+        <div style={{fontSize:11,fontWeight:700,color:sub,letterSpacing:1,paddingTop:12,paddingBottom:4}}>KALENDARZ — DOMYŚLNY CZAS TRWANIA</div>
+        {Object.keys(DUR_DEFAULTS).map(k=><DurRow key={k} kind={k} cur={cur[k]} setSettings={setSettings} dk={dk} txt={txt}/>)}
+        <div style={{fontSize:12,color:sub,padding:"10px 0 12px",lineHeight:1.5}}>Tyle minut trwa nowy wpis, gdy nie ustawisz inaczej. Przy każdym wpisie godzinę końca można zmienić. Zmiana tutaj nie rusza wpisów z już zapisaną godziną końca.</div>
+        {changed&&<div style={{paddingBottom:12}}><button onClick={()=>setSettings(s=>({...s,durations:{...DUR_DEFAULTS}}))} style={{background:"none",border:"none",color:"#3E6FB0",fontWeight:600,fontSize:13,cursor:"pointer",padding:0,fontFamily:"inherit"}}>Przywróć domyślne (60 / 30 / 10 / 60)</button></div>}
+      </div>;
+    }
+    function DurRow({kind,cur,setSettings,dk,txt}) {
+      const [val,setVal]=useState(String(cur));
+      useEffect(()=>{setVal(String(cur));},[cur]);
+      const commit=()=>{const n=durClamp(val);setVal(String(n||cur));if(n&&n!==cur)setSettings(s=>({...s,durations:{...durFromSettings(s),[kind]:n}}));};
+      return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:`1px solid ${dk?"#1A2840":"#F0F4F8"}`}}>
+        <span style={{fontSize:14,color:txt}}>{DUR_LABELS[kind]}</span>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <input inputMode="numeric" value={val} onChange={e=>setVal(e.target.value.replace(/\D/g,"").slice(0,3))} onBlur={commit} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} style={{width:64,padding:"7px 8px",textAlign:"right",border:`1.5px solid ${dk?"#2A3A56":"#D9E2F0"}`,borderRadius:10,fontSize:15,background:dk?"#111826":"#FAFCFD",color:txt,fontFamily:"inherit"}}/>
+          <span style={{fontSize:13,color:"#7A8FA6"}}>min</span>
+        </div>
+      </div>;
+    }
     function Settings({dark,setDark,settings,setSettings,exportData,importData,demo,setDemo,setRentals,setFinances}) {
       const dk=dark;
       const bg=dk?"#111826":"#fff";
@@ -194,6 +219,7 @@
             <Toggle val={settings.backupReminder!==false} onToggle={()=>setSettings(s=>({...s,backupReminder:s.backupReminder===false?true:false}))}/>
           </Row>
         </Sec>
+        <DurSection settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} bg={bg}/>
         <SecuritySection dk={dk} txt={txt} sub={sub} Row={Row} Sec={Sec}/>
         <Sec title="LINKI — MEDIA SPOŁECZNOŚCIOWE"><SocialLinks settings={settings} setSettings={setSettings} dk={dk} txt={txt} sub={sub} border={dk?"#2A3A56":"#D9E2F0"}/></Sec>
         <Sec title="INFORMACJE">
