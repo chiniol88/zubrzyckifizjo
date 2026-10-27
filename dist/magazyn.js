@@ -568,9 +568,10 @@ function Magazyn(_ref3) {
   // ── uwagi do sprzętu ("wymienić rzepy", "dokręcić śrubki") ──
   var openIssue = function openIssue(eq, cardId) {
     setFormError("");
+    var cs = whCards(machines, eq);
     setIssueForm({
       eq: eq,
-      cardId: cardId ? String(cardId) : "",
+      cardId: cardId ? String(cardId) : cs.length === 1 ? String(cs[0].id) : "",
       text: ""
     });
   };
@@ -578,6 +579,10 @@ function Magazyn(_ref3) {
     var f = issueForm;
     if (!f.text.trim()) {
       setFormError("Wpisz, co trzeba zrobić");
+      return;
+    }
+    if (whCards(machines, f.eq).length > 0 && !f.cardId) {
+      setFormError("Wybierz, której sztuki dotyczy uwaga");
       return;
     }
     setStock(function (s) {
@@ -604,6 +609,55 @@ function Magazyn(_ref3) {
     return setStock(function (s) {
       return whRemoveIssue(s, eq, id);
     });
+  };
+  // Uwaga zapisana dawniej "do całego sprzętu" (bez sztuki), a typ ma sztuki z kodem: wybór sztuki jednym ruchem
+  var cardChoiceLabel = function cardChoiceLabel(c) {
+    var st = whCardState(c, rentals);
+    return (c.code || "(bez kodu)") + " · " + (st.kind === "out" ? "u: " + endTxt(st.rental) : st.kind === "reserved" ? "zarezerwowana" : "w magazynie");
+  };
+  var assignIssue = function assignIssue(eq, i, cardId) {
+    if (!cardId) return;
+    setStock(function (s) {
+      return whSetIssue(s, eq, i.id, {
+        machineId: +cardId
+      });
+    });
+    flash("Uwaga przypisana do sztuki");
+  };
+  var needsCard = function needsCard(eq, i) {
+    return !i.machineId && !i.done && whCards(machines, eq).length > 0;
+  };
+  var assignSel = function assignSel(eq, i) {
+    if (!needsCard(eq, i)) return null;
+    return /*#__PURE__*/React.createElement("select", {
+      value: "",
+      "aria-label": "Przypisz uwag\u0119 do sztuki",
+      onClick: function onClick(e) {
+        return e.stopPropagation();
+      },
+      onChange: function onChange(e) {
+        return assignIssue(eq, i, e.target.value);
+      },
+      style: {
+        marginTop: 4,
+        maxWidth: "100%",
+        padding: "6px 8px",
+        borderRadius: 8,
+        border: "1.5px solid #E05C5C",
+        background: "transparent",
+        color: "#E05C5C",
+        fontSize: 12,
+        fontWeight: 600,
+        fontFamily: "inherit"
+      }
+    }, /*#__PURE__*/React.createElement("option", {
+      value: ""
+    }, "\u2014 przypisz do sztuki \u2014"), whCards(machines, eq).map(function (c) {
+      return /*#__PURE__*/React.createElement("option", {
+        key: c.id,
+        value: String(c.id)
+      }, cardChoiceLabel(c));
+    }));
   };
 
   // ── liczba sztuk w typach liczonych ilościowo (balkoniki, ambonki) ──
@@ -964,7 +1018,7 @@ function Magazyn(_ref3) {
         fontSize: 11,
         color: subC
       }
-    }, card ? (card.code || "sztuka") + " · " : "", i.done ? "zrobione " + i.doneDate : "dodano " + i.created)), /*#__PURE__*/React.createElement("button", {
+    }, card ? (card.code || "sztuka") + " · " : "", i.done ? "zrobione " + i.doneDate : "dodano " + i.created), assignSel(eq, i)), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         return removeIssue(eq, i.id);
       },
@@ -1770,6 +1824,8 @@ function Magazyn(_ref3) {
       marginBottom: 6
     }
   }, "najpierw sztuki w magazynie, potem wed\u0142ug najbli\u017Cszego zwrotu"), issuesSorted.slice(0, 5).map(function (i) {
+    var w = whereOf(i),
+      unassigned = needsCard(i.eq, i);
     return /*#__PURE__*/React.createElement("div", {
       key: i.eq + "-" + i.id,
       onClick: function onClick() {
@@ -1781,7 +1837,7 @@ function Magazyn(_ref3) {
       style: {
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center",
+        alignItems: "flex-start",
         padding: "6px 0",
         cursor: "pointer",
         gap: 8
@@ -1791,31 +1847,35 @@ function Magazyn(_ref3) {
         fontSize: 13,
         minWidth: 0
       }
-    }, i.text, function () {
-      var w = whereOf(i);
-      return /*#__PURE__*/React.createElement("span", {
-        style: {
-          display: "block",
-          fontSize: 11,
-          color: w.out ? "#D9822B" : subC,
-          marginTop: 2
-        }
-      }, w.txt);
-    }()), /*#__PURE__*/React.createElement("span", {
+    }, i.text, unassigned ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block"
+      }
+    }, assignSel(i.eq, i)) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block",
+        fontSize: 11,
+        color: w.out ? "#D9822B" : subC,
+        marginTop: 2
+      }
+    }, w.txt)), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         color: subC,
         flexShrink: 0,
         textAlign: "right"
       }
-    }, i.eq, function () {
-      var w = whereOf(i);
-      return w.code ? /*#__PURE__*/React.createElement("span", {
-        style: {
-          display: "block"
-        }
-      }, w.code) : null;
-    }()));
+    }, i.eq, unassigned ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block",
+        color: "#E05C5C",
+        fontWeight: 600
+      }
+    }, "bez sztuki") : w.code ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "block"
+      }
+    }, w.code) : null));
   }), att.issues.length > 5 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
@@ -2191,10 +2251,11 @@ function Magazyn(_ref3) {
       },
       rows: 3
     }), cards.length > 0 && /*#__PURE__*/React.createElement(Sel, {
-      label: "Kt\xF3rej sztuki dotyczy?",
+      label: "Kt\xF3rej sztuki dotyczy? *",
       value: issueForm.cardId,
       onChange: function onChange(v) {
-        return setIssueForm(function (f) {
+        setFormError("");
+        setIssueForm(function (f) {
           return _objectSpread(_objectSpread({}, f), {}, {
             cardId: v
           });
@@ -2202,7 +2263,7 @@ function Magazyn(_ref3) {
       },
       options: [{
         value: "",
-        label: "Cały sprzęt / nie wiem"
+        label: "— wybierz sztukę —"
       }].concat(_toConsumableArray(cards.map(function (c) {
         return {
           value: String(c.id),

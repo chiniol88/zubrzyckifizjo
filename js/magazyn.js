@@ -175,15 +175,30 @@
       };
 
       // ── uwagi do sprzętu ("wymienić rzepy", "dokręcić śrubki") ──
-      const openIssue=(eq,cardId)=>{setFormError("");setIssueForm({eq,cardId:cardId?String(cardId):"",text:""});};
+      const openIssue=(eq,cardId)=>{setFormError("");const cs=whCards(machines,eq);setIssueForm({eq,cardId:cardId?String(cardId):(cs.length===1?String(cs[0].id):""),text:""});};
       const saveIssue=()=>{
         const f=issueForm;
         if(!f.text.trim()){setFormError("Wpisz, co trzeba zrobić");return;}
+        if(whCards(machines,f.eq).length>0&&!f.cardId){setFormError("Wybierz, której sztuki dotyczy uwaga");return;}
         setStock(s=>whAddIssue(s,f.eq,f.text,f.cardId?+f.cardId:null,today));
         setIssueForm(null);setOpen(o=>({...o,[f.eq]:true}));flash("Dodano uwagę");
       };
       const toggleIssue=(eq,i)=>setStock(s=>whSetIssue(s,eq,i.id,i.done?{done:false,doneDate:""}:{done:true,doneDate:today}));
       const removeIssue=(eq,id)=>setStock(s=>whRemoveIssue(s,eq,id));
+      // Uwaga zapisana dawniej "do całego sprzętu" (bez sztuki), a typ ma sztuki z kodem: wybór sztuki jednym ruchem
+      const cardChoiceLabel=c=>{
+        const st=whCardState(c,rentals);
+        return (c.code||"(bez kodu)")+" · "+(st.kind==="out"?"u: "+endTxt(st.rental):st.kind==="reserved"?"zarezerwowana":"w magazynie");
+      };
+      const assignIssue=(eq,i,cardId)=>{if(!cardId)return;setStock(s=>whSetIssue(s,eq,i.id,{machineId:+cardId}));flash("Uwaga przypisana do sztuki");};
+      const needsCard=(eq,i)=>!i.machineId&&!i.done&&whCards(machines,eq).length>0;
+      const assignSel=(eq,i)=>{
+        if(!needsCard(eq,i))return null;
+        return <select value="" aria-label="Przypisz uwagę do sztuki" onClick={e=>e.stopPropagation()} onChange={e=>assignIssue(eq,i,e.target.value)} style={{marginTop:4,maxWidth:"100%",padding:"6px 8px",borderRadius:8,border:"1.5px solid #E05C5C",background:"transparent",color:"#E05C5C",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>
+          <option value="">— przypisz do sztuki —</option>
+          {whCards(machines,eq).map(c=><option key={c.id} value={String(c.id)}>{cardChoiceLabel(c)}</option>)}
+        </select>;
+      };
 
       // ── liczba sztuk w typach liczonych ilościowo (balkoniki, ambonki) ──
       const changeQty=(eq,delta)=>{
@@ -265,6 +280,7 @@
           <div style={{flex:1,minWidth:0,padding:"8px 0"}}>
             <div style={{fontSize:14,textDecoration:i.done?"line-through":"none",color:i.done?subC:undefined}}>{i.text}</div>
             <div style={{fontSize:11,color:subC}}>{card?(card.code||"sztuka")+" · ":""}{i.done?"zrobione "+i.doneDate:"dodano "+i.created}</div>
+            {assignSel(eq,i)}
           </div>
           <button onClick={()=>removeIssue(eq,i.id)} aria-label="Usuń uwagę" style={{background:"none",border:"none",color:subC,fontSize:16,cursor:"pointer",padding:"8px 6px",lineHeight:1}}>×</button>
         </div>;
@@ -444,13 +460,18 @@
         {att.issues.length>0&&<div style={{padding:"0 20px"}}><Card style={{padding:"12px 16px"}}>
           <SectionLabel style={{marginBottom:2}}>Do załatwienia przy sprzęcie ({att.issues.length})</SectionLabel>
           <div style={{fontSize:11,color:subC,marginBottom:6}}>najpierw sztuki w magazynie, potem według najbliższego zwrotu</div>
-          {issuesSorted.slice(0,5).map(i=><div key={i.eq+"-"+i.id} onClick={()=>{setOpen(o=>({...o,[i.eq]:true}));setGroup("all");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",cursor:"pointer",gap:8}}>
-            <span style={{fontSize:13,minWidth:0}}>
-              {i.text}
-              {(()=>{const w=whereOf(i);return <span style={{display:"block",fontSize:11,color:w.out?"#D9822B":subC,marginTop:2}}>{w.txt}</span>;})()}
-            </span>
-            <span style={{fontSize:11,color:subC,flexShrink:0,textAlign:"right"}}>{i.eq}{(()=>{const w=whereOf(i);return w.code?<span style={{display:"block"}}>{w.code}</span>:null;})()}</span>
-          </div>)}
+          {issuesSorted.slice(0,5).map(i=>{
+            const w=whereOf(i),unassigned=needsCard(i.eq,i);
+            return <div key={i.eq+"-"+i.id} onClick={()=>{setOpen(o=>({...o,[i.eq]:true}));setGroup("all");}} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"6px 0",cursor:"pointer",gap:8}}>
+              <span style={{fontSize:13,minWidth:0}}>
+                {i.text}
+                {unassigned
+                  ? <span style={{display:"block"}}>{assignSel(i.eq,i)}</span>
+                  : <span style={{display:"block",fontSize:11,color:w.out?"#D9822B":subC,marginTop:2}}>{w.txt}</span>}
+              </span>
+              <span style={{fontSize:11,color:subC,flexShrink:0,textAlign:"right"}}>{i.eq}{unassigned?<span style={{display:"block",color:"#E05C5C",fontWeight:600}}>bez sztuki</span>:(w.code?<span style={{display:"block"}}>{w.code}</span>:null)}</span>
+            </div>;
+          })}
           {att.issues.length>5&&<div style={{fontSize:11,color:subC,marginTop:2}}>…i {att.issues.length-5} więcej</div>}
         </Card></div>}
         {shownGroups.map(g=>{
@@ -520,7 +541,7 @@
           return <Modal title="Nowa uwaga" onClose={()=>setIssueForm(null)}>
             <div style={{fontSize:13,color:"#7A8FA6",marginBottom:14}}>{issueForm.eq}</div>
             <Txa label="Co trzeba zrobić?" value={issueForm.text} onChange={v=>{setFormError("");setIssueForm(f=>({...f,text:v}));}} rows={3}/>
-            {cards.length>0&&<Sel label="Której sztuki dotyczy?" value={issueForm.cardId} onChange={v=>setIssueForm(f=>({...f,cardId:v}))} options={[{value:"",label:"Cały sprzęt / nie wiem"},...cards.map(c=>({value:String(c.id),label:(c.code||"(bez kodu)")+(c.serialNo?" · "+c.serialNo:"")}))]}/>}
+            {cards.length>0&&<Sel label="Której sztuki dotyczy? *" value={issueForm.cardId} onChange={v=>{setFormError("");setIssueForm(f=>({...f,cardId:v}));}} options={[{value:"",label:"— wybierz sztukę —"},...cards.map(c=>({value:String(c.id),label:(c.code||"(bez kodu)")+(c.serialNo?" · "+c.serialNo:"")}))]}/>}
             {formError&&<div style={{fontSize:12,color:"#E05C5C",marginBottom:12}}>{formError}</div>}
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={saveIssue}>Dodaj uwagę</Btn>
           </Modal>;
