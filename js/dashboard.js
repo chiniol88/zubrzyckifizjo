@@ -51,6 +51,10 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
   const [showEvtModal,setShowEvtModal]=useState(false);
   const [evtForm,setEvtForm]=useState(()=>evtBlank(""));
   const [quickRental,setQuickRental]=useState(null);
+  // Zajęcia dzieci są osobno od reszty dnia (nie mieszają się z Twoimi wpisami). Włączenie/wyłączenie pamiętane na tym urządzeniu.
+  const [showKids,setShowKids]=useState(()=>{try{return localStorage.getItem("fizjo-show-kids")!=="0";}catch{return true;}});
+  const [kidsOpen,setKidsOpen]=useState(false);
+  const toggleKids=()=>setShowKids(v=>{const n=!v;try{localStorage.setItem("fizjo-show-kids",n?"1":"0");}catch{}return n;});
 
   const daysInMonth=new Date(calYear,calMonth,0).getDate();
   const firstDow=new Date(calYear,calMonth-1,1).getDay();
@@ -169,7 +173,9 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
   const openDateStr=openDay||null;
   const dayVisits=openDay?(visitsByDay[openDay]||[]).sort((a,b)=>(a.time||"").localeCompare(b.time||"")):[];
   const dayRentals=openDay?(rentalEventsByDay[openDay]||[]):[];
-  const dayEvents=openDay?(eventsByDay[openDay]||[]):[];
+  const dayEvAll=openDay?(eventsByDay[openDay]||[]):[];
+  const dayEvents=dayEvAll.filter(e=>e.cat!=="dzieci");
+  const dayKids=showKids?dayEvAll.filter(e=>e.cat==="dzieci").slice().sort((a,b)=>(a.allDay?"":a.time||"").localeCompare(b.allDay?"":b.time||"")):[];
   const dayAllDay=[
     ...dayEvents.filter(e=>e.allDay).map(x=>({_kind:"event",e:x})),
     ...dayVisits.filter(v=>v.allDay).map(v=>({_kind:"visit",v})),
@@ -189,6 +195,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
       <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Kalendarz</div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <button onClick={toggleKids} title={showKids?"Ukryj zajęcia dzieci":"Pokaż zajęcia dzieci"} aria-pressed={showKids} style={{background:showKids?"#FDEBF4":"#EFF3FA",border:`1.5px solid ${showKids?EVT_KID_COLOR:"#D9E2F0"}`,borderRadius:8,height:28,padding:"0 8px",cursor:"pointer",fontSize:12,fontWeight:700,color:showKids?EVT_KID_COLOR:"#7A8FA6",fontFamily:"inherit",opacity:showKids?1:.8}}>👧 {showKids?"wł.":"wył."}</button>
         <button onClick={prevMonth} style={{background:"#D9E2F0",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
         <span style={{fontSize:13,fontWeight:600,color:"#1C2B3A",minWidth:100,textAlign:"center",textTransform:"capitalize"}}>{new Date(calYear,calMonth-1,15).toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</span>
         <button onClick={nextMonth} style={{background:"#D9E2F0",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
@@ -205,7 +212,9 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
           const dateStr=ms+"-"+String(d).padStart(2,"0");
           const vc=(visitsByDay[dateStr]||[]).length;
           const rc=(rentalEventsByDay[dateStr]||[]).length;
-          const ec=(eventsByDay[dateStr]||[]).length;
+          const evs=eventsByDay[dateStr]||[];
+          const ec=evs.filter(e=>e.cat!=="dzieci").length;
+          const kc=showKids?evs.filter(e=>e.cat==="dzieci").length:0;
           const isToday=dateStr===today;
           const isOpen=dateStr===openDay;
           const colIndex=i%7;
@@ -219,7 +228,8 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
             <div style={{display:"flex",gap:2,marginTop:2,minHeight:6}}>
               {vc>0&&[...Array(Math.min(vc,2))].map((_,j)=><div key={"v"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.8)":"#3DAA72"}}/>)}
               {rc>0&&[...Array(Math.min(rc,2))].map((_,j)=><div key={"r"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#7C6AF4"}}/>)}
-              {ec>0&&(eventsByDay[dateStr]||[]).slice(0,2).map((ev,j)=><div key={"e"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":ev.cat==="dzieci"?EVT_KID_COLOR:"#F4A261"}}/>)}
+              {ec>0&&evs.filter(e=>e.cat!=="dzieci").slice(0,2).map((ev,j)=><div key={"e"+j} style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.6)":"#F4A261"}}/>)}
+              {kc>0&&<div key="k" style={{width:4,height:4,borderRadius:"50%",background:isOpen?"rgba(255,255,255,.45)":EVT_KID_COLOR,opacity:.75}}/>}
             </div>
           </div>;
         })}
@@ -246,7 +256,7 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         <span style={{fontWeight:700,fontSize:14,color:"#B71C1C"}}>{holidays.get(openDateStr)}</span>
       </div>}
 
-      {dayAllDay.length===0&&dayTimedAll.length===0&&
+      {dayAllDay.length===0&&dayTimedAll.length===0&&dayKids.length===0&&
         <div style={{fontSize:13,color:"#7A8FA6",textAlign:"center",padding:"10px 0"}}>Brak zdarzeń tego dnia</div>}
 
       {dayAllDay.map((item,idx)=>{
@@ -324,6 +334,15 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         }
         return null;
       })}
+      {dayKids.length>0&&<div style={{marginTop:6,borderTop:`1px dashed ${dk?"#2A3A56":"#E3DDEA"}`,paddingTop:4}}>
+        <button onClick={()=>setKidsOpen(o=>!o)} style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:"none",border:"none",padding:"8px 0",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+          <span style={{width:6,height:6,borderRadius:"50%",background:EVT_KID_COLOR,flexShrink:0}}/>
+          <span style={{fontSize:13,fontWeight:700,color:EVT_KID_COLOR}}>Zajęcia dzieci ({dayKids.length})</span>
+          {!kidsOpen&&<span style={{fontSize:12,color:"#7A8FA6",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{dayKids.map(e=>e.allDay?"cały dzień":calRange(durs,"event",e.time,e.endTime)).join(" · ")}</span>}
+          <span style={{fontSize:11,color:"#7A8FA6",marginLeft:"auto"}}>{kidsOpen?"▲":"▼"}</span>
+        </button>
+        {kidsOpen&&dayKids.map(ev=>renderEvt(ev,!ev.allDay))}
+      </div>}
     </div>}
 
     {quickRental&&(()=>{const r=quickRental;

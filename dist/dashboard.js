@@ -197,6 +197,30 @@ function MiniCalendar(_ref) {
     _useState10 = _slicedToArray(_useState1, 2),
     quickRental = _useState10[0],
     setQuickRental = _useState10[1];
+  // Zajęcia dzieci są osobno od reszty dnia (nie mieszają się z Twoimi wpisami). Włączenie/wyłączenie pamiętane na tym urządzeniu.
+  var _useState11 = useState(function () {
+      try {
+        return localStorage.getItem("fizjo-show-kids") !== "0";
+      } catch (_unused) {
+        return true;
+      }
+    }),
+    _useState12 = _slicedToArray(_useState11, 2),
+    showKids = _useState12[0],
+    setShowKids = _useState12[1];
+  var _useState13 = useState(false),
+    _useState14 = _slicedToArray(_useState13, 2),
+    kidsOpen = _useState14[0],
+    setKidsOpen = _useState14[1];
+  var toggleKids = function toggleKids() {
+    return setShowKids(function (v) {
+      var n = !v;
+      try {
+        localStorage.setItem("fizjo-show-kids", n ? "1" : "0");
+      } catch (_unused2) {}
+      return n;
+    });
+  };
   var daysInMonth = new Date(calYear, calMonth, 0).getDate();
   var firstDow = new Date(calYear, calMonth - 1, 1).getDay();
   var startOffset = (firstDow + 6) % 7;
@@ -504,7 +528,15 @@ function MiniCalendar(_ref) {
     return (a.time || "").localeCompare(b.time || "");
   }) : [];
   var dayRentals = openDay ? rentalEventsByDay[openDay] || [] : [];
-  var dayEvents = openDay ? eventsByDay[openDay] || [] : [];
+  var dayEvAll = openDay ? eventsByDay[openDay] || [] : [];
+  var dayEvents = dayEvAll.filter(function (e) {
+    return e.cat !== "dzieci";
+  });
+  var dayKids = showKids ? dayEvAll.filter(function (e) {
+    return e.cat === "dzieci";
+  }).slice().sort(function (a, b) {
+    return (a.allDay ? "" : a.time || "").localeCompare(b.allDay ? "" : b.time || "");
+  }) : [];
   var dayAllDay = [].concat(_toConsumableArray(dayEvents.filter(function (e) {
     return e.allDay;
   }).map(function (x) {
@@ -582,6 +614,23 @@ function MiniCalendar(_ref) {
       gap: 8
     }
   }, /*#__PURE__*/React.createElement("button", {
+    onClick: toggleKids,
+    title: showKids ? "Ukryj zajęcia dzieci" : "Pokaż zajęcia dzieci",
+    "aria-pressed": showKids,
+    style: {
+      background: showKids ? "#FDEBF4" : "#EFF3FA",
+      border: "1.5px solid ".concat(showKids ? EVT_KID_COLOR : "#D9E2F0"),
+      borderRadius: 8,
+      height: 28,
+      padding: "0 8px",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700,
+      color: showKids ? EVT_KID_COLOR : "#7A8FA6",
+      fontFamily: "inherit",
+      opacity: showKids ? 1 : .8
+    }
+  }, "\uD83D\uDC67 ", showKids ? "wł." : "wył."), /*#__PURE__*/React.createElement("button", {
     onClick: prevMonth,
     style: {
       background: "#D9E2F0",
@@ -659,7 +708,13 @@ function MiniCalendar(_ref) {
     var dateStr = ms + "-" + String(d).padStart(2, "0");
     var vc = (visitsByDay[dateStr] || []).length;
     var rc = (rentalEventsByDay[dateStr] || []).length;
-    var ec = (eventsByDay[dateStr] || []).length;
+    var evs = eventsByDay[dateStr] || [];
+    var ec = evs.filter(function (e) {
+      return e.cat !== "dzieci";
+    }).length;
+    var kc = showKids ? evs.filter(function (e) {
+      return e.cat === "dzieci";
+    }).length : 0;
     var isToday = dateStr === today;
     var isOpen = dateStr === openDay;
     var colIndex = i % 7;
@@ -716,16 +771,27 @@ function MiniCalendar(_ref) {
           background: isOpen ? "rgba(255,255,255,.6)" : "#7C6AF4"
         }
       });
-    }), ec > 0 && (eventsByDay[dateStr] || []).slice(0, 2).map(function (ev, j) {
+    }), ec > 0 && evs.filter(function (e) {
+      return e.cat !== "dzieci";
+    }).slice(0, 2).map(function (ev, j) {
       return /*#__PURE__*/React.createElement("div", {
         key: "e" + j,
         style: {
           width: 4,
           height: 4,
           borderRadius: "50%",
-          background: isOpen ? "rgba(255,255,255,.6)" : ev.cat === "dzieci" ? EVT_KID_COLOR : "#F4A261"
+          background: isOpen ? "rgba(255,255,255,.6)" : "#F4A261"
         }
       });
+    }), kc > 0 && /*#__PURE__*/React.createElement("div", {
+      key: "k",
+      style: {
+        width: 4,
+        height: 4,
+        borderRadius: "50%",
+        background: isOpen ? "rgba(255,255,255,.45)" : EVT_KID_COLOR,
+        opacity: .75
+      }
     })));
   })), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -879,7 +945,7 @@ function MiniCalendar(_ref) {
       fontSize: 14,
       color: "#B71C1C"
     }
-  }, holidays.get(openDateStr))), dayAllDay.length === 0 && dayTimedAll.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, holidays.get(openDateStr))), dayAllDay.length === 0 && dayTimedAll.length === 0 && dayKids.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: "#7A8FA6",
@@ -1159,7 +1225,65 @@ function MiniCalendar(_ref) {
       }, "\u2705 Zwr\xF3cono"))));
     }
     return null;
-  })), quickRental && function () {
+  }), dayKids.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      borderTop: "1px dashed ".concat(dk ? "#2A3A56" : "#E3DDEA"),
+      paddingTop: 4
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setKidsOpen(function (o) {
+        return !o;
+      });
+    },
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      background: "none",
+      border: "none",
+      padding: "8px 0",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      textAlign: "left"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      background: EVT_KID_COLOR,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: EVT_KID_COLOR
+    }
+  }, "Zaj\u0119cia dzieci (", dayKids.length, ")"), !kidsOpen && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "#7A8FA6",
+      flex: 1,
+      minWidth: 0,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, dayKids.map(function (e) {
+    return e.allDay ? "cały dzień" : calRange(durs, "event", e.time, e.endTime);
+  }).join(" · ")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#7A8FA6",
+      marginLeft: "auto"
+    }
+  }, kidsOpen ? "▲" : "▼")), kidsOpen && dayKids.map(function (ev) {
+    return renderEvt(ev, !ev.allDay);
+  }))), quickRental && function () {
     var r = quickRental;
     var extDue = (r.extensions || []).reduce(function (s, e) {
       return s + (+e.amountDue || 0);
@@ -1704,26 +1828,26 @@ function Dashboard(_ref3) {
   var demo = useDemo();
   var today = todayLocal();
   var dk = useContext(DarkCtx);
-  var _useState11 = useState(false),
-    _useState12 = _slicedToArray(_useState11, 2),
-    showAdd = _useState12[0],
-    setShowAdd = _useState12[1];
-  var _useState13 = useState(emptyVisit),
-    _useState14 = _slicedToArray(_useState13, 2),
-    vf = _useState14[0],
-    setVf = _useState14[1];
-  var _useState15 = useState(null),
+  var _useState15 = useState(false),
     _useState16 = _slicedToArray(_useState15, 2),
-    editV = _useState16[0],
-    setEditV = _useState16[1];
-  var _useState17 = useState(null),
+    showAdd = _useState16[0],
+    setShowAdd = _useState16[1];
+  var _useState17 = useState(emptyVisit),
     _useState18 = _slicedToArray(_useState17, 2),
-    confirmDel = _useState18[0],
-    setConfirmDel = _useState18[1];
+    vf = _useState18[0],
+    setVf = _useState18[1];
   var _useState19 = useState(null),
     _useState20 = _slicedToArray(_useState19, 2),
-    toast = _useState20[0],
-    setToast = _useState20[1];
+    editV = _useState20[0],
+    setEditV = _useState20[1];
+  var _useState21 = useState(null),
+    _useState22 = _slicedToArray(_useState21, 2),
+    confirmDel = _useState22[0],
+    setConfirmDel = _useState22[1];
+  var _useState23 = useState(null),
+    _useState24 = _slicedToArray(_useState23, 2),
+    toast = _useState24[0],
+    setToast = _useState24[1];
   var todayV = visits.filter(function (v) {
     return v.date === today;
   }).sort(function (a, b) {
@@ -1925,10 +2049,10 @@ function Dashboard(_ref3) {
     setConfirmDel(null);
     setEditV(null);
   };
-  var _useState21 = useState(""),
-    _useState22 = _slicedToArray(_useState21, 2),
-    searchQ = _useState22[0],
-    setSearchQ = _useState22[1];
+  var _useState25 = useState(""),
+    _useState26 = _slicedToArray(_useState25, 2),
+    searchQ = _useState26[0],
+    setSearchQ = _useState26[1];
   var searchResults = useMemo(function () {
     var q = (searchQ || "").trim().toLowerCase();
     if (q.length < 2) return null;
@@ -1988,22 +2112,22 @@ function Dashboard(_ref3) {
     });
     return res;
   }, [searchQ, visits, rentals, patients, events, demo]);
-  var _useState23 = useState(""),
-    _useState24 = _slicedToArray(_useState23, 2),
-    todoInput = _useState24[0],
-    setTodoInput = _useState24[1];
-  var _useState25 = useState(false),
-    _useState26 = _slicedToArray(_useState25, 2),
-    todoOpen = _useState26[0],
-    setTodoOpen = _useState26[1];
-  var _useState27 = useState(null),
+  var _useState27 = useState(""),
     _useState28 = _slicedToArray(_useState27, 2),
-    editTodoId = _useState28[0],
-    setEditTodoId = _useState28[1];
-  var _useState29 = useState(""),
+    todoInput = _useState28[0],
+    setTodoInput = _useState28[1];
+  var _useState29 = useState(false),
     _useState30 = _slicedToArray(_useState29, 2),
-    editTodoText = _useState30[0],
-    setEditTodoText = _useState30[1];
+    todoOpen = _useState30[0],
+    setTodoOpen = _useState30[1];
+  var _useState31 = useState(null),
+    _useState32 = _slicedToArray(_useState31, 2),
+    editTodoId = _useState32[0],
+    setEditTodoId = _useState32[1];
+  var _useState33 = useState(""),
+    _useState34 = _slicedToArray(_useState33, 2),
+    editTodoText = _useState34[0],
+    setEditTodoText = _useState34[1];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "28px 20px 18px"
