@@ -145,12 +145,13 @@
       </div>;
     }
 
-    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,setNfzCases,allClients,priv}) {
+    function Patients({patients,setPatients,visits,setVisits,finances,setFinances,rentals,setRentals,nfzCases,setNfzCases,allClients,priv,initialSel,onSelCleared}) {
       const demo=useDemo();
       const durs=useContext(DurCtx);
-      const knownCities=useMemo(()=>cityCollect(patients,rentals),[patients,rentals]);
       const dk=useContext(DarkCtx);
       const [selId,setSelId]=useState(null);
+      // wejście do karty z innego miejsca (np. z Ustawień → Miasta)
+      useEffect(()=>{if(initialSel!=null)setSelId(initialSel);},[initialSel]);
       const [showAdd,setShowAdd]=useState(false);
       const [showEdit,setShowEdit]=useState(false);
       const [confirmDelPat,setConfirmDelPat]=useState(false);
@@ -247,7 +248,7 @@
         const patEmails=getEmails(pat);
         return <>
           <div>
-            <button onClick={()=>setSelId(null)} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#3E6FB0",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
+            <button onClick={()=>{setSelId(null);if(onSelCleared)onSelCleared();}} style={{background:"none",border:"none",display:"flex",alignItems:"center",gap:6,color:"#3E6FB0",fontWeight:600,cursor:"pointer",padding:"20px 20px 0",fontFamily:"inherit",fontSize:14}}>
               <Ico d={I.back} s={18} c="#3E6FB0"/> Pacjenci
             </button>
             <div style={{padding:"16px 20px 0"}}>
@@ -360,7 +361,6 @@
             <PhonesEditor phones={editForm.phones||[]} onChange={phones=>setEditForm(f=>({...f,phones}))}/>
             <EmailsEditor emails={editForm.emails||[]} onChange={emails=>setEditForm(f=>({...f,emails}))}/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
-            <CityInput value={editForm.city||""} onChange={v=>setEditForm(f=>({...f,city:v}))} address={editForm.address} extra={knownCities}/>
             <Txa label="Diagnoza" value={editForm.diagnosis||""} onChange={v=>setEditForm(f=>({...f,diagnosis:v}))} rows={2}/>
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
             <Inp label="Domyślna cena wizyty (zł)" value={editForm.defaultPrice||""} onChange={v=>setEditForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>
@@ -556,7 +556,6 @@
           <PhonesEditor phones={newForm.phones} onChange={phones=>setNewForm(f=>({...f,phones}))}/>
           <EmailsEditor emails={newForm.emails||[]} onChange={emails=>setNewForm(f=>({...f,emails}))}/>
           <Inp label="Adres" value={newForm.address} onChange={v=>setNewForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
-          <CityInput value={newForm.city||""} onChange={v=>setNewForm(f=>({...f,city:v}))} address={newForm.address} extra={knownCities}/>
           <Txa label="Diagnoza" value={newForm.diagnosis} onChange={v=>setNewForm(f=>({...f,diagnosis:v}))} rows={2}/>
           <Txa label="Notatki" value={newForm.notes} onChange={v=>setNewForm(f=>({...f,notes:v}))} rows={2}/>
           <Inp label="Domyślna cena wizyty (zł)" value={newForm.defaultPrice||""} onChange={v=>setNewForm(f=>({...f,defaultPrice:v}))} type="number" placeholder="np. 150"/>

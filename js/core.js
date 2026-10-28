@@ -394,8 +394,8 @@ const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"Wózki"},{key:"balkoniki",label:"Balkoniki"}];
 
 // ── Miasto z adresu ─────────────────────────────────────────────────────────────────────────────────
-// Do wspólnego kalendarza rodzinnego idzie z pracy tylko miasto (bez ulicy i nazwiska). Miasto bierzemy z adresu, który już jest w bazie:
-// zapisane ręcznie pole "city" (pacjent albo wypożyczenie) ma pierwszeństwo, bez niego miasto wyłuskujemy z adresu.
+// Do wspólnego kalendarza rodzinnego idzie z pracy tylko miasto (bez ulicy i nazwiska). Miasto wyłuskujemy z adresu, który już jest w bazie
+// (osobnego pola "Miasto" nie ma; jeśli apka go nie widzi w adresie, wystarczy dopisać miasto do adresu).
 // conf: "ok" = rozpoznane (znane miasto albo po kodzie pocztowym), "guess" = domysł (do sprawdzenia), "" = nie ma.
 const CITIES_BUILTIN = ["Katowice","Sosnowiec","Gliwice","Zabrze","Bytom","Bielsko-Biała","Rybnik","Ruda Śląska","Tychy","Dąbrowa Górnicza","Chorzów","Jaworzno","Jastrzębie-Zdrój","Mysłowice","Siemianowice Śląskie","Tarnowskie Góry","Piekary Śląskie","Świętochłowice","Knurów","Racibórz","Żory","Mikołów","Czeladź","Będzin","Zawiercie","Cieszyn","Częstochowa","Lubliniec","Pszczyna","Wodzisław Śląski","Czechowice-Dziedzice","Żywiec","Bieruń","Łaziska Górne","Orzesze","Radzionków","Rydułtowy","Pyskowice","Wojkowice","Siewierz","Czerwionka-Leszczyny","Imielin","Kobiór","Ożarowice","Psary","Bobrowniki","Sławków","Szczyrk","Wisła","Ustroń","Skoczów","Strumień","Pawłowice","Suszec","Chybie","Radlin","Pszów","Gierałtowice","Sośnicowice","Kuźnia Raciborska","Gaszowice","Mszana","Godów","Gorzyce","Tworóg","Kalety","Koszęcin","Miasteczko Śląskie","Zbrosławice","Świerklaniec","Kochanowice","Blachownia","Myszków","Kłobuck","Łazy","Poręba","Oświęcim","Brzeszcze","Libiąż","Chrzanów","Trzebinia","Olkusz","Bukowno","Kęty","Wadowice","Bochnia","Kraków","Warszawa","Łódź","Wrocław","Poznań","Gdańsk","Gdynia","Sopot","Szczecin","Bydgoszcz","Lublin","Białystok","Opole","Kielce","Rzeszów","Toruń","Olsztyn","Radom","Płock","Kalisz","Legnica","Wałbrzych","Zakopane","Nowy Sącz","Tarnów","Nysa","Kędzierzyn-Koźle","Strzelce Opolskie"];
 const cityNorm = s => String(s==null?"":s).toLowerCase().replace(/ł/g,"l").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\- ]/g," ").replace(/\s+/g," ").trim();
@@ -432,22 +432,21 @@ function cityFromAddress(addr,known){
   if(k>=0&&k<tk.length-1){const c=cityClean(tk.slice(k+1).join(" "));if(c)return {city:c,conf:"guess"};}
   return {city:"",conf:""};
 }
+// starsze, ręcznie zapisane pole "city" (z krótkiego okresu, gdy istniało w formularzach) działa tylko wtedy, gdy adres nie zawiera miasta
 const cityStored = o => (o&&typeof o.city==="string"&&o.city.trim())?o.city.trim():"";
-// miasta już wpisane ręcznie w bazie (podpowiedzi i rozszerzenie słownika)
-const cityCollect = (patients,rentals) => { const set=new Set(); (patients||[]).forEach(p=>{const c=cityStored(p);if(c)set.add(c);}); (rentals||[]).forEach(r=>{const c=cityStored(r);if(c)set.add(c);}); return [...set].sort((a,b)=>a.localeCompare(b,"pl")); };
-// miasto pacjenta: zapisane ręcznie albo z adresu
-const cityOfPatient = (p,K) => { const c=cityStored(p); if(c)return {city:c,conf:"ok",stored:true}; const d=cityFromAddress(p&&p.address,K); return {city:d.city,conf:d.conf,stored:false}; };
-// miasto wypożyczenia: zapisane ręcznie, z adresu wypożyczenia, a na końcu z karty pacjenta
+// miasto pacjenta: z jego adresu
+const cityOfPatient = (p,K) => { const d=cityFromAddress(p&&p.address,K); if(d.city)return {city:d.city,conf:d.conf}; const c=cityStored(p); return c?{city:c,conf:"ok"}:{city:"",conf:""}; };
+// miasto wypożyczenia: z adresu wypożyczenia, a gdy go nie ma lub nie ma w nim miasta, z adresu pacjenta
 function cityOfRental(r,patients,K){
-  const c=cityStored(r); if(c)return {city:c,conf:"ok",stored:true};
-  const d=cityFromAddress(r&&r.address,K); if(d.city)return {city:d.city,conf:d.conf,stored:false};
+  const d=cityFromAddress(r&&r.address,K); if(d.city)return {city:d.city,conf:d.conf};
   const pat=(patients||[]).find(p=>r&&((r.patientId!=null&&p.id===r.patientId)||(r.patientName&&p.name===r.patientName)));
-  return pat?cityOfPatient(pat,K):{city:"",conf:"",stored:false};
+  if(pat)return cityOfPatient(pat,K);
+  const c=cityStored(r); return c?{city:c,conf:"ok"}:{city:"",conf:""};
 }
 // miasto wizyty: z karty pacjenta (wizyty nie mają własnego adresu)
 function cityOfVisit(v,patients,K){
   const pat=(patients||[]).find(p=>v&&((v.patientId!=null&&p.id===v.patientId)||(!v.patientId&&v.patientName&&p.name===v.patientName)));
-  return pat?cityOfPatient(pat,K):{city:"",conf:"",stored:false};
+  return pat?cityOfPatient(pat,K):{city:"",conf:""};
 }
 
 // ── Czas trwania wpisów w kalendarzu: każdy wpis ma godzinę początku i końca ──────────────────────────

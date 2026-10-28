@@ -1393,9 +1393,6 @@ function Rentals(_ref6) {
     settings = _ref6.settings;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
-  var knownCities = useMemo(function () {
-    return cityCollect(patients, rentals);
-  }, [patients, rentals]);
   var mctx = useContext(MachinesCtx);
   var machines = mctx && mctx.machines || [];
   var view = rentalsView || "aktywne",
@@ -2931,8 +2928,7 @@ function Rentals(_ref6) {
             patientName: p.name,
             phone: p.phone,
             address: p.address,
-            patientId: p.id,
-            city: cityStored(p)
+            patientId: p.id
           });
         });
       },
@@ -2958,17 +2954,6 @@ function Rentals(_ref6) {
           });
         });
       }
-    }), /*#__PURE__*/React.createElement(CityInput, {
-      value: ef.city || "",
-      onChange: function onChange(v) {
-        return setEf(function (f) {
-          return _objectSpread(_objectSpread({}, f), {}, {
-            city: v
-          });
-        });
-      },
-      address: ef.address,
-      extra: knownCities
     }), /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 14
@@ -4015,8 +4000,7 @@ function Rentals(_ref6) {
           patientName: p.name,
           phone: p.phone,
           address: p.address,
-          patientId: p.id,
-          city: cityStored(p)
+          patientId: p.id
         });
       });
     },
@@ -4042,17 +4026,6 @@ function Rentals(_ref6) {
         });
       });
     }
-  }), /*#__PURE__*/React.createElement(CityInput, {
-    value: form.city || "",
-    onChange: function onChange(v) {
-      return setForm(function (f) {
-        return _objectSpread(_objectSpread({}, f), {}, {
-          city: v
-        });
-      });
-    },
-    address: form.address,
-    extra: knownCities
   }), cpmApplies(form.equipment) && function () {
     var pt = (patients || []).find(function (p) {
       return p.id === form.patientId;

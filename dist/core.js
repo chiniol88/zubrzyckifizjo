@@ -929,8 +929,8 @@ var EQUIPMENT_GROUPS = [{
 }];
 
 // ── Miasto z adresu ─────────────────────────────────────────────────────────────────────────────────
-// Do wspólnego kalendarza rodzinnego idzie z pracy tylko miasto (bez ulicy i nazwiska). Miasto bierzemy z adresu, który już jest w bazie:
-// zapisane ręcznie pole "city" (pacjent albo wypożyczenie) ma pierwszeństwo, bez niego miasto wyłuskujemy z adresu.
+// Do wspólnego kalendarza rodzinnego idzie z pracy tylko miasto (bez ulicy i nazwiska). Miasto wyłuskujemy z adresu, który już jest w bazie
+// (osobnego pola "Miasto" nie ma; jeśli apka go nie widzi w adresie, wystarczy dopisać miasto do adresu).
 // conf: "ok" = rozpoznane (znane miasto albo po kodzie pocztowym), "guess" = domysł (do sprawdzenia), "" = nie ma.
 var CITIES_BUILTIN = ["Katowice", "Sosnowiec", "Gliwice", "Zabrze", "Bytom", "Bielsko-Biała", "Rybnik", "Ruda Śląska", "Tychy", "Dąbrowa Górnicza", "Chorzów", "Jaworzno", "Jastrzębie-Zdrój", "Mysłowice", "Siemianowice Śląskie", "Tarnowskie Góry", "Piekary Śląskie", "Świętochłowice", "Knurów", "Racibórz", "Żory", "Mikołów", "Czeladź", "Będzin", "Zawiercie", "Cieszyn", "Częstochowa", "Lubliniec", "Pszczyna", "Wodzisław Śląski", "Czechowice-Dziedzice", "Żywiec", "Bieruń", "Łaziska Górne", "Orzesze", "Radzionków", "Rydułtowy", "Pyskowice", "Wojkowice", "Siewierz", "Czerwionka-Leszczyny", "Imielin", "Kobiór", "Ożarowice", "Psary", "Bobrowniki", "Sławków", "Szczyrk", "Wisła", "Ustroń", "Skoczów", "Strumień", "Pawłowice", "Suszec", "Chybie", "Radlin", "Pszów", "Gierałtowice", "Sośnicowice", "Kuźnia Raciborska", "Gaszowice", "Mszana", "Godów", "Gorzyce", "Tworóg", "Kalety", "Koszęcin", "Miasteczko Śląskie", "Zbrosławice", "Świerklaniec", "Kochanowice", "Blachownia", "Myszków", "Kłobuck", "Łazy", "Poręba", "Oświęcim", "Brzeszcze", "Libiąż", "Chrzanów", "Trzebinia", "Olkusz", "Bukowno", "Kęty", "Wadowice", "Bochnia", "Kraków", "Warszawa", "Łódź", "Wrocław", "Poznań", "Gdańsk", "Gdynia", "Sopot", "Szczecin", "Bydgoszcz", "Lublin", "Białystok", "Opole", "Kielce", "Rzeszów", "Toruń", "Olsztyn", "Radom", "Płock", "Kalisz", "Legnica", "Wałbrzych", "Zakopane", "Nowy Sącz", "Tarnów", "Nysa", "Kędzierzyn-Koźle", "Strzelce Opolskie"];
 var cityNorm = function cityNorm(s) {
@@ -1027,60 +1027,44 @@ function cityFromAddress(addr, known) {
     conf: ""
   };
 }
+// starsze, ręcznie zapisane pole "city" (z krótkiego okresu, gdy istniało w formularzach) działa tylko wtedy, gdy adres nie zawiera miasta
 var cityStored = function cityStored(o) {
   return o && typeof o.city === "string" && o.city.trim() ? o.city.trim() : "";
 };
-// miasta już wpisane ręcznie w bazie (podpowiedzi i rozszerzenie słownika)
-var cityCollect = function cityCollect(patients, rentals) {
-  var set = new Set();
-  (patients || []).forEach(function (p) {
-    var c = cityStored(p);
-    if (c) set.add(c);
-  });
-  (rentals || []).forEach(function (r) {
-    var c = cityStored(r);
-    if (c) set.add(c);
-  });
-  return _toConsumableArray(set).sort(function (a, b) {
-    return a.localeCompare(b, "pl");
-  });
-};
-// miasto pacjenta: zapisane ręcznie albo z adresu
+// miasto pacjenta: z jego adresu
 var cityOfPatient = function cityOfPatient(p, K) {
-  var c = cityStored(p);
-  if (c) return {
-    city: c,
-    conf: "ok",
-    stored: true
-  };
   var d = cityFromAddress(p && p.address, K);
-  return {
+  if (d.city) return {
     city: d.city,
-    conf: d.conf,
-    stored: false
+    conf: d.conf
+  };
+  var c = cityStored(p);
+  return c ? {
+    city: c,
+    conf: "ok"
+  } : {
+    city: "",
+    conf: ""
   };
 };
-// miasto wypożyczenia: zapisane ręcznie, z adresu wypożyczenia, a na końcu z karty pacjenta
+// miasto wypożyczenia: z adresu wypożyczenia, a gdy go nie ma lub nie ma w nim miasta, z adresu pacjenta
 function cityOfRental(r, patients, K) {
-  var c = cityStored(r);
-  if (c) return {
-    city: c,
-    conf: "ok",
-    stored: true
-  };
   var d = cityFromAddress(r && r.address, K);
   if (d.city) return {
     city: d.city,
-    conf: d.conf,
-    stored: false
+    conf: d.conf
   };
   var pat = (patients || []).find(function (p) {
     return r && (r.patientId != null && p.id === r.patientId || r.patientName && p.name === r.patientName);
   });
-  return pat ? cityOfPatient(pat, K) : {
+  if (pat) return cityOfPatient(pat, K);
+  var c = cityStored(r);
+  return c ? {
+    city: c,
+    conf: "ok"
+  } : {
     city: "",
-    conf: "",
-    stored: false
+    conf: ""
   };
 }
 // miasto wizyty: z karty pacjenta (wizyty nie mają własnego adresu)
@@ -1090,8 +1074,7 @@ function cityOfVisit(v, patients, K) {
   });
   return pat ? cityOfPatient(pat, K) : {
     city: "",
-    conf: "",
-    stored: false
+    conf: ""
   };
 }
 

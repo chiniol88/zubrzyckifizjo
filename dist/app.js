@@ -123,14 +123,18 @@ function App(_ref) {
     _useState0 = _slicedToArray(_useState9, 2),
     wozkiSel = _useState0[0],
     setWozkiSel = _useState0[1];
-  var _useState1 = useState("aktywne"),
+  var _useState1 = useState(null),
     _useState10 = _slicedToArray(_useState1, 2),
-    rentalsView = _useState10[0],
-    setRentalsView = _useState10[1];
-  var _useState11 = useState(null),
+    patSel = _useState10[0],
+    setPatSel = _useState10[1];
+  var _useState11 = useState("aktywne"),
     _useState12 = _slicedToArray(_useState11, 2),
-    addRentalDate = _useState12[0],
-    setAddRentalDate = _useState12[1];
+    rentalsView = _useState12[0],
+    setRentalsView = _useState12[1];
+  var _useState13 = useState(null),
+    _useState14 = _slicedToArray(_useState13, 2),
+    addRentalDate = _useState14[0],
+    setAddRentalDate = _useState14[1];
   var _goToRental = function goToRental(id) {
     var returnTab = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : "rentals";
     setDlReturnTab(returnTab);
@@ -145,6 +149,10 @@ function App(_ref) {
   var goToWozki = function goToWozki(id) {
     setWozkiSel(id);
     setTab("nfz");
+  };
+  var goToPatient = function goToPatient(id) {
+    setPatSel(id);
+    setTab("patients");
   };
   var goToMagazyn = function goToMagazyn() {
     return setTab("magazyn");
@@ -170,10 +178,10 @@ function App(_ref) {
   }, [patients, rentals, nfzCases]);
   var dk = dark;
   var desk = useIsDesktop();
-  var _useState13 = useState(false),
-    _useState14 = _slicedToArray(_useState13, 2),
-    isSaving = _useState14[0],
-    setIsSaving = _useState14[1];
+  var _useState15 = useState(false),
+    _useState16 = _slicedToArray(_useState15, 2),
+    isSaving = _useState16[0],
+    setIsSaving = _useState16[1];
   useEffect(function () {
     var h = function h(e) {
       return setIsSaving(e.detail);
@@ -183,10 +191,10 @@ function App(_ref) {
       return window.removeEventListener("fizjo-save", h);
     };
   }, []);
-  var _useState15 = useState(false),
-    _useState16 = _slicedToArray(_useState15, 2),
-    saveError = _useState16[0],
-    setSaveError = _useState16[1];
+  var _useState17 = useState(false),
+    _useState18 = _slicedToArray(_useState17, 2),
+    saveError = _useState18[0],
+    setSaveError = _useState18[1];
   useEffect(function () {
     var h = function h(e) {
       return setSaveError(e.detail);
@@ -233,6 +241,10 @@ function App(_ref) {
     machines: machines,
     goToMagazyn: goToMagazyn
   }), tab === "patients" && /*#__PURE__*/React.createElement(Patients, {
+    initialSel: patSel,
+    onSelCleared: function onSelCleared() {
+      return setPatSel(null);
+    },
     patients: patients,
     setPatients: setPatients,
     visits: visits,
@@ -344,8 +356,8 @@ function App(_ref) {
     setRentals: setRentals,
     setFinances: setFinances,
     patients: patients,
-    setPatients: setPatients,
-    rentals: rentals
+    rentals: rentals,
+    goToPatient: goToPatient
   }));
   if (desk) {
     var sb = dk ? "#0A1220" : "#0E1B30";

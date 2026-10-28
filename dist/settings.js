@@ -948,121 +948,75 @@ function SecuritySection(_ref2) {
 }
 
 // pole "minuty" z zatwierdzaniem po wyjściu z pola (żeby wpisywanie np. "45" nie skakało po drodze)
-// ── Miasta: przegląd, co apka wyłuskała z adresów (do wspólnego kalendarza rodzinnego idzie samo miasto) ──
-// Własna ramka i własne komponenty (nie "Sec"/"Row" z Settings), żeby pola nie traciły fokusu przy zapisie.
-function CityRowInput(_ref0) {
-  var row = _ref0.row,
-    onCommit = _ref0.onCommit,
-    extra = _ref0.extra;
-  var _useState11 = useState(row.res.city || ""),
+// ── Miasta: podgląd, co apka wyłuskuje z adresów (do wspólnego kalendarza rodzinnego idzie samo miasto, bez ulicy) ──
+// Nic się tu nie zapisuje: miasto jest zawsze z adresu. Jeśli go nie widać, wystarczy dopisać je do adresu pacjenta.
+// Własna ramka i własne komponenty (nie "Sec"/"Row" z Settings), żeby nie odtwarzały się przy każdej zmianie ustawień.
+function CitySection(_ref0) {
+  var patients = _ref0.patients,
+    rentals = _ref0.rentals,
+    goToPatient = _ref0.goToPatient,
+    dk = _ref0.dk,
+    txt = _ref0.txt,
+    sub = _ref0.sub,
+    bg = _ref0.bg,
+    demo = _ref0.demo;
+  var _useState11 = useState(false),
     _useState12 = _slicedToArray(_useState11, 2),
-    val = _useState12[0],
-    setVal = _useState12[1];
-  useEffect(function () {
-    setVal(row.res.city || "");
-  }, [row.res.city]);
-  var idRef = useRef("fz-cr-" + Math.random().toString(36).slice(2, 9));
-  return /*#__PURE__*/React.createElement("input", {
-    list: idRef.current,
-    value: val,
-    placeholder: "wpisz miasto",
-    onChange: function onChange(e) {
-      return setVal(e.target.value);
-    },
-    onBlur: function onBlur() {
-      if (val.trim() !== (row.res.city || "")) onCommit(row, val.trim());
-    },
-    onKeyDown: function onKeyDown(e) {
-      if (e.key === "Enter") e.target.blur();
-    },
-    style: {
-      width: 150,
-      padding: "8px 10px",
-      border: "1.5px solid #D9E2F0",
-      borderRadius: 10,
-      fontSize: 14,
-      fontFamily: "inherit",
-      outline: "none",
-      flexShrink: 0
-    }
-  });
-}
-function CitySection(_ref1) {
-  var patients = _ref1.patients,
-    setPatients = _ref1.setPatients,
-    rentals = _ref1.rentals,
-    setRentals = _ref1.setRentals,
-    dk = _ref1.dk,
-    txt = _ref1.txt,
-    sub = _ref1.sub,
-    bg = _ref1.bg,
-    demo = _ref1.demo;
+    open = _useState12[0],
+    setOpen = _useState12[1];
   var _useState13 = useState(false),
     _useState14 = _slicedToArray(_useState13, 2),
-    open = _useState14[0],
-    setOpen = _useState14[1];
-  var _useState15 = useState(false),
-    _useState16 = _slicedToArray(_useState15, 2),
-    showOk = _useState16[0],
-    setShowOk = _useState16[1];
-  var extra = useMemo(function () {
-    return cityCollect(patients, rentals);
-  }, [patients, rentals]);
+    showAll = _useState14[0],
+    setShowAll = _useState14[1];
   var K = useMemo(function () {
-    return cityKnown(extra);
-  }, [extra]);
-  var rows = useMemo(function () {
+    return cityKnown([]);
+  }, []);
+  var data = useMemo(function () {
     var out = [];
+    var noAddr = 0;
     (patients || []).filter(function (p) {
-      return p && !p.anonymized && !p.archived && (p.address || cityStored(p));
+      return p && !p.anonymized && !p.archived;
     }).forEach(function (p) {
-      return out.push({
+      if (!String(p.address || "").trim()) {
+        noAddr++;
+        return;
+      }
+      out.push({
         key: "p" + p.id,
-        kind: "p",
-        id: p.id,
+        patId: p.id,
         name: p.name || "",
-        address: p.address || "",
+        address: p.address,
         res: cityOfPatient(p, K)
       });
     });
     // aktywne wypożyczenia klientów bez karty pacjenta
     (rentals || []).filter(function (r) {
-      return r && r.status === "aktywne" && r.address && !(patients || []).some(function (p) {
+      return r && r.status === "aktywne" && String(r.address || "").trim() && !(patients || []).some(function (p) {
         return r.patientId != null && p.id === r.patientId || r.patientName && p.name === r.patientName;
       });
     }).forEach(function (r) {
       return out.push({
         key: "r" + r.id,
-        kind: "r",
-        id: r.id,
+        patId: null,
         name: r.patientName || "",
         address: r.address,
         res: cityOfRental(r, patients, K)
       });
     });
-    return out;
+    return {
+      out: out,
+      noAddr: noAddr
+    };
   }, [patients, rentals, K]);
-  var todo = rows.filter(function (r) {
-    return !r.res.city || r.res.conf !== "ok";
+  var none = data.out.filter(function (r) {
+    return !r.res.city;
   });
-  var sure = rows.filter(function (r) {
+  var guess = data.out.filter(function (r) {
+    return r.res.city && r.res.conf === "guess";
+  });
+  var sure = data.out.filter(function (r) {
     return r.res.city && r.res.conf === "ok";
   });
-  var commit = function commit(row, v) {
-    if (row.kind === "p") setPatients(function (ps) {
-      return ps.map(function (p) {
-        return p.id === row.id ? _objectSpread(_objectSpread({}, p), {}, {
-          city: v
-        }) : p;
-      });
-    });else setRentals(function (rs) {
-      return rs.map(function (r) {
-        return r.id === row.id ? _objectSpread(_objectSpread({}, r), {}, {
-          city: v
-        }) : r;
-      });
-    });
-  };
   var line = function line(row) {
     return /*#__PURE__*/React.createElement("div", {
       key: row.key,
@@ -1089,32 +1043,32 @@ function CitySection(_ref1) {
         color: "#7A8FA6",
         overflowWrap: "anywhere"
       }
-    }, maskAddr(demo, row.address) || "brak adresu"), row.res.city && row.res.conf === "guess" && /*#__PURE__*/React.createElement("div", {
+    }, maskAddr(demo, row.address)), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 11,
-        color: "#D9822B"
+        fontSize: 12,
+        fontWeight: 600,
+        color: row.res.city ? row.res.conf === "guess" ? "#D9822B" : "#3DAA72" : "#E05C5C"
       }
-    }, "domys\u0142 z adresu")), /*#__PURE__*/React.createElement(CityRowInput, {
-      row: row,
-      extra: extra,
-      onCommit: commit
-    }), row.res.city && row.res.conf === "guess" && /*#__PURE__*/React.createElement("button", {
+    }, row.res.city ? "→ " + (demo ? "***" : row.res.city) : "→ nie widzę miasta w adresie")), row.patId != null && goToPatient && /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
-        return commit(row, row.res.city);
+        setOpen(false);
+        goToPatient(row.patId);
       },
       style: {
-        background: "#3E6FB0",
-        color: "#fff",
+        background: "#E1E9F5",
+        color: "#3E6FB0",
         border: "none",
         borderRadius: 8,
         padding: "7px 10px",
         fontSize: 12,
         fontWeight: 700,
         cursor: "pointer",
-        fontFamily: "inherit"
+        fontFamily: "inherit",
+        flexShrink: 0
       }
-    }, "OK"));
+    }, "Otw\xF3rz kart\u0119"));
   };
+  var problems = none.length + guess.length;
   return /*#__PURE__*/React.createElement("div", {
     style: {
       background: bg,
@@ -1131,18 +1085,26 @@ function CitySection(_ref1) {
       paddingTop: 12,
       paddingBottom: 4
     }
-  }, "MIASTA (WSP\xD3LNY KALENDARZ RODZINNY)"), /*#__PURE__*/React.createElement("div", {
+  }, "MIASTA W ADRESACH (WSP\xD3LNY KALENDARZ RODZINNY)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: txt,
       padding: "8px 0",
       lineHeight: 1.5
     }
-  }, "Do kalendarza rodzinnego trafia z pracy samo miasto, wy\u0142uskane z adres\xF3w w bazie. Rozpoznane: ", /*#__PURE__*/React.createElement("b", null, sure.length), " \xB7 do sprawdzenia: ", /*#__PURE__*/React.createElement("b", {
+  }, "Do kalendarza rodzinnego trafia z pracy samo miasto, wy\u0142uskane z adresu pacjenta. Rozpoznane: ", /*#__PURE__*/React.createElement("b", null, sure.length), " \xB7 do rzucenia okiem: ", /*#__PURE__*/React.createElement("b", {
     style: {
-      color: todo.length ? "#D9822B" : "#3DAA72"
+      color: guess.length ? "#D9822B" : "#3DAA72"
     }
-  }, todo.length)), /*#__PURE__*/React.createElement("div", {
+  }, guess.length), " \xB7 bez miasta w adresie: ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: none.length ? "#E05C5C" : "#3DAA72"
+    }
+  }, none.length), data.noAddr > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: sub
+    }
+  }, " \xB7 pacjent\xF3w bez adresu: ", data.noAddr)), /*#__PURE__*/React.createElement("div", {
     style: {
       paddingBottom: 12
     }
@@ -1161,7 +1123,7 @@ function CitySection(_ref1) {
       cursor: "pointer",
       fontFamily: "inherit"
     }
-  }, "Sprawd\u017A miasta", todo.length ? " (" + todo.length + ")" : "")), open && /*#__PURE__*/React.createElement(Modal, {
+  }, "Zobacz miasta", problems ? " (" + problems + " do sprawdzenia)" : "")), open && /*#__PURE__*/React.createElement(Modal, {
     title: "Miasta z adres\xF3w",
     onClose: function onClose() {
       return setOpen(false);
@@ -1173,20 +1135,38 @@ function CitySection(_ref1) {
       marginBottom: 10,
       lineHeight: 1.5
     }
-  }, "Wpisz albo popraw miasto. Puste pole = miasto z adresu. \u201EOK\" przy domy\u015Ble zatwierdza podpowied\u017A."), todo.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Miasto bierzemy z adresu, nic si\u0119 tu nie zapisuje. Gdy miasta nie wida\u0107, otw\xF3rz kart\u0119 i dopisz je do adresu, np. \u201Eul. Przyk\u0142adowa 1, Gliwice\"."), problems === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       color: "#3DAA72",
       fontWeight: 600,
       padding: "8px 0"
     }
-  }, "Wszystkie adresy maj\u0105 rozpoznane miasto."), todo.map(line), sure.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "W ka\u017Cdym adresie wida\u0107 miasto."), none.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#E05C5C",
+      textTransform: "uppercase",
+      letterSpacing: .5,
+      margin: "6px 0 2px"
+    }
+  }, "Bez miasta w adresie (", none.length, ")"), none.map(line)), guess.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#D9822B",
+      textTransform: "uppercase",
+      letterSpacing: .5,
+      margin: "12px 0 2px"
+    }
+  }, "Zgadni\u0119te z ko\u0144ca adresu, sprawd\u017A (", guess.length, ")"), guess.map(line)), sure.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 12
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
-      return setShowOk(function (v) {
+      return setShowAll(function (v) {
         return !v;
       });
     },
@@ -1200,17 +1180,17 @@ function CitySection(_ref1) {
       padding: 0,
       fontFamily: "inherit"
     }
-  }, showOk ? "Ukryj rozpoznane" : "Pokaż rozpoznane (" + sure.length + ")"), showOk && sure.map(line))));
+  }, showAll ? "Ukryj rozpoznane" : "Pokaż rozpoznane (" + sure.length + ")"), showAll && sure.map(line))));
 }
 // Sekcja domyślnych czasów trwania. Celowo osobny komponent z własną ramką (a nie "Sec"/"Row" zdefiniowane wewnątrz Settings,
 // które po każdej zmianie ustawień tworzą się na nowo i zabierałyby fokus z pola, do którego użytkownik właśnie przeszedł)
-function DurSection(_ref10) {
-  var settings = _ref10.settings,
-    setSettings = _ref10.setSettings,
-    dk = _ref10.dk,
-    txt = _ref10.txt,
-    sub = _ref10.sub,
-    bg = _ref10.bg;
+function DurSection(_ref1) {
+  var settings = _ref1.settings,
+    setSettings = _ref1.setSettings,
+    dk = _ref1.dk,
+    txt = _ref1.txt,
+    sub = _ref1.sub,
+    bg = _ref1.bg;
   var cur = durFromSettings(settings);
   var changed = JSON.stringify(cur) !== JSON.stringify(DUR_DEFAULTS);
   return /*#__PURE__*/React.createElement("div", {
@@ -1269,16 +1249,16 @@ function DurSection(_ref10) {
     }
   }, "Przywr\xF3\u0107 domy\u015Blne (60 / 30 / 10 / 60)")));
 }
-function DurRow(_ref11) {
-  var kind = _ref11.kind,
-    cur = _ref11.cur,
-    setSettings = _ref11.setSettings,
-    dk = _ref11.dk,
-    txt = _ref11.txt;
-  var _useState17 = useState(String(cur)),
-    _useState18 = _slicedToArray(_useState17, 2),
-    val = _useState18[0],
-    setVal = _useState18[1];
+function DurRow(_ref10) {
+  var kind = _ref10.kind,
+    cur = _ref10.cur,
+    setSettings = _ref10.setSettings,
+    dk = _ref10.dk,
+    txt = _ref10.txt;
+  var _useState15 = useState(String(cur)),
+    _useState16 = _slicedToArray(_useState15, 2),
+    val = _useState16[0],
+    setVal = _useState16[1];
   useEffect(function () {
     setVal(String(cur));
   }, [cur]);
@@ -1338,28 +1318,28 @@ function DurRow(_ref11) {
     }
   }, "min")));
 }
-function Settings(_ref12) {
-  var dark = _ref12.dark,
-    setDark = _ref12.setDark,
-    settings = _ref12.settings,
-    setSettings = _ref12.setSettings,
-    exportData = _ref12.exportData,
-    importData = _ref12.importData,
-    demo = _ref12.demo,
-    setDemo = _ref12.setDemo,
-    setRentals = _ref12.setRentals,
-    setFinances = _ref12.setFinances,
-    patients = _ref12.patients,
-    setPatients = _ref12.setPatients,
-    rentals = _ref12.rentals;
+function Settings(_ref11) {
+  var dark = _ref11.dark,
+    setDark = _ref11.setDark,
+    settings = _ref11.settings,
+    setSettings = _ref11.setSettings,
+    exportData = _ref11.exportData,
+    importData = _ref11.importData,
+    demo = _ref11.demo,
+    setDemo = _ref11.setDemo,
+    setRentals = _ref11.setRentals,
+    setFinances = _ref11.setFinances,
+    patients = _ref11.patients,
+    rentals = _ref11.rentals,
+    goToPatient = _ref11.goToPatient;
   var dk = dark;
   var bg = dk ? "#111826" : "#fff";
   var sec = dk ? "#0E141F" : "#EFF3FA";
   var txt = dk ? "#E8F5F5" : "#1C2B3A";
   var sub = "#7A8FA6";
-  var Row = function Row(_ref13) {
-    var label = _ref13.label,
-      children = _ref13.children;
+  var Row = function Row(_ref12) {
+    var label = _ref12.label,
+      children = _ref12.children;
     return /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -1375,9 +1355,9 @@ function Settings(_ref12) {
       }
     }, label), children);
   };
-  var Toggle = function Toggle(_ref14) {
-    var val = _ref14.val,
-      onToggle = _ref14.onToggle;
+  var Toggle = function Toggle(_ref13) {
+    var val = _ref13.val,
+      onToggle = _ref13.onToggle;
     return /*#__PURE__*/React.createElement("div", {
       onClick: onToggle,
       style: {
@@ -1403,9 +1383,9 @@ function Settings(_ref12) {
       }
     }));
   };
-  var Sec = function Sec(_ref15) {
-    var title = _ref15.title,
-      children = _ref15.children;
+  var Sec = function Sec(_ref14) {
+    var title = _ref14.title,
+      children = _ref14.children;
     return /*#__PURE__*/React.createElement("div", {
       style: {
         background: bg,
@@ -1552,9 +1532,8 @@ function Settings(_ref12) {
     bg: bg
   }), /*#__PURE__*/React.createElement(CitySection, {
     patients: patients,
-    setPatients: setPatients,
     rentals: rentals,
-    setRentals: setRentals,
+    goToPatient: goToPatient,
     dk: dk,
     txt: txt,
     sub: sub,

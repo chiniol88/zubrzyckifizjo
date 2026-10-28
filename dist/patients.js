@@ -680,17 +680,20 @@ function Patients(_ref6) {
     nfzCases = _ref6.nfzCases,
     setNfzCases = _ref6.setNfzCases,
     allClients = _ref6.allClients,
-    priv = _ref6.priv;
+    priv = _ref6.priv,
+    initialSel = _ref6.initialSel,
+    onSelCleared = _ref6.onSelCleared;
   var demo = useDemo();
   var durs = useContext(DurCtx);
-  var knownCities = useMemo(function () {
-    return cityCollect(patients, rentals);
-  }, [patients, rentals]);
   var dk = useContext(DarkCtx);
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
     selId = _useState0[0],
     setSelId = _useState0[1];
+  // wejście do karty z innego miejsca (np. z Ustawień → Miasta)
+  useEffect(function () {
+    if (initialSel != null) setSelId(initialSel);
+  }, [initialSel]);
   var _useState1 = useState(false),
     _useState10 = _slicedToArray(_useState1, 2),
     showAdd = _useState10[0],
@@ -976,7 +979,8 @@ function Patients(_ref6) {
     var patEmails = getEmails(pat);
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
-        return setSelId(null);
+        setSelId(null);
+        if (onSelCleared) onSelCleared();
       },
       style: {
         background: "none",
@@ -1602,17 +1606,6 @@ function Patients(_ref6) {
         });
       },
       placeholder: "ul. Przyk\u0142adowa 1, Gliwice"
-    }), /*#__PURE__*/React.createElement(CityInput, {
-      value: editForm.city || "",
-      onChange: function onChange(v) {
-        return setEditForm(function (f) {
-          return _objectSpread(_objectSpread({}, f), {}, {
-            city: v
-          });
-        });
-      },
-      address: editForm.address,
-      extra: knownCities
     }), /*#__PURE__*/React.createElement(Txa, {
       label: "Diagnoza",
       value: editForm.diagnosis || "",
@@ -2517,17 +2510,6 @@ function Patients(_ref6) {
       });
     },
     placeholder: "ul. Przyk\u0142adowa 1, Gliwice"
-  }), /*#__PURE__*/React.createElement(CityInput, {
-    value: newForm.city || "",
-    onChange: function onChange(v) {
-      return setNewForm(function (f) {
-        return _objectSpread(_objectSpread({}, f), {}, {
-          city: v
-        });
-      });
-    },
-    address: newForm.address,
-    extra: knownCities
   }), /*#__PURE__*/React.createElement(Txa, {
     label: "Diagnoza",
     value: newForm.diagnosis,
