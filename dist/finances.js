@@ -152,7 +152,9 @@ var fmtNum = function fmtNum(n) {
   }
   return (n < 0 ? "-" : "") + o;
 };
-// ── DOCHÓD PASYWNY: wpłaty z cykli wypożyczeń cyklicznych od 2. wzwyż, wg daty wpłaty ──
+// ── DOCHÓD PASYWNY: cykle wypożyczeń cyklicznych od 2. wzwyż, liczone wg okresu cyklu (jego daty), niezależnie od wpłaty ──
+// Klient, który płaci dopiero na końcu, daje stały dochód co miesiąc, a nie jeden skok w dniu przelewu.
+// Cykl anulowany albo za 0 zł (NFZ) się nie liczy; usunięcie cyklu zdejmuje go z paska.
 var cycKey = function cycKey(c) {
   return c.dueDate || c.month + "-01";
 };
@@ -165,12 +167,13 @@ var passiveEvents = function passiveEvents(rentals) {
     }).sort(function (a, b) {
       return cycKey(a).localeCompare(cycKey(b));
     }).forEach(function (c, i) {
-      if (i === 0 || !c.paid || !(+c.amount > 0)) return;
+      if (i === 0 || !(+c.amount > 0)) return;
       out.push({
-        date: c.paidDate || c.dueDate || c.month + "-15",
+        date: cycKey(c),
         amount: +c.amount,
         r: r,
-        what: "cykl " + (i + 1)
+        what: "cykl " + (i + 1),
+        paidDate: c.paid ? c.paidDate || cycKey(c) : null
       });
     });
   });
@@ -205,7 +208,14 @@ function PassiveRow(_ref3) {
     return s + e.amount;
   }, 0);
   var diff = prev > 0 ? Math.round((sum - prev) / prev * 100) : null;
-  var pct = base > 0 ? Math.min(100, sum / base * 100) : 0;
+  // podstawa procentu = wpłaty okresu + cykle, których pieniędzy nie ma w tych wpłatach (niewpłacone albo wpłacone w innym okresie), żeby udział nie przekroczył 100%
+  var notInCash = cur.filter(function (e) {
+    return !(e.paidDate && inPeriod(e.paidDate));
+  }).reduce(function (s, e) {
+    return s + e.amount;
+  }, 0);
+  var baseAdj = base + notInCash;
+  var pct = baseAdj > 0 ? Math.min(100, sum / baseAdj * 100) : 0;
   var Z = function Z(n) {
     return demo ? "****" : fmtNum(n) + " zł";
   };
@@ -249,7 +259,7 @@ function PassiveRow(_ref3) {
       color: color,
       fontWeight: 700
     }
-  }, "(", base > 0 ? Math.round(sum / base * 100) : 0, "%)"))), /*#__PURE__*/React.createElement("div", {
+  }, "(", Math.round(pct), "%)"))), /*#__PURE__*/React.createElement("div", {
     style: {
       height: 7,
       borderRadius: 4,
@@ -269,7 +279,7 @@ function PassiveRow(_ref3) {
       color: sub,
       marginTop: 4
     }
-  }, "cykle od 2. wzwy\u017C \u2014 to cz\u0119\u015B\u0107 Wypo\u017Cyczalni", diff !== null ? " · " + (diff >= 0 ? "+" : "") + diff + "% vs poprz." : "")), isOpen && /*#__PURE__*/React.createElement("div", {
+  }, "cykle od 2. wzwy\u017C, wg okresu cyklu (niezale\u017Cnie od wp\u0142aty)", diff !== null ? " · " + (diff >= 0 ? "+" : "") + diff + "% vs poprz." : "")), isOpen && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       paddingLeft: 2
@@ -280,7 +290,7 @@ function PassiveRow(_ref3) {
       color: sub,
       padding: "4px 0"
     }
-  }, "Brak wp\u0142at z drugiego cyklu wzwy\u017C w tym okresie"), cur.map(function (e, i) {
+  }, "Brak cykli od drugiego wzwy\u017C w tym okresie"), cur.map(function (e, i) {
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       onClick: goToRental ? function () {

@@ -61,15 +61,17 @@
     const ymAdd=(ym,n)=>{let y=+ym.slice(0,4),m=+ym.slice(5,7)-1+n;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+"-"+String(m+1).padStart(2,"0");};
     const PL_MON=["sty","lut","mar","kwi","maj","cze","lip","sie","wrz","paź","lis","gru"];
     const fmtNum=n=>{const s=String(Math.round(Math.abs(n)));let o="";for(let i=0;i<s.length;i++){if(i&&(s.length-i)%3===0)o+=String.fromCharCode(160);o+=s[i];}return (n<0?"-":"")+o;};
-    // ── DOCHÓD PASYWNY: wpłaty z cykli wypożyczeń cyklicznych od 2. wzwyż, wg daty wpłaty ──
+    // ── DOCHÓD PASYWNY: cykle wypożyczeń cyklicznych od 2. wzwyż, liczone wg okresu cyklu (jego daty), niezależnie od wpłaty ──
+    // Klient, który płaci dopiero na końcu, daje stały dochód co miesiąc, a nie jeden skok w dniu przelewu.
+    // Cykl anulowany albo za 0 zł (NFZ) się nie liczy; usunięcie cyklu zdejmuje go z paska.
     const cycKey=c=>c.dueDate||(c.month+"-01");
     const passiveEvents=rentals=>{
       const out=[];
       (rentals||[]).forEach(r=>{
         if(r.reserved)return;
         (r.cycles||[]).filter(c=>!c.cancelled).sort((a,b)=>cycKey(a).localeCompare(cycKey(b))).forEach((c,i)=>{
-          if(i===0||!c.paid||!(+c.amount>0))return;
-          out.push({date:c.paidDate||c.dueDate||(c.month+"-15"),amount:+c.amount,r,what:"cykl "+(i+1)});
+          if(i===0||!(+c.amount>0))return;
+          out.push({date:cycKey(c),amount:+c.amount,r,what:"cykl "+(i+1),paidDate:c.paid?(c.paidDate||cycKey(c)):null});
         });
       });
       return out;
@@ -82,7 +84,10 @@
       const sum=cur.reduce((s,e)=>s+e.amount,0);
       const prev=ev.filter(e=>inPrevPeriod(e.date)).reduce((s,e)=>s+e.amount,0);
       const diff=prev>0?Math.round((sum-prev)/prev*100):null;
-      const pct=base>0?Math.min(100,sum/base*100):0;
+      // podstawa procentu = wpłaty okresu + cykle, których pieniędzy nie ma w tych wpłatach (niewpłacone albo wpłacone w innym okresie), żeby udział nie przekroczył 100%
+      const notInCash=cur.filter(e=>!(e.paidDate&&inPeriod(e.paidDate))).reduce((s,e)=>s+e.amount,0);
+      const baseAdj=base+notInCash;
+      const pct=baseAdj>0?Math.min(100,sum/baseAdj*100):0;
       const Z=n=>demo?"****":fmtNum(n)+" zł";
       const txt=dk?"#C8E8E8":"#1C2B3A";
       const color="#3DAA72";
@@ -90,15 +95,15 @@
         <div onClick={onToggle} style={{cursor:"pointer"}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
             <span style={{fontSize:13,fontWeight:600,color:txt}}>Dochód pasywny <span style={{color:sub,fontSize:10}}>{isOpen?"▲":"▼"}</span></span>
-            <span style={{fontSize:13,color:sub}}>{demo?"****":sum.toFixed(2)} zł <span style={{color,fontWeight:700}}>({base>0?Math.round(sum/base*100):0}%)</span></span>
+            <span style={{fontSize:13,color:sub}}>{demo?"****":sum.toFixed(2)} zł <span style={{color,fontWeight:700}}>({Math.round(pct)}%)</span></span>
           </div>
           <div style={{height:7,borderRadius:4,background:dk?"#2A3A56":"#F0F4F8"}}>
             <div style={{height:"100%",width:pct+"%",background:color,borderRadius:4,transition:"width .3s"}}/>
           </div>
-          <div style={{fontSize:11,color:sub,marginTop:4}}>cykle od 2. wzwyż — to część Wypożyczalni{diff!==null?" · "+(diff>=0?"+":"")+diff+"% vs poprz.":""}</div>
+          <div style={{fontSize:11,color:sub,marginTop:4}}>cykle od 2. wzwyż, wg okresu cyklu (niezależnie od wpłaty){diff!==null?" · "+(diff>=0?"+":"")+diff+"% vs poprz.":""}</div>
         </div>
         {isOpen&&<div style={{marginTop:8,paddingLeft:2}}>
-          {cur.length===0&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak wpłat z drugiego cyklu wzwyż w tym okresie</div>}
+          {cur.length===0&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak cykli od drugiego wzwyż w tym okresie</div>}
           {cur.map((e,i)=><div key={i} onClick={goToRental?()=>goToRental(e.r.id):undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${border}`,cursor:goToRental?"pointer":"default"}}>
             <div style={{minWidth:0,flex:1,paddingRight:8}}>
               <div style={{fontSize:12,fontWeight:600,color:txt,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{maskName(demo,e.r.patientName||"—",i)} <span style={{color:sub,fontWeight:400}}>{e.r.equipment||""}</span></div>
