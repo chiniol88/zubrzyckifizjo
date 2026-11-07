@@ -106,6 +106,13 @@
       </Card>;
     }
 
+    // Kwoty wypożyczenia na karcie historii pacjenta: cena łączna (pierwotna + przedłużenia) i to, co wpłacono (z przedłużeniami)
+    function rentalMoney(r) {
+      const exts=(Array.isArray(r.extensions)?r.extensions:[]).filter(e=>e&&typeof e==="object");
+      const extDue=exts.reduce((s,e)=>s+(+e.amountDue||+e.amount||0),0);
+      return {exts,total:(+r.amount||0)+extDue,paid:calcRentalPaid(r)};
+    }
+
     function getPhones(pat) {
       if(pat.phones&&pat.phones.length)return pat.phones;
       return pat.phone?[{id:"legacy",number:pat.phone,label:""}]:[];
@@ -337,13 +344,27 @@
                     {item.notes&&<div style={{fontSize:12,color:"#7A8FA6",marginTop:8,paddingTop:8,borderTop:"1px solid #EFF3FA",fontStyle:"italic",whiteSpace:"pre-wrap"}}>📝 {maskText(demo,item.notes)}</div>}
                   </Card>
                 : item._t==="r"
-                ? <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
+                ? (()=>{
+                    const mo=rentalMoney(item);
+                    const shown=item.renewable?item.amount:mo.total;
+                    return <Card key={"r"+item.id} style={{background:"#F0EDFF"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div><div style={{fontSize:11,fontWeight:700,color:"#7C6AF4",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wypożyczenie</div><div style={{fontWeight:600}}>{item.equipment}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.startDate}{item.endDate?" → "+item.endDate:""}</div></div>
-                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{maskAmt(demo,item.amount)} zł</div><Badge color={item.status==="zakończone"?"#7A8FA6":"#7C6AF4"}>{item.status}</Badge></div>
+                      <div style={{textAlign:"right"}}><div style={{fontWeight:600,marginBottom:4}}>{maskAmt(demo,shown)} zł</div><Badge color={item.status==="zakończone"?"#7A8FA6":"#7C6AF4"}>{item.status}</Badge></div>
                     </div>
+                    {!item.renewable&&mo.exts.length>0&&<div style={{fontSize:12,marginTop:8,paddingTop:8,borderTop:"1px solid #E3DDFB"}}>
+                      {mo.exts.map((e,i)=>{const due=+e.amountDue||+e.amount||0,pd=+e.amountPaid||0;
+                        return <div key={e.id||i} style={{display:"flex",justifyContent:"space-between",gap:8,marginBottom:3}}>
+                          <span style={{color:"#7A8FA6"}}>↪ przedłużenie do {e.newEndDate||"?"}</span>
+                          <span style={{fontWeight:600,color:pd>0?"#3DAA72":due>0?"#E05C5C":"#7A8FA6",textAlign:"right"}}>{pd>0?"wpłacono "+maskAmt(demo,pd)+" zł":due>0?"do zapłaty "+maskAmt(demo,due)+" zł":"kwota nieznana"}</span>
+                        </div>;})}
+                      <div style={{display:"flex",justifyContent:"space-between",gap:8,marginTop:4,fontWeight:700}}>
+                        <span style={{color:"#1C2B3A"}}>Razem</span>
+                        <span style={{color:mo.paid>=mo.total&&mo.total>0?"#3DAA72":"#1C2B3A"}}>wpłacono {maskAmt(demo,mo.paid)} z {maskAmt(demo,mo.total)} zł</span>
+                      </div>
+                    </div>}
                     {cpmHas(item.cpm)&&<div style={{fontSize:12,color:"#7C6AF4",marginTop:8,paddingTop:8,borderTop:"1px solid #E3DDFB",fontWeight:600}}>🦿 {item.cpm.brand||cpmBrandOf(item.equipment)||"Szyna"} · {cpmText({thigh:cpmInt(item.cpm.thigh),shank:cpmInt(item.cpm.shank)},demo)}</div>}
-                  </Card>
+                  </Card>;})()
                 : <Card key={"w"+item.id} style={{background:"#FFF7ED"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div><div style={{fontSize:11,fontWeight:700,color:"#F4A261",textTransform:"uppercase",letterSpacing:.5,marginBottom:2}}>Wózek NFZ</div><div style={{fontWeight:600}}>{item.wheelchairModel||"Model nieznany"}</div><div style={{fontSize:13,color:"#7A8FA6"}}>{item.orderDate||"Brak daty"}{item.hasDisabilityCert?" · orzeczenie":""}</div></div>

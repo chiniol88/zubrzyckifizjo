@@ -434,6 +434,21 @@ function BirthdayCard(_ref3) {
     }
   }, daysTo === 0 ? "🎂 Dzisiaj!" : daysTo === 1 ? "🎂 Jutro!" : "🎂 Za " + daysTo + " dni"));
 }
+
+// Kwoty wypożyczenia na karcie historii pacjenta: cena łączna (pierwotna + przedłużenia) i to, co wpłacono (z przedłużeniami)
+function rentalMoney(r) {
+  var exts = (Array.isArray(r.extensions) ? r.extensions : []).filter(function (e) {
+    return e && _typeof(e) === "object";
+  });
+  var extDue = exts.reduce(function (s, e) {
+    return s + (+e.amountDue || +e.amount || 0);
+  }, 0);
+  return {
+    exts: exts,
+    total: (+r.amount || 0) + extDue,
+    paid: calcRentalPaid(r)
+  };
+}
 function getPhones(pat) {
   if (pat.phones && pat.phones.length) return pat.phones;
   return pat.phone ? [{
@@ -1465,59 +1480,108 @@ function Patients(_ref6) {
           fontStyle: "italic",
           whiteSpace: "pre-wrap"
         }
-      }, "\uD83D\uDCDD ", maskText(demo, item.notes))) : item._t === "r" ? /*#__PURE__*/React.createElement(Card, {
-        key: "r" + item.id,
-        style: {
-          background: "#F0EDFF"
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }
-      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          fontWeight: 700,
-          color: "#7C6AF4",
-          textTransform: "uppercase",
-          letterSpacing: .5,
-          marginBottom: 2
-        }
-      }, "Wypo\u017Cyczenie"), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontWeight: 600
-        }
-      }, item.equipment), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 13,
-          color: "#7A8FA6"
-        }
-      }, item.startDate, item.endDate ? " → " + item.endDate : "")), /*#__PURE__*/React.createElement("div", {
-        style: {
-          textAlign: "right"
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontWeight: 600,
-          marginBottom: 4
-        }
-      }, maskAmt(demo, item.amount), " z\u0142"), /*#__PURE__*/React.createElement(Badge, {
-        color: item.status === "zakończone" ? "#7A8FA6" : "#7C6AF4"
-      }, item.status))), cpmHas(item.cpm) && /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 12,
-          color: "#7C6AF4",
-          marginTop: 8,
-          paddingTop: 8,
-          borderTop: "1px solid #E3DDFB",
-          fontWeight: 600
-        }
-      }, "\uD83E\uDDBF ", item.cpm.brand || cpmBrandOf(item.equipment) || "Szyna", " \xB7 ", cpmText({
-        thigh: cpmInt(item.cpm.thigh),
-        shank: cpmInt(item.cpm.shank)
-      }, demo))) : /*#__PURE__*/React.createElement(Card, {
+      }, "\uD83D\uDCDD ", maskText(demo, item.notes))) : item._t === "r" ? function () {
+        var mo = rentalMoney(item);
+        var shown = item.renewable ? item.amount : mo.total;
+        return /*#__PURE__*/React.createElement(Card, {
+          key: "r" + item.id,
+          style: {
+            background: "#F0EDFF"
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center"
+          }
+        }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#7C6AF4",
+            textTransform: "uppercase",
+            letterSpacing: .5,
+            marginBottom: 2
+          }
+        }, "Wypo\u017Cyczenie"), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontWeight: 600
+          }
+        }, item.equipment), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 13,
+            color: "#7A8FA6"
+          }
+        }, item.startDate, item.endDate ? " → " + item.endDate : "")), /*#__PURE__*/React.createElement("div", {
+          style: {
+            textAlign: "right"
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontWeight: 600,
+            marginBottom: 4
+          }
+        }, maskAmt(demo, shown), " z\u0142"), /*#__PURE__*/React.createElement(Badge, {
+          color: item.status === "zakończone" ? "#7A8FA6" : "#7C6AF4"
+        }, item.status))), !item.renewable && mo.exts.length > 0 && /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 12,
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid #E3DDFB"
+          }
+        }, mo.exts.map(function (e, i) {
+          var due = +e.amountDue || +e.amount || 0,
+            pd = +e.amountPaid || 0;
+          return /*#__PURE__*/React.createElement("div", {
+            key: e.id || i,
+            style: {
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 8,
+              marginBottom: 3
+            }
+          }, /*#__PURE__*/React.createElement("span", {
+            style: {
+              color: "#7A8FA6"
+            }
+          }, "\u21AA przed\u0142u\u017Cenie do ", e.newEndDate || "?"), /*#__PURE__*/React.createElement("span", {
+            style: {
+              fontWeight: 600,
+              color: pd > 0 ? "#3DAA72" : due > 0 ? "#E05C5C" : "#7A8FA6",
+              textAlign: "right"
+            }
+          }, pd > 0 ? "wpłacono " + maskAmt(demo, pd) + " zł" : due > 0 ? "do zapłaty " + maskAmt(demo, due) + " zł" : "kwota nieznana"));
+        }), /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 8,
+            marginTop: 4,
+            fontWeight: 700
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: "#1C2B3A"
+          }
+        }, "Razem"), /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: mo.paid >= mo.total && mo.total > 0 ? "#3DAA72" : "#1C2B3A"
+          }
+        }, "wp\u0142acono ", maskAmt(demo, mo.paid), " z ", maskAmt(demo, mo.total), " z\u0142"))), cpmHas(item.cpm) && /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 12,
+            color: "#7C6AF4",
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid #E3DDFB",
+            fontWeight: 600
+          }
+        }, "\uD83E\uDDBF ", item.cpm.brand || cpmBrandOf(item.equipment) || "Szyna", " \xB7 ", cpmText({
+          thigh: cpmInt(item.cpm.thigh),
+          shank: cpmInt(item.cpm.shank)
+        }, demo)));
+      }() : /*#__PURE__*/React.createElement(Card, {
         key: "w" + item.id,
         style: {
           background: "#FFF7ED"
