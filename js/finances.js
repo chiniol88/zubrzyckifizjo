@@ -193,8 +193,8 @@
       const [scope,setScope]=useState("month");
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
       const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
-      // każda sekcja rozwija się niezależnie; domyślnie otwarte: Przychód ze sprzętu i Skąd trafiają klienci
-      const [openMap,setOpenMap]=useState({rev:true,src:true});
+      // każda sekcja rozwija się niezależnie; domyślnie otwarta: Przychód ze sprzętu (razem ze źródłami klientów)
+      const [openMap,setOpenMap]=useState({rev:true});
       const setOpenSec=id=>setOpenMap(m=>({...m,[id]:true}));
       const [roiEq,setRoiEq]=useState(null);
       const [showAllRoi,setShowAllRoi]=useState(false);
@@ -578,8 +578,6 @@
       const switchScope=s=>{if(s==="year")setStatsYear(+selMonth.slice(0,4));setScope(s);};
 
       // ── mini-wizualizacje w nagłówkach ──
-      const miniSrc=(()=>{let x=0;const t=src.rows.reduce((s,r)=>s+r.rev,0)||1;
-        return <svg width="54" height="16" aria-hidden="true">{src.rows.map(r=>{const w=r.rev/t*54;const el=<rect key={r.k} x={x} y="0" width={Math.max(0,w-1.5)} height="16" rx="3" fill={r.c}/>;x+=w;return el;})}</svg>;})();
       const miniOcc=<svg width={Math.max(9,Math.min(6,occStats.length)*9)} height="22" aria-hidden="true">{occStats.slice(0,6).map((x,i)=><rect key={x.eq} x={i*9} y={22-Math.max(2,x.pct/100*22)} width="6" height={Math.max(2,x.pct/100*22)} rx="2" fill={occCol(x.pct)}/>)}</svg>;
       const miniRoi=<span>{roiKnown.slice(0,6).map(x=><i key={x.eq} style={{display:"inline-block",width:8,height:8,borderRadius:"50%",marginLeft:3,background:x.earned>=x.investment?GREEN:ORANGE}}/>)}</span>;
       const selIdx=stats.monthlyArr.findIndex(x=>x[0]===selMonth);
@@ -599,8 +597,8 @@
           <span>⚠ {dataHealth.issues.length} rzecz{dataHealth.issues.length===1?"":"y"} do sprawdzenia w danych</span><span>zobacz ›</span>
         </button>}
 
-        {/* 1. Przychód */}
-        <StatAcc dk={dk} open={!!openMap.rev} onToggle={tog("rev")} title="Przychód ze sprzętu" sub="wypożyczenia i wózki"
+        {/* 1. Przychód + skąd trafiają klienci (jedna sekcja) */}
+        <StatAcc dk={dk} open={!!openMap.rev} onToggle={tog("rev")} title="Przychód ze sprzętu i skąd trafiają klienci" sub="wypożyczenia, wózki, źródła"
           mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
           keyVal={Z(totalAll)} keyColor={GREEN}>
           {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
@@ -638,11 +636,12 @@
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:BLUE,marginRight:5}}/>Wypożyczenia</span>
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:PURPLE,marginRight:5}}/>Wózki (refundacje)</span>
           </div>
-        </StatAcc>
-
-        {/* 2. Skąd trafiają klienci */}
-        <StatAcc dk={dk} open={!!openMap.src} onToggle={tog("src")} title="Skąd trafiają klienci" sub={src.rows.length>0?"najlepsze: "+src.rows[0].l:"brak danych w okresie"}
-          mini={src.rows.length>0?miniSrc:null} keyVal={src.totalCnt+" wyp."}>
+          {/* Skąd trafiają klienci (w tej samej sekcji, pod przychodem) */}
+          <div style={{borderTop:"1px solid "+borderC,margin:"18px 0 12px"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:700,color:textC}}>Skąd trafiają klienci</div>
+            <div style={{fontSize:11,color:subC,textAlign:"right"}}>{src.rows.length>0?"najlepsze: "+src.rows[0].l:"brak danych w okresie"}</div>
+          </div>
           <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
             {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
               <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>

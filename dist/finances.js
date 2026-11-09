@@ -651,10 +651,9 @@ function RentalStats(_ref9) {
     _useState6 = _slicedToArray(_useState5, 2),
     statsYear = _useState6[0],
     setStatsYear = _useState6[1];
-  // każda sekcja rozwija się niezależnie; domyślnie otwarte: Przychód ze sprzętu i Skąd trafiają klienci
+  // każda sekcja rozwija się niezależnie; domyślnie otwarta: Przychód ze sprzętu (razem ze źródłami klientów)
   var _useState7 = useState({
-      rev: true,
-      src: true
+      rev: true
     }),
     _useState8 = _slicedToArray(_useState7, 2),
     openMap = _useState8[0],
@@ -1630,30 +1629,6 @@ function RentalStats(_ref9) {
   };
 
   // ── mini-wizualizacje w nagłówkach ──
-  var miniSrc = function () {
-    var x = 0;
-    var t = src.rows.reduce(function (s, r) {
-      return s + r.rev;
-    }, 0) || 1;
-    return /*#__PURE__*/React.createElement("svg", {
-      width: "54",
-      height: "16",
-      "aria-hidden": "true"
-    }, src.rows.map(function (r) {
-      var w = r.rev / t * 54;
-      var el = /*#__PURE__*/React.createElement("rect", {
-        key: r.k,
-        x: x,
-        y: "0",
-        width: Math.max(0, w - 1.5),
-        height: "16",
-        rx: "3",
-        fill: r.c
-      });
-      x += w;
-      return el;
-    }));
-  }();
   var miniOcc = /*#__PURE__*/React.createElement("svg", {
     width: Math.max(9, Math.min(6, occStats.length) * 9),
     height: "22",
@@ -1771,8 +1746,8 @@ function RentalStats(_ref9) {
     dk: dk,
     open: !!openMap.rev,
     onToggle: tog("rev"),
-    title: "Przych\xF3d ze sprz\u0119tu",
-    sub: "wypo\u017Cyczenia i w\xF3zki",
+    title: "Przych\xF3d ze sprz\u0119tu i sk\u0105d trafiaj\u0105 klienci",
+    sub: "wypo\u017Cyczenia, w\xF3zki, \u017Ar\xF3d\u0142a",
     mini: /*#__PURE__*/React.createElement(StatSpark, {
       vals: stats.monthlyArr.map(function (x) {
         return x[1] + x[2];
@@ -1988,15 +1963,32 @@ function RentalStats(_ref9) {
       background: PURPLE,
       marginRight: 5
     }
-  }), "W\xF3zki (refundacje)"))), /*#__PURE__*/React.createElement(StatAcc, {
-    dk: dk,
-    open: !!openMap.src,
-    onToggle: tog("src"),
-    title: "Sk\u0105d trafiaj\u0105 klienci",
-    sub: src.rows.length > 0 ? "najlepsze: " + src.rows[0].l : "brak danych w okresie",
-    mini: src.rows.length > 0 ? miniSrc : null,
-    keyVal: src.totalCnt + " wyp."
+  }), "W\xF3zki (refundacje)")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "1px solid " + borderC,
+      margin: "18px 0 12px"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      gap: 8,
+      marginBottom: 10
+    }
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: textC
+    }
+  }, "Sk\u0105d trafiaj\u0105 klienci"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: subC,
+      textAlign: "right"
+    }
+  }, src.rows.length > 0 ? "najlepsze: " + src.rows[0].l : "brak danych w okresie")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 6,
