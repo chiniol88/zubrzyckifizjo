@@ -462,38 +462,6 @@
         return total;
       };
 
-      // ── A1: Prognoza przychodu na 30 dni ──
-      const forecast=useMemo(()=>{
-        const horizon=addDays(today,30);
-        let overdue=0,overdueCount=0,scheduled=0,scheduledCount=0;
-        rentals.forEach(r=>{
-          if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
-          (r.cycles||[]).forEach(c=>{
-            if(c.paid||c.cancelled)return;
-            const due=c.dueDate||c.month+"-01";
-            if(due<today){overdue+=(+c.amount||0);overdueCount++;}
-            else if(due<=horizon){scheduled+=(+c.amount||0);scheduledCount++;}
-          });
-        });
-        let expectedNext=0,expectedCount=0;
-        rentals.forEach(r=>{
-          if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
-          const active=(r.cycles||[]).filter(c=>!c.cancelled);
-          if(!active.length)return;
-          const last=active.reduce((a,b)=>(b.dueDate||b.month+"-01")>(a.dueDate||a.month+"-01")?b:a);
-          const lastDue=last.dueDate||last.month+"-01",next=nextCycleDueDate(lastDue);
-          if(active.some(c=>(c.dueDate||c.month+"-01")===next))return;
-          if(next>=today&&next<=horizon){expectedNext+=(+last.amount||+r.amount||0);expectedCount++;}
-        });
-        let plannedStarts=0,plannedCount=0;
-        rentals.forEach(r=>{
-          if(!r.reserved||!r.startDate)return;
-          if(r.startDate>=today&&r.startDate<=horizon){plannedStarts+=(+r.amount||0);plannedCount++;}
-        });
-        const pewne=overdue+scheduled,szacunek=expectedNext+plannedStarts;
-        return {overdue,overdueCount,scheduled,scheduledCount,expectedNext,expectedCount,plannedStarts,plannedCount,pewne,szacunek,total:pewne+szacunek,horizon};
-      },[rentals,today]);
-
       // ── A2: Retencja cyklicznych (all-time) ──
       const retention=useMemo(()=>{
         const cyc=rentals.filter(r=>r.renewable&&(r.cycles||[]).some(c=>!c.cancelled));
@@ -726,29 +694,6 @@
           <div style={{display:"flex",gap:14,fontSize:11,color:subC,marginTop:8,flexWrap:"wrap"}}>
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:BLUE,marginRight:5}}/>Wypożyczenia</span>
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:PURPLE,marginRight:5}}/>Wózki (refundacje)</span>
-          </div>
-          <div style={{marginTop:16,paddingTop:14,borderTop:"1px solid "+borderC}}>
-            <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Prognoza — najbliższe 30 dni</div>
-            {forecast.pewne+forecast.szacunek===0
-              ?<div style={{fontSize:12,color:subC}}>Brak aktywnych cykli, rezerwacji ani zaległości do prognozy.</div>
-              :<>
-                <div style={{display:"flex",gap:8,marginBottom:8}}>
-                  <div style={{flex:1,background:dk?"#0F2A1E":"#EAF8F0",borderRadius:12,padding:"10px 12px"}}>
-                    <div style={{fontSize:10,color:subC,marginBottom:2}}>Pewne</div>
-                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:GREEN}}>{Z(forecast.pewne)}</div>
-                  </div>
-                  <div style={{flex:1,background:dk?"#241A0A":"#FFF6E8",borderRadius:12,padding:"10px 12px"}}>
-                    <div style={{fontSize:10,color:subC,marginBottom:2}}>Szacunek</div>
-                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:18,color:ORANGE}}>{Z(forecast.szacunek)}</div>
-                  </div>
-                </div>
-                {forecast.overdueCount>0&&kv("Zaległe do odzyskania ("+forecast.overdueCount+")",Z(forecast.overdue),RED)}
-                {forecast.scheduledCount>0&&kv("Już zaplanowane cykle ("+forecast.scheduledCount+")",Z(forecast.scheduled))}
-                {forecast.expectedCount>0&&kv("Spodziewane kolejne okresy ("+forecast.expectedCount+")",Z(forecast.expectedNext),ORANGE)}
-                {forecast.plannedCount>0&&kv("Zaplanowane starty rezerwacji ("+forecast.plannedCount+")",Z(forecast.plannedStarts),ORANGE)}
-                <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>„Pewne" = zaległości do ściągnięcia + już utworzone okresy z terminem w tym oknie. „Szacunek" = kolejne okresy jeszcze nieutworzone (licząc +30 dni od ostatniego) i starty z rezerwacji — mogą się nie zrealizować.</div>
-              </>
-            }
           </div>
         </StatAcc>
 
