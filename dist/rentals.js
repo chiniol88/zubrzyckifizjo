@@ -1786,7 +1786,7 @@ function Rentals(_ref6) {
         fontWeight: 600,
         color: "#F4A261"
       }
-    }, demo ? "****" : r.transport + " zł"))), r.renewable && r.transport > 0 && /*#__PURE__*/React.createElement("div", {
+    }, demo ? "****" : r.transport + " zł"))), r.transport > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 12,
         paddingBottom: 12,
@@ -1804,7 +1804,7 @@ function Rentals(_ref6) {
         fontSize: 13,
         color: "#7A8FA6"
       }
-    }, r.transportPaid ? "Transport opłacony " + r.transportPaidDate : "Transport jeszcze nieopłacony"), r.transportPaid ? /*#__PURE__*/React.createElement("button", {
+    }, r.transportPaid ? "Transport opłacony " + r.transportPaidDate + (demo ? "" : " (" + r.transport + " zł)") : "Transport jeszcze nieopłacony"), r.transportPaid ? /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         setRentals(function (rs) {
           return rs.map(function (x) {
@@ -3175,7 +3175,7 @@ function Rentals(_ref6) {
         marginBottom: 14
       }
     }, "P\u0142atno\u015Bci zarz\u0105dzane przez cykle miesi\u0119czne"), /*#__PURE__*/React.createElement(Inp, {
-      label: "Transport (z\u0142)",
+      label: "Transport (z\u0142) \u2013 osobno od kwoty",
       value: ef.transport || "",
       onChange: function onChange(v) {
         return setEf(function (f) {
@@ -4284,7 +4284,7 @@ function Rentals(_ref6) {
       fontWeight: 700
     }
   }, form.amount ? +form.amount - (+form.amountPaid || 0) + " zł" : "—"))), /*#__PURE__*/React.createElement(Inp, {
-    label: "Transport (z\u0142)",
+    label: "Transport (z\u0142) \u2013 osobno od kwoty",
     value: form.transport || "",
     onChange: function onChange(v) {
       return setForm(function (f) {

@@ -537,8 +537,11 @@ const marketingSpendForMonth = (budget, stock, ym) => {
   });
   return total;
 };
+// Transport opłacony (osobna wpłata "transport-<id>"). W wypożyczeniach jednorazowych jest OSOBNO od kwoty (nie wchodzi do Łącznie/Zapłacono/Pozostało),
+// w cyklicznych dolicza się do zapłaconego tak jak dotąd.
+const calcTransportPaid = r => (r&&r.transportPaid)?(+r.transport||0):0;
 const calcRentalPaid = r => {
-  const tp=r.transportPaid?(+r.transport||0):0;
+  const tp=r.renewable?calcTransportPaid(r):0;
   if(r.renewable) return tp+(r.cycles||[]).filter(c=>c.paid&&!c.cancelled).reduce((s,c)=>s+(+c.amount||0),0);
   const pp=(r.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);
   const ep=(r.extensions||[]).reduce((s,e)=>s+(+e.amountPaid||0),0);

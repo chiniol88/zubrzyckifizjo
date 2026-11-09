@@ -927,7 +927,7 @@ function Patients(_ref6) {
     return s + (+v.price || 0);
   }, 0) : 0;
   var patTotalRentals = pat ? patRentals.reduce(function (s, r) {
-    return s + calcRentalPaid(r);
+    return s + calcRentalPaid(r) + (r.renewable ? 0 : calcTransportPaid(r));
   }, 0) : 0;
   var patTotalWozki = pat ? patWozki.filter(function (c) {
     return c.realized;
@@ -1568,7 +1568,26 @@ function Patients(_ref6) {
           style: {
             color: mo.paid >= mo.total && mo.total > 0 ? "#3DAA72" : "#1C2B3A"
           }
-        }, "wp\u0142acono ", maskAmt(demo, mo.paid), " z ", maskAmt(demo, mo.total), " z\u0142"))), cpmHas(item.cpm) && /*#__PURE__*/React.createElement("div", {
+        }, "wp\u0142acono ", maskAmt(demo, mo.paid), " z ", maskAmt(demo, mo.total), " z\u0142"))), !item.renewable && calcTransportPaid(item) > 0 && /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 8,
+            fontSize: 12,
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: "1px solid #E3DDFB"
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: "#7A8FA6"
+          }
+        }, "\uD83D\uDE9A transport"), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontWeight: 600,
+            color: "#3DAA72"
+          }
+        }, "wp\u0142acono ", maskAmt(demo, calcTransportPaid(item)), " z\u0142")), cpmHas(item.cpm) && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 12,
             color: "#7C6AF4",

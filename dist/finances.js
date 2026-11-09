@@ -809,25 +809,38 @@ function RentalStats(_ref9) {
     // Wykres 12 miesięcy: w skali rocznej styczeń–grudzień wybranego roku; w miesięcznej okno kończy się na bieżącym miesiącu
     // (albo zaczyna na wybranym, gdy wybrano miesiąc starszy niż 12 mies. temu)
     var monthlyRev = {},
-      monthlyWoz = {};
+      monthlyWoz = {},
+      monthlyTr = {};
     var curYM = today.slice(0, 7);
     var winEnd = isYear ? statsYear + "-12" : selMonth < ymAdd(curYM, -11) ? ymAdd(selMonth, 11) : curYM;
     for (var i = 0; i < 12; i++) {
       var k = ymAdd(winEnd, i - 11);
       monthlyRev[k] = 0;
       monthlyWoz[k] = 0;
+      monthlyTr[k] = 0;
     }
 
     // 1) Wpłaty z tablicy finances (mają właściwy sourceId linkujący do rental)
     var countedRids = new Set();
-    var totalRevenue = 0;
+    var totalRevenue = 0,
+      transportRevenue = 0,
+      transportCount = 0;
     (finances || []).forEach(function (f) {
       if (f.type !== "przychód") return;
       var rid = getRid(f.sourceId);
       if (!rid) return;
       countedRids.add(rid);
-      if ((f.date || "") >= cutStr && (f.date || "") <= cutEnd) totalRevenue += +f.amount || 0;
       var m = (f.date || "").slice(0, 7);
+      if ((f.sourceId || "").startsWith("transport-")) {
+        // transport liczony osobno (ale wchodzi do sumy przychodu)
+        if ((f.date || "") >= cutStr && (f.date || "") <= cutEnd) {
+          transportRevenue += +f.amount || 0;
+          transportCount++;
+        }
+        if (monthlyTr.hasOwnProperty(m)) monthlyTr[m] += +f.amount || 0;
+        return;
+      }
+      if ((f.date || "") >= cutStr && (f.date || "") <= cutEnd) totalRevenue += +f.amount || 0;
       if (monthlyRev.hasOwnProperty(m)) monthlyRev[m] += +f.amount || 0;
     });
 
@@ -862,10 +875,10 @@ function RentalStats(_ref9) {
       return (r.startDate || "") >= cutStr && (r.startDate || "") <= cutEnd && !r.reserved;
     }).length;
     var monthlyArr = Object.keys(monthlyRev).sort().map(function (m) {
-      return [m, monthlyRev[m], monthlyWoz[m]];
+      return [m, monthlyRev[m], monthlyWoz[m], monthlyTr[m]];
     });
     var maxMonthly = Math.max.apply(Math, _toConsumableArray(monthlyArr.map(function (x) {
-      return x[1] + x[2];
+      return x[1] + x[2] + x[3];
     })).concat([1]));
     var durationIncludeMap = stock && stock.durationInclude || {};
     var DURATION_OFF_DEF = ["Ambonka Paula", "Balkonik ortopedyczny", "Wózek inwalidzki Elite Tim"];
@@ -895,6 +908,8 @@ function RentalStats(_ref9) {
     }, 0) : marketingSpendForMonth(budget, stock, selMonth);
     return {
       totalRevenue: totalRevenue,
+      transportRevenue: transportRevenue,
+      transportCount: transportCount,
       wozkiRevenue: wozkiRevenue,
       wozkiCount: wozkiCount,
       totalCount: totalCount,
@@ -907,7 +922,7 @@ function RentalStats(_ref9) {
       marketingSpend: marketingSpend
     };
   }, [rentals, finances, nfzCases, pStart, pEnd, isYear, statsYear, selMonth, today, rentalEquipMap, paymentRentalMap, rentalIdSet, stock, budget]);
-  var totalAll = stats.totalRevenue + stats.wozkiRevenue;
+  var totalAll = stats.totalRevenue + stats.wozkiRevenue + stats.transportRevenue;
   var costs = stock && stock.costs || {};
   var getCosts = function getCosts(eq) {
     return costs[eq] || {
@@ -1103,7 +1118,7 @@ function RentalStats(_ref9) {
         equipment: r.equipment,
         amount: +f.amount || 0,
         source: r.source,
-        type: isExt ? "↪ Przedłużenie" : isCycle ? "↻ Cykl" : "Wpłata",
+        type: isExt ? "↪ Przedłużenie" : isCycle ? "↻ Cykl" : (f.sourceId || "").startsWith("transport-") ? "🚚 Transport" : "Wpłata",
         cat: catOf(r.equipment)
       });
     });
@@ -1750,7 +1765,7 @@ function RentalStats(_ref9) {
     sub: "wypo\u017Cyczenia, w\xF3zki, \u017Ar\xF3d\u0142a",
     mini: /*#__PURE__*/React.createElement(StatSpark, {
       vals: stats.monthlyArr.map(function (x) {
-        return x[1] + x[2];
+        return x[1] + x[2] + x[3];
       }),
       w: 58,
       h: 24,
@@ -1759,7 +1774,7 @@ function RentalStats(_ref9) {
     }),
     keyVal: Z(totalAll),
     keyColor: GREEN
-  }, kv("Wypożyczenia (wpłaty)", Z(stats.totalRevenue)), kv("Wózki – refundacje NFZ (" + stats.wozkiCount + " szt.)", Z(stats.wozkiRevenue), PURPLE), stats.marketingSpend > 0 ? kv("Marketing (wydatki)", Z(stats.marketingSpend), RED) : kv("Marketing (wydatki)", "brak wpisów w budżecie", subC), /*#__PURE__*/React.createElement("div", {
+  }, kv("Wypożyczenia (wpłaty)", Z(stats.totalRevenue)), kv("Wózki – refundacje NFZ (" + stats.wozkiCount + " szt.)", Z(stats.wozkiRevenue), PURPLE), kv("Transport (wpłaty" + (stats.transportCount > 0 ? ", " + stats.transportCount + " szt." : "") + ")", Z(stats.transportRevenue), ORANGE), stats.marketingSpend > 0 ? kv("Marketing (wydatki)", Z(stats.marketingSpend), RED) : kv("Marketing (wydatki)", "brak wpisów w budżecie", subC), /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "right",
       marginTop: 2
@@ -1863,13 +1878,15 @@ function RentalStats(_ref9) {
       paddingTop: 14
     }
   }, stats.monthlyArr.map(function (_ref10) {
-    var _ref11 = _slicedToArray(_ref10, 3),
+    var _ref11 = _slicedToArray(_ref10, 4),
       m = _ref11[0],
       v = _ref11[1],
-      w = _ref11[2];
-    var t = v + w,
+      w = _ref11[2],
+      tr = _ref11[3];
+    var t = v + w + tr,
       h = Math.max(t > 0 ? 3 : 0, Math.round(t / stats.maxMonthly * 80)),
-      hw = t > 0 ? w / t * 100 : 0;
+      hw = t > 0 ? w / t * 100 : 0,
+      ht = t > 0 ? tr / t * 100 : 0;
     var sel = isYear ? m.startsWith(String(statsYear)) : m === selMonth;
     return /*#__PURE__*/React.createElement("button", {
       key: m,
@@ -1913,6 +1930,11 @@ function RentalStats(_ref9) {
         opacity: sel ? 1 : .4
       }
     }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: ht + "%",
+        background: ORANGE
+      }
+    }), /*#__PURE__*/React.createElement("div", {
       style: {
         height: hw + "%",
         background: PURPLE
@@ -1963,7 +1985,16 @@ function RentalStats(_ref9) {
       background: PURPLE,
       marginRight: 5
     }
-  }), "W\xF3zki (refundacje)")), /*#__PURE__*/React.createElement("div", {
+  }), "W\xF3zki (refundacje)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    style: {
+      display: "inline-block",
+      width: 8,
+      height: 8,
+      borderRadius: "50%",
+      background: ORANGE,
+      marginRight: 5
+    }
+  }), "Transport")), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: "1px solid " + borderC,
       margin: "18px 0 12px"

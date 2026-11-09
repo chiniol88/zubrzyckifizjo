@@ -284,20 +284,25 @@
 
         // Wykres 12 miesięcy: w skali rocznej styczeń–grudzień wybranego roku; w miesięcznej okno kończy się na bieżącym miesiącu
         // (albo zaczyna na wybranym, gdy wybrano miesiąc starszy niż 12 mies. temu)
-        const monthlyRev={},monthlyWoz={};
+        const monthlyRev={},monthlyWoz={},monthlyTr={};
         const curYM=today.slice(0,7);
         const winEnd=isYear?statsYear+"-12":(selMonth<ymAdd(curYM,-11)?ymAdd(selMonth,11):curYM);
-        for(let i=0;i<12;i++){const k=ymAdd(winEnd,i-11);monthlyRev[k]=0;monthlyWoz[k]=0;}
+        for(let i=0;i<12;i++){const k=ymAdd(winEnd,i-11);monthlyRev[k]=0;monthlyWoz[k]=0;monthlyTr[k]=0;}
 
         // 1) Wpłaty z tablicy finances (mają właściwy sourceId linkujący do rental)
         const countedRids=new Set();
-        let totalRevenue=0;
+        let totalRevenue=0,transportRevenue=0,transportCount=0;
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód")return;
           const rid=getRid(f.sourceId);if(!rid)return;
           countedRids.add(rid);
-          if((f.date||"")>=cutStr&&(f.date||"")<=cutEnd)totalRevenue+=(+f.amount||0);
           const m=(f.date||"").slice(0,7);
+          if((f.sourceId||"").startsWith("transport-")){   // transport liczony osobno (ale wchodzi do sumy przychodu)
+            if((f.date||"")>=cutStr&&(f.date||"")<=cutEnd){transportRevenue+=(+f.amount||0);transportCount++;}
+            if(monthlyTr.hasOwnProperty(m))monthlyTr[m]+=(+f.amount||0);
+            return;
+          }
+          if((f.date||"")>=cutStr&&(f.date||"")<=cutEnd)totalRevenue+=(+f.amount||0);
           if(monthlyRev.hasOwnProperty(m))monthlyRev[m]+=(+f.amount||0);
         });
 
@@ -325,8 +330,8 @@
         // Liczba wypożyczeń które ZACZĘŁY SIĘ w okresie (nie rezerwacje)
         const totalCount=rentals.filter(r=>(r.startDate||"")>=cutStr&&(r.startDate||"")<=cutEnd&&!r.reserved).length;
 
-        const monthlyArr=Object.keys(monthlyRev).sort().map(m=>[m,monthlyRev[m],monthlyWoz[m]]);
-        const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]+x[2]),1);
+        const monthlyArr=Object.keys(monthlyRev).sort().map(m=>[m,monthlyRev[m],monthlyWoz[m],monthlyTr[m]]);
+        const maxMonthly=Math.max(...monthlyArr.map(x=>x[1]+x[2]+x[3]),1);
         const durationIncludeMap=(stock&&stock.durationInclude)||{};
         const DURATION_OFF_DEF=["Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim"];
         const isDurIncluded=eq=>(durationIncludeMap[eq]!==undefined)?durationIncludeMap[eq]:!DURATION_OFF_DEF.includes(eq);
@@ -338,9 +343,9 @@
           ?Array.from({length:12},(_,i)=>marketingSpendForMonth(budget,stock,statsYear+"-"+String(i+1).padStart(2,"0"))).reduce((a,b)=>a+b,0)
           :marketingSpendForMonth(budget,stock,selMonth);
 
-        return {totalRevenue,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDurationOne,avgCyclesCount,marketingSpend};
+        return {totalRevenue,transportRevenue,transportCount,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDurationOne,avgCyclesCount,marketingSpend};
       },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,rentalIdSet,stock,budget]);
-      const totalAll=stats.totalRevenue+stats.wozkiRevenue;
+      const totalAll=stats.totalRevenue+stats.wozkiRevenue+stats.transportRevenue;
 
       const costs=(stock&&stock.costs)||{};
       const getCosts=eq=>costs[eq]||{purchase:0,repairs:[]};
@@ -397,7 +402,7 @@
           const r=rentals.find(x=>x.id===rid);if(!r)return;
           const isExt=(f.sourceId||"").startsWith("extend-");
           const isCycle=(f.sourceId||"").startsWith("cycle-");
-          listItemsAll.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,source:r.source,type:isExt?"↪ Przedłużenie":isCycle?"↻ Cykl":"Wpłata",cat:catOf(r.equipment)});
+          listItemsAll.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,source:r.source,type:isExt?"↪ Przedłużenie":isCycle?"↻ Cykl":(f.sourceId||"").startsWith("transport-")?"🚚 Transport":"Wpłata",cat:catOf(r.equipment)});
         });
         rentals.forEach(r=>{
           if((r.payments||[]).length>0||(r.cycles||[]).length>0)return;
@@ -599,10 +604,11 @@
 
         {/* 1. Przychód + skąd trafiają klienci (jedna sekcja) */}
         <StatAcc dk={dk} open={!!openMap.rev} onToggle={tog("rev")} title="Przychód ze sprzętu i skąd trafiają klienci" sub="wypożyczenia, wózki, źródła"
-          mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
+          mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2]+x[3])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
           keyVal={Z(totalAll)} keyColor={GREEN}>
           {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
           {kv("Wózki – refundacje NFZ ("+stats.wozkiCount+" szt.)",Z(stats.wozkiRevenue),PURPLE)}
+          {kv("Transport (wpłaty"+(stats.transportCount>0?", "+stats.transportCount+" szt.":"")+")",Z(stats.transportRevenue),ORANGE)}
           {stats.marketingSpend>0?kv("Marketing (wydatki)",Z(stats.marketingSpend),RED):kv("Marketing (wydatki)","brak wpisów w budżecie",subC)}
           <div style={{textAlign:"right",marginTop:2}}>
             <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:11,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"inherit"}}>{(stock&&stock._mktgOpen)?"zamknij wybór kategorii":"zmień kategorię marketingu"}</button>
@@ -620,13 +626,13 @@
           </div>}
           <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"14px 0 4px"}}>{isYear?"Rok "+statsYear:"12 miesięcy"} · dotknij słupka</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:4,height:112,paddingTop:14}}>
-            {stats.monthlyArr.map(([m,v,w])=>{
-              const t=v+w,h=Math.max(t>0?3:0,Math.round(t/stats.maxMonthly*80)),hw=t>0?w/t*100:0;
+            {stats.monthlyArr.map(([m,v,w,tr])=>{
+              const t=v+w+tr,h=Math.max(t>0?3:0,Math.round(t/stats.maxMonthly*80)),hw=t>0?w/t*100:0,ht=t>0?tr/t*100:0;
               const sel=isYear?m.startsWith(String(statsYear)):m===selMonth;
               return <button key={m} onClick={()=>{setSelMonth(m);setScope("month");}} aria-label={m+": "+(demo?"":Math.round(t)+" zł")} style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",justifyContent:"flex-end",alignItems:"center",gap:4,height:"100%",border:"none",background:"none",padding:0,cursor:"pointer",fontFamily:"inherit"}}>
                 <div style={{fontSize:9,fontWeight:700,color:textC,minHeight:11,whiteSpace:"nowrap"}}>{!demo&&!isYear&&m===selMonth&&t>0?(t>=1000?(t/1000).toFixed(1)+"k":Math.round(t)):""}</div>
                 <div style={{width:"100%",height:h,display:"flex",flexDirection:"column",justifyContent:"flex-end",borderRadius:"5px 5px 0 0",overflow:"hidden",opacity:sel?1:.4}}>
-                  <div style={{height:hw+"%",background:PURPLE}}/><div style={{flex:1,background:BLUE}}/>
+                  <div style={{height:ht+"%",background:ORANGE}}/><div style={{height:hw+"%",background:PURPLE}}/><div style={{flex:1,background:BLUE}}/>
                 </div>
                 <div style={{fontSize:9,lineHeight:1.15,textAlign:"center",color:sel?"#3E6FB0":subC,fontWeight:sel?700:400}}>{PL_MON[+m.slice(5)-1]}{(m.slice(5)==="01"||m===stats.monthlyArr[0][0])&&<div style={{fontSize:8,opacity:.8}}>{"'"+m.slice(2,4)}</div>}</div>
               </button>;
@@ -635,6 +641,7 @@
           <div style={{display:"flex",gap:14,fontSize:11,color:subC,marginTop:8,flexWrap:"wrap"}}>
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:BLUE,marginRight:5}}/>Wypożyczenia</span>
             <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:PURPLE,marginRight:5}}/>Wózki (refundacje)</span>
+            <span><i style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:ORANGE,marginRight:5}}/>Transport</span>
           </div>
           {/* Skąd trafiają klienci (w tej samej sekcji, pod przychodem) */}
           <div style={{borderTop:"1px solid "+borderC,margin:"18px 0 12px"}}/>

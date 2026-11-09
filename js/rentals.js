@@ -411,9 +411,9 @@
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
                   {r.transport>0&&<div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Transport</div><div style={{fontWeight:600,color:"#F4A261"}}>{demo?"****":r.transport+" zł"}</div></div>}
                 </div>
-                {r.renewable&&r.transport>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #D9E2F0"}}>
+                {r.transport>0&&<div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #D9E2F0"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
-                    <div style={{fontSize:13,color:"#7A8FA6"}}>{r.transportPaid?"Transport opłacony "+r.transportPaidDate:"Transport jeszcze nieopłacony"}</div>
+                    <div style={{fontSize:13,color:"#7A8FA6"}}>{r.transportPaid?"Transport opłacony "+r.transportPaidDate+(demo?"":" ("+r.transport+" zł)"):"Transport jeszcze nieopłacony"}</div>
                     {r.transportPaid
                       ? <button onClick={()=>{setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:false,transportPaidDate:null}:x));setFinances(fs=>fs.filter(f=>f.sourceId!=="transport-"+r.id));}} style={{background:"#FEE2E2",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Anuluj</button>
                       : <button onClick={()=>{const pd=transportPayDate||todayLocal();setRentals(rs=>rs.map(x=>x.id===r.id?{...x,transportPaid:true,transportPaidDate:pd}:x));setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"transport-"+r.id,date:pd,type:"przychód",category:"Wypożyczalnia",amount:+r.transport,description:"Transport – "+r.patientName+" ("+(r.equipment||"Do ustalenia")+")"},...fs]);}} style={{background:"#3E6FB0",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✓ Opłacono</button>
@@ -694,7 +694,7 @@
             <Inp label="Kwota (zł)" value={ef.amount} onChange={v=>setEf(f=>({...f,amount:v}))} type="number"/>
             {!ef.renewable&&!(ef.payments||[]).length&&<Inp label="Zapłacono (zł)" value={ef.amountPaid} onChange={v=>setEf(f=>({...f,amountPaid:v}))} type="number"/>}
             {ef.renewable&&<div style={{fontSize:12,color:"#7A8FA6",padding:"10px 14px",background:"#EFF3FA",borderRadius:12,marginBottom:14}}>Płatności zarządzane przez cykle miesięczne</div>}
-            <Inp label="Transport (zł)" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
+            <Inp label="Transport (zł) – osobno od kwoty" value={ef.transport||""} onChange={v=>setEf(f=>({...f,transport:v}))} type="number" placeholder="0"/>
             <Txa label="Notatki" value={ef.notes||""} onChange={v=>setEf(f=>({...f,notes:v}))} rows={2}/>
             <Sel label="Skąd dowiedział się o wypożyczeniu?" value={ef.source||""} onChange={v=>setEf(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
@@ -872,7 +872,7 @@
             <Inp label="Zapłacono (zł)" value={form.amountPaid} onChange={v=>setForm(f=>({...f,amountPaid:v}))} type="number" placeholder="0"/>
             <div style={{marginBottom:14}}><div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Pozostało</div><div style={{padding:"11px 14px",border:"1.5px solid #D9E2F0",borderRadius:12,fontSize:15,background:"#EFF3FA",color:(+form.amount-(+form.amountPaid||0))>0?"#E05C5C":"#3DAA72",fontWeight:700}}>{form.amount?(+form.amount-(+form.amountPaid||0))+" zł":"—"}</div></div>
           </div>}
-          <Inp label="Transport (zł)" value={form.transport||""} onChange={v=>setForm(f=>({...f,transport:v}))} type="number" placeholder="0"/>
+          <Inp label="Transport (zł) – osobno od kwoty" value={form.transport||""} onChange={v=>setForm(f=>({...f,transport:v}))} type="number" placeholder="0"/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
           <Sel label="Skąd dowiedział się o wypożyczeniu?" value={form.source||""} onChange={v=>setForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
           <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{
