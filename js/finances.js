@@ -694,9 +694,6 @@
           keyVal={Z(totalAll)} keyColor={GREEN}>
           {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
           {kv("Wózki – refundacje NFZ ("+stats.wozkiCount+" szt.)",Z(stats.wozkiRevenue),PURPLE)}
-          {kv("Nowych wypożyczeń",stats.totalCount)}
-          {kv("Śr. czas jednorazowych",stats.avgDurationOne!==null?stats.avgDurationOne+" dni":"brak danych")}
-          {kv("Śr. liczba okresów (cykliczne)",stats.avgCyclesCount!==null?String(stats.avgCyclesCount):"brak danych")}
           {stats.marketingSpend>0?kv("Marketing (wydatki)",Z(stats.marketingSpend),RED):kv("Marketing (wydatki)","brak wpisów w budżecie",subC)}
           <div style={{textAlign:"right",marginTop:2}}>
             <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:11,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"inherit"}}>{(stock&&stock._mktgOpen)?"zamknij wybór kategorii":"zmień kategorię marketingu"}</button>

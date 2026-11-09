@@ -2014,7 +2014,7 @@ function RentalStats(_ref0) {
     }),
     keyVal: Z(totalAll),
     keyColor: GREEN
-  }, kv("Wypożyczenia (wpłaty)", Z(stats.totalRevenue)), kv("Wózki – refundacje NFZ (" + stats.wozkiCount + " szt.)", Z(stats.wozkiRevenue), PURPLE), kv("Nowych wypożyczeń", stats.totalCount), kv("Śr. czas jednorazowych", stats.avgDurationOne !== null ? stats.avgDurationOne + " dni" : "brak danych"), kv("Śr. liczba okresów (cykliczne)", stats.avgCyclesCount !== null ? String(stats.avgCyclesCount) : "brak danych"), stats.marketingSpend > 0 ? kv("Marketing (wydatki)", Z(stats.marketingSpend), RED) : kv("Marketing (wydatki)", "brak wpisów w budżecie", subC), /*#__PURE__*/React.createElement("div", {
+  }, kv("Wypożyczenia (wpłaty)", Z(stats.totalRevenue)), kv("Wózki – refundacje NFZ (" + stats.wozkiCount + " szt.)", Z(stats.wozkiRevenue), PURPLE), stats.marketingSpend > 0 ? kv("Marketing (wydatki)", Z(stats.marketingSpend), RED) : kv("Marketing (wydatki)", "brak wpisów w budżecie", subC), /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "right",
       marginTop: 2
