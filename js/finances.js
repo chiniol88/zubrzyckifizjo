@@ -462,63 +462,6 @@
         return total;
       };
 
-      // ── A2: Retencja cyklicznych (all-time) ──
-      const retention=useMemo(()=>{
-        const cyc=rentals.filter(r=>r.renewable&&(r.cycles||[]).some(c=>!c.cancelled));
-        const finishedCyc=cyc.filter(r=>r.status==="zakończone");
-        const activeCyc=cyc.filter(r=>r.status==="aktywne");
-        const counts=finishedCyc.map(r=>(r.cycles||[]).filter(c=>!c.cancelled).length);
-        const avg=counts.length?Math.round(counts.reduce((a,b)=>a+b,0)/counts.length*10)/10:null;
-        const maxK=Math.min(6,Math.max(0,...counts));
-        const curve=[];
-        for(let k=1;k<=maxK;k++)curve.push({k:String(k),pct:counts.length?Math.round(counts.filter(c=>c>=k).length/counts.length*100):0,cnt:counts.filter(c=>c>=k).length});
-        const over=counts.filter(c=>c>6).length;
-        if(over>0)curve.push({k:"7+",pct:Math.round(over/counts.length*100),cnt:over});
-        return {finishedCount:finishedCyc.length,activeCount:activeCyc.length,avg,curve};
-      },[rentals]);
-
-      // ── A8: Wartość klienta (LTV) wg źródła — tylko sprzęt, all-time ──
-      const ltvBySource=useMemo(()=>{
-        const pats={};
-        const keyOf=(pid,pname)=>pid?"p"+pid:"n"+(pname||"");
-        rentals.forEach(r=>{
-          if(r.reserved)return;
-          const key=keyOf(r.patientId,r.patientName);
-          if(!pats[key])pats[key]={paid:0,source:null,sourceDate:null};
-          pats[key].paid+=calcRentalPaid(r);
-          if(r.source&&(!pats[key].sourceDate||(r.startDate||"")<pats[key].sourceDate)){pats[key].source=r.source;pats[key].sourceDate=r.startDate||"";}
-        });
-        (nfzCases||[]).forEach(cas=>{
-          const key=keyOf(cas.patientId,cas.patientName);
-          const paidW=(finances||[]).filter(f=>f.type==="przychód"&&f.sourceId==="wozek-"+cas.id).reduce((s,f)=>s+(+f.amount||0),0);
-          if(!pats[key])pats[key]={paid:0,source:null,sourceDate:null};
-          pats[key].paid+=paidW;
-          if(cas.source&&(!pats[key].sourceDate||(cas.orderDate||"")<pats[key].sourceDate)){pats[key].source=cas.source;pats[key].sourceDate=cas.orderDate||"";}
-        });
-        const bySrc={};RENTAL_SOURCES.forEach(s=>bySrc[s.value]={sum:0,cnt:0});
-        Object.values(pats).forEach(p=>{if(p.paid>0&&p.source&&bySrc[p.source]){bySrc[p.source].sum+=p.paid;bySrc[p.source].cnt++;}});
-        const rows=RENTAL_SOURCES.map(s=>({k:s.value,l:s.label,c:s.color,avg:bySrc[s.value].cnt?Math.round(bySrc[s.value].sum/bySrc[s.value].cnt):0,cnt:bySrc[s.value].cnt}))
-          .filter(x=>x.cnt>0).sort((a,b)=>b.avg-a.avg);
-        return {rows};
-      },[rentals,nfzCases,finances]);
-
-      // ── A9: Wypożyczenie wózka → refundacja NFZ (ten sam pacjent, all-time) ──
-      const wozekConv=useMemo(()=>{
-        const wozRentals=rentals.filter(r=>WOZEK_EQUIPMENT.includes(r.equipment)&&r.startDate&&!r.reserved);
-        const keyOf=(pid,pname)=>pid?"p"+pid:"n"+(pname||"");
-        let converted=0,daysSum=0,refundSum=0;
-        wozRentals.forEach(r=>{
-          const key=keyOf(r.patientId,r.patientName);
-          const match=(nfzCases||[]).filter(cas=>keyOf(cas.patientId,cas.patientName)===key&&cas.orderDate&&cas.orderDate>=r.startDate).sort((a,b)=>a.orderDate.localeCompare(b.orderDate))[0];
-          if(match){
-            converted++;
-            daysSum+=Math.max(0,dateDiff(r.startDate,match.orderDate));
-            refundSum+=(finances||[]).filter(f=>f.type==="przychód"&&f.sourceId==="wozek-"+match.id).reduce((s,f)=>s+(+f.amount||0),0);
-          }
-        });
-        return {total:wozRentals.length,converted,pct:wozRentals.length?Math.round(converted/wozRentals.length*100):0,avgDays:converted?Math.round(daysSum/converted):null,avgRefund:converted?Math.round(refundSum/converted):null};
-      },[rentals,nfzCases,finances]);
-
       // ── A5 + A7: Sezonowość, rok do roku, koszt reklamy ──
       const displayYear=isYear?statsYear:+selMonth.slice(0,4);
       const seasonData=useMemo(()=>{
@@ -802,55 +745,6 @@
               </div>;
             })}
           </div>}
-        </StatAcc>
-
-        {/* 2b. Retencja cyklicznych */}
-        <StatAcc dk={dk} open={openSec==="ret"} onToggle={tog("ret")} title="Retencja cyklicznych" sub={retention.finishedCount>0?"śr. "+retention.avg+" okresów":"brak zakończonych cyklicznych"}
-          keyVal={retention.finishedCount>0?String(retention.avg):"—"}>
-          {retention.finishedCount===0
-            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń cyklicznych do policzenia retencji.{retention.activeCount>0&&" ("+retention.activeCount+" nadal aktywnych)"}</div>
-            :<>
-              <div style={{fontSize:12,color:subC,marginBottom:12}}>Na podstawie {retention.finishedCount} zakończonych wypożyczeń cyklicznych{retention.activeCount>0&&" (+ "+retention.activeCount+" nadal aktywnych, jeszcze licząc)"}.</div>
-              {retention.curve.map(c=><div key={c.k} style={{marginBottom:8}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                  <span style={{color:textC,fontWeight:600}}>{c.k==="1"?"1 okres":c.k+" okres"+(c.k!=="7+"&&+c.k<5?"y":"ów")}</span>
-                  <span style={{color:subC}}>{c.pct}% ({c.cnt})</span>
-                </div>
-                <div style={{height:7,borderRadius:4,background:trackC}}><div style={{height:"100%",width:c.pct+"%",background:BLUE,borderRadius:4}}/></div>
-              </div>)}
-              <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Odsetek wypożyczeń, które dotrwały do co najmniej k-tego okresu (30 dni = 1 okres). Liczone all-time, niezależnie od wybranego miesiąca/roku.</div>
-            </>
-          }
-        </StatAcc>
-
-        {/* 2c. Wartość klienta wg źródła */}
-        <StatAcc dk={dk} open={openSec==="ltv"} onToggle={tog("ltv")} title="Wartość klienta wg źródła" sub={ltvBySource.rows.length>0?"najlepsze: "+ltvBySource.rows[0].l:"brak danych"}
-          keyVal={ltvBySource.rows.length>0?Z(ltvBySource.rows[0].avg):"—"}>
-          {ltvBySource.rows.length===0
-            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Za mało danych — uzupełnij źródła przy wypożyczeniach.</div>
-            :<>
-              {ltvBySource.rows.map(r=><div key={r.k} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}>
-                <span style={{display:"flex",gap:8,alignItems:"center",color:textC}}><i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>{r.l}<span style={{color:subC,fontWeight:400}}> ({r.cnt} os.)</span></span>
-                <b style={{color:GREEN,fontVariantNumeric:"tabular-nums"}}>{Z(r.avg)}</b>
-              </div>)}
-              <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Średnia suma wpłat (wypożyczenia + wózki, bez wizyt) na jednego pacjenta z danego źródła, całościowo. Źródło = pierwsze wypożyczenie/zlecenie tego pacjenta.</div>
-            </>
-          }
-        </StatAcc>
-
-        {/* 2d. Wózek → refundacja NFZ */}
-        <StatAcc dk={dk} open={openSec==="wozconv"} onToggle={tog("wozconv")} title="Wózek → refundacja NFZ" sub={wozekConv.total>0?wozekConv.converted+" z "+wozekConv.total+" przeszło na refundację":"brak wypożyczeń wózków"}
-          keyVal={wozekConv.total>0?wozekConv.pct+"%":"—"}>
-          {wozekConv.total===0
-            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak wypożyczeń wózków do policzenia.</div>
-            :<>
-              {kv("Wypożyczeń wózka",wozekConv.total)}
-              {kv("Przeszło na refundację NFZ",wozekConv.converted+" ("+wozekConv.pct+"%)",GREEN)}
-              {wozekConv.avgDays!==null&&kv("Śr. czas do decyzji",wozekConv.avgDays+" dni")}
-              {wozekConv.avgRefund!==null&&kv("Śr. kwota refundacji",Z(wozekConv.avgRefund),PURPLE)}
-              <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Ten sam pacjent, zlecenie NFZ złożone w dniu wypożyczenia wózka lub później. All-time.</div>
-            </>
-          }
         </StatAcc>
 
         <GroupLabel dk={dk}>🦿 Sprzęt</GroupLabel>
