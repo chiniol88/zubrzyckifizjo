@@ -616,32 +616,18 @@ function StatAcc(_ref8) {
     }
   }, children));
 }
-function GroupLabel(_ref9) {
-  var children = _ref9.children,
-    dk = _ref9.dk;
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      fontWeight: 800,
-      color: dk ? "#8FA6CC" : "#3E5578",
-      textTransform: "uppercase",
-      letterSpacing: ".08em",
-      margin: "22px 2px 8px"
-    }
-  }, children);
-}
-function RentalStats(_ref0) {
-  var rentals = _ref0.rentals,
-    stock = _ref0.stock,
-    setStock = _ref0.setStock,
-    finances = _ref0.finances,
-    setFinances = _ref0.setFinances,
-    budget = _ref0.budget,
-    machines = _ref0.machines,
-    setMachines = _ref0.setMachines,
-    nfzCases = _ref0.nfzCases,
-    goToRental = _ref0.goToRental,
-    goToWozki = _ref0.goToWozki;
+function RentalStats(_ref9) {
+  var rentals = _ref9.rentals,
+    stock = _ref9.stock,
+    setStock = _ref9.setStock,
+    finances = _ref9.finances,
+    setFinances = _ref9.setFinances,
+    budget = _ref9.budget,
+    machines = _ref9.machines,
+    setMachines = _ref9.setMachines,
+    nfzCases = _ref9.nfzCases,
+    goToRental = _ref9.goToRental,
+    goToWozki = _ref9.goToWozki;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
   var _useState = useState("month"),
@@ -1697,10 +1683,10 @@ function RentalStats(_ref0) {
       padding: 3,
       marginBottom: 10
     }
-  }, [["month", "Miesiąc"], ["year", "Rok"]].map(function (_ref1) {
-    var _ref10 = _slicedToArray(_ref1, 2),
-      k = _ref10[0],
-      l = _ref10[1];
+  }, [["month", "Miesiąc"], ["year", "Rok"]].map(function (_ref0) {
+    var _ref1 = _slicedToArray(_ref0, 2),
+      k = _ref1[0],
+      l = _ref1[1];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -1767,9 +1753,7 @@ function RentalStats(_ref0) {
       marginBottom: 12,
       textAlign: "left"
     }
-  }, /*#__PURE__*/React.createElement("span", null, "\u26A0 ", dataHealth.issues.length, " rzecz", dataHealth.issues.length === 1 ? "" : "y", " do sprawdzenia w danych"), /*#__PURE__*/React.createElement("span", null, "zobacz \u203A")), /*#__PURE__*/React.createElement(GroupLabel, {
-    dk: dk
-  }, "\uD83D\uDCB0 Pieni\u0105dze"), /*#__PURE__*/React.createElement(StatAcc, {
+  }, /*#__PURE__*/React.createElement("span", null, "\u26A0 ", dataHealth.issues.length, " rzecz", dataHealth.issues.length === 1 ? "" : "y", " do sprawdzenia w danych"), /*#__PURE__*/React.createElement("span", null, "zobacz \u203A")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: openSec === "rev",
     onToggle: tog("rev"),
@@ -1889,11 +1873,11 @@ function RentalStats(_ref0) {
       height: 112,
       paddingTop: 14
     }
-  }, stats.monthlyArr.map(function (_ref11) {
-    var _ref12 = _slicedToArray(_ref11, 3),
-      m = _ref12[0],
-      v = _ref12[1],
-      w = _ref12[2];
+  }, stats.monthlyArr.map(function (_ref10) {
+    var _ref11 = _slicedToArray(_ref10, 3),
+      m = _ref11[0],
+      v = _ref11[1],
+      w = _ref11[2];
     var t = v + w,
       h = Math.max(t > 0 ? 3 : 0, Math.round(t / stats.maxMonthly * 80)),
       hw = t > 0 ? w / t * 100 : 0;
@@ -2167,10 +2151,10 @@ function RentalStats(_ref0) {
       borderRadius: 10,
       padding: 2
     }
-  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref13) {
-    var _ref14 = _slicedToArray(_ref13, 2),
-      k = _ref14[0],
-      l = _ref14[1];
+  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref12) {
+    var _ref13 = _slicedToArray(_ref12, 2),
+      k = _ref13[0],
+      l = _ref13[1];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -2232,9 +2216,7 @@ function RentalStats(_ref0) {
       marginTop: 6,
       lineHeight: 1.5
     }
-  }, "Por\xF3wnanie do tego samego okresu rok temu, po kolei od stycznia. Prze\u0142\u0105cznik zmienia szeroko\u015B\u0107 okna.")), /*#__PURE__*/React.createElement(GroupLabel, {
-    dk: dk
-  }, "\uD83D\uDC65 Klienci"), /*#__PURE__*/React.createElement(StatAcc, {
+  }, "Por\xF3wnanie do tego samego okresu rok temu, po kolei od stycznia. Prze\u0142\u0105cznik zmienia szeroko\u015B\u0107 okna.")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: openSec === "src",
     onToggle: tog("src"),
@@ -2505,9 +2487,7 @@ function RentalStats(_ref0) {
         flexShrink: 0
       }
     }, "\u2014"));
-  }))), /*#__PURE__*/React.createElement(GroupLabel, {
-    dk: dk
-  }, "\uD83E\uDDBF Sprz\u0119t"), /*#__PURE__*/React.createElement(StatAcc, {
+  }))), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: openSec === "occ",
     onToggle: tog("occ"),
@@ -2713,12 +2693,12 @@ function RentalStats(_ref0) {
       textAlign: "center",
       padding: "8px 0"
     }
-  }, "Brak sprz\u0119tu z przychodem lub kosztem zakupu"), roiShown.map(function (_ref15) {
-    var eq = _ref15.eq,
-      earned = _ref15.earned,
-      investment = _ref15.investment,
-      roi = _ref15.roi,
-      repairsPer100 = _ref15.repairsPer100;
+  }, "Brak sprz\u0119tu z przychodem lub kosztem zakupu"), roiShown.map(function (_ref14) {
+    var eq = _ref14.eq,
+      earned = _ref14.earned,
+      investment = _ref14.investment,
+      roi = _ref14.roi,
+      repairsPer100 = _ref14.repairsPer100;
     var isOpen = roiEq === eq;
     var c = getCosts(eq);
     var qty = getQty(eq);
@@ -3400,26 +3380,26 @@ function RentalStats(_ref0) {
 
 // ── FINANCES ──────────────────────────────────────────────────────────────
 
-function Finances(_ref16) {
-  var finances = _ref16.finances,
-    setFinances = _ref16.setFinances,
-    visits = _ref16.visits,
-    setVisits = _ref16.setVisits,
-    rentals = _ref16.rentals,
-    setRentals = _ref16.setRentals,
-    nfzCases = _ref16.nfzCases,
-    setNfzCases = _ref16.setNfzCases,
-    budget = _ref16.budget,
-    setBudget = _ref16.setBudget,
-    desk = _ref16.desk,
-    stock = _ref16.stock,
-    setStock = _ref16.setStock,
-    machines = _ref16.machines,
-    setMachines = _ref16.setMachines,
-    wealth = _ref16.wealth,
-    setWealth = _ref16.setWealth,
-    goToRental = _ref16.goToRental,
-    goToWozki = _ref16.goToWozki;
+function Finances(_ref15) {
+  var finances = _ref15.finances,
+    setFinances = _ref15.setFinances,
+    visits = _ref15.visits,
+    setVisits = _ref15.setVisits,
+    rentals = _ref15.rentals,
+    setRentals = _ref15.setRentals,
+    nfzCases = _ref15.nfzCases,
+    setNfzCases = _ref15.setNfzCases,
+    budget = _ref15.budget,
+    setBudget = _ref15.setBudget,
+    desk = _ref15.desk,
+    stock = _ref15.stock,
+    setStock = _ref15.setStock,
+    machines = _ref15.machines,
+    setMachines = _ref15.setMachines,
+    wealth = _ref15.wealth,
+    setWealth = _ref15.setWealth,
+    goToRental = _ref15.goToRental,
+    goToWozki = _ref15.goToWozki;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
   var _useState19 = useState(null),
@@ -3588,14 +3568,14 @@ function Finances(_ref16) {
       Wózek: "#7B4FBF",
       Inne: "#7A8FA6"
     };
-    return Object.entries(map).filter(function (_ref17) {
-      var _ref18 = _slicedToArray(_ref17, 2),
-        v = _ref18[1];
+    return Object.entries(map).filter(function (_ref16) {
+      var _ref17 = _slicedToArray(_ref16, 2),
+        v = _ref17[1];
       return v > 0;
-    }).map(function (_ref19) {
-      var _ref20 = _slicedToArray(_ref19, 2),
-        k = _ref20[0],
-        v = _ref20[1];
+    }).map(function (_ref18) {
+      var _ref19 = _slicedToArray(_ref18, 2),
+        k = _ref19[0],
+        v = _ref19[1];
       return {
         label: k,
         v: v,
@@ -3623,10 +3603,10 @@ function Finances(_ref16) {
     });
     return Object.entries(map).sort(function (a, b) {
       return b[1] - a[1];
-    }).map(function (_ref21) {
-      var _ref22 = _slicedToArray(_ref21, 2),
-        n = _ref22[0],
-        v = _ref22[1];
+    }).map(function (_ref20) {
+      var _ref21 = _slicedToArray(_ref20, 2),
+        n = _ref21[0],
+        v = _ref21[1];
       return [n, v, cnt[n] || 0];
     });
   }, [periodVisits, periodNonVisitFinances]);
@@ -4304,11 +4284,11 @@ function Finances(_ref16) {
     style: {
       marginBottom: 12
     }
-  }, "Pacjenci"), visiblePats.map(function (_ref23, i) {
-    var _ref24 = _slicedToArray(_ref23, 3),
-      name = _ref24[0],
-      v = _ref24[1],
-      c = _ref24[2];
+  }, "Pacjenci"), visiblePats.map(function (_ref22, i) {
+    var _ref23 = _slicedToArray(_ref22, 3),
+      name = _ref23[0],
+      v = _ref23[1],
+      c = _ref23[2];
     return /*#__PURE__*/React.createElement("div", {
       key: name,
       style: {
@@ -4531,15 +4511,15 @@ function Finances(_ref16) {
 }
 
 // ── RECEIPT SCANNER ───────────────────────────────────────────────────────
-function ReceiptScanner(_ref25) {
-  var onClose = _ref25.onClose,
-    onConfirm = _ref25.onConfirm,
-    expCats = _ref25.expCats,
-    incCats = _ref25.incCats,
-    memory = _ref25.memory,
-    setMemory = _ref25.setMemory,
-    selMonth = _ref25.selMonth,
-    existingExpenses = _ref25.existingExpenses;
+function ReceiptScanner(_ref24) {
+  var onClose = _ref24.onClose,
+    onConfirm = _ref24.onConfirm,
+    expCats = _ref24.expCats,
+    incCats = _ref24.incCats,
+    memory = _ref24.memory,
+    setMemory = _ref24.setMemory,
+    selMonth = _ref24.selMonth,
+    existingExpenses = _ref24.existingExpenses;
   var dk = useContext(DarkCtx);
   var bg2 = dk ? "#18202F" : "#fff";
   var border = dk ? "#2A3A56" : "#D9E2F0";
@@ -4602,7 +4582,7 @@ function ReceiptScanner(_ref25) {
     });
   };
   var analyze = /*#__PURE__*/function () {
-    var _ref26 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
+    var _ref25 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
       var memoryHints, catList, prompt, _data$content, content, resp, data, _data$error, text, jsonStart, jsonEnd, clean, parsed, newItems, day, sameDayTotal, _t, _t2;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.p = _context.n) {
@@ -4615,10 +4595,10 @@ function ReceiptScanner(_ref25) {
           case 1:
             setStep("analyzing");
             setAiError(null);
-            memoryHints = Object.entries(memory || {}).slice(0, 40).map(function (_ref27) {
-              var _ref28 = _slicedToArray(_ref27, 2),
-                k = _ref28[0],
-                v = _ref28[1];
+            memoryHints = Object.entries(memory || {}).slice(0, 40).map(function (_ref26) {
+              var _ref27 = _slicedToArray(_ref26, 2),
+                k = _ref27[0],
+                v = _ref27[1];
               return "\"".concat(k, "\" => \"").concat(v, "\"");
             }).join(", ");
             catList = allExpCatNames.join(", ");
@@ -4743,7 +4723,7 @@ function ReceiptScanner(_ref25) {
       }, _callee, null, [[8, 9], [2, 11]]);
     }));
     return function analyze() {
-      return _ref26.apply(this, arguments);
+      return _ref25.apply(this, arguments);
     };
   }();
   var updateItem = function updateItem(id, field, val) {

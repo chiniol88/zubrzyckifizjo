@@ -184,9 +184,6 @@
       </div>;
     }
 
-    function GroupLabel({children,dk}) {
-      return <div style={{fontSize:12,fontWeight:800,color:dk?"#8FA6CC":"#3E5578",textTransform:"uppercase",letterSpacing:".08em",margin:"22px 2px 8px"}}>{children}</div>;
-    }
 
     function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines,nfzCases,goToRental,goToWozki}) {
       const dk=useContext(DarkCtx);
@@ -598,7 +595,6 @@
           <span>⚠ {dataHealth.issues.length} rzecz{dataHealth.issues.length===1?"":"y"} do sprawdzenia w danych</span><span>zobacz ›</span>
         </button>}
 
-        <GroupLabel dk={dk}>💰 Pieniądze</GroupLabel>
         {/* 1. Przychód */}
         <StatAcc dk={dk} open={openSec==="rev"} onToggle={tog("rev")} title="Przychód ze sprzętu" sub="wypożyczenia i wózki"
           mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
@@ -695,7 +691,6 @@
           <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Porównanie do tego samego okresu rok temu, po kolei od stycznia. Przełącznik zmienia szerokość okna.</div>
         </StatAcc>
 
-        <GroupLabel dk={dk}>👥 Klienci</GroupLabel>
         {/* 2. Skąd trafiają klienci */}
         <StatAcc dk={dk} open={openSec==="src"} onToggle={tog("src")} title="Skąd trafiają klienci" sub={src.rows.length>0?"najlepsze: "+src.rows[0].l:"brak danych w okresie"}
           mini={src.rows.length>0?miniSrc:null} keyVal={src.totalCnt+" wyp."}>
@@ -747,7 +742,6 @@
           </div>}
         </StatAcc>
 
-        <GroupLabel dk={dk}>🦿 Sprzęt</GroupLabel>
         {/* 3. Obłożenie szyn CPM */}
         <StatAcc dk={dk} open={openSec==="occ"} onToggle={tog("occ")} title="Obłożenie szyn CPM" sub={occStats.length>0?"średnio "+avgOcc+"% dni w okresie":"brak danych w okresie"}
           mini={occStats.length>0?miniOcc:null} keyVal={occStats.length>0?avgOcc+"%":"—"} keyColor={occStats.length>0?occCol(avgOcc):subC}>
