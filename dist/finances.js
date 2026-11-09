@@ -529,7 +529,12 @@ function StatAcc(_ref8) {
     dk = _ref8.dk;
   var bd = dk ? "#2A3A56" : "#E4EAF3";
   var ref = useRef(null);
+  var mounted = useRef(false);
   useEffect(function () {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    } // pierwsze wyświetlenie (sekcje otwarte domyślnie): bez przewijania
     if (!open || !ref.current) return;
     var t = setTimeout(function () {
       var r = ref.current.getBoundingClientRect();
@@ -646,10 +651,19 @@ function RentalStats(_ref9) {
     _useState6 = _slicedToArray(_useState5, 2),
     statsYear = _useState6[0],
     setStatsYear = _useState6[1];
-  var _useState7 = useState("rev"),
+  // każda sekcja rozwija się niezależnie; domyślnie otwarte: Przychód ze sprzętu i Skąd trafiają klienci
+  var _useState7 = useState({
+      rev: true,
+      src: true
+    }),
     _useState8 = _slicedToArray(_useState7, 2),
-    openSec = _useState8[0],
-    setOpenSec = _useState8[1];
+    openMap = _useState8[0],
+    setOpenMap = _useState8[1];
+  var setOpenSec = function setOpenSec(id) {
+    return setOpenMap(function (m) {
+      return _objectSpread(_objectSpread({}, m), {}, _defineProperty({}, id, true));
+    });
+  };
   var _useState9 = useState(null),
     _useState0 = _slicedToArray(_useState9, 2),
     roiEq = _useState0[0],
@@ -1552,8 +1566,8 @@ function RentalStats(_ref9) {
   }));
   var tog = function tog(id) {
     return function () {
-      return setOpenSec(function (o) {
-        return o === id ? null : id;
+      return setOpenMap(function (m) {
+        return _objectSpread(_objectSpread({}, m), {}, _defineProperty({}, id, !m[id]));
       });
     };
   };
@@ -1755,7 +1769,7 @@ function RentalStats(_ref9) {
     }
   }, /*#__PURE__*/React.createElement("span", null, "\u26A0 ", dataHealth.issues.length, " rzecz", dataHealth.issues.length === 1 ? "" : "y", " do sprawdzenia w danych"), /*#__PURE__*/React.createElement("span", null, "zobacz \u203A")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
-    open: openSec === "rev",
+    open: !!openMap.rev,
     onToggle: tog("rev"),
     title: "Przych\xF3d ze sprz\u0119tu",
     sub: "wypo\u017Cyczenia i w\xF3zki",
@@ -1976,249 +1990,7 @@ function RentalStats(_ref9) {
     }
   }), "W\xF3zki (refundacje)"))), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
-    open: openSec === "season",
-    onToggle: tog("season"),
-    title: "Sezonowo\u015B\u0107 i reklama",
-    sub: displayYear + " vs " + (displayYear - 1),
-    keyVal: adsStats.perPatient !== null ? Z(adsStats.perPatient) + "/pacj." : "—",
-    keyColor: adsStats.newCount === 0 && adsStats.spend > 0 ? RED : ORANGE
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: subC,
-      textTransform: "uppercase",
-      letterSpacing: ".07em",
-      marginBottom: 8
-    }
-  }, "\uD83D\uDCE2 Reklama w tym okresie (", periodLabel, ")"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 4
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      background: dk ? "#241A0A" : "#FFF6E8",
-      borderRadius: 12,
-      padding: "10px 12px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginBottom: 2
-    }
-  }, "Wydano"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: "'Syne',sans-serif",
-      fontWeight: 800,
-      fontSize: 17,
-      color: RED
-    }
-  }, Z(adsStats.spend))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      background: dk ? "#0F1E33" : "#EEF4FC",
-      borderRadius: 12,
-      padding: "10px 12px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginBottom: 2
-    }
-  }, "Nowych klient\xF3w"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: "'Syne',sans-serif",
-      fontWeight: 800,
-      fontSize: 17,
-      color: BLUE
-    }
-  }, adsStats.newCount))), adsStats.spend > 0 && adsStats.newCount === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: RED,
-      fontWeight: 600,
-      marginBottom: 8
-    }
-  }, "\u26A0 Wydano ", Z(adsStats.spend), " na reklam\u0119, zero nowych klient\xF3w z tego \u017Ar\xF3d\u0142a w tym okresie."), kv("Koszt na pozyskanego klienta", adsStats.perPatient !== null ? Z(adsStats.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(adsStats.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", adsStats.roas !== null ? adsStats.roas + "×" : "—"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: subC,
-      textTransform: "uppercase",
-      letterSpacing: ".07em",
-      margin: "16px 0 8px"
-    }
-  }, "Rok do roku \u2014 ", displayYear, " vs ", displayYear - 1), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      alignItems: "flex-end",
-      gap: 3,
-      height: 78
-    }
-  }, seasonData.yoyMonths.map(function (mo) {
-    var mx = Math.max.apply(Math, [1].concat(_toConsumableArray(seasonData.yoyMonths.map(function (x) {
-      return Math.max(x.cur, x.prev);
-    }))));
-    return /*#__PURE__*/React.createElement("div", {
-      key: mo.m,
-      style: {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 2,
-        height: "100%",
-        justifyContent: "flex-end"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        gap: 1,
-        alignItems: "flex-end",
-        width: "100%",
-        height: 64
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1,
-        height: Math.round(mo.prev / mx * 64) + "px",
-        background: trackC,
-        borderRadius: "2px 2px 0 0"
-      }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: {
-        flex: 1,
-        height: Math.round(mo.cur / mx * 64) + "px",
-        background: mo.cur > 0 ? BLUE : trackC,
-        borderRadius: "2px 2px 0 0"
-      }
-    })), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 8,
-        color: subC
-      }
-    }, PL_MON[mo.m]));
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 14,
-      fontSize: 11,
-      color: subC,
-      marginTop: 6
-    }
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
-    style: {
-      display: "inline-block",
-      width: 8,
-      height: 8,
-      borderRadius: 2,
-      background: trackC,
-      marginRight: 5
-    }
-  }), displayYear - 1), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
-    style: {
-      display: "inline-block",
-      width: 8,
-      height: 8,
-      borderRadius: 2,
-      background: BLUE,
-      marginRight: 5
-    }
-  }), displayYear)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      margin: "16px 0 8px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: subC,
-      textTransform: "uppercase",
-      letterSpacing: ".07em"
-    }
-  }, "Okresy kalendarzowe"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      background: dk ? "#1E2F4A" : "#DCE5F1",
-      borderRadius: 10,
-      padding: 2
-    }
-  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref12) {
-    var _ref13 = _slicedToArray(_ref12, 2),
-      k = _ref13[0],
-      l = _ref13[1];
-    return /*#__PURE__*/React.createElement("button", {
-      key: k,
-      onClick: function onClick() {
-        return setSeasonGran(k);
-      },
-      style: {
-        border: "none",
-        borderRadius: 8,
-        padding: "4px 10px",
-        fontWeight: 600,
-        fontSize: 11,
-        cursor: "pointer",
-        fontFamily: "inherit",
-        background: seasonGran === k ? dk ? "#18202F" : "#fff" : "none",
-        color: seasonGran === k ? "#3E6FB0" : dk ? "#93A9CE" : "#3E5578"
-      }
-    }, l);
-  }))), seasonData.rows.map(function (b) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: b.k,
-      style: {
-        marginBottom: 10
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "baseline",
-        gap: 8
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 13,
-        fontWeight: 600,
-        color: textC
-      }
-    }, b.l), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 12,
-        color: subC,
-        textAlign: "right"
-      }
-    }, b.future ? "jeszcze nie nadszedł" : /*#__PURE__*/React.createElement(React.Fragment, null, Z(b.cur), b.diffPct !== null && /*#__PURE__*/React.createElement("b", {
-      style: {
-        color: b.diffPct >= 0 ? GREEN : RED,
-        marginLeft: 4
-      }
-    }, b.diffPct >= 0 ? "+" : "", b.diffPct, "%")))), !b.future && b.perDay !== null && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 10,
-        color: subC,
-        marginTop: 1
-      }
-    }, "\u015Br. ", Z(b.perDay), "/dzie\u0144 \xB7 rok temu: ", Z(b.prev)));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginTop: 6,
-      lineHeight: 1.5
-    }
-  }, "Por\xF3wnanie do tego samego okresu rok temu, po kolei od stycznia. Prze\u0142\u0105cznik zmienia szeroko\u015B\u0107 okna.")), /*#__PURE__*/React.createElement(StatAcc, {
-    dk: dk,
-    open: openSec === "src",
+    open: !!openMap.src,
     onToggle: tog("src"),
     title: "Sk\u0105d trafiaj\u0105 klienci",
     sub: src.rows.length > 0 ? "najlepsze: " + src.rows[0].l : "brak danych w okresie",
@@ -2489,7 +2261,249 @@ function RentalStats(_ref9) {
     }, "\u2014"));
   }))), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
-    open: openSec === "occ",
+    open: !!openMap.season,
+    onToggle: tog("season"),
+    title: "Sezonowo\u015B\u0107 i reklama",
+    sub: displayYear + " vs " + (displayYear - 1),
+    keyVal: adsStats.perPatient !== null ? Z(adsStats.perPatient) + "/pacj." : "—",
+    keyColor: adsStats.newCount === 0 && adsStats.spend > 0 ? RED : ORANGE
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: subC,
+      textTransform: "uppercase",
+      letterSpacing: ".07em",
+      marginBottom: 8
+    }
+  }, "\uD83D\uDCE2 Reklama w tym okresie (", periodLabel, ")"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      background: dk ? "#241A0A" : "#FFF6E8",
+      borderRadius: 12,
+      padding: "10px 12px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: subC,
+      marginBottom: 2
+    }
+  }, "Wydano"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 17,
+      color: RED
+    }
+  }, Z(adsStats.spend))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      background: dk ? "#0F1E33" : "#EEF4FC",
+      borderRadius: 12,
+      padding: "10px 12px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: subC,
+      marginBottom: 2
+    }
+  }, "Nowych klient\xF3w"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 17,
+      color: BLUE
+    }
+  }, adsStats.newCount))), adsStats.spend > 0 && adsStats.newCount === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: RED,
+      fontWeight: 600,
+      marginBottom: 8
+    }
+  }, "\u26A0 Wydano ", Z(adsStats.spend), " na reklam\u0119, zero nowych klient\xF3w z tego \u017Ar\xF3d\u0142a w tym okresie."), kv("Koszt na pozyskanego klienta", adsStats.perPatient !== null ? Z(adsStats.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(adsStats.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", adsStats.roas !== null ? adsStats.roas + "×" : "—"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: subC,
+      textTransform: "uppercase",
+      letterSpacing: ".07em",
+      margin: "16px 0 8px"
+    }
+  }, "Rok do roku \u2014 ", displayYear, " vs ", displayYear - 1), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-end",
+      gap: 3,
+      height: 78
+    }
+  }, seasonData.yoyMonths.map(function (mo) {
+    var mx = Math.max.apply(Math, [1].concat(_toConsumableArray(seasonData.yoyMonths.map(function (x) {
+      return Math.max(x.cur, x.prev);
+    }))));
+    return /*#__PURE__*/React.createElement("div", {
+      key: mo.m,
+      style: {
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 2,
+        height: "100%",
+        justifyContent: "flex-end"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 1,
+        alignItems: "flex-end",
+        width: "100%",
+        height: 64
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        height: Math.round(mo.prev / mx * 64) + "px",
+        background: trackC,
+        borderRadius: "2px 2px 0 0"
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        height: Math.round(mo.cur / mx * 64) + "px",
+        background: mo.cur > 0 ? BLUE : trackC,
+        borderRadius: "2px 2px 0 0"
+      }
+    })), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 8,
+        color: subC
+      }
+    }, PL_MON[mo.m]));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 14,
+      fontSize: 11,
+      color: subC,
+      marginTop: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    style: {
+      display: "inline-block",
+      width: 8,
+      height: 8,
+      borderRadius: 2,
+      background: trackC,
+      marginRight: 5
+    }
+  }), displayYear - 1), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    style: {
+      display: "inline-block",
+      width: 8,
+      height: 8,
+      borderRadius: 2,
+      background: BLUE,
+      marginRight: 5
+    }
+  }), displayYear)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      margin: "16px 0 8px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: subC,
+      textTransform: "uppercase",
+      letterSpacing: ".07em"
+    }
+  }, "Okresy kalendarzowe"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      background: dk ? "#1E2F4A" : "#DCE5F1",
+      borderRadius: 10,
+      padding: 2
+    }
+  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref12) {
+    var _ref13 = _slicedToArray(_ref12, 2),
+      k = _ref13[0],
+      l = _ref13[1];
+    return /*#__PURE__*/React.createElement("button", {
+      key: k,
+      onClick: function onClick() {
+        return setSeasonGran(k);
+      },
+      style: {
+        border: "none",
+        borderRadius: 8,
+        padding: "4px 10px",
+        fontWeight: 600,
+        fontSize: 11,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        background: seasonGran === k ? dk ? "#18202F" : "#fff" : "none",
+        color: seasonGran === k ? "#3E6FB0" : dk ? "#93A9CE" : "#3E5578"
+      }
+    }, l);
+  }))), seasonData.rows.map(function (b) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: b.k,
+      style: {
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: textC
+      }
+    }, b.l), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: subC,
+        textAlign: "right"
+      }
+    }, b.future ? "jeszcze nie nadszedł" : /*#__PURE__*/React.createElement(React.Fragment, null, Z(b.cur), b.diffPct !== null && /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: b.diffPct >= 0 ? GREEN : RED,
+        marginLeft: 4
+      }
+    }, b.diffPct >= 0 ? "+" : "", b.diffPct, "%")))), !b.future && b.perDay !== null && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: subC,
+        marginTop: 1
+      }
+    }, "\u015Br. ", Z(b.perDay), "/dzie\u0144 \xB7 rok temu: ", Z(b.prev)));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: subC,
+      marginTop: 6,
+      lineHeight: 1.5
+    }
+  }, "Por\xF3wnanie do tego samego okresu rok temu, po kolei od stycznia. Prze\u0142\u0105cznik zmienia szeroko\u015B\u0107 okna.")), /*#__PURE__*/React.createElement(StatAcc, {
+    dk: dk,
+    open: !!openMap.occ,
     onToggle: tog("occ"),
     title: "Ob\u0142o\u017Cenie szyn CPM",
     sub: occStats.length > 0 ? "średnio " + avgOcc + "% dni w okresie" : "brak danych w okresie",
@@ -2680,7 +2694,7 @@ function RentalStats(_ref9) {
     }
   }, "Tylko szyny CPM. ", isYear ? "Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie." : "Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona.", " Liczone jest wypo\u017Cyczenie pacjenta (od startu do ko\u0144ca okresu, za kt\xF3ry p\u0142aci), a nie moment odbioru sprz\u0119tu. Start = data dodania sprz\u0119tu albo pierwsze wypo\u017Cyczenie; rezerwacje si\u0119 nie licz\u0105. Pusta ramka = przed dodaniem sprz\u0119tu.")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
-    open: openSec === "roi",
+    open: !!openMap.roi,
     onToggle: tog("roi"),
     title: "Op\u0142acalno\u015B\u0107 sprz\u0119tu",
     sub: "zakup, naprawy, zwrot (ca\u0142y czas)",
@@ -3092,7 +3106,7 @@ function RentalStats(_ref9) {
     }
   }, "Kreska = punkt zwrotu (zakup + naprawy). Nie zale\u017Cy od wybranego okresu. Dotknij sprz\u0119tu, aby wpisa\u0107 zakup i naprawy.")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
-    open: openSec === "dur",
+    open: !!openMap.dur,
     onToggle: tog("dur"),
     title: "D\u0142ugo\u015B\u0107 wypo\u017Cycze\u0144 jednorazowych",
     sub: durationHist.total > 0 ? durationHist.total + " zakończonych, all-time" : "brak danych",
@@ -3151,7 +3165,7 @@ function RentalStats(_ref9) {
     }
   }, "Tylko wypo\u017Cyczenia jednorazowe (nie cykliczne), ca\u0142y czas dzia\u0142ania firmy. Pomaga zaplanowa\u0107 pakiety cenowe.")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
-    open: openSec === "health",
+    open: !!openMap.health,
     onToggle: tog("health"),
     title: "Kontrola danych",
     sub: dataHealth.issues.length > 0 ? "warto sprawdzić" : "wszystko wygląda dobrze",

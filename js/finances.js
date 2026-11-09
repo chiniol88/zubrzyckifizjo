@@ -162,7 +162,9 @@
     function StatAcc({open,onToggle,title,sub,mini,keyVal,keyColor,children,dk}) {
       const bd=dk?"#2A3A56":"#E4EAF3";
       const ref=useRef(null);
+      const mounted=useRef(false);
       useEffect(()=>{
+        if(!mounted.current){mounted.current=true;return;}   // pierwsze wyświetlenie (sekcje otwarte domyślnie): bez przewijania
         if(!open||!ref.current)return;
         const t=setTimeout(()=>{
           const r=ref.current.getBoundingClientRect();
@@ -191,7 +193,9 @@
       const [scope,setScope]=useState("month");
       const [selMonth,setSelMonth]=useState(()=>todayLocal().slice(0,7));
       const [statsYear,setStatsYear]=useState(()=>new Date().getFullYear());
-      const [openSec,setOpenSec]=useState("rev");
+      // każda sekcja rozwija się niezależnie; domyślnie otwarte: Przychód ze sprzętu i Skąd trafiają klienci
+      const [openMap,setOpenMap]=useState({rev:true,src:true});
+      const setOpenSec=id=>setOpenMap(m=>({...m,[id]:true}));
       const [roiEq,setRoiEq]=useState(null);
       const [showAllRoi,setShowAllRoi]=useState(false);
       const [repairForm,setRepairForm]=useState(null);
@@ -567,7 +571,7 @@
       }),[occStats,rentals,finances,nfzCases,pStart,pEnd,today]);
 
       const srcPct=pctSplit(src.rows.map(r=>r.rev));
-      const tog=id=>()=>setOpenSec(o=>o===id?null:id);
+      const tog=id=>()=>setOpenMap(m=>({...m,[id]:!m[id]}));
       const kv=(l,v,c,key)=><div key={key||l} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}><span style={{color:c||textC}}>{l}</span><b style={{color:c||textC,fontVariantNumeric:"tabular-nums",textAlign:"right"}}>{v}</b></div>;
       const navBtn=(fn,ch,dis)=><button onClick={dis?undefined:fn} disabled={!!dis} aria-label={ch==="‹"?"Wstecz":"Dalej"} style={{flexShrink:0,width:36,height:36,borderRadius:10,border:"1.5px solid "+borderC,background:bg,opacity:dis?.35:1,cursor:dis?"default":"pointer",fontWeight:700,fontSize:18,color:subC,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>{ch}</button>;
       const shiftMonth=n=>setSelMonth(m=>{const t=ymAdd(m,n);return t>today.slice(0,7)?m:t;});
@@ -596,7 +600,7 @@
         </button>}
 
         {/* 1. Przychód */}
-        <StatAcc dk={dk} open={openSec==="rev"} onToggle={tog("rev")} title="Przychód ze sprzętu" sub="wypożyczenia i wózki"
+        <StatAcc dk={dk} open={!!openMap.rev} onToggle={tog("rev")} title="Przychód ze sprzętu" sub="wypożyczenia i wózki"
           mini={<StatSpark vals={stats.monthlyArr.map(x=>x[1]+x[2])} w={58} h={24} color={BLUE} sel={selIdx>=0&&!isYear?selIdx:null}/>}
           keyVal={Z(totalAll)} keyColor={GREEN}>
           {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
@@ -636,8 +640,59 @@
           </div>
         </StatAcc>
 
+        {/* 2. Skąd trafiają klienci */}
+        <StatAcc dk={dk} open={!!openMap.src} onToggle={tog("src")} title="Skąd trafiają klienci" sub={src.rows.length>0?"najlepsze: "+src.rows[0].l:"brak danych w okresie"}
+          mini={src.rows.length>0?miniSrc:null} keyVal={src.totalCnt+" wyp."}>
+          <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+            {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
+              <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+            )}
+          </div>
+          {src.totalRev===0&&src.totalCnt===0
+            ?<div style={{fontSize:12,color:subC}}>Brak danych{srcTab!=="all"?" w tej kategorii":""} — uzupełnij źródło przy dodawaniu {srcTab==="wozki"?"wózków":"wypożyczeń"}</div>
+            :<>
+              <div style={{display:"grid",gridTemplateColumns:"132px 1fr",gap:14,alignItems:"center",marginBottom:8}}>
+                <StatDonut rows={src.rows.map(r=>({k:r.k,v:r.rev,c:r.c}))} size={132} top={src.totalCnt+(src.totalW?"+"+src.totalW:"")} bottom="klientów" track={trackC} ink={textC} sub={subC}/>
+                <div style={{display:"flex",flexDirection:"column",gap:7,minWidth:0}}>
+                  {src.rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,minWidth:0}}>
+                    <i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>
+                    <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:textC}}>{r.l}</span>
+                    <b style={{fontVariantNumeric:"tabular-nums",color:textC,flexShrink:0}}>{r.cnt+r.wc} · {srcPct[src.rows.indexOf(r)]}%</b>
+                  </div>)}
+                </div>
+              </div>
+              {src.rows.map(r=><div key={"d"+r.k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}>
+                <span style={{display:"flex",gap:8,alignItems:"center",minWidth:0,color:textC}}><i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>{r.l}</span>
+                <span style={{textAlign:"right",fontVariantNumeric:"tabular-nums",color:subC}}>{r.cnt>0&&r.cnt+" wyp."}{r.wc>0&&<span style={{color:PURPLE,fontWeight:600}}>{r.cnt>0?" + ":""}{r.wc} {plWozek(r.wc)}</span>} · <b style={{color:GREEN}}>{Z(r.rev)}</b></span>
+              </div>)}
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",fontSize:13}}>
+                <b style={{color:textC}}>Łącznie</b><b style={{color:textC}}>{src.totalCnt} wyp.{src.totalW>0?" + "+src.totalW+" wóz.":""} · <span style={{color:GREEN}}>{Z(src.totalRev)}</span></b>
+              </div>
+            </>
+          }
+          {src.withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:8}}>{src.withoutSrc} z {src.listItems.length} wpłat bez oznaczonego źródła</div>}
+          <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:"1px solid "+borderC,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+            {showRentalList?"▲ Ukryj listę":"▼ Lista wpłat ("+src.listItems.length+")"}
+          </button>
+          {showRentalList&&<div style={{marginTop:8}}>
+            {src.listItems.map(item=>{
+              const s=RENTAL_SOURCES.find(x=>x.value===item.source);
+              const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL").replace("Wózek inwalidzki Elite Tim","TIM");
+              const isExt=item.type!=="Wpłata";
+              return <div key={item.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+borderC,fontSize:12,gap:6}}>
+                <span style={{color:subC,flexShrink:0,fontSize:11}}>{item.date?.slice(5)}</span>
+                <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":item.patientName}</span>
+                <span style={{color:subC,flexShrink:0,fontSize:11}}>{eq}</span>
+                {isExt&&<span style={{color:"#7C6AF4",fontWeight:700,fontSize:10,flexShrink:0}}>{item.type}</span>}
+                <span style={{color:GREEN,fontWeight:700,flexShrink:0}}>{demo?"****":item.amount+" zł"}</span>
+                {s?<span style={{color:s.color,fontWeight:700,fontSize:10,flexShrink:0}}>{s.label.split(" ")[0]}</span>:<span style={{color:subC,fontSize:10,flexShrink:0}}>—</span>}
+              </div>;
+            })}
+          </div>}
+        </StatAcc>
+
         {/* 1b. Sezonowość i reklama */}
-        <StatAcc dk={dk} open={openSec==="season"} onToggle={tog("season")} title="Sezonowość i reklama" sub={displayYear+" vs "+(displayYear-1)}
+        <StatAcc dk={dk} open={!!openMap.season} onToggle={tog("season")} title="Sezonowość i reklama" sub={displayYear+" vs "+(displayYear-1)}
           keyVal={adsStats.perPatient!==null?Z(adsStats.perPatient)+"/pacj.":"—"} keyColor={adsStats.newCount===0&&adsStats.spend>0?RED:ORANGE}>
           <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>📢 Reklama w tym okresie ({periodLabel})</div>
           <div style={{display:"flex",gap:8,marginBottom:4}}>
@@ -691,59 +746,8 @@
           <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Porównanie do tego samego okresu rok temu, po kolei od stycznia. Przełącznik zmienia szerokość okna.</div>
         </StatAcc>
 
-        {/* 2. Skąd trafiają klienci */}
-        <StatAcc dk={dk} open={openSec==="src"} onToggle={tog("src")} title="Skąd trafiają klienci" sub={src.rows.length>0?"najlepsze: "+src.rows[0].l:"brak danych w okresie"}
-          mini={src.rows.length>0?miniSrc:null} keyVal={src.totalCnt+" wyp."}>
-          <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
-            {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
-              <button key={t.k} onClick={()=>setSrcTab(t.k)} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:srcTab===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:srcTab===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
-            )}
-          </div>
-          {src.totalRev===0&&src.totalCnt===0
-            ?<div style={{fontSize:12,color:subC}}>Brak danych{srcTab!=="all"?" w tej kategorii":""} — uzupełnij źródło przy dodawaniu {srcTab==="wozki"?"wózków":"wypożyczeń"}</div>
-            :<>
-              <div style={{display:"grid",gridTemplateColumns:"132px 1fr",gap:14,alignItems:"center",marginBottom:8}}>
-                <StatDonut rows={src.rows.map(r=>({k:r.k,v:r.rev,c:r.c}))} size={132} top={src.totalCnt+(src.totalW?"+"+src.totalW:"")} bottom="klientów" track={trackC} ink={textC} sub={subC}/>
-                <div style={{display:"flex",flexDirection:"column",gap:7,minWidth:0}}>
-                  {src.rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,minWidth:0}}>
-                    <i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>
-                    <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:textC}}>{r.l}</span>
-                    <b style={{fontVariantNumeric:"tabular-nums",color:textC,flexShrink:0}}>{r.cnt+r.wc} · {srcPct[src.rows.indexOf(r)]}%</b>
-                  </div>)}
-                </div>
-              </div>
-              {src.rows.map(r=><div key={"d"+r.k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}>
-                <span style={{display:"flex",gap:8,alignItems:"center",minWidth:0,color:textC}}><i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>{r.l}</span>
-                <span style={{textAlign:"right",fontVariantNumeric:"tabular-nums",color:subC}}>{r.cnt>0&&r.cnt+" wyp."}{r.wc>0&&<span style={{color:PURPLE,fontWeight:600}}>{r.cnt>0?" + ":""}{r.wc} {plWozek(r.wc)}</span>} · <b style={{color:GREEN}}>{Z(r.rev)}</b></span>
-              </div>)}
-              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",fontSize:13}}>
-                <b style={{color:textC}}>Łącznie</b><b style={{color:textC}}>{src.totalCnt} wyp.{src.totalW>0?" + "+src.totalW+" wóz.":""} · <span style={{color:GREEN}}>{Z(src.totalRev)}</span></b>
-              </div>
-            </>
-          }
-          {src.withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:8}}>{src.withoutSrc} z {src.listItems.length} wpłat bez oznaczonego źródła</div>}
-          <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:"1px solid "+borderC,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-            {showRentalList?"▲ Ukryj listę":"▼ Lista wpłat ("+src.listItems.length+")"}
-          </button>
-          {showRentalList&&<div style={{marginTop:8}}>
-            {src.listItems.map(item=>{
-              const s=RENTAL_SOURCES.find(x=>x.value===item.source);
-              const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL").replace("Wózek inwalidzki Elite Tim","TIM");
-              const isExt=item.type!=="Wpłata";
-              return <div key={item.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+borderC,fontSize:12,gap:6}}>
-                <span style={{color:subC,flexShrink:0,fontSize:11}}>{item.date?.slice(5)}</span>
-                <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":item.patientName}</span>
-                <span style={{color:subC,flexShrink:0,fontSize:11}}>{eq}</span>
-                {isExt&&<span style={{color:"#7C6AF4",fontWeight:700,fontSize:10,flexShrink:0}}>{item.type}</span>}
-                <span style={{color:GREEN,fontWeight:700,flexShrink:0}}>{demo?"****":item.amount+" zł"}</span>
-                {s?<span style={{color:s.color,fontWeight:700,fontSize:10,flexShrink:0}}>{s.label.split(" ")[0]}</span>:<span style={{color:subC,fontSize:10,flexShrink:0}}>—</span>}
-              </div>;
-            })}
-          </div>}
-        </StatAcc>
-
         {/* 3. Obłożenie szyn CPM */}
-        <StatAcc dk={dk} open={openSec==="occ"} onToggle={tog("occ")} title="Obłożenie szyn CPM" sub={occStats.length>0?"średnio "+avgOcc+"% dni w okresie":"brak danych w okresie"}
+        <StatAcc dk={dk} open={!!openMap.occ} onToggle={tog("occ")} title="Obłożenie szyn CPM" sub={occStats.length>0?"średnio "+avgOcc+"% dni w okresie":"brak danych w okresie"}
           mini={occStats.length>0?miniOcc:null} keyVal={occStats.length>0?avgOcc+"%":"—"} keyColor={occStats.length>0?occCol(avgOcc):subC}>
           {occStats.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak danych o szynach CPM w tym okresie</div>}
           {occStatsExt.map(x=>{
@@ -793,7 +797,7 @@
         </StatAcc>
 
         {/* 4. Opłacalność sprzętu */}
-        <StatAcc dk={dk} open={openSec==="roi"} onToggle={tog("roi")} title="Opłacalność sprzętu" sub="zakup, naprawy, zwrot (cały czas)"
+        <StatAcc dk={dk} open={!!openMap.roi} onToggle={tog("roi")} title="Opłacalność sprzętu" sub="zakup, naprawy, zwrot (cały czas)"
           mini={roiKnown.length>0?miniRoi:null} keyVal={roiKnown.length>0?roiDone+"/"+roiKnown.length:"—"}>
           {roiShown.length===0&&<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak sprzętu z przychodem lub kosztem zakupu</div>}
           {roiShown.map(({eq,earned,investment,roi,repairsPer100})=>{
@@ -893,7 +897,7 @@
         </StatAcc>
 
         {/* 4b. Długość wypożyczeń jednorazowych */}
-        <StatAcc dk={dk} open={openSec==="dur"} onToggle={tog("dur")} title="Długość wypożyczeń jednorazowych" sub={durationHist.total>0?durationHist.total+" zakończonych, all-time":"brak danych"}
+        <StatAcc dk={dk} open={!!openMap.dur} onToggle={tog("dur")} title="Długość wypożyczeń jednorazowych" sub={durationHist.total>0?durationHist.total+" zakończonych, all-time":"brak danych"}
           keyVal={durationHist.total>0?(durationHist.buckets.reduce((best,b)=>b.n>best.n?b:best,durationHist.buckets[0]).l):"—"}>
           {durationHist.total===0
             ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń jednorazowych.</div>
@@ -909,7 +913,7 @@
         </StatAcc>
 
         {/* 4c. Kontrola danych */}
-        <StatAcc dk={dk} open={openSec==="health"} onToggle={tog("health")} title="Kontrola danych" sub={dataHealth.issues.length>0?"warto sprawdzić":"wszystko wygląda dobrze"}
+        <StatAcc dk={dk} open={!!openMap.health} onToggle={tog("health")} title="Kontrola danych" sub={dataHealth.issues.length>0?"warto sprawdzić":"wszystko wygląda dobrze"}
           keyVal={dataHealth.issues.length} keyColor={dataHealth.issues.length>0?ORANGE:GREEN}>
           {dataHealth.issues.length===0
             ?<div style={{fontSize:13,color:GREEN,textAlign:"center",padding:"8px 0"}}>✅ Nic do zgłoszenia</div>
