@@ -516,26 +516,40 @@ const addDays = (d,n) => { const dt=new Date(d+"T12:00:00"); dt.setDate(dt.getDa
 // Jedyne miejsce definiujące "kolejny okres" dla cyklicznych wypożyczeń (auto-generacja, "+ Dodaj okres", widżet Nadchodzące) — celowo +30 dni, nie kalendarzowy miesiąc
 const nextCycleDueDate = fromDate => addDays(fromDate,30);
 const parseCycleSourceId = sid => { const rest=sid.slice(6); const di=rest.indexOf("-"); return {rentalId:+rest.slice(0,di), cycleKey:rest.slice(di+1)}; };
-const marketingSpendForMonth = (budget, stock, ym) => {
+// Marketing (wydatki z budżetu) w miesiącu, w podziale na typ sprzętu. Podkategorie "Marketing szyny/wózki/balkoniki" (w tej samej kategorii co
+// marketing: domyślnie Firma) liczą się do swojego typu; reszta (np. stare wpisy "Firma → Marketing") to "ogolne". Suma = dawny wynik.
+const MKTG_TYPES = [{k:"szyny",sub:"Marketing szyny",l:"Szyny"},{k:"wozki",sub:"Marketing wózki",l:"Wózki"},{k:"balkoniki",sub:"Marketing balkoniki",l:"Balkoniki"}];
+const marketingSpendByType = (budget, stock, ym) => {
   const mktgCat=(stock&&stock.marketingCat)||"";
   const mktgSub=(stock&&stock.marketingSub)||"";
+  const nm=x=>String(x==null?"":x).trim().toLowerCase();
+  const typeOf=(cat,sub)=>{
+    if(nm(cat)!==nm(mktgCat||"firma"))return null;
+    const t=MKTG_TYPES.find(x=>nm(x.sub)===nm(sub));
+    return t?t.k:null;
+  };
   const matchCat=(cat,sub)=>{
     if(mktgCat)return cat===mktgCat&&(!mktgSub||sub===mktgSub);
     return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";
   };
-  let total=0;
+  const out={szyny:0,wozki:0,balkoniki:0,ogolne:0};
+  const add=(cat,sub,amt)=>{const t=typeOf(cat,sub);if(t)out[t]+=amt;else if(matchCat(cat,sub))out.ogolne+=amt;};
   const mData=(budget&&budget.months&&budget.months[ym])||{};
-  (mData.expenses||[]).forEach(e=>{if(matchCat(e.cat,e.subcat))total+=(+e.amount||0);});
-  ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&matchCat(r.cat,r.subcat)).forEach(r=>{
+  (mData.expenses||[]).forEach(e=>add(e.cat,e.subcat,+e.amount||0));
+  ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense").forEach(r=>{
     const rStart=(r.startMonth||"0000-00").slice(0,7);
     const rEnd=(r.endMonth||"9999-99").slice(0,7);
     if(ym>=rStart&&ym<=rEnd){
       const ov=((budget.months||{})[ym]||{}).recurringOverrides||{};
       const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
-      total+=amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);
+      add(r.cat,r.subcat,amt*(r.cycle==="weekly"?WEEKS_PER_MONTH:1));
     }
   });
-  return total;
+  return out;
+};
+const marketingSpendForMonth = (budget, stock, ym) => {
+  const o=marketingSpendByType(budget,stock,ym);
+  return o.szyny+o.wozki+o.balkoniki+o.ogolne;
 };
 // Transport opłacony (osobna wpłata "transport-<id>"). W wypożyczeniach jednorazowych jest OSOBNO od kwoty (nie wchodzi do Łącznie/Zapłacono/Pozostało),
 // w cyklicznych dolicza się do zapłaconego tak jak dotąd.

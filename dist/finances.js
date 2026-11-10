@@ -628,6 +628,7 @@ function RentalStats(_ref9) {
     finances = _ref9.finances,
     setFinances = _ref9.setFinances,
     budget = _ref9.budget,
+    setBudget = _ref9.setBudget,
     machines = _ref9.machines,
     setMachines = _ref9.setMachines,
     nfzCases = _ref9.nfzCases,
@@ -904,13 +905,24 @@ function RentalStats(_ref9) {
         return !c.cancelled;
       }).length;
     }, 0) / finishedCyc.length * 10) / 10 : null;
-    var marketingSpend = isYear ? Array.from({
+    var mktgMonths = isYear ? Array.from({
       length: 12
     }, function (_, i) {
-      return marketingSpendForMonth(budget, stock, statsYear + "-" + String(i + 1).padStart(2, "0"));
-    }).reduce(function (a, b) {
-      return a + b;
-    }, 0) : marketingSpendForMonth(budget, stock, selMonth);
+      return statsYear + "-" + String(i + 1).padStart(2, "0");
+    }) : [selMonth];
+    var marketingByType = {
+      szyny: 0,
+      wozki: 0,
+      balkoniki: 0,
+      ogolne: 0
+    };
+    mktgMonths.forEach(function (ym) {
+      var o = marketingSpendByType(budget, stock, ym);
+      Object.keys(marketingByType).forEach(function (k) {
+        marketingByType[k] += o[k];
+      });
+    });
+    var marketingSpend = marketingByType.szyny + marketingByType.wozki + marketingByType.balkoniki + marketingByType.ogolne;
     return {
       totalRevenue: totalRevenue,
       transportRevenue: transportRevenue,
@@ -924,7 +936,8 @@ function RentalStats(_ref9) {
       cutEnd: cutEnd,
       avgDurationOne: avgDurationOne,
       avgCyclesCount: avgCyclesCount,
-      marketingSpend: marketingSpend
+      marketingSpend: marketingSpend,
+      marketingByType: marketingByType
     };
   }, [rentals, finances, nfzCases, pStart, pEnd, isYear, statsYear, selMonth, today, rentalEquipMap, paymentRentalMap, rentalIdSet, stock, budget]);
   var totalAll = stats.totalRevenue + stats.wozkiRevenue + stats.transportRevenue;
@@ -1320,14 +1333,48 @@ function RentalStats(_ref9) {
       yoyMonths: yoyMonths
     };
   }, [displayYear, seasonGran, rentals, finances, nfzCases, today]);
+  // czy w budżecie brakuje podkategorii marketingu (szyny/wózki/balkoniki) — pokazujemy przycisk "Załóż"
+  var mktgSetupMissing = function () {
+    var nm = function nm(x) {
+      return String(x == null ? "" : x).trim().toLowerCase();
+    };
+    var base = stock && stock.marketingCat || "Firma";
+    var cats = normCats(budget && budget.expenseCategories || []);
+    var c = cats.find(function (x) {
+      return nm(x.name) === nm(base);
+    });
+    return !c || MKTG_TYPES.some(function (t) {
+      return !(c.subs || []).some(function (x) {
+        return nm(x) === nm(t.sub);
+      });
+    });
+  }();
   var adsStats = useMemo(function () {
-    var newRentals = rentals.filter(function (r) {
-      return r.source === "reklama" && !r.reserved && (r.startDate || "") >= pStart && (r.startDate || "") <= pEnd;
-    }).length;
-    var newWozki = (nfzCases || []).filter(function (cas) {
-      return cas.source === "reklama" && (cas.orderDate || "") >= pStart && (cas.orderDate || "") <= pEnd;
-    }).length;
-    var revenue = 0;
+    // klienci i przychód z reklamy osobno dla typu sprzętu (szyny / wózki / balkoniki); wózki NFZ zawsze do "wozki"
+    var T = {
+      szyny: {
+        newCount: 0,
+        revenue: 0
+      },
+      wozki: {
+        newCount: 0,
+        revenue: 0
+      },
+      balkoniki: {
+        newCount: 0,
+        revenue: 0
+      }
+    };
+    var tk = function tk(eq) {
+      var c = catOf(eq);
+      return T[c] ? c : "szyny";
+    };
+    rentals.forEach(function (r) {
+      if (r.source === "reklama" && !r.reserved && (r.startDate || "") >= pStart && (r.startDate || "") <= pEnd) T[tk(r.equipment)].newCount++;
+    });
+    (nfzCases || []).forEach(function (cas) {
+      if (cas.source === "reklama" && (cas.orderDate || "") >= pStart && (cas.orderDate || "") <= pEnd) T.wozki.newCount++;
+    });
     (finances || []).forEach(function (f) {
       if (f.type !== "przychód" || (f.date || "") < pStart || (f.date || "") > pEnd) return;
       var rid = getRid(f.sourceId);
@@ -1335,7 +1382,7 @@ function RentalStats(_ref9) {
         var r = rentals.find(function (x) {
           return x.id === rid;
         });
-        if (r && r.source === "reklama") revenue += +f.amount || 0;
+        if (r && r.source === "reklama") T[tk(r.equipment)].revenue += +f.amount || 0;
         return;
       }
       var sid = f.sourceId || "";
@@ -1344,7 +1391,7 @@ function RentalStats(_ref9) {
         var cas = (nfzCases || []).find(function (x) {
           return x.id === cid;
         });
-        if (cas && cas.source === "reklama") revenue += +f.amount || 0;
+        if (cas && cas.source === "reklama") T.wozki.revenue += +f.amount || 0;
       }
     });
     rentals.forEach(function (r) {
@@ -1352,17 +1399,35 @@ function RentalStats(_ref9) {
       var paid = +r.amountPaid || 0;
       if (!paid) return;
       var d = r.startDate || "";
-      if (d >= pStart && d <= pEnd) revenue += paid;
+      if (d >= pStart && d <= pEnd) T[tk(r.equipment)].revenue += paid;
     });
-    var newCount = newRentals + newWozki;
-    return {
-      newCount: newCount,
-      revenue: revenue,
-      spend: stats.marketingSpend,
-      perPatient: newCount > 0 ? Math.round(stats.marketingSpend / newCount) : null,
-      roas: stats.marketingSpend > 0 ? Math.round(revenue / stats.marketingSpend * 100) / 100 : null
+    var mk = function mk(spend, newCount, revenue) {
+      return {
+        spend: spend,
+        newCount: newCount,
+        revenue: revenue,
+        perPatient: newCount > 0 ? Math.round(spend / newCount) : null,
+        roas: spend > 0 ? Math.round(revenue / spend * 100) / 100 : null
+      };
     };
-  }, [rentals, nfzCases, finances, pStart, pEnd, stats.marketingSpend]);
+    var types = MKTG_TYPES.map(function (t) {
+      return _objectSpread({
+        k: t.k,
+        l: t.l
+      }, mk(stats.marketingByType[t.k], T[t.k].newCount, T[t.k].revenue));
+    });
+    var general = stats.marketingByType.ogolne;
+    var newCount = types.reduce(function (s, x) {
+        return s + x.newCount;
+      }, 0),
+      revenue = types.reduce(function (s, x) {
+        return s + x.revenue;
+      }, 0);
+    return _objectSpread(_objectSpread({}, mk(stats.marketingSpend, newCount, revenue)), {}, {
+      types: types,
+      general: general
+    });
+  }, [rentals, nfzCases, finances, pStart, pEnd, stats.marketingSpend, stats.marketingByType, stock]);
 
   // ── A10: Struktura długości wypożyczeń jednorazowych (all-time) ──
   var durationHist = useMemo(function () {
@@ -2272,12 +2337,188 @@ function RentalStats(_ref9) {
     }, "\u2014"));
   }))), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
+    open: !!openMap.ads,
+    onToggle: tog("ads"),
+    title: "Reklama",
+    sub: "koszt klienta i zwrot, osobno dla szyn, wózków i balkoników",
+    keyVal: adsStats.spend > 0 ? Z(adsStats.spend) : "—",
+    keyColor: RED
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: subC,
+      textTransform: "uppercase",
+      letterSpacing: ".07em",
+      marginBottom: 8
+    }
+  }, "\uD83D\uDCE2 Reklama w tym okresie (", periodLabel, ")"), function () {
+    var shown = adsStats.types.filter(function (t) {
+      return t.spend > 0 || t.newCount > 0 || t.revenue > 0;
+    });
+    return /*#__PURE__*/React.createElement(React.Fragment, null, shown.length === 0 && adsStats.general <= 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: subC,
+        marginBottom: 8
+      }
+    }, "Brak wydatk\xF3w i klient\xF3w z reklamy w tym okresie."), shown.map(function (t) {
+      return /*#__PURE__*/React.createElement("div", {
+        key: t.k,
+        style: {
+          background: dk ? "#0F1E1E" : "#F6F9FC",
+          borderRadius: 14,
+          padding: "10px 12px",
+          marginBottom: 8
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 13,
+          fontWeight: 700,
+          color: textC,
+          marginBottom: 6
+        }
+      }, t.l, t.k === "wozki" && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 400,
+          color: subC,
+          fontSize: 11
+        }
+      }, " (zwrot z prowizji NFZ przychodzi z op\xF3\u017Anieniem)")), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 8,
+          marginBottom: 4
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          background: dk ? "#241A0A" : "#FFF6E8",
+          borderRadius: 12,
+          padding: "8px 10px"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: subC,
+          marginBottom: 2
+        }
+      }, "Wydano"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontFamily: "'Syne',sans-serif",
+          fontWeight: 800,
+          fontSize: 16,
+          color: RED
+        }
+      }, Z(t.spend))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          flex: 1,
+          background: dk ? "#0F1E33" : "#EEF4FC",
+          borderRadius: 12,
+          padding: "8px 10px"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: subC,
+          marginBottom: 2
+        }
+      }, "Nowych klient\xF3w"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontFamily: "'Syne',sans-serif",
+          fontWeight: 800,
+          fontSize: 16,
+          color: BLUE
+        }
+      }, t.newCount))), t.spend > 0 && t.newCount === 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: RED,
+          fontWeight: 600,
+          margin: "4px 0"
+        }
+      }, "\u26A0 Wydano ", Z(t.spend), ", zero nowych klient\xF3w z reklamy w tym okresie."), kv("Koszt na pozyskanego klienta", t.perPatient !== null ? Z(t.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(t.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", t.roas !== null ? t.roas + "×" : "—"));
+    }), adsStats.general > 0 && kv("Marketing ogólny (bez podziału na typ)", Z(adsStats.general), RED), (shown.length > 0 || adsStats.general > 0) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        borderTop: "1px solid " + borderC,
+        marginTop: 6,
+        paddingTop: 4
+      }
+    }, kv("Razem wydano", Z(adsStats.spend), RED), kv("Razem nowych klientów", String(adsStats.newCount)), kv("Koszt na klienta (razem)", adsStats.perPatient !== null ? Z(adsStats.perPatient) : "—"), kv("Zwrot z wydanej złotówki (razem)", adsStats.roas !== null ? adsStats.roas + "×" : "—")));
+  }(), mktgSetupMissing && setBudget && /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setBudget(function (b) {
+        var nm = function nm(x) {
+          return String(x == null ? "" : x).trim().toLowerCase();
+        };
+        var base = stock && stock.marketingCat || "Firma";
+        var cats = normCats(b.expenseCategories || [{
+          name: "Mieszkanie",
+          subs: []
+        }, {
+          name: "Jedzenie",
+          subs: []
+        }, {
+          name: "Transport",
+          subs: []
+        }, {
+          name: "Inne",
+          subs: []
+        }]).map(function (c) {
+          return _objectSpread(_objectSpread({}, c), {}, {
+            subs: _toConsumableArray(c.subs || [])
+          });
+        });
+        var ci = cats.findIndex(function (c) {
+          return nm(c.name) === nm(base);
+        });
+        if (ci < 0) {
+          cats.push({
+            name: base,
+            subs: []
+          });
+          ci = cats.length - 1;
+        }
+        MKTG_TYPES.forEach(function (t) {
+          if (!cats[ci].subs.some(function (x) {
+            return nm(x) === nm(t.sub);
+          })) cats[ci].subs.push(t.sub);
+        });
+        return _objectSpread(_objectSpread({}, b), {}, {
+          expenseCategories: cats
+        });
+      });
+    },
+    style: {
+      marginTop: 10,
+      width: "100%",
+      padding: "9px",
+      borderRadius: 10,
+      border: "1.5px dashed " + BLUE,
+      background: "transparent",
+      color: BLUE,
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "+ Za\u0142\xF3\u017C w bud\u017Cecie podkategorie: Marketing szyny / w\xF3zki / balkoniki"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      color: subC,
+      marginTop: 8,
+      lineHeight: 1.5
+    }
+  }, "Wydatki bierzemy z bud\u017Cetu: kategoria ", stock && stock.marketingCat || "Firma", ", podkategorie \u201EMarketing szyny\u201D, \u201EMarketing w\xF3zki\u201D, \u201EMarketing balkoniki\u201D. Wydatki wpisane inaczej (np. \u201EMarketing\u201D) licz\u0105 si\u0119 jako og\xF3lne, bez podzia\u0142u na typ.")), /*#__PURE__*/React.createElement(StatAcc, {
+    dk: dk,
     open: !!openMap.season,
     onToggle: tog("season"),
-    title: "Sezonowo\u015B\u0107 i reklama",
+    title: "Sezonowo\u015B\u0107",
     sub: displayYear + " vs " + (displayYear - 1),
-    keyVal: adsStats.perPatient !== null ? Z(adsStats.perPatient) + "/pacj." : "—",
-    keyColor: adsStats.newCount === 0 && adsStats.spend > 0 ? RED : ORANGE
+    keyVal: Z(seasonData.yoyMonths.reduce(function (a, m) {
+      return a + m.cur;
+    }, 0)),
+    keyColor: BLUE
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
@@ -2285,69 +2526,7 @@ function RentalStats(_ref9) {
       color: subC,
       textTransform: "uppercase",
       letterSpacing: ".07em",
-      marginBottom: 8
-    }
-  }, "\uD83D\uDCE2 Reklama w tym okresie (", periodLabel, ")"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 4
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      background: dk ? "#241A0A" : "#FFF6E8",
-      borderRadius: 12,
-      padding: "10px 12px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginBottom: 2
-    }
-  }, "Wydano"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: "'Syne',sans-serif",
-      fontWeight: 800,
-      fontSize: 17,
-      color: RED
-    }
-  }, Z(adsStats.spend))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      background: dk ? "#0F1E33" : "#EEF4FC",
-      borderRadius: 12,
-      padding: "10px 12px"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginBottom: 2
-    }
-  }, "Nowych klient\xF3w"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: "'Syne',sans-serif",
-      fontWeight: 800,
-      fontSize: 17,
-      color: BLUE
-    }
-  }, adsStats.newCount))), adsStats.spend > 0 && adsStats.newCount === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: RED,
-      fontWeight: 600,
-      marginBottom: 8
-    }
-  }, "\u26A0 Wydano ", Z(adsStats.spend), " na reklam\u0119, zero nowych klient\xF3w z tego \u017Ar\xF3d\u0142a w tym okresie."), kv("Koszt na pozyskanego klienta", adsStats.perPatient !== null ? Z(adsStats.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(adsStats.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", adsStats.roas !== null ? adsStats.roas + "×" : "—"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 700,
-      color: subC,
-      textTransform: "uppercase",
-      letterSpacing: ".07em",
-      margin: "16px 0 8px"
+      margin: "0 0 8px"
     }
   }, "Rok do roku \u2014 ", displayYear, " vs ", displayYear - 1), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -4030,6 +4209,7 @@ function Finances(_ref15) {
     finances: finances,
     setFinances: setFinances,
     budget: budget,
+    setBudget: setBudget,
     machines: machines,
     setMachines: setMachines,
     nfzCases: nfzCases,

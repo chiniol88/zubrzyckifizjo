@@ -187,7 +187,7 @@
     }
 
 
-    function RentalStats({rentals,stock,setStock,finances,setFinances,budget,machines,setMachines,nfzCases,goToRental,goToWozki}) {
+    function RentalStats({rentals,stock,setStock,finances,setFinances,budget,setBudget,machines,setMachines,nfzCases,goToRental,goToWozki}) {
       const dk=useContext(DarkCtx);
       const demo=useDemo();
       const [scope,setScope]=useState("month");
@@ -344,11 +344,12 @@
         const avgDurationOne=finishedOne.length>0?Math.round(finishedOne.reduce((s,r)=>s+Math.max(1,Math.round((new Date(r.endDate)-new Date(r.startDate))/(1000*60*60*24))),0)/finishedOne.length):null;
         const finishedCyc=rentals.filter(r=>r.renewable&&r.status==="zakończone"&&r.startDate&&isDurIncluded(r.equipment)&&r.startDate>=cutStr&&r.startDate<=cutEnd);
         const avgCyclesCount=finishedCyc.length>0?Math.round(finishedCyc.reduce((s,r)=>s+(r.cycles||[]).filter(c=>!c.cancelled).length,0)/finishedCyc.length*10)/10:null;
-        const marketingSpend=isYear
-          ?Array.from({length:12},(_,i)=>marketingSpendForMonth(budget,stock,statsYear+"-"+String(i+1).padStart(2,"0"))).reduce((a,b)=>a+b,0)
-          :marketingSpendForMonth(budget,stock,selMonth);
+        const mktgMonths=isYear?Array.from({length:12},(_,i)=>statsYear+"-"+String(i+1).padStart(2,"0")):[selMonth];
+        const marketingByType={szyny:0,wozki:0,balkoniki:0,ogolne:0};
+        mktgMonths.forEach(ym=>{const o=marketingSpendByType(budget,stock,ym);Object.keys(marketingByType).forEach(k=>{marketingByType[k]+=o[k];});});
+        const marketingSpend=marketingByType.szyny+marketingByType.wozki+marketingByType.balkoniki+marketingByType.ogolne;
 
-        return {totalRevenue,transportRevenue,transportCount,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDurationOne,avgCyclesCount,marketingSpend};
+        return {totalRevenue,transportRevenue,transportCount,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDurationOne,avgCyclesCount,marketingSpend,marketingByType};
       },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,rentalIdSet,stock,budget]);
       const totalAll=stats.totalRevenue+stats.wozkiRevenue+stats.transportRevenue;
 
@@ -497,25 +498,38 @@
         });
         return {rows,yoyMonths};
       },[displayYear,seasonGran,rentals,finances,nfzCases,today]);
+      // czy w budżecie brakuje podkategorii marketingu (szyny/wózki/balkoniki) — pokazujemy przycisk "Załóż"
+      const mktgSetupMissing=(()=>{
+        const nm=x=>String(x==null?"":x).trim().toLowerCase();
+        const base=(stock&&stock.marketingCat)||"Firma";
+        const cats=normCats((budget&&budget.expenseCategories)||[]);
+        const c=cats.find(x=>nm(x.name)===nm(base));
+        return !c||MKTG_TYPES.some(t=>!(c.subs||[]).some(x=>nm(x)===nm(t.sub)));
+      })();
       const adsStats=useMemo(()=>{
-        const newRentals=rentals.filter(r=>r.source==="reklama"&&!r.reserved&&(r.startDate||"")>=pStart&&(r.startDate||"")<=pEnd).length;
-        const newWozki=(nfzCases||[]).filter(cas=>cas.source==="reklama"&&(cas.orderDate||"")>=pStart&&(cas.orderDate||"")<=pEnd).length;
-        let revenue=0;
+        // klienci i przychód z reklamy osobno dla typu sprzętu (szyny / wózki / balkoniki); wózki NFZ zawsze do "wozki"
+        const T={szyny:{newCount:0,revenue:0},wozki:{newCount:0,revenue:0},balkoniki:{newCount:0,revenue:0}};
+        const tk=eq=>{const c=catOf(eq);return T[c]?c:"szyny";};
+        rentals.forEach(r=>{if(r.source==="reklama"&&!r.reserved&&(r.startDate||"")>=pStart&&(r.startDate||"")<=pEnd)T[tk(r.equipment)].newCount++;});
+        (nfzCases||[]).forEach(cas=>{if(cas.source==="reklama"&&(cas.orderDate||"")>=pStart&&(cas.orderDate||"")<=pEnd)T.wozki.newCount++;});
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód"||(f.date||"")<pStart||(f.date||"")>pEnd)return;
           const rid=getRid(f.sourceId);
-          if(rid){const r=rentals.find(x=>x.id===rid);if(r&&r.source==="reklama")revenue+=(+f.amount||0);return;}
+          if(rid){const r=rentals.find(x=>x.id===rid);if(r&&r.source==="reklama")T[tk(r.equipment)].revenue+=(+f.amount||0);return;}
           const sid=f.sourceId||"";
-          if(sid.startsWith("wozek-")){const cid=+sid.slice(6);const cas=(nfzCases||[]).find(x=>x.id===cid);if(cas&&cas.source==="reklama")revenue+=(+f.amount||0);}
+          if(sid.startsWith("wozek-")){const cid=+sid.slice(6);const cas=(nfzCases||[]).find(x=>x.id===cid);if(cas&&cas.source==="reklama")T.wozki.revenue+=(+f.amount||0);}
         });
         rentals.forEach(r=>{
           if((r.payments||[]).length>0||(r.cycles||[]).length>0||r.source!=="reklama")return;
           const paid=+r.amountPaid||0;if(!paid)return;
-          const d=r.startDate||"";if(d>=pStart&&d<=pEnd)revenue+=paid;
+          const d=r.startDate||"";if(d>=pStart&&d<=pEnd)T[tk(r.equipment)].revenue+=paid;
         });
-        const newCount=newRentals+newWozki;
-        return {newCount,revenue,spend:stats.marketingSpend,perPatient:newCount>0?Math.round(stats.marketingSpend/newCount):null,roas:stats.marketingSpend>0?Math.round(revenue/stats.marketingSpend*100)/100:null};
-      },[rentals,nfzCases,finances,pStart,pEnd,stats.marketingSpend]);
+        const mk=(spend,newCount,revenue)=>({spend,newCount,revenue,perPatient:newCount>0?Math.round(spend/newCount):null,roas:spend>0?Math.round(revenue/spend*100)/100:null});
+        const types=MKTG_TYPES.map(t=>({k:t.k,l:t.l,...mk(stats.marketingByType[t.k],T[t.k].newCount,T[t.k].revenue)}));
+        const general=stats.marketingByType.ogolne;
+        const newCount=types.reduce((s,x)=>s+x.newCount,0),revenue=types.reduce((s,x)=>s+x.revenue,0);
+        return {...mk(stats.marketingSpend,newCount,revenue),types,general};
+      },[rentals,nfzCases,finances,pStart,pEnd,stats.marketingSpend,stats.marketingByType,stock]);
 
       // ── A10: Struktura długości wypożyczeń jednorazowych (all-time) ──
       const durationHist=useMemo(()=>{
@@ -701,26 +715,58 @@
           </div>}
         </StatAcc>
 
-        {/* 1b. Sezonowość i reklama */}
-        <StatAcc dk={dk} open={!!openMap.season} onToggle={tog("season")} title="Sezonowość i reklama" sub={displayYear+" vs "+(displayYear-1)}
-          keyVal={adsStats.perPatient!==null?Z(adsStats.perPatient)+"/pacj.":"—"} keyColor={adsStats.newCount===0&&adsStats.spend>0?RED:ORANGE}>
+        {/* 1b. Reklama (osobno szyny / wózki / balkoniki) */}
+        <StatAcc dk={dk} open={!!openMap.ads} onToggle={tog("ads")} title="Reklama" sub={"koszt klienta i zwrot, osobno dla szyn, wózków i balkoników"}
+          keyVal={adsStats.spend>0?Z(adsStats.spend):"—"} keyColor={RED}>
           <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>📢 Reklama w tym okresie ({periodLabel})</div>
-          <div style={{display:"flex",gap:8,marginBottom:4}}>
-            <div style={{flex:1,background:dk?"#241A0A":"#FFF6E8",borderRadius:12,padding:"10px 12px"}}>
-              <div style={{fontSize:10,color:subC,marginBottom:2}}>Wydano</div>
-              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:17,color:RED}}>{Z(adsStats.spend)}</div>
-            </div>
-            <div style={{flex:1,background:dk?"#0F1E33":"#EEF4FC",borderRadius:12,padding:"10px 12px"}}>
-              <div style={{fontSize:10,color:subC,marginBottom:2}}>Nowych klientów</div>
-              <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:17,color:BLUE}}>{adsStats.newCount}</div>
-            </div>
-          </div>
-          {adsStats.spend>0&&adsStats.newCount===0&&<div style={{fontSize:12,color:RED,fontWeight:600,marginBottom:8}}>⚠ Wydano {Z(adsStats.spend)} na reklamę, zero nowych klientów z tego źródła w tym okresie.</div>}
-          {kv("Koszt na pozyskanego klienta",adsStats.perPatient!==null?Z(adsStats.perPatient):"—")}
-          {kv("Przychód z reklamy w okresie",Z(adsStats.revenue),GREEN)}
-          {kv("Zwrot z wydanej złotówki (ROAS)",adsStats.roas!==null?adsStats.roas+"×":"—")}
+          {(()=>{
+            const shown=adsStats.types.filter(t=>t.spend>0||t.newCount>0||t.revenue>0);
+            return <>
+              {shown.length===0&&adsStats.general<=0&&<div style={{fontSize:12,color:subC,marginBottom:8}}>Brak wydatków i klientów z reklamy w tym okresie.</div>}
+              {shown.map(t=><div key={t.k} style={{background:dk?"#0F1E1E":"#F6F9FC",borderRadius:14,padding:"10px 12px",marginBottom:8}}>
+                <div style={{fontSize:13,fontWeight:700,color:textC,marginBottom:6}}>{t.l}{t.k==="wozki"&&<span style={{fontWeight:400,color:subC,fontSize:11}}> (zwrot z prowizji NFZ przychodzi z opóźnieniem)</span>}</div>
+                <div style={{display:"flex",gap:8,marginBottom:4}}>
+                  <div style={{flex:1,background:dk?"#241A0A":"#FFF6E8",borderRadius:12,padding:"8px 10px"}}>
+                    <div style={{fontSize:10,color:subC,marginBottom:2}}>Wydano</div>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:16,color:RED}}>{Z(t.spend)}</div>
+                  </div>
+                  <div style={{flex:1,background:dk?"#0F1E33":"#EEF4FC",borderRadius:12,padding:"8px 10px"}}>
+                    <div style={{fontSize:10,color:subC,marginBottom:2}}>Nowych klientów</div>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:16,color:BLUE}}>{t.newCount}</div>
+                  </div>
+                </div>
+                {t.spend>0&&t.newCount===0&&<div style={{fontSize:12,color:RED,fontWeight:600,margin:"4px 0"}}>⚠ Wydano {Z(t.spend)}, zero nowych klientów z reklamy w tym okresie.</div>}
+                {kv("Koszt na pozyskanego klienta",t.perPatient!==null?Z(t.perPatient):"—")}
+                {kv("Przychód z reklamy w okresie",Z(t.revenue),GREEN)}
+                {kv("Zwrot z wydanej złotówki (ROAS)",t.roas!==null?t.roas+"×":"—")}
+              </div>)}
+              {adsStats.general>0&&kv("Marketing ogólny (bez podziału na typ)",Z(adsStats.general),RED)}
+              {(shown.length>0||adsStats.general>0)&&<div style={{borderTop:"1px solid "+borderC,marginTop:6,paddingTop:4}}>
+                {kv("Razem wydano",Z(adsStats.spend),RED)}
+                {kv("Razem nowych klientów",String(adsStats.newCount))}
+                {kv("Koszt na klienta (razem)",adsStats.perPatient!==null?Z(adsStats.perPatient):"—")}
+                {kv("Zwrot z wydanej złotówki (razem)",adsStats.roas!==null?adsStats.roas+"×":"—")}
+              </div>}
+            </>;
+          })()}
+          {mktgSetupMissing&&setBudget&&<button onClick={()=>setBudget(b=>{
+              const nm=x=>String(x==null?"":x).trim().toLowerCase();
+              const base=(stock&&stock.marketingCat)||"Firma";
+              const cats=normCats(b.expenseCategories||[{name:"Mieszkanie",subs:[]},{name:"Jedzenie",subs:[]},{name:"Transport",subs:[]},{name:"Inne",subs:[]}]).map(c=>({...c,subs:[...(c.subs||[])]}));
+              let ci=cats.findIndex(c=>nm(c.name)===nm(base));
+              if(ci<0){cats.push({name:base,subs:[]});ci=cats.length-1;}
+              MKTG_TYPES.forEach(t=>{if(!cats[ci].subs.some(x=>nm(x)===nm(t.sub)))cats[ci].subs.push(t.sub);});
+              return {...b,expenseCategories:cats};
+            })} style={{marginTop:10,width:"100%",padding:"9px",borderRadius:10,border:"1.5px dashed "+BLUE,background:"transparent",color:BLUE,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+            + Załóż w budżecie podkategorie: Marketing szyny / wózki / balkoniki
+          </button>}
+          <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Wydatki bierzemy z budżetu: kategoria {(stock&&stock.marketingCat)||"Firma"}, podkategorie „Marketing szyny”, „Marketing wózki”, „Marketing balkoniki”. Wydatki wpisane inaczej (np. „Marketing”) liczą się jako ogólne, bez podziału na typ.</div>
+        </StatAcc>
 
-          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 8px"}}>Rok do roku — {displayYear} vs {displayYear-1}</div>
+        {/* 1c. Sezonowość */}
+        <StatAcc dk={dk} open={!!openMap.season} onToggle={tog("season")} title="Sezonowość" sub={displayYear+" vs "+(displayYear-1)}
+          keyVal={Z(seasonData.yoyMonths.reduce((a,m)=>a+m.cur,0))} keyColor={BLUE}>
+          <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"0 0 8px"}}>Rok do roku — {displayYear} vs {displayYear-1}</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:3,height:78}}>
             {seasonData.yoyMonths.map(mo=>{
               const mx=Math.max(1,...seasonData.yoyMonths.map(x=>Math.max(x.cur,x.prev)));
@@ -1177,7 +1223,7 @@
               }} style={{width:34,height:34,borderRadius:10,border:`1.5px solid ${border}`,background:dk?"#18202F":"#EFF3FA",cursor:"pointer",fontSize:18,color:sub,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
             </div>}
             {viewMode==="budget"&&<Budget finances={finances} visits={visits} rentals={rentals} budget={budget} setBudget={setBudget} desk={desk}/>}
-            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} machines={machines} setMachines={setMachines} nfzCases={nfzCases} goToRental={goToRental} goToWozki={goToWozki}/>}
+            {viewMode==="sprzet"&&<RentalStats rentals={rentals} stock={stock} setStock={setStock} finances={finances} setFinances={setFinances} budget={budget} setBudget={setBudget} machines={machines} setMachines={setMachines} nfzCases={nfzCases} goToRental={goToRental} goToWozki={goToWozki}/>}
             {viewMode==="wealth"&&<Wealth wealth={wealth} setWealth={setWealth}/>}
             {viewMode==="range"&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
               <input type="date" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{flex:1,minWidth:120,padding:"9px 12px",borderRadius:12,border:`1.5px solid ${border}`,background:dk?"#111826":"#FAFCFD",color:dk?"#E8F5F5":"#1C2B3A",fontSize:14,fontFamily:"inherit"}}/>
