@@ -164,7 +164,7 @@ function whConvertLegacy(stock, machines, eq, f, today) {
   };
 }
 // Wycofanie sztuki (sprzedana, zepsuta): karta do archiwum, liczba sztuk −1 od daty
-function whRetireCard(stock, machines, rentals, id, date, reason, today) {
+function whRetireCard(stock, machines, rentals, id, date, reason, today, sale) {
   var c = (machines || []).find(function (m) {
     return m.id === id;
   });
@@ -183,14 +183,18 @@ function whRetireCard(stock, machines, rentals, id, date, reason, today) {
   if (!whCanChange(stock, c.type, -1, d)) return {
     error: "W wybranym terminie było tylko tyle sztuk, ile zostało. Wybierz późniejszą datę."
   };
+  var price = Math.max(0, +sale || 0); // opcjonalna cena sprzedaży (trafia do Finansów jako przychód)
   return {
     stock: whChangeQty(stock, c.type, -1, d),
+    date: d,
+    sale: price,
     machines: machines.map(function (m) {
       return m.id === id ? _objectSpread(_objectSpread({}, m), {}, {
         archived: true,
         retired: true,
         retiredDate: d,
-        retiredReason: reason || ""
+        retiredReason: reason || "",
+        retiredSale: price
       }) : m;
     })
   };
@@ -213,7 +217,8 @@ function whRestoreCard(stock, machines, id, today) {
         archived: false,
         retired: false,
         retiredDate: "",
-        retiredReason: ""
+        retiredReason: "",
+        retiredSale: 0
       }) : m;
     })
   };
@@ -321,6 +326,18 @@ function whValidMachineId(machines, eq, id) {
   }) ? id : null;
 }
 // Koszt zakupu typu: sztuki z ceną wg karty, pozostałe wg domyślnej ceny typu (bez kart wynik = cena × liczba sztuk, jak dawniej)
+// Wycofane sztuki (sprzedane, zepsute) NIE znikają z kosztu: ich cena zakupu zostaje w inwestycji, żeby zwrot (Opłacalność) był prawdziwy.
+// Koszt wycofanej sztuki = jej cena z karty albo (gdy brak) domyślna cena typu; po trwałym usunięciu karty z archiwum koszt jest
+// zapamiętany w stock.costs[eq].retiredPurchase.
+function whRetiredCost(stock, machines, eq) {
+  var unit = +(stock && stock.costs && stock.costs[eq] && stock.costs[eq].purchase || 0);
+  var kept = +(stock && stock.costs && stock.costs[eq] && stock.costs[eq].retiredPurchase || 0);
+  return (machines || []).filter(function (m) {
+    return m.type === eq && m.archived && m.retired;
+  }).reduce(function (s, m) {
+    return s + ((+m.price || 0) > 0 ? +m.price : unit);
+  }, 0) + kept;
+}
 function whPurchaseTotal(stock, machines, eq) {
   var unit = +(stock && stock.costs && stock.costs[eq] && stock.costs[eq].purchase || 0);
   var priced = whCards(machines, eq).map(function (m) {
@@ -330,7 +347,7 @@ function whPurchaseTotal(stock, machines, eq) {
   });
   return Math.max(0, whQty(stock, eq) - priced.length) * unit + priced.reduce(function (a, b) {
     return a + b;
-  }, 0);
+  }, 0) + whRetiredCost(stock, machines, eq);
 }
 
 // ── Kolejność typów sprzętu w obrębie grupy (stock.order = {szyny:[nazwy], wozki:[...], balkoniki:[...]}) ──
@@ -422,6 +439,19 @@ function whPurgeCard(stock, machines, id) {
   });
   var s = stock || {};
   var finMap = [];
+  if (c.archived && c.retired) {
+    // trwałe usunięcie wycofanej sztuki: jej koszt zakupu zostaje w inwestycji typu
+    var unit = +((s.costs || {})[c.type] && (s.costs || {})[c.type].purchase || 0);
+    var cur0 = (s.costs || {})[c.type] || {
+      purchase: 0,
+      repairs: []
+    };
+    s = _objectSpread(_objectSpread({}, s), {}, {
+      costs: _objectSpread(_objectSpread({}, s.costs || {}), {}, _defineProperty({}, c.type, _objectSpread(_objectSpread({}, cur0), {}, {
+        retiredPurchase: (+cur0.retiredPurchase || 0) + ((+c.price || 0) > 0 ? +c.price : unit)
+      })))
+    });
+  }
   if (costly.length) {
     var cur = (s.costs || {})[c.type] || {
       purchase: 0,

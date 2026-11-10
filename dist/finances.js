@@ -773,6 +773,11 @@ function RentalStats(_ref9) {
       var paid = +r.amountPaid || 0;
       if (paid > 0 && r.equipment && rev.hasOwnProperty(r.equipment)) rev[r.equipment] += paid;
     });
+    // sprzedaż wycofanych sztuk (wpisy "sprzedaz-<id>" z Magazynu) zalicza się do zarobku tego sprzętu
+    (finances || []).forEach(function (f) {
+      if (f.type !== "przychód" || !(f.sourceId || "").startsWith("sprzedaz-")) return;
+      if (f.eq && rev.hasOwnProperty(f.eq)) rev[f.eq] += +f.amount || 0;
+    });
     return rev;
   }, [finances, rentals, rentalEquipMap, paymentRentalMap, rentalIdSet, stock]);
 
@@ -2965,7 +2970,7 @@ function RentalStats(_ref9) {
       style: {
         color: textC
       }
-    }, demo ? "****" : Math.round(purchaseTotal) + " zł")), /*#__PURE__*/React.createElement("div", {
+    }, demo ? "****" : Math.round(purchaseTotal) + " zł"), !demo && whRetiredCost(stock, machines, eq) > 0 && /*#__PURE__*/React.createElement("span", null, " (w tym wycofane sztuki: ", Math.round(whRetiredCost(stock, machines, eq)), " z\u0142)")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: subC,

@@ -79,15 +79,16 @@
       return {stock,machines:[...(machines||[]),card],card};
     }
     // Wycofanie sztuki (sprzedana, zepsuta): karta do archiwum, liczba sztuk −1 od daty
-    function whRetireCard(stock,machines,rentals,id,date,reason,today){
+    function whRetireCard(stock,machines,rentals,id,date,reason,today,sale){
       const c=(machines||[]).find(m=>m.id===id);
       if(!c||c.archived)return {error:"Nie znaleziono tej karty"};
       if((rentals||[]).some(r=>r.machineId===id&&r.status==="aktywne"))return {error:"Ta sztuka ma aktywne wypożyczenie. Najpierw je zakończ."};
       if(whQty(stock,c.type)<2)return {error:"To ostatnia sztuka tego typu. Zarchiwizuj cały typ zamiast wycofywać sztukę."};
       const d=date&&date<=today?date:today;
       if(!whCanChange(stock,c.type,-1,d))return {error:"W wybranym terminie było tylko tyle sztuk, ile zostało. Wybierz późniejszą datę."};
-      return {stock:whChangeQty(stock,c.type,-1,d),
-        machines:machines.map(m=>m.id===id?{...m,archived:true,retired:true,retiredDate:d,retiredReason:reason||""}:m)};
+      const price=Math.max(0,+sale||0);   // opcjonalna cena sprzedaży (trafia do Finansów jako przychód)
+      return {stock:whChangeQty(stock,c.type,-1,d),date:d,sale:price,
+        machines:machines.map(m=>m.id===id?{...m,archived:true,retired:true,retiredDate:d,retiredReason:reason||"",retiredSale:price}:m)};
     }
     function whRestoreCard(stock,machines,id,today){
       const c=(machines||[]).find(m=>m.id===id);
@@ -95,7 +96,7 @@
       const e=whCodeError(whCards(machines),c.code,id);
       if(e&&c.code)return {error:"Kod "+c.code+" jest już użyty przez inną sztukę. Zmień go i spróbuj ponownie."};
       return {stock:whChangeQty(stock,c.type,1,today),
-        machines:machines.map(m=>m.id===id?{...m,archived:false,retired:false,retiredDate:"",retiredReason:""}:m)};
+        machines:machines.map(m=>m.id===id?{...m,archived:false,retired:false,retiredDate:"",retiredReason:"",retiredSale:0}:m)};
     }
     // Usunięcie karty możliwe tylko, gdy jest "czysta" (bez historii serwisu i wypożyczeń). Sztuka wraca do "starszych bez karty".
     function whDeleteCard(machines,rentals,id){
@@ -146,10 +147,18 @@
       return id&&(machines||[]).some(m=>m.id===id&&!m.archived&&m.type===eq)?id:null;
     }
     // Koszt zakupu typu: sztuki z ceną wg karty, pozostałe wg domyślnej ceny typu (bez kart wynik = cena × liczba sztuk, jak dawniej)
+    // Wycofane sztuki (sprzedane, zepsute) NIE znikają z kosztu: ich cena zakupu zostaje w inwestycji, żeby zwrot (Opłacalność) był prawdziwy.
+    // Koszt wycofanej sztuki = jej cena z karty albo (gdy brak) domyślna cena typu; po trwałym usunięciu karty z archiwum koszt jest
+    // zapamiętany w stock.costs[eq].retiredPurchase.
+    function whRetiredCost(stock,machines,eq){
+      const unit=+((stock&&stock.costs&&stock.costs[eq]&&stock.costs[eq].purchase)||0);
+      const kept=+((stock&&stock.costs&&stock.costs[eq]&&stock.costs[eq].retiredPurchase)||0);
+      return (machines||[]).filter(m=>m.type===eq&&m.archived&&m.retired).reduce((s,m)=>s+((+m.price||0)>0?+m.price:unit),0)+kept;
+    }
     function whPurchaseTotal(stock,machines,eq){
       const unit=+((stock&&stock.costs&&stock.costs[eq]&&stock.costs[eq].purchase)||0);
       const priced=whCards(machines,eq).map(m=>+m.price||0).filter(p=>p>0);
-      return Math.max(0,whQty(stock,eq)-priced.length)*unit+priced.reduce((a,b)=>a+b,0);
+      return Math.max(0,whQty(stock,eq)-priced.length)*unit+priced.reduce((a,b)=>a+b,0)+whRetiredCost(stock,machines,eq);
     }
 
     // ── Kolejność typów sprzętu w obrębie grupy (stock.order = {szyny:[nazwy], wozki:[...], balkoniki:[...]}) ──
@@ -186,6 +195,11 @@
       if(!c)return null;
       const costly=(c.serviceLog||[]).filter(e=>+e.cost>0);
       let s=stock||{};const finMap=[];
+      if(c.archived&&c.retired){   // trwałe usunięcie wycofanej sztuki: jej koszt zakupu zostaje w inwestycji typu
+        const unit=+((s.costs||{})[c.type]&&(s.costs||{})[c.type].purchase||0);
+        const cur0=(s.costs||{})[c.type]||{purchase:0,repairs:[]};
+        s={...s,costs:{...(s.costs||{}),[c.type]:{...cur0,retiredPurchase:(+cur0.retiredPurchase||0)+((+c.price||0)>0?+c.price:unit)}}};
+      }
       if(costly.length){
         const cur=(s.costs||{})[c.type]||{purchase:0,repairs:[]};
         const add=costly.map(e=>{

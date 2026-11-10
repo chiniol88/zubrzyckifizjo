@@ -129,14 +129,18 @@
       };
       const doRetire=()=>{
         const f=retireForm;
-        const res=whRetireCard(stock,machines,rentals,f.id,f.date,f.reason,today);
+        const res=whRetireCard(stock,machines,rentals,f.id,f.date,f.reason,today,f.sale);
         if(res.error){setFormError(res.error);return;}
-        setStock(res.stock);setMachines(res.machines);setRetireForm(null);setSelCard(null);flash("Sztuka wycofana");
+        const rc=(machines||[]).find(m=>m.id===f.id);
+        if(res.sale>0&&rc)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"sprzedaz-"+f.id,eq:rc.type,date:res.date,type:"przychód",category:"Inne",amount:res.sale,description:"Sprzedaż sprzętu – "+(rc.code||"bez kodu")+" · "+rc.type},...(fs||[])]);
+        setStock(res.stock);setMachines(res.machines);setRetireForm(null);setSelCard(null);flash(res.sale>0?"Sztuka wycofana, sprzedaż dodana do Finansów":"Sztuka wycofana");
       };
       const doRestore=id=>{
         const res=whRestoreCard(stock,machines,id,today);
         if(res.error){flash(res.error);return;}
-        setStock(res.stock);setMachines(res.machines);flash("Przywrócono sztukę");
+        setStock(res.stock);setMachines(res.machines);
+        setFinances(fs=>(fs||[]).filter(f=>f.sourceId!=="sprzedaz-"+id));   // przywrócona sztuka nie jest już sprzedana
+        flash("Przywrócono sztukę");
       };
       const doDelete=()=>{
         const ms=whDeleteCard(machines,rentals,confirmDel);
@@ -327,7 +331,7 @@
             {history.length>8&&<div style={{fontSize:11,color:subC,marginTop:4}}>…i {history.length-8} wcześniejszych</div>}
             <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
               <Btn small variant="secondary" onClick={()=>openEditCard(c)}>Edytuj</Btn>
-              <Btn small variant="secondary" onClick={()=>{setFormError("");setRetireForm({id:c.id,date:today,reason:""});}}>Wycofaj sztukę</Btn>
+              <Btn small variant="secondary" onClick={()=>{setFormError("");setRetireForm({id:c.id,date:today,reason:"",sale:""});}}>Wycofaj sztukę</Btn>
               {canDelete&&<Btn small variant="danger" onClick={()=>setConfirmDel(c.id)}>Usuń kartę</Btn>}
             </div>
           </div>}
@@ -437,7 +441,7 @@
         const c=(machines||[]).find(m=>m.id===confirmPurge.id);
         if(!c)return null;
         const costly=(c.serviceLog||[]).filter(e=>+e.cost>0);
-        return {kind:"card",title:"Usunąć kartę na stałe?",c,entries:(c.serviceLog||[]).length,costly:costly.length,sum:costly.reduce((a,e)=>a+(+e.cost||0),0)};
+        return {kind:"card",title:"Usunąć kartę na stałe?",c,retired:!!(c.archived&&c.retired),entries:(c.serviceLog||[]).length,costly:costly.length,sum:costly.reduce((a,e)=>a+(+e.cost||0),0)};
       })();
 
       return <div style={{paddingBottom:80}}>
@@ -551,6 +555,8 @@
           <div style={{fontSize:13,color:"#7A8FA6",marginBottom:14}}>{(()=>{const rc=(machines||[]).find(m=>m.id===retireForm.id);return rc?(rc.code||"(bez kodu)")+" · "+rc.type:"";})()}</div>
           <Inp label="Data wycofania" value={retireForm.date} onChange={v=>{setFormError("");setRetireForm(f=>({...f,date:v}));}} type="date"/>
           <Txa label="Powód (opcjonalnie)" value={retireForm.reason} onChange={v=>setRetireForm(f=>({...f,reason:v}))} rows={2}/>
+          <Inp label="Cena sprzedaży (zł) – opcjonalnie" value={retireForm.sale||""} onChange={v=>setRetireForm(f=>({...f,sale:v}))} type="number" placeholder="0"/>
+          <div style={{fontSize:11,color:"#7A8FA6",margin:"-6px 0 12px"}}>Cena zakupu tej sztuki zostaje w kosztach sprzętu. Cena sprzedaży (jeśli wpiszesz) trafi do Finansów jako przychód i do Opłacalności tego sprzętu.</div>
           {formError&&<div style={{fontSize:12,color:"#E05C5C",marginBottom:12}}>{formError}</div>}
           <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={doRetire}>Wycofaj sztukę</Btn>
         </Modal>}
@@ -576,7 +582,7 @@
             <div style={{fontSize:15,fontWeight:700,marginBottom:10}}>{purgeInfo.c.code||"(bez kodu)"} · {purgeInfo.c.type}</div>
             <div style={{fontSize:14,color:"#7A8FA6",marginBottom:16,lineHeight:1.55}}>
               {purgeInfo.entries>0?"Historia serwisu tej sztuki znika ("+purgeInfo.entries+" wpisów). ":"Karta nie ma wpisów serwisowych. "}
-              {purgeInfo.costly>0?"Koszty ("+(demo?"****":purgeInfo.sum+" zł")+") zostają jako naprawy całego sprzętu, więc Finanse i Statystyki się nie zmienią. ":""}Tego nie da się cofnąć.
+              {purgeInfo.retired?"Cena zakupu tej wycofanej sztuki zostaje w kosztach sprzętu. ":""}{purgeInfo.costly>0?"Koszty ("+(demo?"****":purgeInfo.sum+" zł")+") zostają jako naprawy całego sprzętu, więc Finanse i Statystyki się nie zmienią. ":""}Tego nie da się cofnąć.
             </div>
           </>}
           <div style={{display:"flex",gap:10}}>

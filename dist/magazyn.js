@@ -422,16 +422,31 @@ function Magazyn(_ref3) {
   };
   var doRetire = function doRetire() {
     var f = retireForm;
-    var res = whRetireCard(stock, machines, rentals, f.id, f.date, f.reason, today);
+    var res = whRetireCard(stock, machines, rentals, f.id, f.date, f.reason, today, f.sale);
     if (res.error) {
       setFormError(res.error);
       return;
     }
+    var rc = (machines || []).find(function (m) {
+      return m.id === f.id;
+    });
+    if (res.sale > 0 && rc) setFinances(function (fs) {
+      return [{
+        id: Date.now() + Math.random(),
+        sourceId: "sprzedaz-" + f.id,
+        eq: rc.type,
+        date: res.date,
+        type: "przychód",
+        category: "Inne",
+        amount: res.sale,
+        description: "Sprzedaż sprzętu – " + (rc.code || "bez kodu") + " · " + rc.type
+      }].concat(_toConsumableArray(fs || []));
+    });
     setStock(res.stock);
     setMachines(res.machines);
     setRetireForm(null);
     setSelCard(null);
-    flash("Sztuka wycofana");
+    flash(res.sale > 0 ? "Sztuka wycofana, sprzedaż dodana do Finansów" : "Sztuka wycofana");
   };
   var doRestore = function doRestore(id) {
     var res = whRestoreCard(stock, machines, id, today);
@@ -441,6 +456,11 @@ function Magazyn(_ref3) {
     }
     setStock(res.stock);
     setMachines(res.machines);
+    setFinances(function (fs) {
+      return (fs || []).filter(function (f) {
+        return f.sourceId !== "sprzedaz-" + id;
+      });
+    }); // przywrócona sztuka nie jest już sprzedana
     flash("Przywrócono sztukę");
   };
   var doDelete = function doDelete() {
@@ -1217,7 +1237,8 @@ function Magazyn(_ref3) {
         setRetireForm({
           id: c.id,
           date: today,
-          reason: ""
+          reason: "",
+          sale: ""
         });
       }
     }, "Wycofaj sztuk\u0119"), canDelete && /*#__PURE__*/React.createElement(Btn, {
@@ -1687,6 +1708,7 @@ function Magazyn(_ref3) {
       kind: "card",
       title: "Usunąć kartę na stałe?",
       c: c,
+      retired: !!(c.archived && c.retired),
       entries: (c.serviceLog || []).length,
       costly: costly.length,
       sum: costly.reduce(function (a, e) {
@@ -2322,7 +2344,25 @@ function Magazyn(_ref3) {
       });
     },
     rows: 2
-  }), formError && /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement(Inp, {
+    label: "Cena sprzeda\u017Cy (z\u0142) \u2013 opcjonalnie",
+    value: retireForm.sale || "",
+    onChange: function onChange(v) {
+      return setRetireForm(function (f) {
+        return _objectSpread(_objectSpread({}, f), {}, {
+          sale: v
+        });
+      });
+    },
+    type: "number",
+    placeholder: "0"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8FA6",
+      margin: "-6px 0 12px"
+    }
+  }, "Cena zakupu tej sztuki zostaje w kosztach sprz\u0119tu. Cena sprzeda\u017Cy (je\u015Bli wpiszesz) trafi do Finans\xF3w jako przych\xF3d i do Op\u0142acalno\u015Bci tego sprz\u0119tu."), formError && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: "#E05C5C",
@@ -2404,7 +2444,7 @@ function Magazyn(_ref3) {
       marginBottom: 16,
       lineHeight: 1.55
     }
-  }, purgeInfo.entries > 0 ? "Historia serwisu tej sztuki znika (" + purgeInfo.entries + " wpisów). " : "Karta nie ma wpisów serwisowych. ", purgeInfo.costly > 0 ? "Koszty (" + (demo ? "****" : purgeInfo.sum + " zł") + ") zostają jako naprawy całego sprzętu, więc Finanse i Statystyki się nie zmienią. " : "", "Tego nie da si\u0119 cofn\u0105\u0107.")), /*#__PURE__*/React.createElement("div", {
+  }, purgeInfo.entries > 0 ? "Historia serwisu tej sztuki znika (" + purgeInfo.entries + " wpisów). " : "Karta nie ma wpisów serwisowych. ", purgeInfo.retired ? "Cena zakupu tej wycofanej sztuki zostaje w kosztach sprzętu. " : "", purgeInfo.costly > 0 ? "Koszty (" + (demo ? "****" : purgeInfo.sum + " zł") + ") zostają jako naprawy całego sprzętu, więc Finanse i Statystyki się nie zmienią. " : "", "Tego nie da si\u0119 cofn\u0105\u0107.")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 10

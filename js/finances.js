@@ -258,6 +258,11 @@
           const paid=+r.amountPaid||0;
           if(paid>0&&r.equipment&&rev.hasOwnProperty(r.equipment))rev[r.equipment]+=paid;
         });
+        // sprzedaż wycofanych sztuk (wpisy "sprzedaz-<id>" z Magazynu) zalicza się do zarobku tego sprzętu
+        (finances||[]).forEach(f=>{
+          if(f.type!=="przychód"||!(f.sourceId||"").startsWith("sprzedaz-"))return;
+          if(f.eq&&rev.hasOwnProperty(f.eq))rev[f.eq]+=(+f.amount||0);
+        });
         return rev;
       },[finances,rentals,rentalEquipMap,paymentRentalMap,rentalIdSet,stock]);
 
@@ -866,7 +871,7 @@
                 </div>
                 <div style={{marginTop:10}}>
                   <SectionLabel style={{marginBottom:6}}>Liczba sztuk</SectionLabel>
-                  <div style={{fontSize:13,color:subC}}><b style={{color:textC}}>{qty} szt.</b> → łączny koszt zakupu: <b style={{color:textC}}>{demo?"****":Math.round(purchaseTotal)+" zł"}</b></div>
+                  <div style={{fontSize:13,color:subC}}><b style={{color:textC}}>{qty} szt.</b> → łączny koszt zakupu: <b style={{color:textC}}>{demo?"****":Math.round(purchaseTotal)+" zł"}</b>{!demo&&whRetiredCost(stock,machines,eq)>0&&<span> (w tym wycofane sztuki: {Math.round(whRetiredCost(stock,machines,eq))} zł)</span>}</div>
                   <div style={{fontSize:11,color:subC,marginTop:3}}>Liczbę sztuk i ceny poszczególnych sztuk zmieniasz w zakładce Magazyn.</div>
                 </div>
                 <div style={{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
