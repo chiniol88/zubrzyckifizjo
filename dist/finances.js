@@ -2100,10 +2100,20 @@ function RentalStats(_ref9) {
       key: r.k,
       style: {
         display: "flex",
+        flexWrap: "wrap",
         alignItems: "center",
-        gap: 8,
+        columnGap: 8,
+        rowGap: 1,
         fontSize: 12,
         minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: "1 1 84px",
+        minWidth: 0,
+        display: "flex",
+        alignItems: "center",
+        gap: 8
       }
     }, /*#__PURE__*/React.createElement("i", {
       style: {
@@ -2115,83 +2125,56 @@ function RentalStats(_ref9) {
       }
     }), /*#__PURE__*/React.createElement("span", {
       style: {
-        flex: 1,
         minWidth: 0,
         overflow: "hidden",
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
         color: textC
       }
-    }, r.l), /*#__PURE__*/React.createElement("b", {
+    }, r.l)), /*#__PURE__*/React.createElement("span", {
       style: {
         fontVariantNumeric: "tabular-nums",
-        color: textC,
-        flexShrink: 0
+        whiteSpace: "nowrap",
+        marginLeft: "auto",
+        paddingLeft: 17
       }
-    }, r.cnt + r.wc, " \xB7 ", srcPct[src.rows.indexOf(r)], "%"));
-  }))), src.rows.map(function (r) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: "d" + r.k,
+    }, /*#__PURE__*/React.createElement("b", {
       style: {
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 8,
-        padding: "9px 0",
-        borderBottom: "1px solid " + borderC,
-        fontSize: 13
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        display: "flex",
-        gap: 8,
-        alignItems: "center",
-        minWidth: 0,
         color: textC
       }
-    }, /*#__PURE__*/React.createElement("i", {
-      style: {
-        width: 9,
-        height: 9,
-        borderRadius: 3,
-        background: r.c,
-        flexShrink: 0
-      }
-    }), r.l), /*#__PURE__*/React.createElement("span", {
-      style: {
-        textAlign: "right",
-        fontVariantNumeric: "tabular-nums",
-        color: subC
-      }
-    }, r.cnt > 0 && r.cnt + " wyp.", r.wc > 0 && /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: PURPLE,
-        fontWeight: 600
-      }
-    }, r.cnt > 0 ? " + " : "", r.wc, " ", plWozek(r.wc)), " \xB7 ", /*#__PURE__*/React.createElement("b", {
+    }, r.cnt + r.wc, " \xB7 ", srcPct[src.rows.indexOf(r)], "%"), r.rev > 0 && /*#__PURE__*/React.createElement("b", {
       style: {
         color: GREEN
       }
-    }, Z(r.rev))));
+    }, " \xB7 ", Z(r.rev))));
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "space-between",
-      padding: "10px 0 0",
-      fontSize: 13
+      gap: 8,
+      fontSize: 12,
+      borderTop: "1px solid " + borderC,
+      paddingTop: 7,
+      marginTop: 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: subC
+    }
+  }, "\u0141\u0105cznie"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontVariantNumeric: "tabular-nums",
+      whiteSpace: "nowrap"
     }
   }, /*#__PURE__*/React.createElement("b", {
     style: {
       color: textC
     }
-  }, "\u0141\u0105cznie"), /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: textC
-    }
-  }, src.totalCnt, " wyp.", src.totalW > 0 ? " + " + src.totalW + " wóz." : "", " \xB7 ", /*#__PURE__*/React.createElement("span", {
+  }, src.totalCnt + src.totalW), /*#__PURE__*/React.createElement("b", {
     style: {
       color: GREEN
     }
-  }, Z(src.totalRev))))), src.withoutSrc > 0 && /*#__PURE__*/React.createElement("div", {
+  }, " \xB7 ", Z(src.totalRev))))))), src.withoutSrc > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: subC,

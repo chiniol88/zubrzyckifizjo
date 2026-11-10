@@ -665,21 +665,20 @@
               <div style={{display:"grid",gridTemplateColumns:"132px 1fr",gap:14,alignItems:"center",marginBottom:8}}>
                 <StatDonut rows={src.rows.map(r=>({k:r.k,v:r.rev,c:r.c}))} size={132} top={src.totalCnt+(src.totalW?"+"+src.totalW:"")} bottom="klientów" track={trackC} ink={textC} sub={subC}/>
                 <div style={{display:"flex",flexDirection:"column",gap:7,minWidth:0}}>
-                  {src.rows.map(r=><div key={r.k} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,minWidth:0}}>
-                    <i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>
-                    <span style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:textC}}>{r.l}</span>
-                    <b style={{fontVariantNumeric:"tabular-nums",color:textC,flexShrink:0}}>{r.cnt+r.wc} · {srcPct[src.rows.indexOf(r)]}%</b>
+                  {src.rows.map(r=><div key={r.k} style={{display:"flex",flexWrap:"wrap",alignItems:"center",columnGap:8,rowGap:1,fontSize:12,minWidth:0}}>
+                    <span style={{flex:"1 1 84px",minWidth:0,display:"flex",alignItems:"center",gap:8}}>
+                      <i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>
+                      <span style={{minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:textC}}>{r.l}</span>
+                    </span>
+                    <span style={{fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap",marginLeft:"auto",paddingLeft:17}}><b style={{color:textC}}>{r.cnt+r.wc} · {srcPct[src.rows.indexOf(r)]}%</b>{r.rev>0&&<b style={{color:GREEN}}> · {Z(r.rev)}</b>}</span>
                   </div>)}
+                  <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:12,borderTop:"1px solid "+borderC,paddingTop:7,marginTop:1}}>
+                    <span style={{color:subC}}>Łącznie</span>
+                    <span style={{fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap"}}><b style={{color:textC}}>{src.totalCnt+src.totalW}</b><b style={{color:GREEN}}> · {Z(src.totalRev)}</b></span>
+                  </div>
                 </div>
               </div>
-              {src.rows.map(r=><div key={"d"+r.k} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}>
-                <span style={{display:"flex",gap:8,alignItems:"center",minWidth:0,color:textC}}><i style={{width:9,height:9,borderRadius:3,background:r.c,flexShrink:0}}/>{r.l}</span>
-                <span style={{textAlign:"right",fontVariantNumeric:"tabular-nums",color:subC}}>{r.cnt>0&&r.cnt+" wyp."}{r.wc>0&&<span style={{color:PURPLE,fontWeight:600}}>{r.cnt>0?" + ":""}{r.wc} {plWozek(r.wc)}</span>} · <b style={{color:GREEN}}>{Z(r.rev)}</b></span>
-              </div>)}
-              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",fontSize:13}}>
-                <b style={{color:textC}}>Łącznie</b><b style={{color:textC}}>{src.totalCnt} wyp.{src.totalW>0?" + "+src.totalW+" wóz.":""} · <span style={{color:GREEN}}>{Z(src.totalRev)}</span></b>
-              </div>
-            </>
+</>
           }
           {src.withoutSrc>0&&<div style={{fontSize:11,color:subC,marginTop:8}}>{src.withoutSrc} z {src.listItems.length} wpłat bez oznaczonego źródła</div>}
           <button onClick={()=>setShowRentalList(v=>!v)} style={{marginTop:10,width:"100%",padding:"6px",borderRadius:8,border:"1px solid "+borderC,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
