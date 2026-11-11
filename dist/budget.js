@@ -403,21 +403,96 @@ function CatMgrSection(_ref) {
     }
   }, "+")));
 }
-function BudgetEditItemForm(_ref2) {
-  var cats = _ref2.cats,
-    initial = _ref2.initial,
-    selMonth = _ref2.selMonth,
-    onSave = _ref2.onSave,
-    onDelete = _ref2.onDelete,
-    onClose = _ref2.onClose,
-    onFormChange = _ref2.onFormChange;
+
+// Pole kwoty z przyciskiem "× 1,23" (dodaje 23% VAT do kwoty netto, np. z Google Ads) — pokazywany tylko dla marketingu; z możliwością cofnięcia
+function AmountVat(_ref2) {
+  var label = _ref2.label,
+    value = _ref2.value,
+    _onChange = _ref2.onChange,
+    placeholder = _ref2.placeholder,
+    show = _ref2.show;
+  var dk = useContext(DarkCtx);
+  var _useState = useState(null),
+    _useState2 = _slicedToArray(_useState, 2),
+    prev = _useState2[0],
+    setPrev = _useState2[1];
+  var n = parseFloat(String(value).replace(",", "."));
+  var btn = {
+    border: "none",
+    borderRadius: 10,
+    padding: "7px 12px",
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    background: dk ? "#1E2F4A" : "#E1E9F5",
+    color: dk ? "#9DB8E8" : "#3E6FB0"
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Inp, {
+    label: label,
+    value: value,
+    onChange: function onChange(v) {
+      setPrev(null);
+      _onChange(v);
+    },
+    type: "number",
+    placeholder: placeholder
+  }), show && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      flexWrap: "wrap",
+      margin: "-6px 0 14px"
+    }
+  }, prev === null ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    disabled: !(n > 0),
+    onClick: function onClick() {
+      setPrev(String(value));
+      _onChange(String(Math.round(n * 1.23 * 100) / 100));
+    },
+    style: _objectSpread(_objectSpread({}, btn), {}, {
+      opacity: n > 0 ? 1 : .5
+    })
+  }, "\xD7 1,23 (dodaj 23% VAT)"), n > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: "#7A8FA6"
+    }
+  }, "netto ", n, " \u2192 brutto ", Math.round(n * 1.23 * 100) / 100, " z\u0142")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: "#3DAA72",
+      fontWeight: 600
+    }
+  }, "VAT dodany: ", prev, " \u2192 ", value, " z\u0142"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      _onChange(prev);
+      setPrev(null);
+    },
+    style: btn
+  }, "\u21A9 cofnij"))));
+}
+var isMktgForm = function isMktgForm(f) {
+  return /marketing/i.test((f && f.cat || "") + " " + (f && f.subcat || ""));
+};
+function BudgetEditItemForm(_ref3) {
+  var cats = _ref3.cats,
+    initial = _ref3.initial,
+    selMonth = _ref3.selMonth,
+    onSave = _ref3.onSave,
+    onDelete = _ref3.onDelete,
+    onClose = _ref3.onClose,
+    onFormChange = _ref3.onFormChange;
   var dk = useContext(DarkCtx);
   var border = dk ? "#2A3A56" : "#D9E2F0";
   var sub = "#7A8FA6";
-  var _useState = useState(initial),
-    _useState2 = _slicedToArray(_useState, 2),
-    form = _useState2[0],
-    setFormLocal = _useState2[1];
+  var _useState3 = useState(initial),
+    _useState4 = _slicedToArray(_useState3, 2),
+    form = _useState4[0],
+    setFormLocal = _useState4[1];
   var setForm = function setForm(fn) {
     var next = typeof fn === "function" ? fn(form) : fn;
     setFormLocal(next);
@@ -476,7 +551,7 @@ function BudgetEditItemForm(_ref2) {
         });
       });
     }
-  }), /*#__PURE__*/React.createElement(Inp, {
+  }), /*#__PURE__*/React.createElement(AmountVat, {
     label: "Kwota (z\u0142)",
     value: form.amount,
     onChange: function onChange(v) {
@@ -486,7 +561,7 @@ function BudgetEditItemForm(_ref2) {
         });
       });
     },
-    type: "number"
+    show: isMktgForm(form)
   }), /*#__PURE__*/React.createElement(Inp, {
     label: "Data",
     value: form.date || "",
@@ -514,20 +589,20 @@ function BudgetEditItemForm(_ref2) {
     onClick: onDelete
   }, "\uD83D\uDDD1\uFE0F Usu\u0144"));
 }
-function BudgetRecurringForm(_ref3) {
-  var type = _ref3.type,
-    cats = _ref3.cats,
-    initial = _ref3.initial,
-    selMonth = _ref3.selMonth,
-    dk = _ref3.dk,
-    border = _ref3.border,
-    onSave = _ref3.onSave,
-    onClose = _ref3.onClose,
-    title = _ref3.title;
-  var _useState3 = useState(initial),
-    _useState4 = _slicedToArray(_useState3, 2),
-    form = _useState4[0],
-    setForm = _useState4[1];
+function BudgetRecurringForm(_ref4) {
+  var type = _ref4.type,
+    cats = _ref4.cats,
+    initial = _ref4.initial,
+    selMonth = _ref4.selMonth,
+    dk = _ref4.dk,
+    border = _ref4.border,
+    onSave = _ref4.onSave,
+    onClose = _ref4.onClose,
+    title = _ref4.title;
+  var _useState5 = useState(initial),
+    _useState6 = _slicedToArray(_useState5, 2),
+    form = _useState6[0],
+    setForm = _useState6[1];
   var selCat = cats.find(function (c) {
     return c.name === form.cat;
   });
@@ -583,7 +658,7 @@ function BudgetRecurringForm(_ref3) {
       });
     },
     placeholder: "np. Czynsz, Rata kredytu"
-  }), /*#__PURE__*/React.createElement(Inp, {
+  }), /*#__PURE__*/React.createElement(AmountVat, {
     label: "Kwota (z\u0142) *",
     value: form.amount,
     onChange: function onChange(v) {
@@ -593,8 +668,8 @@ function BudgetRecurringForm(_ref3) {
         });
       });
     },
-    type: "number",
-    placeholder: "0"
+    placeholder: "0",
+    show: isMktgForm(form)
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -776,20 +851,20 @@ function BudgetRecurringForm(_ref3) {
     }
   }, "Zapisz"));
 }
-function BudgetEditRecurringForm(_ref4) {
-  var type = _ref4.type,
-    cats = _ref4.cats,
-    initial = _ref4.initial,
-    selMonth = _ref4.selMonth,
-    dk = _ref4.dk,
-    border = _ref4.border,
-    onSave = _ref4.onSave,
-    onDelete = _ref4.onDelete,
-    onClose = _ref4.onClose;
-  var _useState5 = useState(initial),
-    _useState6 = _slicedToArray(_useState5, 2),
-    form = _useState6[0],
-    setForm = _useState6[1];
+function BudgetEditRecurringForm(_ref5) {
+  var type = _ref5.type,
+    cats = _ref5.cats,
+    initial = _ref5.initial,
+    selMonth = _ref5.selMonth,
+    dk = _ref5.dk,
+    border = _ref5.border,
+    onSave = _ref5.onSave,
+    onDelete = _ref5.onDelete,
+    onClose = _ref5.onClose;
+  var _useState7 = useState(initial),
+    _useState8 = _slicedToArray(_useState7, 2),
+    form = _useState8[0],
+    setForm = _useState8[1];
   var selCat = cats.find(function (c) {
     return c.name === form.cat;
   });
@@ -844,7 +919,7 @@ function BudgetEditRecurringForm(_ref4) {
         });
       });
     }
-  }), /*#__PURE__*/React.createElement(Inp, {
+  }), /*#__PURE__*/React.createElement(AmountVat, {
     label: "Kwota (z\u0142)",
     value: form.amount,
     onChange: function onChange(v) {
@@ -854,7 +929,7 @@ function BudgetEditRecurringForm(_ref4) {
         });
       });
     },
-    type: "number"
+    show: isMktgForm(form)
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -1043,26 +1118,26 @@ function BudgetEditRecurringForm(_ref4) {
     onClick: onDelete
   }, "\uD83D\uDDD1\uFE0F Usu\u0144"));
 }
-function BudgetRecurringOverrideForm(_ref5) {
-  var r = _ref5.r,
-    selMonth = _ref5.selMonth,
-    overrideVal = _ref5.overrideVal,
-    dk = _ref5.dk,
-    border = _ref5.border,
-    onSave = _ref5.onSave,
-    onReset = _ref5.onReset,
-    onEditGlobal = _ref5.onEditGlobal,
-    onClose = _ref5.onClose;
+function BudgetRecurringOverrideForm(_ref6) {
+  var r = _ref6.r,
+    selMonth = _ref6.selMonth,
+    overrideVal = _ref6.overrideVal,
+    dk = _ref6.dk,
+    border = _ref6.border,
+    onSave = _ref6.onSave,
+    onReset = _ref6.onReset,
+    onEditGlobal = _ref6.onEditGlobal,
+    onClose = _ref6.onClose;
   var sub = "#7A8FA6";
   var hasOverride = overrideVal !== undefined;
-  var _useState7 = useState(hasOverride ? String(overrideVal.amount) : String(r.amount)),
-    _useState8 = _slicedToArray(_useState7, 2),
-    amount = _useState8[0],
-    setAmount = _useState8[1];
-  var _useState9 = useState(hasOverride ? overrideVal.desc || r.desc || "" : r.desc || ""),
+  var _useState9 = useState(hasOverride ? String(overrideVal.amount) : String(r.amount)),
     _useState0 = _slicedToArray(_useState9, 2),
-    desc = _useState0[0],
-    setDesc = _useState0[1];
+    amount = _useState0[0],
+    setAmount = _useState0[1];
+  var _useState1 = useState(hasOverride ? overrideVal.desc || r.desc || "" : r.desc || ""),
+    _useState10 = _slicedToArray(_useState1, 2),
+    desc = _useState10[0],
+    setDesc = _useState10[1];
   var monthLabel = new Date(selMonth + "-15").toLocaleDateString("pl-PL", {
     month: "long",
     year: "numeric"
@@ -1134,15 +1209,15 @@ function BudgetRecurringOverrideForm(_ref5) {
     onClick: onEditGlobal
   }, "\u2699 Edytuj globalnie \u2192"));
 }
-function BudgetItemForm(_ref6) {
-  var type = _ref6.type,
-    cats = _ref6.cats,
-    form = _ref6.form,
-    setForm = _ref6.setForm,
-    onSave = _ref6.onSave,
-    onSaveAndNext = _ref6.onSaveAndNext,
-    onClose = _ref6.onClose,
-    title = _ref6.title;
+function BudgetItemForm(_ref7) {
+  var type = _ref7.type,
+    cats = _ref7.cats,
+    form = _ref7.form,
+    setForm = _ref7.setForm,
+    onSave = _ref7.onSave,
+    onSaveAndNext = _ref7.onSaveAndNext,
+    onClose = _ref7.onClose,
+    title = _ref7.title;
   var selCat = cats.find(function (c) {
     return c.name === form.cat;
   });
@@ -1197,7 +1272,7 @@ function BudgetItemForm(_ref6) {
       });
     },
     placeholder: "np. Wyp\u0142ata marzec"
-  }), /*#__PURE__*/React.createElement(Inp, {
+  }), /*#__PURE__*/React.createElement(AmountVat, {
     label: "Kwota (z\u0142) *",
     value: form.amount,
     onChange: function onChange(v) {
@@ -1207,8 +1282,8 @@ function BudgetItemForm(_ref6) {
         });
       });
     },
-    type: "number",
-    placeholder: "0"
+    placeholder: "0",
+    show: isMktgForm(form)
   }), /*#__PURE__*/React.createElement(Inp, {
     label: "Data *",
     value: form.date || "",
@@ -1251,32 +1326,32 @@ function normCats(arr) {
     } : c;
   });
 }
-function Budget(_ref7) {
-  var finances = _ref7.finances,
-    visits = _ref7.visits,
-    rentals = _ref7.rentals,
-    budget = _ref7.budget,
-    setBudget = _ref7.setBudget,
-    desk = _ref7.desk;
+function Budget(_ref8) {
+  var finances = _ref8.finances,
+    visits = _ref8.visits,
+    rentals = _ref8.rentals,
+    budget = _ref8.budget,
+    setBudget = _ref8.setBudget,
+    desk = _ref8.desk;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
   var bg2 = dk ? "#18202F" : "#fff";
   var border = dk ? "#2A3A56" : "#D9E2F0";
   var sub = "#7A8FA6";
-  var _useState1 = useState(function () {
+  var _useState11 = useState(function () {
       return todayLocal().slice(0, 7);
     }),
-    _useState10 = _slicedToArray(_useState1, 2),
-    selMonth = _useState10[0],
-    setSelMonth = _useState10[1];
-  var _useState11 = useState(false),
     _useState12 = _slicedToArray(_useState11, 2),
-    showCatMgr = _useState12[0],
-    setShowCatMgr = _useState12[1];
+    selMonth = _useState12[0],
+    setSelMonth = _useState12[1];
   var _useState13 = useState(false),
     _useState14 = _slicedToArray(_useState13, 2),
-    showScanner = _useState14[0],
-    setShowScanner = _useState14[1];
+    showCatMgr = _useState14[0],
+    setShowCatMgr = _useState14[1];
+  var _useState15 = useState(false),
+    _useState16 = _slicedToArray(_useState15, 2),
+    showScanner = _useState16[0],
+    setShowScanner = _useState16[1];
   var receiptMemory = useMemo(function () {
     return budget.receiptMemory || {};
   }, [budget]);
@@ -1287,43 +1362,43 @@ function Budget(_ref7) {
       });
     });
   };
-  var _useState15 = useState(null),
-    _useState16 = _slicedToArray(_useState15, 2),
-    showAdd = _useState16[0],
-    setShowAdd = _useState16[1]; // "income"|"expense"
   var _useState17 = useState(null),
     _useState18 = _slicedToArray(_useState17, 2),
-    editItem = _useState18[0],
-    setEditItem = _useState18[1];
-  var _useState19 = useState({
+    showAdd = _useState18[0],
+    setShowAdd = _useState18[1]; // "income"|"expense"
+  var _useState19 = useState(null),
+    _useState20 = _slicedToArray(_useState19, 2),
+    editItem = _useState20[0],
+    setEditItem = _useState20[1];
+  var _useState21 = useState({
       cat: "",
       subcat: "",
       desc: "",
       amount: ""
     }),
-    _useState20 = _slicedToArray(_useState19, 2),
-    form = _useState20[0],
-    setForm = _useState20[1];
-  // cat manager state
-  var _useState21 = useState(null),
     _useState22 = _slicedToArray(_useState21, 2),
-    editCat = _useState22[0],
-    setEditCat = _useState22[1]; // {type, catIdx, field:"name"|"sub", subIdx, value}
-  var _useState23 = useState({
+    form = _useState22[0],
+    setForm = _useState22[1];
+  // cat manager state
+  var _useState23 = useState(null),
+    _useState24 = _slicedToArray(_useState23, 2),
+    editCat = _useState24[0],
+    setEditCat = _useState24[1]; // {type, catIdx, field:"name"|"sub", subIdx, value}
+  var _useState25 = useState({
       income: "",
       expense: ""
     }),
-    _useState24 = _slicedToArray(_useState23, 2),
-    newCatName = _useState24[0],
-    setNewCatName = _useState24[1];
-  var _useState25 = useState({}),
     _useState26 = _slicedToArray(_useState25, 2),
-    newSubName = _useState26[0],
-    setNewSubName = _useState26[1]; // {`${type}-${catIdx}`: ""}
-  var _useState27 = useState("expense"),
+    newCatName = _useState26[0],
+    setNewCatName = _useState26[1];
+  var _useState27 = useState({}),
     _useState28 = _slicedToArray(_useState27, 2),
-    newCatType = _useState28[0],
-    setNewCatType = _useState28[1];
+    newSubName = _useState28[0],
+    setNewSubName = _useState28[1]; // {`${type}-${catIdx}`: ""}
+  var _useState29 = useState("expense"),
+    _useState30 = _slicedToArray(_useState29, 2),
+    newCatType = _useState30[0],
+    setNewCatType = _useState30[1];
 
   // Normalize cats on read
   var rawIncCats = useMemo(function () {
@@ -1403,14 +1478,14 @@ function Budget(_ref7) {
     }).forEach(function (f) {
       map["Wypożyczalnia"] += +f.amount || 0;
     });
-    return Object.entries(map).filter(function (_ref8) {
-      var _ref9 = _slicedToArray(_ref8, 2),
-        v = _ref9[1];
+    return Object.entries(map).filter(function (_ref9) {
+      var _ref0 = _slicedToArray(_ref9, 2),
+        v = _ref0[1];
       return v > 0;
-    }).map(function (_ref0) {
-      var _ref1 = _slicedToArray(_ref0, 2),
-        label = _ref1[0],
-        v = _ref1[1];
+    }).map(function (_ref1) {
+      var _ref10 = _slicedToArray(_ref1, 2),
+        label = _ref10[0],
+        v = _ref10[1];
       return {
         label: label,
         v: v
@@ -1450,10 +1525,10 @@ function Budget(_ref7) {
         return i !== catIdx;
       });
       var months = {};
-      Object.entries(b.months || {}).forEach(function (_ref10) {
-        var _ref11 = _slicedToArray(_ref10, 2),
-          m = _ref11[0],
-          md = _ref11[1];
+      Object.entries(b.months || {}).forEach(function (_ref11) {
+        var _ref12 = _slicedToArray(_ref11, 2),
+          m = _ref12[0],
+          md = _ref12[1];
         months[m] = _objectSpread(_objectSpread({}, md), {}, _defineProperty({}, mkey, (md[mkey] || []).map(function (it) {
           return it.cat === delName ? _objectSpread(_objectSpread({}, it), {}, {
             cat: fallback,
@@ -1475,9 +1550,9 @@ function Budget(_ref7) {
       var a = _toConsumableArray(cats);
       var ni = idx + dir;
       if (ni < 0 || ni >= a.length) return a;
-      var _ref12 = [a[ni], a[idx]];
-      a[idx] = _ref12[0];
-      a[ni] = _ref12[1];
+      var _ref13 = [a[ni], a[idx]];
+      a[idx] = _ref13[0];
+      a[ni] = _ref13[1];
       return a;
     });
   };
@@ -1494,10 +1569,10 @@ function Budget(_ref7) {
         }) : c;
       });
       var months = {};
-      Object.entries(b.months || {}).forEach(function (_ref13) {
-        var _ref14 = _slicedToArray(_ref13, 2),
-          m = _ref14[0],
-          md = _ref14[1];
+      Object.entries(b.months || {}).forEach(function (_ref14) {
+        var _ref15 = _slicedToArray(_ref14, 2),
+          m = _ref15[0],
+          md = _ref15[1];
         months[m] = _objectSpread(_objectSpread({}, md), {}, _defineProperty({}, mkey, (md[mkey] || []).map(function (i) {
           return i.cat === oldName ? _objectSpread(_objectSpread({}, i), {}, {
             cat: newName.trim()
@@ -1536,9 +1611,9 @@ function Budget(_ref7) {
         var a = _toConsumableArray(c.subs || []);
         var ni = subIdx + dir;
         if (ni < 0 || ni >= a.length) return c;
-        var _ref15 = [a[ni], a[subIdx]];
-        a[subIdx] = _ref15[0];
-        a[ni] = _ref15[1];
+        var _ref16 = [a[ni], a[subIdx]];
+        a[subIdx] = _ref16[0];
+        a[ni] = _ref16[1];
         return _objectSpread(_objectSpread({}, c), {}, {
           subs: a
         });
@@ -1560,10 +1635,10 @@ function Budget(_ref7) {
         }) : c;
       });
       var months = {};
-      Object.entries(b.months || {}).forEach(function (_ref16) {
-        var _ref17 = _slicedToArray(_ref16, 2),
-          m = _ref17[0],
-          md = _ref17[1];
+      Object.entries(b.months || {}).forEach(function (_ref17) {
+        var _ref18 = _slicedToArray(_ref17, 2),
+          m = _ref18[0],
+          md = _ref18[1];
         months[m] = _objectSpread(_objectSpread({}, md), {}, _defineProperty({}, mkey, (md[mkey] || []).map(function (it) {
           return it.cat === cats[catIdx].name && it.subcat === oldName ? _objectSpread(_objectSpread({}, it), {}, {
             subcat: newName.trim()
@@ -1733,22 +1808,22 @@ function Budget(_ref7) {
   var totalExp = (monthData.expenses || []).reduce(function (s, i) {
     return s + (+i.amount || 0);
   }, 0) + recurringExpTotalEarly;
-  var _useState29 = useState(false),
-    _useState30 = _slicedToArray(_useState29, 2),
-    showYear = _useState30[0],
-    setShowYear = _useState30[1];
   var _useState31 = useState(false),
     _useState32 = _slicedToArray(_useState31, 2),
-    showCompare = _useState32[0],
-    setShowCompare = _useState32[1];
+    showYear = _useState32[0],
+    setShowYear = _useState32[1];
   var _useState33 = useState(false),
     _useState34 = _slicedToArray(_useState33, 2),
-    showRecurringList = _useState34[0],
-    setShowRecurringList = _useState34[1];
+    showCompare = _useState34[0],
+    setShowCompare = _useState34[1];
   var _useState35 = useState(false),
     _useState36 = _slicedToArray(_useState35, 2),
-    showAnalysis = _useState36[0],
-    setShowAnalysis = _useState36[1];
+    showRecurringList = _useState36[0],
+    setShowRecurringList = _useState36[1];
+  var _useState37 = useState(false),
+    _useState38 = _slicedToArray(_useState37, 2),
+    showAnalysis = _useState38[0],
+    setShowAnalysis = _useState38[1];
   var analysisData = useMemo(function () {
     var months = [];
     var _loop = function _loop() {
@@ -1807,29 +1882,29 @@ function Budget(_ref7) {
     }
     return months;
   }, [budget, selMonth, visits, finances]);
-  var _useState37 = useState(function () {
+  var _useState39 = useState(function () {
       var d = new Date(todayLocal().slice(0, 7) + "-15");
       d.setMonth(d.getMonth() - 1);
       return d.toISOString().slice(0, 7);
     }),
-    _useState38 = _slicedToArray(_useState37, 2),
-    compareMonth = _useState38[0],
-    setCompareMonth = _useState38[1];
+    _useState40 = _slicedToArray(_useState39, 2),
+    compareMonth = _useState40[0],
+    setCompareMonth = _useState40[1];
   // If selMonth changes to equal compareMonth, shift compareMonth one month back
   var safeCompareMonth = compareMonth === selMonth ? function () {
     var d = new Date(selMonth + "-15");
     d.setMonth(d.getMonth() - 1);
     return d.toISOString().slice(0, 7);
   }() : compareMonth;
-  var _useState39 = useState(null),
-    _useState40 = _slicedToArray(_useState39, 2),
-    showRecurring = _useState40[0],
-    setShowRecurring = _useState40[1]; // "income"|"expense"|null - add modal
   var _useState41 = useState(null),
     _useState42 = _slicedToArray(_useState41, 2),
-    editRecurring = _useState42[0],
-    setEditRecurring = _useState42[1];
-  var _useState43 = useState({
+    showRecurring = _useState42[0],
+    setShowRecurring = _useState42[1]; // "income"|"expense"|null - add modal
+  var _useState43 = useState(null),
+    _useState44 = _slicedToArray(_useState43, 2),
+    editRecurring = _useState44[0],
+    setEditRecurring = _useState44[1];
+  var _useState45 = useState({
       type: "expense",
       cat: "",
       subcat: "",
@@ -1838,17 +1913,17 @@ function Budget(_ref7) {
       cycle: "monthly",
       startMonth: selMonth
     }),
-    _useState44 = _slicedToArray(_useState43, 2),
-    rForm = _useState44[0],
-    setRForm = _useState44[1];
-  var _useState45 = useState(null),
     _useState46 = _slicedToArray(_useState45, 2),
-    editRecurringOverride = _useState46[0],
-    setEditRecurringOverride = _useState46[1];
-  var _useState47 = useState(new Set()),
+    rForm = _useState46[0],
+    setRForm = _useState46[1];
+  var _useState47 = useState(null),
     _useState48 = _slicedToArray(_useState47, 2),
-    openRecurringCats = _useState48[0],
-    setOpenRecurringCats = _useState48[1];
+    editRecurringOverride = _useState48[0],
+    setEditRecurringOverride = _useState48[1];
+  var _useState49 = useState(new Set()),
+    _useState50 = _slicedToArray(_useState49, 2),
+    openRecurringCats = _useState50[0],
+    setOpenRecurringCats = _useState50[1];
   var recurring = useMemo(function () {
     return budget.recurring || [];
   }, [budget]);
@@ -2053,10 +2128,10 @@ function Budget(_ref7) {
 
   // ItemForm defined outside Budget
 
-  var _useState49 = useState({}),
-    _useState50 = _slicedToArray(_useState49, 2),
-    expandedCats = _useState50[0],
-    setExpandedCats = _useState50[1];
+  var _useState51 = useState({}),
+    _useState52 = _slicedToArray(_useState51, 2),
+    expandedCats = _useState52[0],
+    setExpandedCats = _useState52[1];
   var toggleCat = function toggleCat(key) {
     return setExpandedCats(function (e) {
       return _objectSpread(_objectSpread({}, e), {}, _defineProperty({}, key, !e[key]));
@@ -2083,19 +2158,19 @@ function Budget(_ref7) {
         catRec: catRec,
         catTotal: catTotal
       };
-    }).filter(function (_ref18) {
-      var catItems = _ref18.catItems,
-        catRec = _ref18.catRec;
+    }).filter(function (_ref19) {
+      var catItems = _ref19.catItems,
+        catRec = _ref19.catRec;
       return catItems.length || catRec.length;
     });
     var sorted = type === "expense" ? _toConsumableArray(catsWithTotals).sort(function (a, b) {
       return b.catTotal - a.catTotal;
     }) : catsWithTotals;
-    return sorted.map(function (_ref19) {
-      var cat = _ref19.cat,
-        catItems = _ref19.catItems,
-        catRec = _ref19.catRec,
-        catTotal = _ref19.catTotal;
+    return sorted.map(function (_ref20) {
+      var cat = _ref20.cat,
+        catItems = _ref20.catItems,
+        catRec = _ref20.catRec,
+        catTotal = _ref20.catTotal;
       if (!catItems.length && !catRec.length) return null;
       var hasSubs = (cat.subs || []).length > 0;
       var expKey = type + "-" + cat.name;
@@ -2660,13 +2735,13 @@ function Budget(_ref7) {
           background: dk ? "#111E1E" : "#F8FAFB"
         }
       }, h);
-    }), analysisData.map(function (_ref20) {
-      var m = _ref20.m,
-        mRecExp = _ref20.mRecExp,
-        mTotalInc = _ref20.mTotalInc,
-        mTotalExp = _ref20.mTotalExp,
-        pctInc = _ref20.pctInc,
-        pctExp = _ref20.pctExp;
+    }), analysisData.map(function (_ref21) {
+      var m = _ref21.m,
+        mRecExp = _ref21.mRecExp,
+        mTotalInc = _ref21.mTotalInc,
+        mTotalExp = _ref21.mTotalExp,
+        pctInc = _ref21.pctInc,
+        pctExp = _ref21.pctExp;
       var isCur = m === selMonth;
       var barW = maxRecExp > 0 ? Math.round(mRecExp / maxRecExp * 100) : 0;
       return /*#__PURE__*/React.createElement(React.Fragment, {
@@ -2867,10 +2942,10 @@ function Budget(_ref7) {
         textTransform: "uppercase",
         letterSpacing: .5
       }
-    }, label), catGroups.map(function (_ref21) {
-      var cat = _ref21.cat,
-        catRecs = _ref21.catRecs,
-        catActiveSum = _ref21.catActiveSum;
+    }, label), catGroups.map(function (_ref22) {
+      var cat = _ref22.cat,
+        catRecs = _ref22.catRecs,
+        catActiveSum = _ref22.catActiveSum;
       var key = typ + "-" + cat;
       var isOpen = openRecurringCats.has(key);
       var toggle = function toggle() {

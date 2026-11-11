@@ -57,6 +57,25 @@
       );
     }
 
+    // Pole kwoty z przyciskiem "× 1,23" (dodaje 23% VAT do kwoty netto, np. z Google Ads) — pokazywany tylko dla marketingu; z możliwością cofnięcia
+    function AmountVat({label,value,onChange,placeholder,show}) {
+      const dk=useContext(DarkCtx);
+      const [prev,setPrev]=useState(null);
+      const n=parseFloat(String(value).replace(",","."));
+      const btn={border:"none",borderRadius:10,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:dk?"#1E2F4A":"#E1E9F5",color:dk?"#9DB8E8":"#3E6FB0"};
+      return <div>
+        <Inp label={label} value={value} onChange={v=>{setPrev(null);onChange(v);}} type="number" placeholder={placeholder}/>
+        {show&&<div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",margin:"-6px 0 14px"}}>
+          {prev===null
+            ?<><button type="button" disabled={!(n>0)} onClick={()=>{setPrev(String(value));onChange(String(Math.round(n*1.23*100)/100));}} style={{...btn,opacity:n>0?1:.5}}>× 1,23 (dodaj 23% VAT)</button>
+               {n>0&&<span style={{fontSize:11,color:"#7A8FA6"}}>netto {n} → brutto {Math.round(n*1.23*100)/100} zł</span>}</>
+            :<><span style={{fontSize:12,color:"#3DAA72",fontWeight:600}}>VAT dodany: {prev} → {value} zł</span>
+               <button type="button" onClick={()=>{onChange(prev);setPrev(null);}} style={btn}>↩ cofnij</button></>}
+        </div>}
+      </div>;
+    }
+    const isMktgForm=f=>/marketing/i.test(((f&&f.cat)||"")+" "+((f&&f.subcat)||""));
+
     function BudgetEditItemForm({cats,initial,selMonth,onSave,onDelete,onClose,onFormChange}) {
       const dk=useContext(DarkCtx);
       const border=dk?"#2A3A56":"#D9E2F0";
@@ -69,7 +88,7 @@
         <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
         {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
         <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
-        <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
+        <AmountVat label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} show={isMktgForm(form)}/>
         <Inp label="Data" value={form.date||""} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>
         <Btn style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={onSave}>Zapisz zmiany</Btn>
         <Btn variant="danger" style={{width:"100%",justifyContent:"center"}} onClick={onDelete}>🗑️ Usuń</Btn>
@@ -85,7 +104,7 @@
         <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
         {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
         <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. Czynsz, Rata kredytu"/>
-        <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+        <AmountVat label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} placeholder="0" show={isMktgForm(form)}/>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
@@ -126,7 +145,7 @@
         <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
         {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
         <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))}/>
-        <Inp label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number"/>
+        <AmountVat label="Kwota (zł)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} show={isMktgForm(form)}/>
         <div style={{display:"flex",gap:10,marginBottom:14}}>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:600,color:dk?"#6B84AC":"#3E5578",marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>Dzień miesiąca</div>
@@ -183,7 +202,7 @@
         <Sel label="Kategoria" value={form.cat} onChange={v=>setForm(f=>({...f,cat:v,subcat:""}))} options={cats.map(c=>({value:c.name,label:c.name}))}/>
         {hasSubs&&<Sel label="Podkategoria" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[{value:"",label:"— brak —"},...(selCat.subs||[]).map(s=>({value:s,label:s}))]}/>}
         <Inp label="Opis" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. Wypłata marzec"/>
-        <Inp label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} type="number" placeholder="0"/>
+        <AmountVat label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} placeholder="0" show={isMktgForm(form)}/>
         <Inp label="Data *" value={form.date||""} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>
         <Btn disabled={!form.cat||!form.amount||!form.date} style={{width:"100%",justifyContent:"center",marginBottom:8}} onClick={onSave}>Zapisz</Btn>
         <Btn disabled={!form.cat||!form.amount||!form.date} variant="secondary" style={{width:"100%",justifyContent:"center"}} onClick={onSaveAndNext}>Zapisz i dodaj kolejny</Btn>
