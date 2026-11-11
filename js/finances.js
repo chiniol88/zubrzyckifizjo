@@ -347,7 +347,8 @@
         const mktgMonths=isYear?Array.from({length:12},(_,i)=>statsYear+"-"+String(i+1).padStart(2,"0")):[selMonth];
         const marketingByType={szyny:0,wozki:0,balkoniki:0,ogolne:0};
         mktgMonths.forEach(ym=>{const o=marketingSpendByType(budget,stock,ym);Object.keys(marketingByType).forEach(k=>{marketingByType[k]+=o[k];});});
-        const marketingSpend=marketingByType.szyny+marketingByType.wozki+marketingByType.balkoniki+marketingByType.ogolne;
+        // koszt reklamy w Statystykach = suma trzech rodzajów (szyny + wózki + balkoniki); dawny ogólny marketing NIE jest doliczany (tylko informacyjnie)
+        const marketingSpend=marketingByType.szyny+marketingByType.wozki+marketingByType.balkoniki;
 
         return {totalRevenue,transportRevenue,transportCount,wozkiRevenue,wozkiCount,totalCount,monthlyArr,maxMonthly,cutStr,cutEnd,avgDurationOne,avgCyclesCount,marketingSpend,marketingByType};
       },[rentals,finances,nfzCases,pStart,pEnd,isYear,statsYear,selMonth,today,rentalEquipMap,paymentRentalMap,rentalIdSet,stock,budget]);
@@ -722,7 +723,7 @@
           {(()=>{
             const shown=adsStats.types.filter(t=>t.spend>0||t.newCount>0||t.revenue>0);
             return <>
-              {shown.length===0&&adsStats.general<=0&&<div style={{fontSize:12,color:subC,marginBottom:8}}>Brak wydatków i klientów z reklamy w tym okresie.</div>}
+              {shown.length===0&&<div style={{fontSize:12,color:subC,marginBottom:8}}>Brak wydatków i klientów z reklamy w tym okresie.</div>}
               {shown.map(t=><div key={t.k} style={{background:dk?"#0F1E1E":"#F6F9FC",borderRadius:14,padding:"10px 12px",marginBottom:8}}>
                 <div style={{fontSize:13,fontWeight:700,color:textC,marginBottom:6}}>{t.l}{t.k==="wozki"&&<span style={{fontWeight:400,color:subC,fontSize:11}}> (zwrot z prowizji NFZ przychodzi z opóźnieniem)</span>}</div>
                 <div style={{display:"flex",gap:8,marginBottom:4}}>
@@ -740,8 +741,8 @@
                 {kv("Przychód z reklamy w okresie",Z(t.revenue),GREEN)}
                 {kv("Zwrot z wydanej złotówki (ROAS)",t.roas!==null?t.roas+"×":"—")}
               </div>)}
-              {adsStats.general>0&&kv("Marketing ogólny (bez podziału na typ)",Z(adsStats.general),RED)}
-              {(shown.length>0||adsStats.general>0)&&<div style={{borderTop:"1px solid "+borderC,marginTop:6,paddingTop:4}}>
+              {adsStats.general>0&&<div style={{fontSize:11,color:subC,margin:"2px 0 6px"}}>Stary marketing ogólny w tym okresie: {Z(adsStats.general)} (niewliczony do powyższych sum)</div>}
+              {shown.length>0&&<div style={{borderTop:"1px solid "+borderC,marginTop:6,paddingTop:4}}>
                 {kv("Razem wydano",Z(adsStats.spend),RED)}
                 {kv("Razem nowych klientów",String(adsStats.newCount))}
                 {kv("Koszt na klienta (razem)",adsStats.perPatient!==null?Z(adsStats.perPatient):"—")}
@@ -760,7 +761,7 @@
             })} style={{marginTop:10,width:"100%",padding:"9px",borderRadius:10,border:"1.5px dashed "+BLUE,background:"transparent",color:BLUE,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
             + Załóż w budżecie podkategorie: Marketing szyny / wózki / balkoniki
           </button>}
-          <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Wydatki bierzemy z budżetu: kategoria {(stock&&stock.marketingCat)||"Firma"}, podkategorie „Marketing szyny”, „Marketing wózki”, „Marketing balkoniki”. Wydatki wpisane inaczej (np. „Marketing”) liczą się jako ogólne, bez podziału na typ.</div>
+          <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Wydatki bierzemy z budżetu: kategoria {(stock&&stock.marketingCat)||"Firma"}, podkategorie „Marketing szyny”, „Marketing wózki”, „Marketing balkoniki”. Dawny „Marketing” (bez podziału) nie jest doliczany do kosztów reklamy w Statystykach.</div>
         </StatAcc>
 
         {/* 1c. Sezonowość */}

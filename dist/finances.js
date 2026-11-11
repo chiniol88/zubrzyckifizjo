@@ -922,7 +922,8 @@ function RentalStats(_ref9) {
         marketingByType[k] += o[k];
       });
     });
-    var marketingSpend = marketingByType.szyny + marketingByType.wozki + marketingByType.balkoniki + marketingByType.ogolne;
+    // koszt reklamy w Statystykach = suma trzech rodzajów (szyny + wózki + balkoniki); dawny ogólny marketing NIE jest doliczany (tylko informacyjnie)
+    var marketingSpend = marketingByType.szyny + marketingByType.wozki + marketingByType.balkoniki;
     return {
       totalRevenue: totalRevenue,
       transportRevenue: transportRevenue,
@@ -2356,7 +2357,7 @@ function RentalStats(_ref9) {
     var shown = adsStats.types.filter(function (t) {
       return t.spend > 0 || t.newCount > 0 || t.revenue > 0;
     });
-    return /*#__PURE__*/React.createElement(React.Fragment, null, shown.length === 0 && adsStats.general <= 0 && /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement(React.Fragment, null, shown.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: subC,
@@ -2438,7 +2439,13 @@ function RentalStats(_ref9) {
           margin: "4px 0"
         }
       }, "\u26A0 Wydano ", Z(t.spend), ", zero nowych klient\xF3w z reklamy w tym okresie."), kv("Koszt na pozyskanego klienta", t.perPatient !== null ? Z(t.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(t.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", t.roas !== null ? t.roas + "×" : "—"));
-    }), adsStats.general > 0 && kv("Marketing ogólny (bez podziału na typ)", Z(adsStats.general), RED), (shown.length > 0 || adsStats.general > 0) && /*#__PURE__*/React.createElement("div", {
+    }), adsStats.general > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: subC,
+        margin: "2px 0 6px"
+      }
+    }, "Stary marketing og\xF3lny w tym okresie: ", Z(adsStats.general), " (niewliczony do powy\u017Cszych sum)"), shown.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         borderTop: "1px solid " + borderC,
         marginTop: 6,
@@ -2509,7 +2516,7 @@ function RentalStats(_ref9) {
       marginTop: 8,
       lineHeight: 1.5
     }
-  }, "Wydatki bierzemy z bud\u017Cetu: kategoria ", stock && stock.marketingCat || "Firma", ", podkategorie \u201EMarketing szyny\u201D, \u201EMarketing w\xF3zki\u201D, \u201EMarketing balkoniki\u201D. Wydatki wpisane inaczej (np. \u201EMarketing\u201D) licz\u0105 si\u0119 jako og\xF3lne, bez podzia\u0142u na typ.")), /*#__PURE__*/React.createElement(StatAcc, {
+  }, "Wydatki bierzemy z bud\u017Cetu: kategoria ", stock && stock.marketingCat || "Firma", ", podkategorie \u201EMarketing szyny\u201D, \u201EMarketing w\xF3zki\u201D, \u201EMarketing balkoniki\u201D. Dawny \u201EMarketing\u201D (bez podzia\u0142u) nie jest doliczany do koszt\xF3w reklamy w Statystykach.")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: !!openMap.season,
     onToggle: tog("season"),
