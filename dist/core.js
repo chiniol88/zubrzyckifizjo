@@ -1282,18 +1282,31 @@ var MKTG_TYPES = [{
   sub: "Marketing balkoniki",
   l: "Balkoniki"
 }];
-var marketingSpendByType = function marketingSpendByType(budget, stock, ym) {
-  var mktgCat = stock && stock.marketingCat || "";
-  var mktgSub = stock && stock.marketingSub || "";
+// Typ marketingu po nazwie kategorii/podkategorii: albo dokładnie "Marketing szyny/wózki/balkoniki" w kategorii marketingu (domyślnie Firma),
+// albo (luźniej) dowolna kategoria/podkategoria z "marketing"/"reklam" w nazwie, której podkategoria zawiera "szyn" / "wózk|wozk|wózek" / "balkon".
+var mktgTypeOf = function mktgTypeOf(stock, cat, sub) {
   var nm = function nm(x) {
     return String(x == null ? "" : x).trim().toLowerCase();
   };
-  var typeOf = function typeOf(cat, sub) {
-    if (nm(cat) !== nm(mktgCat || "firma")) return null;
+  var c = nm(cat),
+    s = nm(sub);
+  if (c === nm(stock && stock.marketingCat || "" || "firma")) {
     var t = MKTG_TYPES.find(function (x) {
-      return nm(x.sub) === nm(sub);
+      return nm(x.sub) === s;
     });
-    return t ? t.k : null;
+    if (t) return t.k;
+  }
+  if (!/marketing|reklam/.test(c + " " + s)) return null;
+  if (/szyn/.test(s)) return "szyny";
+  if (/w[oó]zk|w[oó]zek|wozek/.test(s)) return "wozki";
+  if (/balkon/.test(s)) return "balkoniki";
+  return null;
+};
+var marketingSpendByType = function marketingSpendByType(budget, stock, ym) {
+  var mktgCat = stock && stock.marketingCat || "";
+  var mktgSub = stock && stock.marketingSub || "";
+  var typeOf = function typeOf(cat, sub) {
+    return mktgTypeOf(stock, cat, sub);
   };
   var matchCat = function matchCat(cat, sub) {
     if (mktgCat) return cat === mktgCat && (!mktgSub || sub === mktgSub);

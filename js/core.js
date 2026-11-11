@@ -519,15 +519,25 @@ const parseCycleSourceId = sid => { const rest=sid.slice(6); const di=rest.index
 // Marketing (wydatki z budżetu) w miesiącu, w podziale na typ sprzętu. Podkategorie "Marketing szyny/wózki/balkoniki" (w tej samej kategorii co
 // marketing: domyślnie Firma) liczą się do swojego typu; reszta (np. stare wpisy "Firma → Marketing") to "ogolne". Suma = dawny wynik.
 const MKTG_TYPES = [{k:"szyny",sub:"Marketing szyny",l:"Szyny"},{k:"wozki",sub:"Marketing wózki",l:"Wózki"},{k:"balkoniki",sub:"Marketing balkoniki",l:"Balkoniki"}];
+// Typ marketingu po nazwie kategorii/podkategorii: albo dokładnie "Marketing szyny/wózki/balkoniki" w kategorii marketingu (domyślnie Firma),
+// albo (luźniej) dowolna kategoria/podkategoria z "marketing"/"reklam" w nazwie, której podkategoria zawiera "szyn" / "wózk|wozk|wózek" / "balkon".
+const mktgTypeOf = (stock, cat, sub) => {
+  const nm=x=>String(x==null?"":x).trim().toLowerCase();
+  const c=nm(cat), s=nm(sub);
+  if(c===nm(((stock&&stock.marketingCat)||"")||"firma")){
+    const t=MKTG_TYPES.find(x=>nm(x.sub)===s);
+    if(t)return t.k;
+  }
+  if(!/marketing|reklam/.test(c+" "+s))return null;
+  if(/szyn/.test(s))return "szyny";
+  if(/w[oó]zk|w[oó]zek|wozek/.test(s))return "wozki";
+  if(/balkon/.test(s))return "balkoniki";
+  return null;
+};
 const marketingSpendByType = (budget, stock, ym) => {
   const mktgCat=(stock&&stock.marketingCat)||"";
   const mktgSub=(stock&&stock.marketingSub)||"";
-  const nm=x=>String(x==null?"":x).trim().toLowerCase();
-  const typeOf=(cat,sub)=>{
-    if(nm(cat)!==nm(mktgCat||"firma"))return null;
-    const t=MKTG_TYPES.find(x=>nm(x.sub)===nm(sub));
-    return t?t.k:null;
-  };
+  const typeOf=(cat,sub)=>mktgTypeOf(stock,cat,sub);
   const matchCat=(cat,sub)=>{
     if(mktgCat)return cat===mktgCat&&(!mktgSub||sub===mktgSub);
     return (cat||"").toLowerCase()==="firma"&&(sub||"").toLowerCase()==="marketing";

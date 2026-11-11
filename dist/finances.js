@@ -1343,15 +1343,16 @@ function RentalStats(_ref9) {
     var nm = function nm(x) {
       return String(x == null ? "" : x).trim().toLowerCase();
     };
-    var base = stock && stock.marketingCat || "Firma";
     var cats = normCats(budget && budget.expenseCategories || []);
-    var c = cats.find(function (x) {
-      return nm(x.name) === nm(base);
-    });
-    return !c || MKTG_TYPES.some(function (t) {
-      return !(c.subs || []).some(function (x) {
-        return nm(x) === nm(t.sub);
+    var found = new Set();
+    cats.forEach(function (c) {
+      return (c.subs || []).forEach(function (sb) {
+        var k = mktgTypeOf(stock, c.name, sb);
+        if (k) found.add(k);
       });
+    });
+    return MKTG_TYPES.some(function (t) {
+      return !found.has(t.k);
     });
   }();
   var adsStats = useMemo(function () {
@@ -1888,7 +1889,7 @@ function RentalStats(_ref9) {
     }),
     keyVal: Z(totalAll),
     keyColor: GREEN
-  }, kv("Wypożyczenia (wpłaty)", Z(stats.totalRevenue)), kv("Wózki – refundacje NFZ (" + stats.wozkiCount + " szt.)", Z(stats.wozkiRevenue), PURPLE), kv("Transport (wpłaty" + (stats.transportCount > 0 ? ", " + stats.transportCount + " szt." : "") + ")", Z(stats.transportRevenue), ORANGE), stats.marketingSpend > 0 ? kv("Marketing (wydatki)", Z(stats.marketingSpend), RED) : kv("Marketing (wydatki)", "brak wpisów w budżecie", subC), /*#__PURE__*/React.createElement("div", {
+  }, kv("Wypożyczenia (wpłaty)", Z(stats.totalRevenue)), kv("Wózki – refundacje NFZ (" + stats.wozkiCount + " szt.)", Z(stats.wozkiRevenue), PURPLE), kv("Transport (wpłaty" + (stats.transportCount > 0 ? ", " + stats.transportCount + " szt." : "") + ")", Z(stats.transportRevenue), ORANGE), stats.marketingSpend > 0 ? kv("Marketing (wydatki)", Z(stats.marketingSpend), RED) : kv("Marketing (wydatki)", stats.marketingByType.ogolne > 0 ? "tylko stary ogólny: " + Z(stats.marketingByType.ogolne) + " (niewliczony)" : "brak wpisów w podkategoriach marketingu", subC), /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "right",
       marginTop: 2

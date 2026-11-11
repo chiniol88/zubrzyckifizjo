@@ -503,10 +503,10 @@
       // czy w budżecie brakuje podkategorii marketingu (szyny/wózki/balkoniki) — pokazujemy przycisk "Załóż"
       const mktgSetupMissing=(()=>{
         const nm=x=>String(x==null?"":x).trim().toLowerCase();
-        const base=(stock&&stock.marketingCat)||"Firma";
         const cats=normCats((budget&&budget.expenseCategories)||[]);
-        const c=cats.find(x=>nm(x.name)===nm(base));
-        return !c||MKTG_TYPES.some(t=>!(c.subs||[]).some(x=>nm(x)===nm(t.sub)));
+        const found=new Set();
+        cats.forEach(c=>(c.subs||[]).forEach(sb=>{const k=mktgTypeOf(stock,c.name,sb);if(k)found.add(k);}));
+        return MKTG_TYPES.some(t=>!found.has(t.k));
       })();
       const adsStats=useMemo(()=>{
         // klienci i przychód z reklamy osobno dla typu sprzętu (szyny / wózki / balkoniki); wózki NFZ zawsze do "wozki"
@@ -638,7 +638,7 @@
           {kv("Wypożyczenia (wpłaty)",Z(stats.totalRevenue))}
           {kv("Wózki – refundacje NFZ ("+stats.wozkiCount+" szt.)",Z(stats.wozkiRevenue),PURPLE)}
           {kv("Transport (wpłaty"+(stats.transportCount>0?", "+stats.transportCount+" szt.":"")+")",Z(stats.transportRevenue),ORANGE)}
-          {stats.marketingSpend>0?kv("Marketing (wydatki)",Z(stats.marketingSpend),RED):kv("Marketing (wydatki)","brak wpisów w budżecie",subC)}
+          {stats.marketingSpend>0?kv("Marketing (wydatki)",Z(stats.marketingSpend),RED):kv("Marketing (wydatki)",stats.marketingByType.ogolne>0?"tylko stary ogólny: "+Z(stats.marketingByType.ogolne)+" (niewliczony)":"brak wpisów w podkategoriach marketingu",subC)}
           <div style={{textAlign:"right",marginTop:2}}>
             <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:11,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"inherit"}}>{(stock&&stock._mktgOpen)?"zamknij wybór kategorii":"zmień kategorię marketingu"}</button>
           </div>
