@@ -2696,7 +2696,36 @@ function Rentals(_ref6) {
         return setCloseDate(v);
       },
       type: "date"
-    })), /*#__PURE__*/React.createElement(Btn, {
+    })), !r.renewable && function () {
+      // domyślnie: zwrot przed planowanym końcem = dziś (skraca wypożyczenie), w pozostałych przypadkach data końca bez zmian
+      var tdy = todayLocal(),
+        defRet = r.endDate && r.endDate > tdy ? tdy : r.endDate || tdy;
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginBottom: 10
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: "#7A8FA6",
+          marginBottom: 6,
+          fontWeight: 600
+        }
+      }, "Data faktycznego zwrotu"), /*#__PURE__*/React.createElement(Inp, {
+        label: "",
+        value: closeDate || defRet,
+        onChange: function onChange(v) {
+          return setCloseDate(v);
+        },
+        type: "date"
+      }), (closeDate || defRet) !== r.endDate && r.endDate && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: "#F4A261",
+          marginTop: -6
+        }
+      }, "Data ko\u0144ca zmieni si\u0119 z ", r.endDate, " na ", closeDate || defRet, " (tyle naprawd\u0119 trwa\u0142o wypo\u017Cyczenie)."));
+    }(), /*#__PURE__*/React.createElement(Btn, {
       style: {
         width: "100%",
         justifyContent: "center",
@@ -2719,13 +2748,20 @@ function Rentals(_ref6) {
           alert("Podaj datę zakończenia");
           return;
         }
+        var tdy2 = todayLocal(),
+          defRet2 = r.endDate && r.endDate > tdy2 ? tdy2 : r.endDate || tdy2;
+        var oneRet = r.renewable ? null : closeDate || defRet2; // faktyczna data zwrotu jednorazowego
+        if (oneRet && r.startDate && oneRet < r.startDate) {
+          alert("Data zwrotu jest wcześniejsza niż data rozpoczęcia — popraw datę.");
+          return;
+        }
         if (remaining > 0 && !window.confirm("Pozosta\u0142o ".concat(remaining, " z\u0142 do zap\u0142aty. Zako\u0144czy\u0107 mimo to?"))) return;
         var endMonth = r.renewable && effectiveCloseDate ? effectiveCloseDate.slice(0, 7) : null;
         setRentals(function (rs) {
           return rs.map(function (x) {
             return x.id === r.id ? _objectSpread(_objectSpread({}, x), {}, {
               status: "zakończone",
-              endDate: r.renewable ? effectiveCloseDate : x.endDate,
+              endDate: r.renewable ? effectiveCloseDate : oneRet || x.endDate,
               cycles: endMonth ? (x.cycles || []).filter(function (c) {
                 return c.paid || c.cancelled || c.month <= endMonth;
               }) : x.cycles

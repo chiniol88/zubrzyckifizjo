@@ -7,7 +7,8 @@
       const rs=rentals.filter(r=>r.equipment===eq&&r.startDate&&!r.reserved);
       const firstRent=rs.reduce((m,r)=>(!m||r.startDate<m)?r.startDate:m,"");
       const start=[added,firstRent].filter(Boolean).sort()[0]||"";
-      const out={start,missingAdded:!added,days:[],booked:0,cap:0,overlapDays:0,pct:0,noData:true};
+      const out={start,missingAdded:!added,days:[],booked:0,cap:0,overlapDays:0,overlapInfo:[],pct:0,noData:true};
+      const spanList=[];   // okresy poszczególnych wypożyczeń (do wskazania, które nakładają się na siebie)
       if(!start)return out;
       const lo=from>start?from:start,hi=to<today?to:today;
       if(lo>hi)return out;
@@ -31,6 +32,7 @@
         const merged=[];
         spans.forEach(x=>{const l=merged[merged.length-1];if(l&&x[0]<=addDays(l[1],1)){if(x[1]>l[1])l[1]=x[1];}else merged.push([x[0],x[1]]);});
         merged.forEach(([s,e])=>{
+          spanList.push({id:r.id,name:r.patientName,s,e,open:r.status==="aktywne"});
           const cs=s>lo?s:lo,ce=e<hi?e:hi;
           if(cs>ce)return;
           diff[Math.round((ts(cs)-ts(lo))/DAY)]++;
@@ -48,7 +50,15 @@
       for(let i=0;i<n;i++){
         c+=diff[i];
         const d=fmtD(ts(lo)+i*DAY),rec=capAt(d);
-        if(c>rec)out.overlapDays++;
+        if(c>rec){
+          // dzień przekazania (jedno wypożyczenie kończy się, drugie zaczyna tego samego dnia) NIE jest nakładaniem
+          const act=spanList.filter(sp=>sp.s<=d&&sp.e>=d);
+          const ends=act.filter(sp=>!sp.open&&sp.e===d).length;
+          if(!(ends>0&&act.length-ends<=rec)){
+            out.overlapDays++;
+            act.forEach(sp=>{let o=out.overlapInfo.find(x=>x.id===sp.id);if(!o){o={id:sp.id,name:sp.name,s:sp.s,e:sp.e,from:d,to:d};out.overlapInfo.push(o);}o.to=d;});
+          }
+        }
         out.days.push({d,c,cap:rec});
         out.booked+=Math.min(c,rec);out.cap+=rec;
       }
@@ -843,7 +853,11 @@
               <div style={{fontSize:10,color:subC,marginTop:4,lineHeight:1.45}}>
                 {x.start>pStart&&<div>liczone od {fmtPl(x.start)}</div>}
                 {x.missingAdded&&<div>brak daty dodania — start = pierwsze wypożyczenie ({fmtPl(x.start)}). Uzupełnij w Sprzęt → Edytuj.</div>}
-                {x.overlapDays>0&&<div style={{color:ORANGE}}>⚠ {x.overlapDays} dni: więcej wypożyczeń naraz niż sztuk ({x.qty}) — sprawdź daty lub liczbę sztuk</div>}
+                {x.overlapDays>0&&<div style={{color:ORANGE}}>⚠ {x.overlapDays} dni: więcej wypożyczeń naraz niż sztuk ({x.qty}) — sprawdź daty lub liczbę sztuk
+                  {x.overlapInfo.map(o=><div key={o.id} onClick={goToRental?()=>goToRental(o.id):undefined} style={{marginTop:3,padding:"4px 8px",borderRadius:8,background:dk?"#241A0A":"#FFF6E8",cursor:goToRental?"pointer":"default",color:textC}}>
+                    <b>{demo?"Pacjent":(o.name||"—")}</b> <span style={{color:subC}}>{fmtPl(o.s)} → {fmtPl(o.e)} · nakłada się {o.from===o.to?fmtPl(o.from):fmtPl(o.from)+" – "+fmtPl(o.to)}</span>{goToRental&&<span style={{color:BLUE}}> ›</span>}
+                  </div>)}
+                </div>}
               </div>
               <div style={{display:"flex",gap:14,marginTop:6,fontSize:11}}>
                 {x.revPerDay!==null&&<span style={{color:subC}}>💰 <b style={{color:textC}}>{Z(x.revPerDay)}</b>/dzień dostępności</span>}

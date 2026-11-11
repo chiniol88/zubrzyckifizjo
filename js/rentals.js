@@ -624,6 +624,15 @@
                   <div style={{fontSize:12,color:"#7A8FA6",marginBottom:6,fontWeight:600}}>Data zakończenia wypożyczenia</div>
                   <Inp label="" value={closeDate||r.plannedReturn||""} onChange={v=>setCloseDate(v)} type="date"/>
                 </div>}
+                {!r.renewable&&(()=>{
+                  // domyślnie: zwrot przed planowanym końcem = dziś (skraca wypożyczenie), w pozostałych przypadkach data końca bez zmian
+                  const tdy=todayLocal(),defRet=(r.endDate&&r.endDate>tdy)?tdy:(r.endDate||tdy);
+                  return <div style={{marginBottom:10}}>
+                    <div style={{fontSize:12,color:"#7A8FA6",marginBottom:6,fontWeight:600}}>Data faktycznego zwrotu</div>
+                    <Inp label="" value={closeDate||defRet} onChange={v=>setCloseDate(v)} type="date"/>
+                    {(closeDate||defRet)!==r.endDate&&r.endDate&&<div style={{fontSize:11,color:"#F4A261",marginTop:-6}}>Data końca zmieni się z {r.endDate} na {closeDate||defRet} (tyle naprawdę trwało wypożyczenie).</div>}
+                  </div>;
+                })()}
                 <Btn style={{width:"100%",justifyContent:"center",marginBottom:10}} onClick={()=>{
                   const extTotal=(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||0),0);
                   const totalAmount=(+r.amount||0)+extTotal;
@@ -632,9 +641,12 @@
                   const remaining=totalAmount-calcRentalPaid(r);
                   const effectiveCloseDate=closeDate||r.plannedReturn||"";
                   if(r.renewable&&!effectiveCloseDate){alert("Podaj datę zakończenia");return;}
+                  const tdy2=todayLocal(),defRet2=(r.endDate&&r.endDate>tdy2)?tdy2:(r.endDate||tdy2);
+                  const oneRet=r.renewable?null:(closeDate||defRet2);   // faktyczna data zwrotu jednorazowego
+                  if(oneRet&&r.startDate&&oneRet<r.startDate){alert("Data zwrotu jest wcześniejsza niż data rozpoczęcia — popraw datę.");return;}
                   if(remaining>0&&!window.confirm(`Pozostało ${remaining} zł do zapłaty. Zakończyć mimo to?`))return;
                   const endMonth=r.renewable&&effectiveCloseDate?effectiveCloseDate.slice(0,7):null;
-                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?effectiveCloseDate:x.endDate,
+                  setRentals(rs=>rs.map(x=>x.id===r.id?{...x,status:"zakończone",endDate:r.renewable?effectiveCloseDate:(oneRet||x.endDate),
                     cycles:endMonth?((x.cycles||[]).filter(c=>c.paid||c.cancelled||c.month<=endMonth)):x.cycles
                   }:x));
                   if(endMonth){

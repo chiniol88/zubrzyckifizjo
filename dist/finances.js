@@ -47,9 +47,11 @@ function occupancyForEq(eq, rentals, stock, from, to, today) {
     booked: 0,
     cap: 0,
     overlapDays: 0,
+    overlapInfo: [],
     pct: 0,
     noData: true
   };
+  var spanList = []; // okresy poszczególnych wypożyczeń (do wskazania, które nakładają się na siebie)
   if (!start) return out;
   var lo = from > start ? from : start,
     hi = to < today ? to : today;
@@ -94,6 +96,13 @@ function occupancyForEq(eq, rentals, stock, from, to, today) {
       var _ref2 = _slicedToArray(_ref, 2),
         s = _ref2[0],
         e = _ref2[1];
+      spanList.push({
+        id: r.id,
+        name: r.patientName,
+        s: s,
+        e: e,
+        open: r.status === "aktywne"
+      });
       var cs = s > lo ? s : lo,
         ce = e < hi ? e : hi;
       if (cs > ce) return;
@@ -116,11 +125,39 @@ function occupancyForEq(eq, rentals, stock, from, to, today) {
     return hist.length ? hist[0].prev != null ? +hist[0].prev || 1 : +hist[0].qty || 1 : curQty;
   };
   var c = 0;
-  for (var i = 0; i < n; i++) {
+  var _loop = function _loop() {
     c += diff[i];
     var d = fmtD(ts(lo) + i * DAY),
       rec = capAt(d);
-    if (c > rec) out.overlapDays++;
+    if (c > rec) {
+      // dzień przekazania (jedno wypożyczenie kończy się, drugie zaczyna tego samego dnia) NIE jest nakładaniem
+      var act = spanList.filter(function (sp) {
+        return sp.s <= d && sp.e >= d;
+      });
+      var ends = act.filter(function (sp) {
+        return !sp.open && sp.e === d;
+      }).length;
+      if (!(ends > 0 && act.length - ends <= rec)) {
+        out.overlapDays++;
+        act.forEach(function (sp) {
+          var o = out.overlapInfo.find(function (x) {
+            return x.id === sp.id;
+          });
+          if (!o) {
+            o = {
+              id: sp.id,
+              name: sp.name,
+              s: sp.s,
+              e: sp.e,
+              from: d,
+              to: d
+            };
+            out.overlapInfo.push(o);
+          }
+          o.to = d;
+        });
+      }
+    }
     out.days.push({
       d: d,
       c: c,
@@ -128,6 +165,9 @@ function occupancyForEq(eq, rentals, stock, from, to, today) {
     });
     out.booked += Math.min(c, rec);
     out.cap += rec;
+  };
+  for (var i = 0; i < n; i++) {
+    _loop();
   }
   out.noData = false;
   out.pct = out.cap > 0 ? Math.round(out.booked / out.cap * 100) : 0;
@@ -2875,7 +2915,30 @@ function RentalStats(_ref9) {
       style: {
         color: ORANGE
       }
-    }, "\u26A0 ", x.overlapDays, " dni: wi\u0119cej wypo\u017Cycze\u0144 naraz ni\u017C sztuk (", x.qty, ") \u2014 sprawd\u017A daty lub liczb\u0119 sztuk")), /*#__PURE__*/React.createElement("div", {
+    }, "\u26A0 ", x.overlapDays, " dni: wi\u0119cej wypo\u017Cycze\u0144 naraz ni\u017C sztuk (", x.qty, ") \u2014 sprawd\u017A daty lub liczb\u0119 sztuk", x.overlapInfo.map(function (o) {
+      return /*#__PURE__*/React.createElement("div", {
+        key: o.id,
+        onClick: goToRental ? function () {
+          return goToRental(o.id);
+        } : undefined,
+        style: {
+          marginTop: 3,
+          padding: "4px 8px",
+          borderRadius: 8,
+          background: dk ? "#241A0A" : "#FFF6E8",
+          cursor: goToRental ? "pointer" : "default",
+          color: textC
+        }
+      }, /*#__PURE__*/React.createElement("b", null, demo ? "Pacjent" : o.name || "—"), " ", /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: subC
+        }
+      }, fmtPl(o.s), " \u2192 ", fmtPl(o.e), " \xB7 nak\u0142ada si\u0119 ", o.from === o.to ? fmtPl(o.from) : fmtPl(o.from) + " – " + fmtPl(o.to)), goToRental && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: BLUE
+        }
+      }, " \u203A"));
+    }))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 14,
