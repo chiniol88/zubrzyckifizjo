@@ -389,16 +389,6 @@
       const roiKnown=roiRows.filter(x=>x.investment>0);
       const roiDone=roiKnown.filter(x=>x.earned>=x.investment).length;
 
-      // Marketing — picker kategorii z budżetu (Dom)
-      const mktgCat=(stock&&stock.marketingCat)||"";
-      const mktgSub=(stock&&stock.marketingSub)||"";
-      const budgetCatMap={};
-      Object.values((budget&&budget.months)||{}).forEach(function(data){
-        (data.expenses||[]).forEach(function(e){if(e.cat){if(!budgetCatMap[e.cat])budgetCatMap[e.cat]=[];if(e.subcat&&budgetCatMap[e.cat].indexOf(e.subcat)<0)budgetCatMap[e.cat].push(e.subcat);}});
-      });
-      ((budget&&budget.recurring)||[]).forEach(function(r){if(r.type==="expense"&&r.cat){if(!budgetCatMap[r.cat])budgetCatMap[r.cat]=[];if(r.subcat&&budgetCatMap[r.cat].indexOf(r.subcat)<0)budgetCatMap[r.cat].push(r.subcat);}});
-      const budgetCatNames=Object.keys(budgetCatMap).sort();
-      const budgetSubNames=mktgCat&&budgetCatMap[mktgCat]?budgetCatMap[mktgCat].sort():[];
 
       // Źródła klientów w okresie (wypożyczenia + wózki z refundacji)
       const src=(()=>{
@@ -639,20 +629,6 @@
           {kv("Wózki – refundacje NFZ ("+stats.wozkiCount+" szt.)",Z(stats.wozkiRevenue),PURPLE)}
           {kv("Transport (wpłaty"+(stats.transportCount>0?", "+stats.transportCount+" szt.":"")+")",Z(stats.transportRevenue),ORANGE)}
           {stats.marketingSpend>0?kv("Marketing (wydatki)",Z(stats.marketingSpend),RED):kv("Marketing (wydatki)",stats.marketingByType.ogolne>0?"tylko stary ogólny: "+Z(stats.marketingByType.ogolne)+" (niewliczony)":"brak wpisów w podkategoriach marketingu",subC)}
-          <div style={{textAlign:"right",marginTop:2}}>
-            <button onClick={()=>setStock(s=>({...s,_mktgOpen:!(s&&s._mktgOpen)}))} style={{fontSize:11,color:subC,background:"transparent",border:"none",cursor:"pointer",padding:"2px 0",fontFamily:"inherit"}}>{(stock&&stock._mktgOpen)?"zamknij wybór kategorii":"zmień kategorię marketingu"}</button>
-          </div>
-          {stock&&stock._mktgOpen&&<div style={{marginBottom:6}}>
-            <div style={{fontSize:11,color:subC,marginBottom:4}}>Kategoria w budżecie (Dom):</div>
-            <select value={mktgCat} onChange={e=>setStock(s=>({...s,marketingCat:e.target.value,marketingSub:""}))} style={{width:"100%",padding:"7px",borderRadius:8,border:"1px solid "+borderC,background:bg,color:textC,fontSize:13,fontFamily:"inherit",marginBottom:6}}>
-              <option value="">-- domyślnie: Firma / Marketing --</option>
-              {budgetCatNames.map(c=><option key={c} value={c}>{c}</option>)}
-            </select>
-            {mktgCat&&<select value={mktgSub} onChange={e=>setStock(s=>({...s,marketingSub:e.target.value}))} style={{width:"100%",padding:"7px",borderRadius:8,border:"1px solid "+borderC,background:bg,color:textC,fontSize:13,fontFamily:"inherit"}}>
-              <option value="">-- cała kategoria --</option>
-              {budgetSubNames.map(s=><option key={s} value={s}>{s}</option>)}
-            </select>}
-          </div>}
           <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"14px 0 4px"}}>{isYear?"Rok "+statsYear:"12 miesięcy"} · dotknij słupka</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:4,height:112,paddingTop:14}}>
             {stats.monthlyArr.map(([m,v,w,tr])=>{

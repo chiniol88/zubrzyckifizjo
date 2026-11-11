@@ -1097,27 +1097,6 @@ function RentalStats(_ref9) {
     return x.earned >= x.investment;
   }).length;
 
-  // Marketing — picker kategorii z budżetu (Dom)
-  var mktgCat = stock && stock.marketingCat || "";
-  var mktgSub = stock && stock.marketingSub || "";
-  var budgetCatMap = {};
-  Object.values(budget && budget.months || {}).forEach(function (data) {
-    (data.expenses || []).forEach(function (e) {
-      if (e.cat) {
-        if (!budgetCatMap[e.cat]) budgetCatMap[e.cat] = [];
-        if (e.subcat && budgetCatMap[e.cat].indexOf(e.subcat) < 0) budgetCatMap[e.cat].push(e.subcat);
-      }
-    });
-  });
-  (budget && budget.recurring || []).forEach(function (r) {
-    if (r.type === "expense" && r.cat) {
-      if (!budgetCatMap[r.cat]) budgetCatMap[r.cat] = [];
-      if (r.subcat && budgetCatMap[r.cat].indexOf(r.subcat) < 0) budgetCatMap[r.cat].push(r.subcat);
-    }
-  });
-  var budgetCatNames = Object.keys(budgetCatMap).sort();
-  var budgetSubNames = mktgCat && budgetCatMap[mktgCat] ? budgetCatMap[mktgCat].sort() : [];
-
   // Źródła klientów w okresie (wypożyczenia + wózki z refundacji)
   var src = function () {
     var periodRentalsAll = rentals.filter(function (r) {
@@ -1890,92 +1869,6 @@ function RentalStats(_ref9) {
     keyVal: Z(totalAll),
     keyColor: GREEN
   }, kv("Wypożyczenia (wpłaty)", Z(stats.totalRevenue)), kv("Wózki – refundacje NFZ (" + stats.wozkiCount + " szt.)", Z(stats.wozkiRevenue), PURPLE), kv("Transport (wpłaty" + (stats.transportCount > 0 ? ", " + stats.transportCount + " szt." : "") + ")", Z(stats.transportRevenue), ORANGE), stats.marketingSpend > 0 ? kv("Marketing (wydatki)", Z(stats.marketingSpend), RED) : kv("Marketing (wydatki)", stats.marketingByType.ogolne > 0 ? "tylko stary ogólny: " + Z(stats.marketingByType.ogolne) + " (niewliczony)" : "brak wpisów w podkategoriach marketingu", subC), /*#__PURE__*/React.createElement("div", {
-    style: {
-      textAlign: "right",
-      marginTop: 2
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: function onClick() {
-      return setStock(function (s) {
-        return _objectSpread(_objectSpread({}, s), {}, {
-          _mktgOpen: !(s && s._mktgOpen)
-        });
-      });
-    },
-    style: {
-      fontSize: 11,
-      color: subC,
-      background: "transparent",
-      border: "none",
-      cursor: "pointer",
-      padding: "2px 0",
-      fontFamily: "inherit"
-    }
-  }, stock && stock._mktgOpen ? "zamknij wybór kategorii" : "zmień kategorię marketingu")), stock && stock._mktgOpen && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 6
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: subC,
-      marginBottom: 4
-    }
-  }, "Kategoria w bud\u017Cecie (Dom):"), /*#__PURE__*/React.createElement("select", {
-    value: mktgCat,
-    onChange: function onChange(e) {
-      return setStock(function (s) {
-        return _objectSpread(_objectSpread({}, s), {}, {
-          marketingCat: e.target.value,
-          marketingSub: ""
-        });
-      });
-    },
-    style: {
-      width: "100%",
-      padding: "7px",
-      borderRadius: 8,
-      border: "1px solid " + borderC,
-      background: bg,
-      color: textC,
-      fontSize: 13,
-      fontFamily: "inherit",
-      marginBottom: 6
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "-- domy\u015Blnie: Firma / Marketing --"), budgetCatNames.map(function (c) {
-    return /*#__PURE__*/React.createElement("option", {
-      key: c,
-      value: c
-    }, c);
-  })), mktgCat && /*#__PURE__*/React.createElement("select", {
-    value: mktgSub,
-    onChange: function onChange(e) {
-      return setStock(function (s) {
-        return _objectSpread(_objectSpread({}, s), {}, {
-          marketingSub: e.target.value
-        });
-      });
-    },
-    style: {
-      width: "100%",
-      padding: "7px",
-      borderRadius: 8,
-      border: "1px solid " + borderC,
-      background: bg,
-      color: textC,
-      fontSize: 13,
-      fontFamily: "inherit"
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "-- ca\u0142a kategoria --"), budgetSubNames.map(function (s) {
-    return /*#__PURE__*/React.createElement("option", {
-      key: s,
-      value: s
-    }, s);
-  }))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
