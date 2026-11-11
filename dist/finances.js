@@ -680,14 +680,18 @@ function RentalStats(_ref9) {
     _useState14 = _slicedToArray(_useState13, 2),
     showRentalList = _useState14[0],
     setShowRentalList = _useState14[1];
-  var _useState15 = useState("all"),
+  var _useState15 = useState({}),
     _useState16 = _slicedToArray(_useState15, 2),
-    srcTab = _useState16[0],
-    setSrcTab = _useState16[1];
-  var _useState17 = useState("2w"),
+    adsListOpen = _useState16[0],
+    setAdsListOpen = _useState16[1]; // rozwinięte listy wpłat w blokach Reklamy (szyny/wozki/balkoniki)
+  var _useState17 = useState("all"),
     _useState18 = _slicedToArray(_useState17, 2),
-    seasonGran = _useState18[0],
-    setSeasonGran = _useState18[1];
+    srcTab = _useState18[0],
+    setSrcTab = _useState18[1];
+  var _useState19 = useState("2w"),
+    _useState20 = _slicedToArray(_useState19, 2),
+    seasonGran = _useState20[0],
+    setSeasonGran = _useState20[1];
   var equipmentAll = getActiveEquipmentNames(stock);
   var SZYNY_EQ = ["Artromot K1 2025", "Artromot K1 I", "Kinetec Spectra", "Kinetec Spectra SZ", "Optiflex", "OrthoRehab"];
   var BALKONIKI_EQ = ["Ambonka Paula", "Balkonik ortopedyczny"];
@@ -1355,15 +1359,18 @@ function RentalStats(_ref9) {
     var T = {
       szyny: {
         newCount: 0,
-        revenue: 0
+        revenue: 0,
+        items: []
       },
       wozki: {
         newCount: 0,
-        revenue: 0
+        revenue: 0,
+        items: []
       },
       balkoniki: {
         newCount: 0,
-        revenue: 0
+        revenue: 0,
+        items: []
       }
     };
     var tk = function tk(eq) {
@@ -1379,20 +1386,41 @@ function RentalStats(_ref9) {
     (finances || []).forEach(function (f) {
       if (f.type !== "przychód" || (f.date || "") < pStart || (f.date || "") > pEnd) return;
       var rid = getRid(f.sourceId);
+      var sid = f.sourceId || "";
       if (rid) {
         var r = rentals.find(function (x) {
           return x.id === rid;
         });
-        if (r && r.source === "reklama") T[tk(r.equipment)].revenue += +f.amount || 0;
+        if (r && r.source === "reklama") {
+          var t = T[tk(r.equipment)];
+          t.revenue += +f.amount || 0;
+          t.items.push({
+            key: "f" + f.id,
+            date: f.date,
+            patientName: r.patientName,
+            equipment: r.equipment,
+            amount: +f.amount || 0,
+            type: sid.startsWith("extend-") ? "↪ Przedłużenie" : sid.startsWith("cycle-") ? "↻ Cykl" : sid.startsWith("transport-") ? "🚚 Transport" : "Wpłata"
+          });
+        }
         return;
       }
-      var sid = f.sourceId || "";
       if (sid.startsWith("wozek-")) {
         var cid = +sid.slice(6);
         var cas = (nfzCases || []).find(function (x) {
           return x.id === cid;
         });
-        if (cas && cas.source === "reklama") T.wozki.revenue += +f.amount || 0;
+        if (cas && cas.source === "reklama") {
+          T.wozki.revenue += +f.amount || 0;
+          T.wozki.items.push({
+            key: "w" + f.id,
+            date: f.date,
+            patientName: cas.patientName,
+            equipment: cas.wheelchairModel || "Wózek",
+            amount: +f.amount || 0,
+            type: "🦽 Wózek"
+          });
+        }
       }
     });
     rentals.forEach(function (r) {
@@ -1400,7 +1428,18 @@ function RentalStats(_ref9) {
       var paid = +r.amountPaid || 0;
       if (!paid) return;
       var d = r.startDate || "";
-      if (d >= pStart && d <= pEnd) T[tk(r.equipment)].revenue += paid;
+      if (d >= pStart && d <= pEnd) {
+        var t = T[tk(r.equipment)];
+        t.revenue += paid;
+        t.items.push({
+          key: "l" + r.id,
+          date: d,
+          patientName: r.patientName,
+          equipment: r.equipment,
+          amount: paid,
+          type: "Wpłata"
+        });
+      }
     });
     var mk = function mk(spend, newCount, revenue) {
       return {
@@ -1412,10 +1451,14 @@ function RentalStats(_ref9) {
       };
     };
     var types = MKTG_TYPES.map(function (t) {
-      return _objectSpread({
+      return _objectSpread(_objectSpread({
         k: t.k,
         l: t.l
-      }, mk(stats.marketingByType[t.k], T[t.k].newCount, T[t.k].revenue));
+      }, mk(stats.marketingByType[t.k], T[t.k].newCount, T[t.k].revenue)), {}, {
+        items: T[t.k].items.slice().sort(function (a, b) {
+          return (b.date || "").localeCompare(a.date || "");
+        })
+      });
     });
     var general = stats.marketingByType.ogolne;
     var newCount = types.reduce(function (s, x) {
@@ -2438,7 +2481,87 @@ function RentalStats(_ref9) {
           fontWeight: 600,
           margin: "4px 0"
         }
-      }, "\u26A0 Wydano ", Z(t.spend), ", zero nowych klient\xF3w z reklamy w tym okresie."), kv("Koszt na pozyskanego klienta", t.perPatient !== null ? Z(t.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(t.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", t.roas !== null ? t.roas + "×" : "—"));
+      }, "\u26A0 Wydano ", Z(t.spend), ", zero nowych klient\xF3w z reklamy w tym okresie."), kv("Koszt na pozyskanego klienta", t.perPatient !== null ? Z(t.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(t.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", t.roas !== null ? t.roas + "×" : "—"), /*#__PURE__*/React.createElement("button", {
+        onClick: function onClick() {
+          return setAdsListOpen(function (m) {
+            return _objectSpread(_objectSpread({}, m), {}, _defineProperty({}, t.k, !m[t.k]));
+          });
+        },
+        "aria-expanded": !!adsListOpen[t.k],
+        style: {
+          marginTop: 8,
+          width: "100%",
+          padding: "6px",
+          borderRadius: 8,
+          border: "1px solid " + borderC,
+          background: "transparent",
+          color: subC,
+          fontSize: 11,
+          fontWeight: 600,
+          cursor: "pointer",
+          fontFamily: "inherit"
+        }
+      }, adsListOpen[t.k] ? "▲ Ukryj listę" : "▼ Lista wpłat (" + t.items.length + ")"), adsListOpen[t.k] && /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 6
+        }
+      }, t.items.length === 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: subC,
+          padding: "6px 0"
+        }
+      }, "Brak wp\u0142at z reklamy w tym okresie."), t.items.map(function (item) {
+        var _item$date2;
+        var eq = (item.equipment || "?").replace("Artromot K1", "AK1").replace("Kinetec Spectra", "KS").replace("Optiflex", "OPT").replace("Ambonka Paula", "AMB").replace("Balkonik ortopedyczny", "BAL").replace("Wózek inwalidzki Elite Tim", "TIM");
+        return /*#__PURE__*/React.createElement("div", {
+          key: item.key,
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "5px 0",
+            borderBottom: "1px solid " + borderC,
+            fontSize: 12,
+            gap: 6
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: subC,
+            flexShrink: 0,
+            fontSize: 11
+          }
+        }, (_item$date2 = item.date) === null || _item$date2 === void 0 ? void 0 : _item$date2.slice(5)), /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: textC,
+            fontWeight: 600,
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap"
+          }
+        }, demo ? "Pacjent" : item.patientName), /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: subC,
+            flexShrink: 0,
+            fontSize: 11
+          }
+        }, eq), item.type !== "Wpłata" && /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: "#7C6AF4",
+            fontWeight: 700,
+            fontSize: 10,
+            flexShrink: 0
+          }
+        }, item.type), /*#__PURE__*/React.createElement("span", {
+          style: {
+            color: GREEN,
+            fontWeight: 700,
+            flexShrink: 0
+          }
+        }, demo ? "****" : item.amount + " zł"));
+      })));
     }), adsStats.general > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
@@ -3613,65 +3736,65 @@ function Finances(_ref15) {
     goToWozki = _ref15.goToWozki;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
-  var _useState19 = useState(null),
-    _useState20 = _slicedToArray(_useState19, 2),
-    editE = _useState20[0],
-    setEditE = _useState20[1];
-  var _useState21 = useState(function () {
+  var _useState21 = useState(null),
+    _useState22 = _slicedToArray(_useState21, 2),
+    editE = _useState22[0],
+    setEditE = _useState22[1];
+  var _useState23 = useState(function () {
       var h = window.location.hash.replace("#", "").split("-");
       return h[1] || "month";
     }),
-    _useState22 = _slicedToArray(_useState21, 2),
-    viewMode = _useState22[0],
-    setViewMode = _useState22[1];
+    _useState24 = _slicedToArray(_useState23, 2),
+    viewMode = _useState24[0],
+    setViewMode = _useState24[1];
   useEffect(function () {
     window.location.replace("#finances-" + viewMode);
   }, [viewMode]);
-  var _useState23 = useState(function () {
+  var _useState25 = useState(function () {
       return todayLocal().slice(0, 7);
     }),
-    _useState24 = _slicedToArray(_useState23, 2),
-    month = _useState24[0],
-    setMonth = _useState24[1];
-  var _useState25 = useState(function () {
+    _useState26 = _slicedToArray(_useState25, 2),
+    month = _useState26[0],
+    setMonth = _useState26[1];
+  var _useState27 = useState(function () {
       return todayLocal().slice(0, 4);
     }),
-    _useState26 = _slicedToArray(_useState25, 2),
-    year = _useState26[0],
-    setYear = _useState26[1];
-  var _useState27 = useState(function () {
+    _useState28 = _slicedToArray(_useState27, 2),
+    year = _useState28[0],
+    setYear = _useState28[1];
+  var _useState29 = useState(function () {
       var d = new Date();
       var day = d.getDay() || 7;
       d.setDate(d.getDate() - day + 1);
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }),
-    _useState28 = _slicedToArray(_useState27, 2),
-    weekStart = _useState28[0],
-    setWeekStart = _useState28[1];
-  var _useState29 = useState(function () {
+    _useState30 = _slicedToArray(_useState29, 2),
+    weekStart = _useState30[0],
+    setWeekStart = _useState30[1];
+  var _useState31 = useState(function () {
       return todayLocal().slice(0, 7) + "-01";
     }),
-    _useState30 = _slicedToArray(_useState29, 2),
-    rangeFrom = _useState30[0],
-    setRangeFrom = _useState30[1];
-  var _useState31 = useState(function () {
+    _useState32 = _slicedToArray(_useState31, 2),
+    rangeFrom = _useState32[0],
+    setRangeFrom = _useState32[1];
+  var _useState33 = useState(function () {
       return todayLocal();
     }),
-    _useState32 = _slicedToArray(_useState31, 2),
-    rangeTo = _useState32[0],
-    setRangeTo = _useState32[1];
-  var _useState33 = useState(null),
     _useState34 = _slicedToArray(_useState33, 2),
-    toast = _useState34[0],
-    setToast = _useState34[1];
-  var _useState35 = useState(false),
+    rangeTo = _useState34[0],
+    setRangeTo = _useState34[1];
+  var _useState35 = useState(null),
     _useState36 = _slicedToArray(_useState35, 2),
-    showAllPats = _useState36[0],
-    setShowAllPats = _useState36[1];
-  var _useState37 = useState(null),
+    toast = _useState36[0],
+    setToast = _useState36[1];
+  var _useState37 = useState(false),
     _useState38 = _slicedToArray(_useState37, 2),
-    expandedCat = _useState38[0],
-    setExpandedCat = _useState38[1];
+    showAllPats = _useState38[0],
+    setShowAllPats = _useState38[1];
+  var _useState39 = useState(null),
+    _useState40 = _slicedToArray(_useState39, 2),
+    expandedCat = _useState40[0],
+    setExpandedCat = _useState40[1];
   var cats = ["Wizyta", "Wypożyczalnia", "Wózek", "Inne"];
   var weekEnd = useMemo(function () {
     var d = new Date(weekStart + "T12:00:00");
@@ -4736,34 +4859,34 @@ function ReceiptScanner(_ref24) {
   var bg2 = dk ? "#18202F" : "#fff";
   var border = dk ? "#2A3A56" : "#D9E2F0";
   var sub = "#7A8FA6";
-  var _useState39 = useState([]),
-    _useState40 = _slicedToArray(_useState39, 2),
-    images = _useState40[0],
-    setImages = _useState40[1]; // base64 strings
-  var _useState41 = useState("upload"),
+  var _useState41 = useState([]),
     _useState42 = _slicedToArray(_useState41, 2),
-    step = _useState42[0],
-    setStep = _useState42[1]; // upload | analyzing | review | done
-  var _useState43 = useState([]),
+    images = _useState42[0],
+    setImages = _useState42[1]; // base64 strings
+  var _useState43 = useState("upload"),
     _useState44 = _slicedToArray(_useState43, 2),
-    items = _useState44[0],
-    setItems = _useState44[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
-  var _useState45 = useState(todayLocal()),
+    step = _useState44[0],
+    setStep = _useState44[1]; // upload | analyzing | review | done
+  var _useState45 = useState([]),
     _useState46 = _slicedToArray(_useState45, 2),
-    receiptDate = _useState46[0],
-    setReceiptDate = _useState46[1];
-  var _useState47 = useState(""),
+    items = _useState46[0],
+    setItems = _useState46[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
+  var _useState47 = useState(todayLocal()),
     _useState48 = _slicedToArray(_useState47, 2),
-    receiptTotal = _useState48[0],
-    setReceiptTotal = _useState48[1];
-  var _useState49 = useState(null),
+    receiptDate = _useState48[0],
+    setReceiptDate = _useState48[1];
+  var _useState49 = useState(""),
     _useState50 = _slicedToArray(_useState49, 2),
-    aiError = _useState50[0],
-    setAiError = _useState50[1];
-  var _useState51 = useState(false),
+    receiptTotal = _useState50[0],
+    setReceiptTotal = _useState50[1];
+  var _useState51 = useState(null),
     _useState52 = _slicedToArray(_useState51, 2),
-    dupWarning = _useState52[0],
-    setDupWarning = _useState52[1];
+    aiError = _useState52[0],
+    setAiError = _useState52[1];
+  var _useState53 = useState(false),
+    _useState54 = _slicedToArray(_useState53, 2),
+    dupWarning = _useState54[0],
+    setDupWarning = _useState54[1];
   var allExpCatNames = expCats.flatMap(function (c) {
     return [c.name].concat(_toConsumableArray((c.subs || []).map(function (s) {
       return c.name + "/" + s;

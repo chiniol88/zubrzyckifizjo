@@ -200,6 +200,7 @@
       const [showAllRoi,setShowAllRoi]=useState(false);
       const [repairForm,setRepairForm]=useState(null);
       const [showRentalList,setShowRentalList]=useState(false);
+      const [adsListOpen,setAdsListOpen]=useState({});   // rozwinięte listy wpłat w blokach Reklamy (szyny/wozki/balkoniki)
       const [srcTab,setSrcTab]=useState("all");
       const [seasonGran,setSeasonGran]=useState("2w");
       const equipmentAll=getActiveEquipmentNames(stock);
@@ -509,24 +510,32 @@
       })();
       const adsStats=useMemo(()=>{
         // klienci i przychód z reklamy osobno dla typu sprzętu (szyny / wózki / balkoniki); wózki NFZ zawsze do "wozki"
-        const T={szyny:{newCount:0,revenue:0},wozki:{newCount:0,revenue:0},balkoniki:{newCount:0,revenue:0}};
+        const T={szyny:{newCount:0,revenue:0,items:[]},wozki:{newCount:0,revenue:0,items:[]},balkoniki:{newCount:0,revenue:0,items:[]}};
         const tk=eq=>{const c=catOf(eq);return T[c]?c:"szyny";};
         rentals.forEach(r=>{if(r.source==="reklama"&&!r.reserved&&(r.startDate||"")>=pStart&&(r.startDate||"")<=pEnd)T[tk(r.equipment)].newCount++;});
         (nfzCases||[]).forEach(cas=>{if(cas.source==="reklama"&&(cas.orderDate||"")>=pStart&&(cas.orderDate||"")<=pEnd)T.wozki.newCount++;});
         (finances||[]).forEach(f=>{
           if(f.type!=="przychód"||(f.date||"")<pStart||(f.date||"")>pEnd)return;
           const rid=getRid(f.sourceId);
-          if(rid){const r=rentals.find(x=>x.id===rid);if(r&&r.source==="reklama")T[tk(r.equipment)].revenue+=(+f.amount||0);return;}
           const sid=f.sourceId||"";
-          if(sid.startsWith("wozek-")){const cid=+sid.slice(6);const cas=(nfzCases||[]).find(x=>x.id===cid);if(cas&&cas.source==="reklama")T.wozki.revenue+=(+f.amount||0);}
+          if(rid){
+            const r=rentals.find(x=>x.id===rid);
+            if(r&&r.source==="reklama"){
+              const t=T[tk(r.equipment)];t.revenue+=(+f.amount||0);
+              t.items.push({key:"f"+f.id,date:f.date,patientName:r.patientName,equipment:r.equipment,amount:+f.amount||0,type:sid.startsWith("extend-")?"↪ Przedłużenie":sid.startsWith("cycle-")?"↻ Cykl":sid.startsWith("transport-")?"🚚 Transport":"Wpłata"});
+            }
+            return;
+          }
+          if(sid.startsWith("wozek-")){const cid=+sid.slice(6);const cas=(nfzCases||[]).find(x=>x.id===cid);if(cas&&cas.source==="reklama"){T.wozki.revenue+=(+f.amount||0);T.wozki.items.push({key:"w"+f.id,date:f.date,patientName:cas.patientName,equipment:cas.wheelchairModel||"Wózek",amount:+f.amount||0,type:"🦽 Wózek"});}}
         });
         rentals.forEach(r=>{
           if((r.payments||[]).length>0||(r.cycles||[]).length>0||r.source!=="reklama")return;
           const paid=+r.amountPaid||0;if(!paid)return;
-          const d=r.startDate||"";if(d>=pStart&&d<=pEnd)T[tk(r.equipment)].revenue+=paid;
+          const d=r.startDate||"";
+          if(d>=pStart&&d<=pEnd){const t=T[tk(r.equipment)];t.revenue+=paid;t.items.push({key:"l"+r.id,date:d,patientName:r.patientName,equipment:r.equipment,amount:paid,type:"Wpłata"});}
         });
         const mk=(spend,newCount,revenue)=>({spend,newCount,revenue,perPatient:newCount>0?Math.round(spend/newCount):null,roas:spend>0?Math.round(revenue/spend*100)/100:null});
-        const types=MKTG_TYPES.map(t=>({k:t.k,l:t.l,...mk(stats.marketingByType[t.k],T[t.k].newCount,T[t.k].revenue)}));
+        const types=MKTG_TYPES.map(t=>({k:t.k,l:t.l,...mk(stats.marketingByType[t.k],T[t.k].newCount,T[t.k].revenue),items:T[t.k].items.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""))}));
         const general=stats.marketingByType.ogolne;
         const newCount=types.reduce((s,x)=>s+x.newCount,0),revenue=types.reduce((s,x)=>s+x.revenue,0);
         return {...mk(stats.marketingSpend,newCount,revenue),types,general};
@@ -740,6 +749,22 @@
                 {kv("Koszt na pozyskanego klienta",t.perPatient!==null?Z(t.perPatient):"—")}
                 {kv("Przychód z reklamy w okresie",Z(t.revenue),GREEN)}
                 {kv("Zwrot z wydanej złotówki (ROAS)",t.roas!==null?t.roas+"×":"—")}
+                <button onClick={()=>setAdsListOpen(m=>({...m,[t.k]:!m[t.k]}))} aria-expanded={!!adsListOpen[t.k]} style={{marginTop:8,width:"100%",padding:"6px",borderRadius:8,border:"1px solid "+borderC,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                  {adsListOpen[t.k]?"▲ Ukryj listę":"▼ Lista wpłat ("+t.items.length+")"}
+                </button>
+                {adsListOpen[t.k]&&<div style={{marginTop:6}}>
+                  {t.items.length===0&&<div style={{fontSize:12,color:subC,padding:"6px 0"}}>Brak wpłat z reklamy w tym okresie.</div>}
+                  {t.items.map(item=>{
+                    const eq=(item.equipment||"?").replace("Artromot K1","AK1").replace("Kinetec Spectra","KS").replace("Optiflex","OPT").replace("Ambonka Paula","AMB").replace("Balkonik ortopedyczny","BAL").replace("Wózek inwalidzki Elite Tim","TIM");
+                    return <div key={item.key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:"1px solid "+borderC,fontSize:12,gap:6}}>
+                      <span style={{color:subC,flexShrink:0,fontSize:11}}>{item.date?.slice(5)}</span>
+                      <span style={{color:textC,fontWeight:600,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?"Pacjent":item.patientName}</span>
+                      <span style={{color:subC,flexShrink:0,fontSize:11}}>{eq}</span>
+                      {item.type!=="Wpłata"&&<span style={{color:"#7C6AF4",fontWeight:700,fontSize:10,flexShrink:0}}>{item.type}</span>}
+                      <span style={{color:GREEN,fontWeight:700,flexShrink:0}}>{demo?"****":item.amount+" zł"}</span>
+                    </div>;
+                  })}
+                </div>}
               </div>)}
               {adsStats.general>0&&<div style={{fontSize:11,color:subC,margin:"2px 0 6px"}}>Stary marketing ogólny w tym okresie: {Z(adsStats.general)} (niewliczony do powyższych sum)</div>}
               {shown.length>0&&<div style={{borderTop:"1px solid "+borderC,marginTop:6,paddingTop:4}}>
