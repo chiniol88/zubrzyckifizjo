@@ -1,4 +1,27 @@
     // ── RENTALS ───────────────────────────────────────────────────────────────
+    // E-mail wpisany w formularzu wypożyczenia trafia do KARTY PACJENTA (jedno miejsce prawdy); w samym wypożyczeniu go nie przechowujemy.
+    // Dopisuje adres do listy e-maili pacjenta, jeśli go jeszcze tam nie ma.
+    function rentalEmailToPatient(setPatients,patientId,patientName,email) {
+      const em=String(email==null?"":email).trim();
+      if(!em||!setPatients)return;
+      setPatients(ps=>(ps||[]).map(p=>{
+        if(!((patientId&&p.id===patientId)||(!patientId&&p.name===patientName)))return p;
+        const list=getEmails(p);
+        if(list.some(x=>String(x.address).trim().toLowerCase()===em.toLowerCase()))return p;
+        const base=list.map((x,i)=>x.id==="legacy"?{...x,id:Date.now()+i}:x);
+        const next=[...base,{id:Date.now()+base.length+1,address:em,label:""}];
+        return {...p,emails:next,email:next[0].address};
+      }));
+    }
+    const patientFirstEmail=p=>{const l=getEmails(p);return l.length?l[0].address:"";};
+    function EmailInp({value,onChange,patient}) {
+      const more=Math.max(0,getEmails(patient).length-1);
+      return <div>
+        <Inp label="E-mail" value={value||""} onChange={onChange} type="email" placeholder="zapisze się w karcie pacjenta"/>
+        {!emailOk(value)&&<div style={{fontSize:12,color:"#D9822B",margin:"-8px 0 10px"}}>To nie wygląda na adres e-mail. Sprawdź, czy nie ma literówki.</div>}
+        {more>0&&<div style={{fontSize:11,color:"#7A8FA6",margin:"-8px 0 10px"}}>W karcie pacjenta jest jeszcze {more} {more===1?"inny adres":"innych adresów"}.</div>}
+      </div>;
+    }
     function PaymentForm({rentalId,rentalAmount,amountPaid,patientName,equipment,setRentals,setFinances}) {
       const [amt,setAmt]=useState("");
       const [date,setDate]=useState(todayLocal);
@@ -378,7 +401,7 @@
                   {r.renewable?<Badge color="#7C6AF4">🔄 Odnawialne miesięcznie</Badge>:dl!==null&&<Badge color={ov?"#E05C5C":dl<7?"#F4A261":"#3DAA72"}>{ov?Math.abs(dl)+"d po terminie":dl===0?"Termin dziś!":dl+" dni"}</Badge>}
                 </div>
                 <div style={{display:"flex",gap:6}}>
-                  <Btn small variant="secondary" onClick={()=>{setEf({...r,amount:String(r.amount),amountPaid:String(calcRentalPaid(r))});setShowEdit(true);}}>✏️ Edytuj</Btn>
+                  <Btn small variant="secondary" onClick={()=>{setEf({...r,amount:String(r.amount),amountPaid:String(calcRentalPaid(r)),email:patientFirstEmail((patients||[]).find(p=>p.id===r.patientId)||(patients||[]).find(p=>p.name===r.patientName))});setShowEdit(true);}}>✏️ Edytuj</Btn>
                 </div>
               </div>
 
@@ -684,8 +707,9 @@
             <EquipmentPicker label="Sprzęt" value={ef.equipment} onChange={v=>setEf(f=>({...f,equipment:v,machineId:v===f.equipment?f.machineId:whDefaultCardId(machines,rentals,stock,v,f.id)}))} options={[{value:"",label:"❓ Do ustalenia"},...activeEq.map(x=>({value:x,label:x,sub:eqSub(x)})),...(ef.equipment&&!activeEq.includes(ef.equipment)?[{value:ef.equipment,label:ef.equipment+" (zarchiwizowany)"}]:[])]}/>
             <CardPicker eq={ef.equipment} value={ef.machineId} onChange={v=>setEf(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={ef.id}/>
             <EqIssueHint eq={ef.equipment} machineId={ef.machineId} stock={stock}/>
-            <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
+            <PatientPicker label="Pacjent" value={ef.patientName} onChange={v=>setEf(f=>({...f,patientName:v}))} onSelect={p=>setEf(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id,email:patientFirstEmail(p)}))} patients={allClients||patients}/>
             <Inp label="Telefon" value={ef.phone||""} onChange={v=>setEf(f=>({...f,phone:v}))} type="tel"/>
+            <EmailInp value={ef.email} onChange={v=>setEf(f=>({...f,email:v}))} patient={(patients||[]).find(p=>p.id===ef.patientId)||(patients||[]).find(p=>p.name===ef.patientName)}/>
             <Inp label="Adres" value={ef.address||""} onChange={v=>setEf(f=>({...f,address:v}))}/>
             <div style={{marginBottom:14}}>
               <div style={{fontSize:12,fontWeight:600,color:"#7A8FA6",marginBottom:8,textTransform:"uppercase",letterSpacing:.5}}>Typ</div>
@@ -715,6 +739,8 @@
               const cur=rentals.find(x=>x.id===effectiveDetail);
               const newPaid=ef.renewable?(cur?.amountPaid||0):((cur&&(cur.payments||[]).length>0)?(cur.payments||[]).reduce((t,q)=>t+(+q.amount||0),0):Math.min(+(ef.amountPaid||0),raw));
               const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null,machineId:whValidMachineId(machines,ef.equipment,ef.machineId)};
+              const emailTyped=u.email;delete u.email;   // e-mail idzie do karty pacjenta, nie do wypożyczenia
+              rentalEmailToPatient(setPatients,u.patientId,u.patientName,emailTyped);
               // Dla jednorazowych bez payments: jeśli wpisano zapłacono → utwórz wpłatę i wpis finansowy
               const hasPayments=cur&&(cur.payments||[]).length>0;
               if(!ef.renewable&&!hasPayments&&newPaid>0){
@@ -863,8 +889,9 @@
           <CardPicker eq={form.equipment} value={form.machineId} onChange={v=>setForm(f=>({...f,machineId:v}))} stock={stock} rentals={rentals} excludeId={null}/>
           <EqIssueHint eq={form.equipment} machineId={form.machineId} stock={stock}/>
 
-          <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id}))} patients={allClients||patients}/>
+          <PatientPicker label="Pacjent *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone,address:p.address,patientId:p.id,email:patientFirstEmail(p)}))} patients={allClients||patients}/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
+          <EmailInp value={form.email} onChange={v=>setForm(f=>({...f,email:v}))} patient={(patients||[]).find(p=>p.id===form.patientId)||(patients||[]).find(p=>p.name===form.patientName)}/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))}/>
           {cpmApplies(form.equipment)&&(()=>{const pt=(patients||[]).find(p=>p.id===form.patientId)||(patients||[]).find(p=>p.name===form.patientName);return <CpmFields value={form.cpm} onChange={c=>setForm(f=>({...f,cpm:c}))} autoBrand={cpmBrandOf(form.equipment)} entries={cpmEntries(pt,rentals)}/>;})()}
           <div style={{marginBottom:14}}>
@@ -895,10 +922,12 @@
             const pid=Date.now(),rid=Date.now()+1,paid=form.renewable?0:+(form.amountPaid||0);
             const pat=patients.find(p=>p.name===form.patientName);
             const firstCycle=form.renewable?[{dueDate:form.startDate,month:form.startDate.slice(0,7),amount:+form.amount||0,paid:false,paidDate:null}]:[];
-            const nr={...form,machineId:whValidMachineId(machines,form.equipment,form.machineId),id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:firstCycle,status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined,cpm:cpmFinal};
+            const emailTyped=form.email;
+            const nr={...form,email:undefined,machineId:whValidMachineId(machines,form.equipment,form.machineId),id:rid,patientId:pat?.id||null,amount:+form.amount,amountPaid:paid,payments:paid>0?[{id:pid,amount:paid,date:form.startDate}]:[],cycles:firstCycle,status:"aktywne",startAllDay:form.startAllDay||false,endAllDay:form.endAllDay||false,allDay:undefined,cpm:cpmFinal};
             setRentals(r=>[nr,...r]);
             if(paid>0)setFinances(fs=>[{id:Date.now()+Math.random(),sourceId:"payment-"+pid,date:form.startDate,type:"przychód",category:"Wypożyczalnia",amount:paid,description:"Wypożyczenie – "+form.patientName+" ("+form.equipment+")"},...fs]);
-            if(setPatients&&!pat){setPatients(ps=>[...(ps||[]),{id:Date.now()+2,name:form.patientName,phone:form.phone||"",address:form.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}
+            if(setPatients&&!pat){const em=String(emailTyped||"").trim();setPatients(ps=>[...(ps||[]),{id:Date.now()+2,name:form.patientName,phone:form.phone||"",address:form.address||"",...(em?{emails:[{id:Date.now()+3,address:em,label:""}],email:em}:{}),diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}
+            else if(pat)rentalEmailToPatient(setPatients,pat.id,pat.name,emailTyped);
             setShowAdd(false);setToast("Wypożyczenie dodane");
           }}>Zapisz wypożyczenie</Btn>
         </Modal>}

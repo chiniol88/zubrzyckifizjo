@@ -2,30 +2,88 @@
 "use strict";
 
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, e) { if ("object" != _typeof(t) || !t) return t; var r; if ("undefined" != typeof Symbol && void 0 !== (r = t[Symbol.toPrimitive])) { var i = r.call(t, e || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === e ? String : Number)(t); }
-function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
-function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
-function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
-function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
-function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
-function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 // ── RENTALS ───────────────────────────────────────────────────────────────
-function PaymentForm(_ref) {
-  var rentalId = _ref.rentalId,
-    rentalAmount = _ref.rentalAmount,
-    amountPaid = _ref.amountPaid,
-    patientName = _ref.patientName,
-    equipment = _ref.equipment,
-    setRentals = _ref.setRentals,
-    setFinances = _ref.setFinances;
+// E-mail wpisany w formularzu wypożyczenia trafia do KARTY PACJENTA (jedno miejsce prawdy); w samym wypożyczeniu go nie przechowujemy.
+// Dopisuje adres do listy e-maili pacjenta, jeśli go jeszcze tam nie ma.
+function rentalEmailToPatient(setPatients, patientId, patientName, email) {
+  var em = String(email == null ? "" : email).trim();
+  if (!em || !setPatients) return;
+  setPatients(function (ps) {
+    return (ps || []).map(function (p) {
+      if (!(patientId && p.id === patientId || !patientId && p.name === patientName)) return p;
+      var list = getEmails(p);
+      if (list.some(function (x) {
+        return String(x.address).trim().toLowerCase() === em.toLowerCase();
+      })) return p;
+      var base = list.map(function (x, i) {
+        return x.id === "legacy" ? _objectSpread(_objectSpread({}, x), {}, {
+          id: Date.now() + i
+        }) : x;
+      });
+      var next = [].concat(_toConsumableArray(base), [{
+        id: Date.now() + base.length + 1,
+        address: em,
+        label: ""
+      }]);
+      return _objectSpread(_objectSpread({}, p), {}, {
+        emails: next,
+        email: next[0].address
+      });
+    });
+  });
+}
+var patientFirstEmail = function patientFirstEmail(p) {
+  var l = getEmails(p);
+  return l.length ? l[0].address : "";
+};
+function EmailInp(_ref) {
+  var value = _ref.value,
+    onChange = _ref.onChange,
+    patient = _ref.patient;
+  var more = Math.max(0, getEmails(patient).length - 1);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Inp, {
+    label: "E-mail",
+    value: value || "",
+    onChange: onChange,
+    type: "email",
+    placeholder: "zapisze si\u0119 w karcie pacjenta"
+  }), !emailOk(value) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: "#D9822B",
+      margin: "-8px 0 10px"
+    }
+  }, "To nie wygl\u0105da na adres e-mail. Sprawd\u017A, czy nie ma liter\xF3wki."), more > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A8FA6",
+      margin: "-8px 0 10px"
+    }
+  }, "W karcie pacjenta jest jeszcze ", more, " ", more === 1 ? "inny adres" : "innych adresów", "."));
+}
+function PaymentForm(_ref2) {
+  var rentalId = _ref2.rentalId,
+    rentalAmount = _ref2.rentalAmount,
+    amountPaid = _ref2.amountPaid,
+    patientName = _ref2.patientName,
+    equipment = _ref2.equipment,
+    setRentals = _ref2.setRentals,
+    setFinances = _ref2.setFinances;
   var _useState = useState(""),
     _useState2 = _slicedToArray(_useState, 2),
     amt = _useState2[0],
@@ -135,11 +193,11 @@ function PaymentForm(_ref) {
 }
 
 // Ustawienia szyny CPM (udo / podudzie, cm) przy wypożyczeniu: szybki zapis na miejscu, wpis trafia do historii pacjenta
-function RentalCpmCard(_ref2) {
-  var r = _ref2.r,
-    rentals = _ref2.rentals,
-    patients = _ref2.patients,
-    setRentals = _ref2.setRentals;
+function RentalCpmCard(_ref3) {
+  var r = _ref3.r,
+    rentals = _ref3.rentals,
+    patients = _ref3.patients,
+    setRentals = _ref3.setRentals;
   var demo = useDemo();
   var _useState5 = useState(false),
     _useState6 = _slicedToArray(_useState5, 2),
@@ -245,10 +303,10 @@ function RentalCpmCard(_ref2) {
     }
   }, "Anuluj"))));
 }
-function HistoryFill(_ref3) {
-  var r = _ref3.r,
-    setRentals = _ref3.setRentals,
-    setFinances = _ref3.setFinances;
+function HistoryFill(_ref4) {
+  var r = _ref4.r,
+    setRentals = _ref4.setRentals,
+    setFinances = _ref4.setFinances;
   var cm = todayLocal().slice(0, 7);
   // Generate all months from startDate month to current month
   var months = [];
@@ -507,11 +565,11 @@ function HistoryFill(_ref3) {
     return checked[x.month];
   }).length, " mies.)"));
 }
-function CycleRow(_ref4) {
-  var r = _ref4.r,
-    cycle = _ref4.cycle,
-    setRentals = _ref4.setRentals,
-    setFinances = _ref4.setFinances;
+function CycleRow(_ref5) {
+  var r = _ref5.r,
+    cycle = _ref5.cycle,
+    setRentals = _ref5.setRentals,
+    setFinances = _ref5.setFinances;
   var demo = useDemo();
   var key = cycle.dueDate || cycle.month;
   var _useState13 = useState(String(cycle.amount || "")),
@@ -1217,9 +1275,9 @@ function CycleRow(_ref4) {
     }
   }, "Anuluj")), noteUi, dateEditUi, smallActions, confirmDelUi);
 }
-function RCard(_ref5) {
-  var r = _ref5.r,
-    onClick = _ref5.onClick;
+function RCard(_ref6) {
+  var r = _ref6.r,
+    onClick = _ref6.onClick;
   var demo = useDemo();
   var mctx = useContext(MachinesCtx);
   var card = r.machineId && mctx ? (mctx.machines || []).find(function (m) {
@@ -1371,26 +1429,26 @@ function RCard(_ref5) {
     }
   }, "\uD83D\uDCDD ", maskText(demo, r.notes))));
 }
-function Rentals(_ref6) {
-  var rentals = _ref6.rentals,
-    setRentals = _ref6.setRentals,
-    finances = _ref6.finances,
-    setFinances = _ref6.setFinances,
-    patients = _ref6.patients,
-    setPatients = _ref6.setPatients,
-    nfzCases = _ref6.nfzCases,
-    setNfzCases = _ref6.setNfzCases,
-    allClients = _ref6.allClients,
-    initialDetail = _ref6.initialDetail,
-    onDetailClosed = _ref6.onDetailClosed,
-    backLabel = _ref6.backLabel,
-    initialAddDate = _ref6.initialAddDate,
-    onAddDateHandled = _ref6.onAddDateHandled,
-    rentalsView = _ref6.rentalsView,
-    setRentalsView = _ref6.setRentalsView,
-    stock = _ref6.stock,
-    setStock = _ref6.setStock,
-    settings = _ref6.settings;
+function Rentals(_ref7) {
+  var rentals = _ref7.rentals,
+    setRentals = _ref7.setRentals,
+    finances = _ref7.finances,
+    setFinances = _ref7.setFinances,
+    patients = _ref7.patients,
+    setPatients = _ref7.setPatients,
+    nfzCases = _ref7.nfzCases,
+    setNfzCases = _ref7.setNfzCases,
+    allClients = _ref7.allClients,
+    initialDetail = _ref7.initialDetail,
+    onDetailClosed = _ref7.onDetailClosed,
+    backLabel = _ref7.backLabel,
+    initialAddDate = _ref7.initialAddDate,
+    onAddDateHandled = _ref7.onAddDateHandled,
+    rentalsView = _ref7.rentalsView,
+    setRentalsView = _ref7.setRentalsView,
+    stock = _ref7.stock,
+    setStock = _ref7.setStock,
+    settings = _ref7.settings;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
   var mctx = useContext(MachinesCtx);
@@ -1620,7 +1678,12 @@ function Rentals(_ref6) {
       onClick: function onClick() {
         setEf(_objectSpread(_objectSpread({}, r), {}, {
           amount: String(r.amount),
-          amountPaid: String(calcRentalPaid(r))
+          amountPaid: String(calcRentalPaid(r)),
+          email: patientFirstEmail((patients || []).find(function (p) {
+            return p.id === r.patientId;
+          }) || (patients || []).find(function (p) {
+            return p.name === r.patientName;
+          }))
         }));
         setShowEdit(true);
       }
@@ -2964,7 +3027,8 @@ function Rentals(_ref6) {
             patientName: p.name,
             phone: p.phone,
             address: p.address,
-            patientId: p.id
+            patientId: p.id,
+            email: patientFirstEmail(p)
           });
         });
       },
@@ -2980,6 +3044,20 @@ function Rentals(_ref6) {
         });
       },
       type: "tel"
+    }), /*#__PURE__*/React.createElement(EmailInp, {
+      value: ef.email,
+      onChange: function onChange(v) {
+        return setEf(function (f) {
+          return _objectSpread(_objectSpread({}, f), {}, {
+            email: v
+          });
+        });
+      },
+      patient: (patients || []).find(function (p) {
+        return p.id === ef.patientId;
+      }) || (patients || []).find(function (p) {
+        return p.name === ef.patientName;
+      })
     }), /*#__PURE__*/React.createElement(Inp, {
       label: "Adres",
       value: ef.address || "",
@@ -3278,6 +3356,9 @@ function Rentals(_ref6) {
           patientId: (pat === null || pat === void 0 ? void 0 : pat.id) || ef.patientId || null,
           machineId: whValidMachineId(machines, ef.equipment, ef.machineId)
         });
+        var emailTyped = u.email;
+        delete u.email; // e-mail idzie do karty pacjenta, nie do wypożyczenia
+        rentalEmailToPatient(setPatients, u.patientId, u.patientName, emailTyped);
         // Dla jednorazowych bez payments: jeśli wpisano zapłacono → utwórz wpłatę i wpis finansowy
         var hasPayments = cur && (cur.payments || []).length > 0;
         if (!ef.renewable && !hasPayments && newPaid > 0) {
@@ -4036,7 +4117,8 @@ function Rentals(_ref6) {
           patientName: p.name,
           phone: p.phone,
           address: p.address,
-          patientId: p.id
+          patientId: p.id,
+          email: patientFirstEmail(p)
         });
       });
     },
@@ -4052,6 +4134,20 @@ function Rentals(_ref6) {
       });
     },
     type: "tel"
+  }), /*#__PURE__*/React.createElement(EmailInp, {
+    value: form.email,
+    onChange: function onChange(v) {
+      return setForm(function (f) {
+        return _objectSpread(_objectSpread({}, f), {}, {
+          email: v
+        });
+      });
+    },
+    patient: (patients || []).find(function (p) {
+      return p.id === form.patientId;
+    }) || (patients || []).find(function (p) {
+      return p.name === form.patientName;
+    })
   }), /*#__PURE__*/React.createElement(Inp, {
     label: "Adres",
     value: form.address,
@@ -4391,7 +4487,9 @@ function Rentals(_ref6) {
         paid: false,
         paidDate: null
       }] : [];
+      var emailTyped = form.email;
       var nr = _objectSpread(_objectSpread({}, form), {}, {
+        email: undefined,
         machineId: whValidMachineId(machines, form.equipment, form.machineId),
         id: rid,
         patientId: (pat === null || pat === void 0 ? void 0 : pat.id) || null,
@@ -4424,19 +4522,28 @@ function Rentals(_ref6) {
         }].concat(_toConsumableArray(fs));
       });
       if (setPatients && !pat) {
+        var em = String(emailTyped || "").trim();
         setPatients(function (ps) {
-          return [].concat(_toConsumableArray(ps || []), [{
+          return [].concat(_toConsumableArray(ps || []), [_objectSpread(_objectSpread({
             id: Date.now() + 2,
             name: form.patientName,
             phone: form.phone || "",
-            address: form.address || "",
+            address: form.address || ""
+          }, em ? {
+            emails: [{
+              id: Date.now() + 3,
+              address: em,
+              label: ""
+            }],
+            email: em
+          } : {}), {}, {
             diagnosis: "",
             notes: "",
             defaultPrice: "",
             birthday: ""
-          }]);
+          })]);
         });
-      }
+      } else if (pat) rentalEmailToPatient(setPatients, pat.id, pat.name, emailTyped);
       setShowAdd(false);
       setToast("Wypożyczenie dodane");
     }
