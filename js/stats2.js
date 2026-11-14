@@ -260,7 +260,6 @@
 
         <div style={head}>Zysk po zwrocie zakupu — {periodLabel}</div>
         {d.profitRows.length===0?<div style={{fontSize:12,color:subC}}>Brak szyn z wpisanym kosztem zakupu (wpisz w Opłacalności sprzętu).</div>:<>
-          {d.profitRows.map(x=><div key={x.eq} style={rowSt}><span style={{color:textC}}>{x.eq}</span><span style={{color:x.p>0?GREEN:subC,fontWeight:600}}>{x.p>0?"+"+Z(Math.round(x.p)):(x.done?"0 zł":"jeszcze spłaca zakup")}</span></div>)}
           {kv("Zysk szyn po zwrocie zakupu",(d.profitSum>0?"+":"")+Z(Math.round(d.profitSum)),d.profitSum>0?GREEN:subC)}
           {kv("− Reklama szyn",marketingSzyny>0?Z(marketingSzyny):"0 zł",RED)}
           {kv("= Zysk po zwrocie zakupu i reklamie",(Math.round(d.profitSum-marketingSzyny)>0?"+":Math.round(d.profitSum-marketingSzyny)<0?"−":"")+Z(Math.abs(Math.round(d.profitSum-marketingSzyny))),d.profitSum-marketingSzyny>0?GREEN:d.profitSum-marketingSzyny<0?RED:subC)}

@@ -938,21 +938,7 @@ function CpmResults(_ref7) {
       fontSize: 12,
       color: subC
     }
-  }, "Brak szyn z wpisanym kosztem zakupu (wpisz w Op\u0142acalno\u015Bci sprz\u0119tu).") : /*#__PURE__*/React.createElement(React.Fragment, null, d.profitRows.map(function (x) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: x.eq,
-      style: rowSt
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: textC
-      }
-    }, x.eq), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: x.p > 0 ? GREEN : subC,
-        fontWeight: 600
-      }
-    }, x.p > 0 ? "+" + Z(Math.round(x.p)) : x.done ? "0 zł" : "jeszcze spłaca zakup"));
-  }), kv("Zysk szyn po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - marketingSzyny) > 0 ? "+" : Math.round(d.profitSum - marketingSzyny) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - marketingSzyny))), d.profitSum - marketingSzyny > 0 ? GREEN : d.profitSum - marketingSzyny < 0 ? RED : subC)), /*#__PURE__*/React.createElement(StatNote, {
+  }, "Brak szyn z wpisanym kosztem zakupu (wpisz w Op\u0142acalno\u015Bci sprz\u0119tu).") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Zysk szyn po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - marketingSzyny) > 0 ? "+" : Math.round(d.profitSum - marketingSzyny) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - marketingSzyny))), d.profitSum - marketingSzyny > 0 ? GREEN : d.profitSum - marketingSzyny < 0 ? RED : subC)), /*#__PURE__*/React.createElement(StatNote, {
     lines: ["Dopóki szyna nie odzyska kosztu zakupu i napraw, jej wynik spłaca inwestycję, więc zysk = 0.", "Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.", d.noCost > 0 ? "Pominięte szyny bez wpisanego kosztu zakupu: " + d.noCost + "." : null]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
