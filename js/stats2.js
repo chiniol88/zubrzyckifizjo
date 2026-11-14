@@ -133,7 +133,7 @@
 
     // ── WYNIKI CPM: wynik, stawka za dzień, puste dni ──
     function CpmResults({c}) {
-      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,marketingSzyny,Z,kv,subC,textC,borderC,GREEN,RED,ORANGE,BLUE}=c;
+      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,marketingSzyny,Z,kv,subC,textC,borderC,trackC,GREEN,RED,ORANGE,BLUE}=c;
       const d=useMemo(()=>{
         const eqs=equipmentAll.filter(eq=>catOf(eq)==="szyny");
         const cutEnd=pEnd<today?pEnd:today;
@@ -156,7 +156,7 @@
         const all={oneT:0,oneD:0,cycT:0,cycD:0};Object.values(acc).forEach(a=>{all.oneT+=a.oneT;all.oneD+=a.oneD;all.cycT+=a.cycT;all.cycD+=a.cycD;});
         const overall=rate(all.oneT+all.cycT,all.oneD+all.cycD);
         // obłożenie, puste dni, wynik
-        let revSum=0,srvSum=0,amortSum=0,emptySum=0,lostSum=0,capSum=0,bookedSum=0;
+        let revSum=0,srvSum=0,emptySum=0,lostSum=0,capSum=0,bookedSum=0;
         const rows=eqs.map(eq=>{
           const o=occupancyForEq(eq,rentals,stock,pStart,pEnd,today);
           const a=acc[eq]||{oneT:0,oneD:0,cycT:0,cycD:0};
@@ -166,17 +166,79 @@
           const lost=useRate!=null?Math.round(empty*useRate):null;
           const rev=revenueInRange(pStart,cutEnd,eq);
           const srv=[...getMachineSrvForEq(eq),...((getCosts(eq).repairs)||[]).map(x=>({date:x.date,amount:+x.amount||0}))].filter(x=>x.date&&x.date>=pStart&&x.date<=cutEnd).reduce((s,x)=>s+(+x.amount||0),0);
-          let amort=0;const pt=whPurchaseTotal(stock,machines,eq);
-          if(pt>0&&!o.noData){const from=(o.start&&o.start>pStart)?o.start:pStart;if(from<=cutEnd)amort=pt/36*((dateDiff(from,cutEnd)+1)/30.4);}
-          revSum+=rev;srvSum+=srv;amortSum+=amort;emptySum+=empty;if(lost!=null)lostSum+=lost;capSum+=o.cap;bookedSum+=o.booked;
+          revSum+=rev;srvSum+=srv;emptySum+=empty;if(lost!=null)lostSum+=lost;capSum+=o.cap;bookedSum+=o.booked;
           return {eq,noData:o.noData,cap:o.cap,booked:o.booked,empty,rate:r,rateOne:rate(a.oneT,a.oneD),rateCyc:rate(a.cycT,a.cycD),lost,rev};
         }).filter(x=>!x.noData||x.rev>0);
-        return {rows,overall,all,revSum,srvSum,amortSum,emptySum,lostSum,capSum,bookedSum};
-      },[rentals,stock,machines,finances,today,pStart,pEnd,equipmentAll]);
+
+        // ── ZWROT ZAKUPU: tempo z ostatnich 12 miesięcy (średnia stawka × średnie obłożenie − serwis) ──
+        const srvList=eq=>[...getMachineSrvForEq(eq),...((getCosts(eq).repairs)||[]).map(x=>({date:x.date,amount:+x.amount||0}))];
+        const rateWin=(eq,from)=>{
+          let oneT=0,oneD=0,cycT=0,cycD=0,n=0;
+          rentals.forEach(r=>{
+            if(r.equipment!==eq||r.reserved||!r.startDate||(from&&r.startDate<from)||r.startDate>today)return;
+            if(r.renewable){
+              const cy=(r.cycles||[]).filter(x=>!x.cancelled&&+x.amount>0);
+              const k=cy.length||1,tot=cy.length?cy.reduce((s,x)=>s+(+x.amount||0),0):(+r.amount||0);
+              if(tot>0){cycT+=tot;cycD+=k*30;n++;}
+            } else {
+              const end=r.endDate||r.plannedReturn;if(!end)return;
+              const days=Math.max(1,dateDiff(r.startDate,end));
+              const tot=(+r.amount||0)+(r.extensions||[]).reduce((s,e)=>s+(+e.amountDue||+e.amount||0),0);
+              if(tot>0){oneT+=tot;oneD+=days;n++;}
+            }
+          });
+          const D=oneD+cycD;return {rate:D>0?(oneT+cycT)/D:null,n};
+        };
+        const win12=addDays(today,-364);
+        const pay=eqs.map(eq=>{
+          const inv=getTotalInvestment(eq);if(!(inv>0))return null;
+          const earned=allTimeRevenue[eq]||0;
+          const o0=occupancyForEq(eq,rentals,stock,"2000-01-01",today,today);
+          const from=(o0.start&&o0.start>win12)?o0.start:win12;
+          const o12=occupancyForEq(eq,rentals,stock,from,today,today);
+          const w12=rateWin(eq,win12),wAll=rateWin(eq,null);
+          const srv=srvList(eq);
+          const srvMonth=srv.filter(x=>x.date&&x.date>=from).reduce((s,x)=>s+(+x.amount||0),0)/Math.max(1,(dateDiff(from,today)+1)/30.4);
+          const startAll=o0.start||today;
+          const srvMonthAll=srv.reduce((s,x)=>s+(+x.amount||0),0)/Math.max(1,(dateDiff(startAll,today)+1)/30.4);
+          const pct=(o12.noData||!o12.cap)?null:o12.booked/o12.cap*100;
+          const pctAll=(o0.noData||!o0.cap)?null:o0.booked/o0.cap*100;
+          const mk=(rate,p,sm)=>(rate!=null&&p!=null)?rate*(p/100)*30.4-sm:null;
+          const left=Math.max(0,inv-earned);
+          const monthsTo=m=>left<=0?0:(m!=null&&m>0?Math.ceil(left/m):null);
+          const enough=w12.n>=3&&o12.cap>=60&&w12.rate!=null&&pct!=null;
+          const monthly=mk(w12.rate,pct,srvMonth);
+          const monthlyAll=mk(wAll.rate,pctAll,srvMonthAll);
+          return {eq,inv,earned,left,done:left<=0,paidPct:Math.min(999,Math.round(earned/inv*100)),enough,n:w12.n,cap:o12.cap,rate:w12.rate,pct,monthly,
+            months:enough?monthsTo(monthly):null,
+            mHigh:enough&&left>0?monthsTo(mk(w12.rate,Math.min(100,pct+10),srvMonth)):null,
+            mLow:enough&&left>0?monthsTo(mk(w12.rate,Math.max(5,pct-10),srvMonth)):null,
+            monthsAll:wAll.n>=3?monthsTo(monthlyAll):null};
+        }).filter(Boolean);
+        const fc=pay.filter(x=>x.enough&&(x.monthly>0||x.done));
+        const remTot=fc.reduce((s,x)=>s+x.left,0),monTot=fc.reduce((s,x)=>s+(x.monthly>0?x.monthly:0),0);
+        const payTot={n:fc.length,paidPct:pay.length?Math.round(pay.reduce((s,x)=>s+x.earned,0)/pay.reduce((s,x)=>s+x.inv,0)*100):null,
+          months:fc.length&&monTot>0&&remTot>0?Math.ceil(remTot/monTot):null,allDone:pay.length>0&&pay.every(x=>x.done),total:pay.length};
+
+        // ── ZYSK PO ZWROCIE ZAKUPU w okresie: tylko ta część wyniku szyny, która powstała PO odzyskaniu jej kosztu zakupu ──
+        const earnedTo=(eq,date)=>{
+          if(date>=today)return allTimeRevenue[eq]||0;
+          return revenueInRange("2000-01-01",date,eq)+(finances||[]).filter(f=>f.type==="przychód"&&(f.sourceId||"").startsWith("sprzedaz-")&&f.eq===eq&&(f.date||"")<=date).reduce((s,f)=>s+(+f.amount||0),0);
+        };
+        const investAt=(eq,date)=>whPurchaseTotal(stock,machines,eq)+srvList(eq).filter(x=>!x.date||x.date<=date).reduce((s,x)=>s+(+x.amount||0),0);
+        const prevDay=addDays(pStart,-1);
+        let profitSum=0,noCost=0;
+        const profitRows=eqs.map(eq=>{
+          if(!(whPurchaseTotal(stock,machines,eq)>0)){noCost++;return null;}
+          const n0=earnedTo(eq,prevDay)-investAt(eq,prevDay),n1=earnedTo(eq,cutEnd)-investAt(eq,cutEnd);
+          const p=Math.max(0,n1)-Math.max(0,n0);
+          profitSum+=p;return {eq,p,done:n1>=0};
+        }).filter(Boolean);
+        return {rows,overall,all,revSum,srvSum,emptySum,lostSum,capSum,bookedSum,pay,payTot,profitSum,profitRows,noCost};
+      },[rentals,stock,machines,finances,today,pStart,pEnd,equipmentAll,allTimeRevenue]);
       const head={fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 6px"};
       const note={fontSize:10,color:subC,marginTop:6,lineHeight:1.5};
       const wynik=d.revSum-marketingSzyny-d.srvSum;
-      const wynikPo=wynik-d.amortSum;
       const fmtD=x=>x.slice(8)+"."+x.slice(5,7);
       const rowSt={display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap",padding:"7px 0",borderBottom:"1px solid "+borderC,fontSize:12};
       const col=p=>p>=70?GREEN:p>=40?ORANGE:RED;
@@ -186,8 +248,33 @@
         {kv("− Reklama szyn",marketingSzyny>0?Z(marketingSzyny):"0 zł",RED)}
         {kv("− Serwis i naprawy",d.srvSum>0?Z(d.srvSum):"0 zł",RED)}
         {kv("= Wynik",(wynik>=0?"+":"−")+Z(Math.abs(wynik)),wynik>=0?GREEN:RED)}
-        {kv("Po odjęciu części zakupu*",(wynikPo>=0?"+":"−")+Z(Math.abs(wynikPo)),wynikPo>=0?GREEN:RED)}
-        <div style={note}>* Koszt zakupu szyn rozłożony równo na 36 miesięcy (od daty dodania sprzętu). Przychód to wpłaty z okresu, reklama wg podkategorii „Marketing szyny” w budżecie, serwis z kart sztuk i napraw typu.</div>
+        <div style={note}>Przychód to wpłaty z okresu, reklama wg podkategorii „Marketing szyny” w budżecie, serwis z kart sztuk i napraw typu. Koszt zakupu nie jest tu odejmowany — patrz niżej.</div>
+
+        <div style={head}>Zysk po zwrocie zakupu — {periodLabel}</div>
+        {d.profitRows.length===0?<div style={{fontSize:12,color:subC}}>Brak szyn z wpisanym kosztem zakupu (wpisz w Opłacalności sprzętu).</div>:<>
+          {d.profitRows.map(x=><div key={x.eq} style={rowSt}><span style={{color:textC}}>{x.eq}</span><span style={{color:x.p>0?GREEN:subC,fontWeight:600}}>{x.p>0?"+"+Z(Math.round(x.p)):(x.done?"0 zł":"jeszcze spłaca zakup")}</span></div>)}
+          {kv("Zysk szyn po zwrocie zakupu",(d.profitSum>0?"+":"")+Z(Math.round(d.profitSum)),d.profitSum>0?GREEN:subC)}
+          {kv("− Reklama szyn",marketingSzyny>0?Z(marketingSzyny):"0 zł",RED)}
+          {kv("= Zysk po zwrocie zakupu i reklamie",(Math.round(d.profitSum-marketingSzyny)>0?"+":Math.round(d.profitSum-marketingSzyny)<0?"−":"")+Z(Math.abs(Math.round(d.profitSum-marketingSzyny))),d.profitSum-marketingSzyny>0?GREEN:d.profitSum-marketingSzyny<0?RED:subC)}
+        </>}
+        <div style={note}>Dopóki szyna nie odzyska kosztu zakupu i napraw, jej wynik spłaca inwestycję, więc zysk = 0. Po zwrocie każda złotówka jest zyskiem; gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.{d.noCost>0?" Pominięte szyny bez wpisanego kosztu zakupu: "+d.noCost+".":""}</div>
+
+        <div style={head}>Zwrot zakupu szyn — tempo z ostatnich 12 miesięcy</div>
+        {d.pay.length===0?<div style={{fontSize:12,color:subC}}>Brak szyn z wpisanym kosztem zakupu.</div>:<>
+          {kv("Szyny razem",d.payTot.paidPct!=null?"zwrócono "+d.payTot.paidPct+"%"+(d.payTot.allDone?" · wszystkie zwrócone":d.payTot.months==null?"":" · pełny zwrot za ~"+d.payTot.months+" mies. (prognoza dla "+d.payTot.n+" z "+d.payTot.total+" szyn)"):"—",BLUE)}
+          {d.pay.map(x=><div key={x.eq} style={{padding:"9px 0",borderBottom:"1px solid "+borderC}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,fontWeight:700,color:textC}}><span>{x.eq}</span><span style={{color:x.done?GREEN:BLUE}}>{x.done?"✓ zwrócona":"zwrócono "+x.paidPct+"%"}</span></div>
+            <div style={{height:6,borderRadius:3,background:trackC,margin:"5px 0"}}><div style={{height:"100%",width:Math.min(100,x.paidPct)+"%",background:x.done?GREEN:BLUE,borderRadius:3}}/></div>
+            <div style={{fontSize:11,color:subC}}>{Z(Math.round(x.earned))} z {Z(Math.round(x.inv))} (zakup + naprawy)</div>
+            {!x.done&&(x.enough
+              ?<div style={{fontSize:11,color:subC,marginTop:3,lineHeight:1.5}}>
+                 Stawka <b style={{color:textC}}>{Z(Math.round(x.rate))}/dzień</b> × obłożenie <b style={{color:textC}}>{Math.round(x.pct)}%</b> ≈ <b style={{color:textC}}>{Z(Math.round(x.monthly))}/mies.</b> (po odjęciu serwisu)
+                 {x.months!=null?<><br/>Zwrot za ok. <b style={{color:textC}}>{x.months} mies.</b>{x.mHigh!=null&&x.mLow!=null&&<> · przy obłożeniu {Math.min(100,Math.round(x.pct)+10)}%: {x.mHigh} mies., przy {Math.max(5,Math.round(x.pct)-10)}%: {x.mLow} mies.</>}{x.monthsAll!=null&&<span> · wg całego czasu od zakupu: {x.monthsAll} mies.</span>}</>:<><br/>Przy tym tempie szyna się nie zwróci (zarobek miesięczny ≤ 0).</>}
+               </div>
+              :<div style={{fontSize:11,color:subC,marginTop:3}}>Za mało danych na prognozę (potrzeba min. 3 wypożyczeń i 60 dni dostępności w ostatnich 12 miesiącach; masz: wypożyczeń {x.n}, dni dostępności {x.cap}).</div>)}
+          </div>)}
+        </>}
+        <div style={note}>Czas do zwrotu = brakująca kwota ÷ (średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni − średni miesięczny serwis). Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu.</div>
 
         <div style={head}>Stawka za dzień wypożyczenia</div>
         {d.overall==null?<div style={{fontSize:12,color:subC}}>Brak wypożyczeń szyn rozpoczętych w tym okresie.</div>:<>

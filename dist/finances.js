@@ -1845,6 +1845,8 @@ function RentalStats(_ref9) {
     revenueInRangeCat: revenueInRangeCat,
     getMachineSrvForEq: getMachineSrvForEq,
     getCosts: getCosts,
+    getTotalInvestment: getTotalInvestment,
+    allTimeRevenue: allTimeRevenue,
     marketingSzyny: stats.marketingByType.szyny
   };
   return /*#__PURE__*/React.createElement("div", {

@@ -589,12 +589,15 @@ function CpmResults(_ref6) {
     revenueInRange = c.revenueInRange,
     getMachineSrvForEq = c.getMachineSrvForEq,
     getCosts = c.getCosts,
+    getTotalInvestment = c.getTotalInvestment,
+    allTimeRevenue = c.allTimeRevenue,
     marketingSzyny = c.marketingSzyny,
     Z = c.Z,
     kv = c.kv,
     subC = c.subC,
     textC = c.textC,
     borderC = c.borderC,
+    trackC = c.trackC,
     GREEN = c.GREEN,
     RED = c.RED,
     ORANGE = c.ORANGE,
@@ -662,7 +665,6 @@ function CpmResults(_ref6) {
     // obłożenie, puste dni, wynik
     var revSum = 0,
       srvSum = 0,
-      amortSum = 0,
       emptySum = 0,
       lostSum = 0,
       capSum = 0,
@@ -690,15 +692,8 @@ function CpmResults(_ref6) {
       }).reduce(function (s, x) {
         return s + (+x.amount || 0);
       }, 0);
-      var amort = 0;
-      var pt = whPurchaseTotal(stock, machines, eq);
-      if (pt > 0 && !o.noData) {
-        var from = o.start && o.start > pStart ? o.start : pStart;
-        if (from <= cutEnd) amort = pt / 36 * ((dateDiff(from, cutEnd) + 1) / 30.4);
-      }
       revSum += rev;
       srvSum += srv;
-      amortSum += amort;
       emptySum += empty;
       if (lost != null) lostSum += lost;
       capSum += o.cap;
@@ -718,19 +713,182 @@ function CpmResults(_ref6) {
     }).filter(function (x) {
       return !x.noData || x.rev > 0;
     });
+
+    // ── ZWROT ZAKUPU: tempo z ostatnich 12 miesięcy (średnia stawka × średnie obłożenie − serwis) ──
+    var srvList = function srvList(eq) {
+      return [].concat(_toConsumableArray(getMachineSrvForEq(eq)), _toConsumableArray((getCosts(eq).repairs || []).map(function (x) {
+        return {
+          date: x.date,
+          amount: +x.amount || 0
+        };
+      })));
+    };
+    var rateWin = function rateWin(eq, from) {
+      var oneT = 0,
+        oneD = 0,
+        cycT = 0,
+        cycD = 0,
+        n = 0;
+      rentals.forEach(function (r) {
+        if (r.equipment !== eq || r.reserved || !r.startDate || from && r.startDate < from || r.startDate > today) return;
+        if (r.renewable) {
+          var cy = (r.cycles || []).filter(function (x) {
+            return !x.cancelled && +x.amount > 0;
+          });
+          var k = cy.length || 1,
+            tot = cy.length ? cy.reduce(function (s, x) {
+              return s + (+x.amount || 0);
+            }, 0) : +r.amount || 0;
+          if (tot > 0) {
+            cycT += tot;
+            cycD += k * 30;
+            n++;
+          }
+        } else {
+          var end = r.endDate || r.plannedReturn;
+          if (!end) return;
+          var days = Math.max(1, dateDiff(r.startDate, end));
+          var _tot2 = (+r.amount || 0) + (r.extensions || []).reduce(function (s, e) {
+            return s + (+e.amountDue || +e.amount || 0);
+          }, 0);
+          if (_tot2 > 0) {
+            oneT += _tot2;
+            oneD += days;
+            n++;
+          }
+        }
+      });
+      var D = oneD + cycD;
+      return {
+        rate: D > 0 ? (oneT + cycT) / D : null,
+        n: n
+      };
+    };
+    var win12 = addDays(today, -364);
+    var pay = eqs.map(function (eq) {
+      var inv = getTotalInvestment(eq);
+      if (!(inv > 0)) return null;
+      var earned = allTimeRevenue[eq] || 0;
+      var o0 = occupancyForEq(eq, rentals, stock, "2000-01-01", today, today);
+      var from = o0.start && o0.start > win12 ? o0.start : win12;
+      var o12 = occupancyForEq(eq, rentals, stock, from, today, today);
+      var w12 = rateWin(eq, win12),
+        wAll = rateWin(eq, null);
+      var srv = srvList(eq);
+      var srvMonth = srv.filter(function (x) {
+        return x.date && x.date >= from;
+      }).reduce(function (s, x) {
+        return s + (+x.amount || 0);
+      }, 0) / Math.max(1, (dateDiff(from, today) + 1) / 30.4);
+      var startAll = o0.start || today;
+      var srvMonthAll = srv.reduce(function (s, x) {
+        return s + (+x.amount || 0);
+      }, 0) / Math.max(1, (dateDiff(startAll, today) + 1) / 30.4);
+      var pct = o12.noData || !o12.cap ? null : o12.booked / o12.cap * 100;
+      var pctAll = o0.noData || !o0.cap ? null : o0.booked / o0.cap * 100;
+      var mk = function mk(rate, p, sm) {
+        return rate != null && p != null ? rate * (p / 100) * 30.4 - sm : null;
+      };
+      var left = Math.max(0, inv - earned);
+      var monthsTo = function monthsTo(m) {
+        return left <= 0 ? 0 : m != null && m > 0 ? Math.ceil(left / m) : null;
+      };
+      var enough = w12.n >= 3 && o12.cap >= 60 && w12.rate != null && pct != null;
+      var monthly = mk(w12.rate, pct, srvMonth);
+      var monthlyAll = mk(wAll.rate, pctAll, srvMonthAll);
+      return {
+        eq: eq,
+        inv: inv,
+        earned: earned,
+        left: left,
+        done: left <= 0,
+        paidPct: Math.min(999, Math.round(earned / inv * 100)),
+        enough: enough,
+        n: w12.n,
+        cap: o12.cap,
+        rate: w12.rate,
+        pct: pct,
+        monthly: monthly,
+        months: enough ? monthsTo(monthly) : null,
+        mHigh: enough && left > 0 ? monthsTo(mk(w12.rate, Math.min(100, pct + 10), srvMonth)) : null,
+        mLow: enough && left > 0 ? monthsTo(mk(w12.rate, Math.max(5, pct - 10), srvMonth)) : null,
+        monthsAll: wAll.n >= 3 ? monthsTo(monthlyAll) : null
+      };
+    }).filter(Boolean);
+    var fc = pay.filter(function (x) {
+      return x.enough && (x.monthly > 0 || x.done);
+    });
+    var remTot = fc.reduce(function (s, x) {
+        return s + x.left;
+      }, 0),
+      monTot = fc.reduce(function (s, x) {
+        return s + (x.monthly > 0 ? x.monthly : 0);
+      }, 0);
+    var payTot = {
+      n: fc.length,
+      paidPct: pay.length ? Math.round(pay.reduce(function (s, x) {
+        return s + x.earned;
+      }, 0) / pay.reduce(function (s, x) {
+        return s + x.inv;
+      }, 0) * 100) : null,
+      months: fc.length && monTot > 0 && remTot > 0 ? Math.ceil(remTot / monTot) : null,
+      allDone: pay.length > 0 && pay.every(function (x) {
+        return x.done;
+      }),
+      total: pay.length
+    };
+
+    // ── ZYSK PO ZWROCIE ZAKUPU w okresie: tylko ta część wyniku szyny, która powstała PO odzyskaniu jej kosztu zakupu ──
+    var earnedTo = function earnedTo(eq, date) {
+      if (date >= today) return allTimeRevenue[eq] || 0;
+      return revenueInRange("2000-01-01", date, eq) + (finances || []).filter(function (f) {
+        return f.type === "przychód" && (f.sourceId || "").startsWith("sprzedaz-") && f.eq === eq && (f.date || "") <= date;
+      }).reduce(function (s, f) {
+        return s + (+f.amount || 0);
+      }, 0);
+    };
+    var investAt = function investAt(eq, date) {
+      return whPurchaseTotal(stock, machines, eq) + srvList(eq).filter(function (x) {
+        return !x.date || x.date <= date;
+      }).reduce(function (s, x) {
+        return s + (+x.amount || 0);
+      }, 0);
+    };
+    var prevDay = addDays(pStart, -1);
+    var profitSum = 0,
+      noCost = 0;
+    var profitRows = eqs.map(function (eq) {
+      if (!(whPurchaseTotal(stock, machines, eq) > 0)) {
+        noCost++;
+        return null;
+      }
+      var n0 = earnedTo(eq, prevDay) - investAt(eq, prevDay),
+        n1 = earnedTo(eq, cutEnd) - investAt(eq, cutEnd);
+      var p = Math.max(0, n1) - Math.max(0, n0);
+      profitSum += p;
+      return {
+        eq: eq,
+        p: p,
+        done: n1 >= 0
+      };
+    }).filter(Boolean);
     return {
       rows: rows,
       overall: overall,
       all: all,
       revSum: revSum,
       srvSum: srvSum,
-      amortSum: amortSum,
       emptySum: emptySum,
       lostSum: lostSum,
       capSum: capSum,
-      bookedSum: bookedSum
+      bookedSum: bookedSum,
+      pay: pay,
+      payTot: payTot,
+      profitSum: profitSum,
+      profitRows: profitRows,
+      noCost: noCost
     };
-  }, [rentals, stock, machines, finances, today, pStart, pEnd, equipmentAll]);
+  }, [rentals, stock, machines, finances, today, pStart, pEnd, equipmentAll, allTimeRevenue]);
   var head = {
     fontSize: 11,
     fontWeight: 700,
@@ -746,7 +904,6 @@ function CpmResults(_ref6) {
     lineHeight: 1.5
   };
   var wynik = d.revSum - marketingSzyny - d.srvSum;
-  var wynikPo = wynik - d.amortSum;
   var fmtD = function fmtD(x) {
     return x.slice(8) + "." + x.slice(5, 7);
   };
@@ -767,9 +924,110 @@ function CpmResults(_ref6) {
     style: _objectSpread(_objectSpread({}, head), {}, {
       marginTop: 0
     })
-  }, "Wynik szyn CPM \u2014 ", periodLabel), kv("Przychód z szyn (wpłaty)", Z(d.revSum), GREEN), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("− Serwis i naprawy", d.srvSum > 0 ? Z(d.srvSum) : "0 zł", RED), kv("= Wynik", (wynik >= 0 ? "+" : "−") + Z(Math.abs(wynik)), wynik >= 0 ? GREEN : RED), kv("Po odjęciu części zakupu*", (wynikPo >= 0 ? "+" : "−") + Z(Math.abs(wynikPo)), wynikPo >= 0 ? GREEN : RED), /*#__PURE__*/React.createElement("div", {
+  }, "Wynik szyn CPM \u2014 ", periodLabel), kv("Przychód z szyn (wpłaty)", Z(d.revSum), GREEN), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("− Serwis i naprawy", d.srvSum > 0 ? Z(d.srvSum) : "0 zł", RED), kv("= Wynik", (wynik >= 0 ? "+" : "−") + Z(Math.abs(wynik)), wynik >= 0 ? GREEN : RED), /*#__PURE__*/React.createElement("div", {
     style: note
-  }, "* Koszt zakupu szyn roz\u0142o\u017Cony r\xF3wno na 36 miesi\u0119cy (od daty dodania sprz\u0119tu). Przych\xF3d to wp\u0142aty z okresu, reklama wg podkategorii \u201EMarketing szyny\u201D w bud\u017Cecie, serwis z kart sztuk i napraw typu."), /*#__PURE__*/React.createElement("div", {
+  }, "Przych\xF3d to wp\u0142aty z okresu, reklama wg podkategorii \u201EMarketing szyny\u201D w bud\u017Cecie, serwis z kart sztuk i napraw typu. Koszt zakupu nie jest tu odejmowany \u2014 patrz ni\u017Cej."), /*#__PURE__*/React.createElement("div", {
+    style: head
+  }, "Zysk po zwrocie zakupu \u2014 ", periodLabel), d.profitRows.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: subC
+    }
+  }, "Brak szyn z wpisanym kosztem zakupu (wpisz w Op\u0142acalno\u015Bci sprz\u0119tu).") : /*#__PURE__*/React.createElement(React.Fragment, null, d.profitRows.map(function (x) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: x.eq,
+      style: rowSt
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: textC
+      }
+    }, x.eq), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: x.p > 0 ? GREEN : subC,
+        fontWeight: 600
+      }
+    }, x.p > 0 ? "+" + Z(Math.round(x.p)) : x.done ? "0 zł" : "jeszcze spłaca zakup"));
+  }), kv("Zysk szyn po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - marketingSzyny) > 0 ? "+" : Math.round(d.profitSum - marketingSzyny) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - marketingSzyny))), d.profitSum - marketingSzyny > 0 ? GREEN : d.profitSum - marketingSzyny < 0 ? RED : subC)), /*#__PURE__*/React.createElement("div", {
+    style: note
+  }, "Dop\xF3ki szyna nie odzyska kosztu zakupu i napraw, jej wynik sp\u0142aca inwestycj\u0119, wi\u0119c zysk = 0. Po zwrocie ka\u017Cda z\u0142ot\xF3wka jest zyskiem; gdy zwrot nast\u0105pi\u0142 w \u015Brodku okresu, liczy si\u0119 tylko nadwy\u017Cka.", d.noCost > 0 ? " Pominięte szyny bez wpisanego kosztu zakupu: " + d.noCost + "." : ""), /*#__PURE__*/React.createElement("div", {
+    style: head
+  }, "Zwrot zakupu szyn \u2014 tempo z ostatnich 12 miesi\u0119cy"), d.pay.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: subC
+    }
+  }, "Brak szyn z wpisanym kosztem zakupu.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Szyny razem", d.payTot.paidPct != null ? "zwrócono " + d.payTot.paidPct + "%" + (d.payTot.allDone ? " · wszystkie zwrócone" : d.payTot.months == null ? "" : " · pełny zwrot za ~" + d.payTot.months + " mies. (prognoza dla " + d.payTot.n + " z " + d.payTot.total + " szyn)") : "—", BLUE), d.pay.map(function (x) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: x.eq,
+      style: {
+        padding: "9px 0",
+        borderBottom: "1px solid " + borderC
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 8,
+        fontSize: 13,
+        fontWeight: 700,
+        color: textC
+      }
+    }, /*#__PURE__*/React.createElement("span", null, x.eq), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: x.done ? GREEN : BLUE
+      }
+    }, x.done ? "✓ zwrócona" : "zwrócono " + x.paidPct + "%")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 6,
+        borderRadius: 3,
+        background: trackC,
+        margin: "5px 0"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: "100%",
+        width: Math.min(100, x.paidPct) + "%",
+        background: x.done ? GREEN : BLUE,
+        borderRadius: 3
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: subC
+      }
+    }, Z(Math.round(x.earned)), " z ", Z(Math.round(x.inv)), " (zakup + naprawy)"), !x.done && (x.enough ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: subC,
+        marginTop: 3,
+        lineHeight: 1.5
+      }
+    }, "Stawka ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: textC
+      }
+    }, Z(Math.round(x.rate)), "/dzie\u0144"), " \xD7 ob\u0142o\u017Cenie ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: textC
+      }
+    }, Math.round(x.pct), "%"), " \u2248 ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: textC
+      }
+    }, Z(Math.round(x.monthly)), "/mies."), " (po odj\u0119ciu serwisu)", x.months != null ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), "Zwrot za ok. ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: textC
+      }
+    }, x.months, " mies."), x.mHigh != null && x.mLow != null && /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 przy ob\u0142o\u017Ceniu ", Math.min(100, Math.round(x.pct) + 10), "%: ", x.mHigh, " mies., przy ", Math.max(5, Math.round(x.pct) - 10), "%: ", x.mLow, " mies."), x.monthsAll != null && /*#__PURE__*/React.createElement("span", null, " \xB7 wg ca\u0142ego czasu od zakupu: ", x.monthsAll, " mies.")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), "Przy tym tempie szyna si\u0119 nie zwr\xF3ci (zarobek miesi\u0119czny \u2264 0).")) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: subC,
+        marginTop: 3
+      }
+    }, "Za ma\u0142o danych na prognoz\u0119 (potrzeba min. 3 wypo\u017Cycze\u0144 i 60 dni dost\u0119pno\u015Bci w ostatnich 12 miesi\u0105cach; masz: wypo\u017Cycze\u0144 ", x.n, ", dni dost\u0119pno\u015Bci ", x.cap, ").")));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: note
+  }, "Czas do zwrotu = brakuj\u0105ca kwota \xF7 (\u015Brednia stawka za dzie\u0144 \xD7 \u015Brednie ob\u0142o\u017Cenie z ostatnich 12 miesi\u0119cy \xD7 30,4 dni \u2212 \u015Bredni miesi\u0119czny serwis). Reklama nie wchodzi do inwestycji szyny, bo jest wsp\xF3lna dla ca\u0142ego typu."), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Stawka za dzie\u0144 wypo\u017Cyczenia"), d.overall == null ? /*#__PURE__*/React.createElement("div", {
     style: {

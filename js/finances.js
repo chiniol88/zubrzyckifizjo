@@ -632,7 +632,7 @@
 
       // kontekst dla nowych sekcji (js/stats2.js)
       const ctx={year:displayYear,today,rentals,finances,nfzCases,budget,stock,machines,getRid,catOf,demo,Z,kv,dk,subC,textC,borderC,trackC,GREEN,RED,BLUE,PURPLE,ORANGE,
-        pStart,pEnd,periodLabel,equipmentAll,revenueInRange,revenueInRangeCat,getMachineSrvForEq,getCosts,marketingSzyny:stats.marketingByType.szyny};
+        pStart,pEnd,periodLabel,equipmentAll,revenueInRange,revenueInRangeCat,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,marketingSzyny:stats.marketingByType.szyny};
 
       return <div style={{padding:"0 20px 24px"}}>
         {/* Okres: miesiąc / rok — wspólny dla wszystkich sekcji */}
