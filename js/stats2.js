@@ -212,13 +212,14 @@
           const srvMonthAll=srv.reduce((s,x)=>s+(+x.amount||0),0)/Math.max(1,(dateDiff(startAll,today)+1)/30.4);
           const pct=(o12.noData||!o12.cap)?null:o12.booked/o12.cap*100;
           const pctAll=(o0.noData||!o0.cap)?null:o0.booked/o0.cap*100;
-          const mk=(rate,p,sm)=>(rate!=null&&p!=null)?rate*(p/100)*30.4-sm:null;
+          const qty=Math.max(1,whQty(stock,eq));   // liczba sztuk modelu: zakup i zarobek dotyczą WSZYSTKICH sztuk, nie jednej
+          const mk=(rate,p,sm)=>(rate!=null&&p!=null)?rate*(p/100)*30.4*qty-sm:null;
           const left=Math.max(0,inv-earned);
           const monthsTo=m=>left<=0?0:(m!=null&&m>0?Math.ceil(left/m):null);
           const enough=w12.n>=3&&o12.cap>=60&&w12.rate!=null&&pct!=null;
           const monthly=mk(w12.rate,pct,srvMonth);
           const monthlyAll=mk(wAll.rate,pctAll,srvMonthAll);
-          return {eq,inv,earned,left,done:left<=0,paidPct:Math.min(999,Math.round(earned/inv*100)),enough,n:w12.n,cap:o12.cap,rate:w12.rate,pct,monthly,
+          return {eq,qty,inv,earned,left,done:left<=0,paidPct:Math.min(999,Math.round(earned/inv*100)),enough,n:w12.n,cap:o12.cap,rate:w12.rate,pct,monthly,
             months:enough?monthsTo(monthly):null,
             mHigh:enough&&left>0?monthsTo(mk(w12.rate,Math.min(100,pct+10),srvMonth)):null,
             mLow:enough&&left>0?monthsTo(mk(w12.rate,Math.max(5,pct-10),srvMonth)):null,
@@ -273,14 +274,14 @@
             const sc=(l,v)=><div style={{display:"flex",justifyContent:"space-between",gap:8}}><span>{l}</span><b style={{color:textC}}>{v}</b></div>;
             const hi=Math.min(100,Math.round(x.pct||0)+10),lo=Math.max(5,Math.round(x.pct||0)-10);
             return <div key={x.eq} style={{padding:"14px 0",borderBottom:"1px solid "+borderC}}>
-              <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:15,fontWeight:700,color:textC}}><span>{x.eq}</span><span style={{color:x.done?GREEN:BLUE,whiteSpace:"nowrap"}}>{x.done?"✓ zwrócona":"zwrócono "+x.paidPct+"%"}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:15,fontWeight:700,color:textC}}><span>{x.eq}<span style={{fontWeight:400,color:subC,fontSize:13}}> · {x.qty} szt.</span></span><span style={{color:x.done?GREEN:BLUE,whiteSpace:"nowrap"}}>{x.done?"✓ zwrócona":"zwrócono "+x.paidPct+"%"}</span></div>
               <div style={{height:7,borderRadius:4,background:trackC,margin:"8px 0 6px"}}><div style={{height:"100%",width:Math.min(100,x.paidPct)+"%",background:x.done?GREEN:BLUE,borderRadius:4}}/></div>
               <div style={{fontSize:13,color:textC}}>{Z(Math.round(x.earned))} <span style={{color:subC}}>z</span> {Z(Math.round(x.inv))} <span style={{color:subC}}>(zakup + naprawy)</span></div>
               {!x.done&&(x.enough
                 ?<div style={{marginTop:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:subC,padding:"3px 0"}}><span>Średnia stawka</span><b style={{color:textC}}>{Z(Math.round(x.rate))}/dzień</b></div>
                   <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:subC,padding:"3px 0"}}><span>Obłożenie (12 mies.)</span><b style={{color:textC}}>{Math.round(x.pct)}%</b></div>
-                  <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:subC,padding:"3px 0"}}><span>Zarabia miesięcznie</span><b style={{color:textC}}>{Z(Math.round(x.monthly))}</b></div>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:subC,padding:"3px 0"}}><span>Zarabia miesięcznie{x.qty>1?" ("+x.qty+" szt.)":""}</span><b style={{color:textC}}>{Z(Math.round(x.monthly))}</b></div>
                   <div style={{fontSize:11,color:subC,textAlign:"right"}}>po odjęciu serwisu</div>
                   {x.months!=null
                     ?<>
@@ -302,7 +303,7 @@
             </div>;
           })}
         </>}
-        <StatNote lines={["Czas do zwrotu = brakująca kwota ÷ miesięczny zarobek.","Miesięczny zarobek = średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni − średni miesięczny serwis.","Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu."]}/>
+        <StatNote lines={["Czas do zwrotu = brakująca kwota ÷ miesięczny zarobek.","Miesięczny zarobek = średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni × liczba sztuk modelu − średni miesięczny serwis.","Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu."]}/>
 
         <div style={head}>Stawka za dzień wypożyczenia</div>
         {d.overall==null?<div style={{fontSize:12,color:subC}}>Brak wypożyczeń szyn rozpoczętych w tym okresie.</div>:<>

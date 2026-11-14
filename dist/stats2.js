@@ -797,8 +797,9 @@ function CpmResults(_ref7) {
       }, 0) / Math.max(1, (dateDiff(startAll, today) + 1) / 30.4);
       var pct = o12.noData || !o12.cap ? null : o12.booked / o12.cap * 100;
       var pctAll = o0.noData || !o0.cap ? null : o0.booked / o0.cap * 100;
+      var qty = Math.max(1, whQty(stock, eq)); // liczba sztuk modelu: zakup i zarobek dotyczą WSZYSTKICH sztuk, nie jednej
       var mk = function mk(rate, p, sm) {
-        return rate != null && p != null ? rate * (p / 100) * 30.4 - sm : null;
+        return rate != null && p != null ? rate * (p / 100) * 30.4 * qty - sm : null;
       };
       var left = Math.max(0, inv - earned);
       var monthsTo = function monthsTo(m) {
@@ -809,6 +810,7 @@ function CpmResults(_ref7) {
       var monthlyAll = mk(wAll.rate, pctAll, srvMonthAll);
       return {
         eq: eq,
+        qty: qty,
         inv: inv,
         earned: earned,
         left: left,
@@ -978,7 +980,13 @@ function CpmResults(_ref7) {
         fontWeight: 700,
         color: textC
       }
-    }, /*#__PURE__*/React.createElement("span", null, x.eq), /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("span", null, x.eq, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 400,
+        color: subC,
+        fontSize: 13
+      }
+    }, " \xB7 ", x.qty, " szt.")), /*#__PURE__*/React.createElement("span", {
       style: {
         color: x.done ? GREEN : BLUE,
         whiteSpace: "nowrap"
@@ -1049,7 +1057,7 @@ function CpmResults(_ref7) {
         color: subC,
         padding: "3px 0"
       }
-    }, /*#__PURE__*/React.createElement("span", null, "Zarabia miesi\u0119cznie"), /*#__PURE__*/React.createElement("b", {
+    }, /*#__PURE__*/React.createElement("span", null, "Zarabia miesi\u0119cznie", x.qty > 1 ? " (" + x.qty + " szt.)" : ""), /*#__PURE__*/React.createElement("b", {
       style: {
         color: textC
       }
@@ -1110,7 +1118,7 @@ function CpmResults(_ref7) {
       }
     }, /*#__PURE__*/React.createElement("div", null, "Za ma\u0142o danych na prognoz\u0119."), /*#__PURE__*/React.createElement("div", null, "Potrzeba min. 3 wypo\u017Cycze\u0144 i 60 dni dost\u0119pno\u015Bci w ostatnich 12 miesi\u0105cach."), /*#__PURE__*/React.createElement("div", null, "Masz: wypo\u017Cycze\u0144 ", x.n, ", dni dost\u0119pno\u015Bci ", x.cap, "."))));
   })), /*#__PURE__*/React.createElement(StatNote, {
-    lines: ["Czas do zwrotu = brakująca kwota ÷ miesięczny zarobek.", "Miesięczny zarobek = średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni − średni miesięczny serwis.", "Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu."]
+    lines: ["Czas do zwrotu = brakująca kwota ÷ miesięczny zarobek.", "Miesięczny zarobek = średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni × liczba sztuk modelu − średni miesięczny serwis.", "Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu."]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Stawka za dzie\u0144 wypo\u017Cyczenia"), d.overall == null ? /*#__PURE__*/React.createElement("div", {
