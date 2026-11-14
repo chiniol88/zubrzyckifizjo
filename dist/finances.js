@@ -2608,14 +2608,9 @@ function RentalStats(_ref9) {
       cursor: "pointer",
       fontFamily: "inherit"
     }
-  }, "+ Za\u0142\xF3\u017C w bud\u017Cecie podkategorie: Marketing szyny / w\xF3zki / balkoniki"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginTop: 8,
-      lineHeight: 1.5
-    }
-  }, "Wydatki bierzemy z bud\u017Cetu: kategoria ", stock && stock.marketingCat || "Firma", ", podkategorie \u201EMarketing szyny\u201D, \u201EMarketing w\xF3zki\u201D, \u201EMarketing balkoniki\u201D. Dawny \u201EMarketing\u201D (bez podzia\u0142u) nie jest doliczany do koszt\xF3w reklamy w Statystykach.")), /*#__PURE__*/React.createElement(StatAcc, {
+  }, "+ Za\u0142\xF3\u017C w bud\u017Cecie podkategorie: Marketing szyny / w\xF3zki / balkoniki"), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Wydatki bierzemy z budżetu: kategoria " + (stock && stock.marketingCat || "Firma") + ", podkategorie „Marketing szyny”, „Marketing wózki”, „Marketing balkoniki”.", "Dawny „Marketing” (bez podziału) nie jest doliczany do kosztów reklamy w Statystykach."]
+  })), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: !!openMap.season,
     onToggle: tog("season"),
@@ -2832,14 +2827,9 @@ function RentalStats(_ref9) {
         marginTop: 1
       }
     }, "\u015Br. ", Z(b.perDay), "/dzie\u0144 \xB7 rok temu: ", Z(b.prev)));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginTop: 6,
-      lineHeight: 1.5
-    }
-  }, "Por\xF3wnanie do tego samego okresu rok temu, po kolei od stycznia. Prze\u0142\u0105cznik zmienia szeroko\u015B\u0107 okna.")), /*#__PURE__*/React.createElement(StatAcc, {
+  }), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Porównanie do tego samego okresu rok temu, po kolei od stycznia.", "Przełącznik zmienia szerokość okna."]
+  })), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: !!openMap.yearly,
     onToggle: tog("yearly"),
@@ -2998,10 +2988,13 @@ function RentalStats(_ref9) {
       }
     }, x.pct, "%")), strip, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
-        color: subC,
-        marginTop: 4,
-        lineHeight: 1.45
+        fontSize: 12,
+        color: dk ? "#B4C5D8" : "#4F6178",
+        marginTop: 8,
+        lineHeight: 1.6,
+        display: "flex",
+        flexDirection: "column",
+        gap: 5
       }
     }, x.start > pStart && /*#__PURE__*/React.createElement("div", null, "liczone od ", fmtPl(x.start)), x.missingAdded && /*#__PURE__*/React.createElement("div", null, "brak daty dodania \u2014 start = pierwsze wypo\u017Cyczenie (", fmtPl(x.start), "). Uzupe\u0142nij w Sprz\u0119t \u2192 Edytuj."), x.overlapDays > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
@@ -3054,14 +3047,9 @@ function RentalStats(_ref9) {
         color: textC
       }
     }, x.gapAvg, " dni"), " (", x.gapCount, "\xD7)")));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: subC,
-      marginTop: 6,
-      lineHeight: 1.5
-    }
-  }, "Tylko szyny CPM. ", isYear ? "Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie." : "Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona.", " Liczone jest wypo\u017Cyczenie pacjenta (od startu do ko\u0144ca okresu, za kt\xF3ry p\u0142aci), a nie moment odbioru sprz\u0119tu. Start = data dodania sprz\u0119tu albo pierwsze wypo\u017Cyczenie; rezerwacje si\u0119 nie licz\u0105. Pusta ramka = przed dodaniem sprz\u0119tu.")), /*#__PURE__*/React.createElement(StatAcc, {
+  }), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Tylko szyny CPM. " + (isYear ? "Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie." : "Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."), "Liczone jest wypożyczenie pacjenta (od startu do końca okresu, za który płaci), a nie moment odbioru sprzętu.", "Start = data dodania sprzętu albo pierwsze wypożyczenie; rezerwacje się nie liczą.", "Pusta ramka = przed dodaniem sprzętu."]
+  })), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: !!openMap.cpm,
     onToggle: tog("cpm"),
@@ -3474,14 +3462,9 @@ function RentalStats(_ref9) {
       fontFamily: "inherit",
       marginBottom: 6
     }
-  }, showAllRoi ? "Ukryj sprzęt bez danych" : "Pokaż resztę sprzętu (" + roiHidden + ") — aby wpisać koszt zakupu"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: subC,
-      marginTop: 6,
-      lineHeight: 1.5
-    }
-  }, "Kreska = punkt zwrotu (zakup + naprawy). Nie zale\u017Cy od wybranego okresu. Dotknij sprz\u0119tu, aby wpisa\u0107 zakup i naprawy.")), /*#__PURE__*/React.createElement(StatAcc, {
+  }, showAllRoi ? "Ukryj sprzęt bez danych" : "Pokaż resztę sprzętu (" + roiHidden + ") — aby wpisać koszt zakupu"), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Kreska = punkt zwrotu (zakup + naprawy).", "Nie zależy od wybranego okresu.", "Dotknij sprzętu, aby wpisać zakup i naprawy."]
+  })), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: !!openMap.health,
     onToggle: tog("health"),
@@ -3576,14 +3559,9 @@ function RentalStats(_ref9) {
         }
       }, "otw\xF3rz \u203A"));
     }));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginTop: 8,
-      lineHeight: 1.5
-    }
-  }, "Rzeczy, kt\xF3re mog\u0105 zani\u017Ca\u0107 albo zawy\u017Ca\u0107 liczby w Statystykach. Sprawdzane niezale\u017Cnie od wybranego okresu (all-time / bie\u017C\u0105cy stan).")), repairForm && function () {
+  }), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach.", "Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan)."]
+  })), repairForm && function () {
     var eqCards = whCards(machines, repairForm.eq);
     return /*#__PURE__*/React.createElement(Modal, {
       title: "Naprawa / serwis",

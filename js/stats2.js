@@ -31,6 +31,14 @@
       return <div style={{minHeight:30,marginTop:6,padding:"6px 10px",borderRadius:10,background:trackC,fontSize:12,color:text?textC:subC,lineHeight:1.4}}>{text||"Dotknij słupka, żeby zobaczyć szczegóły."}</div>;
     }
 
+    // Opis pod sekcją/wykresem: osobne krótkie akapity, większa czcionka i ciemniejszy kolor (czytelniej niż szare 10 px)
+    function StatNote({lines}) {
+      const dk=useContext(DarkCtx);
+      return <div style={{marginTop:12,padding:"10px 12px",borderRadius:10,background:dk?"rgba(255,255,255,.05)":"#F3F6FA",borderLeft:"3px solid "+(dk?"#3A5278":"#C4D2E4"),fontSize:12,lineHeight:1.6,color:dk?"#B4C5D8":"#4F6178"}}>
+        {lines.filter(Boolean).map((t,i)=><div key={i} style={{marginTop:i?6:0}}>{t}</div>)}
+      </div>;
+    }
+
     // ── REKLAMA: rok w miesiącach (zysk narastająco, koszt klienta, źródła klientów) ──
     function AdsYear({c}) {
       const {year,today,rentals,finances,nfzCases,budget,stock,getRid,catOf,demo,Z,subC,textC,borderC,trackC,GREEN,RED,BLUE,PURPLE,ORANGE}=c;
@@ -94,7 +102,7 @@
           <div style={head}>Zysk z reklamy narastająco (przychód − koszt)</div>
           <StatBars vals={d.cum} h={64} color={GREEN} negColor={RED} labels={labels} sub={subC} track={trackC} sel={selCum} onSel={setSelCum}/>
           <StatPick subC={subC} textC={textC} trackC={trackC} text={selCum!=null&&d.cum[selCum]!=null?PL_MON[selCum]+" "+year+": narastająco "+(d.cum[selCum]>=0?"+":"−")+Z(Math.abs(d.cum[selCum]))+" · w tym miesiącu przychód "+Z(d.rev[selCum])+", koszt "+Z(d.spendTot[selCum]):null}/>
-          <div style={{fontSize:10,color:subC,marginTop:4,lineHeight:1.5}}>Każdy słupek to stan od początku roku do końca danego miesiąca. Zielony = reklama już się zwróciła, czerwony = jeszcze nie. Przychód liczony wg daty wpłaty od klientów oznaczonych „reklama”.</div>
+          <StatNote lines={["Każdy słupek to stan od początku roku do końca danego miesiąca.","Zielony = reklama już się zwróciła, czerwony = jeszcze nie.","Przychód liczony wg daty wpłaty od klientów oznaczonych „reklama”."]}/>
           {MKTG_TYPES.map(t=>{
             const sp=d.types[t.k].spend,cn=d.types[t.k].cnt,sS=sp.reduce((a,b)=>a+b,0),sC=cn.reduce((a,b)=>a+b,0);
             if(!(sS>0||sC>0))return null;
@@ -105,7 +113,7 @@
                 ?<div style={{fontSize:12,color:subC}}>Brak miesiąca, w którym był i wydatek na reklamę, i nowy klient z reklamy (wydatek i klient wypadły w różnych miesiącach).</div>
                 :<><StatBars vals={cac} h={48} color={t.k==="wozki"?PURPLE:t.k==="balkoniki"?ORANGE:BLUE} labels={labels} sub={subC} track={trackC} sel={selCac[t.k]==null?null:selCac[t.k]} onSel={i=>setSelCac(m=>({...m,[t.k]:i}))} fmt={demo?null:(v=>v>=1000?(v/1000).toFixed(1).replace(".0","")+"k":String(v))}/>
                   <StatPick subC={subC} textC={textC} trackC={trackC} text={selCac[t.k]!=null?PL_MON[selCac[t.k]]+" "+year+": wydano "+Z(sp[selCac[t.k]])+", nowych klientów z reklamy "+cn[selCac[t.k]]+(cac[selCac[t.k]]!=null?", koszt klienta "+Z(cac[selCac[t.k]]):""):null}/></>}
-              <div style={{fontSize:10,color:subC,marginTop:4}}>W roku: wydano {Z(sS)}, nowych klientów z reklamy {sC}{sC>0&&sS>0?", średnio "+Z(Math.round(sS/sC))+" na klienta":""}. Pusty słupek = brak wydatku albo brak klienta w tym miesiącu.</div>
+              <StatNote lines={["W roku: wydano "+Z(sS)+", nowych klientów z reklamy "+sC+(sC>0&&sS>0?", średnio "+Z(Math.round(sS/sC))+" na klienta.":"."),"Pusty słupek = w tym miesiącu brak wydatku albo brak klienta z reklamy."]}/>
             </div>;
           })}
           <div style={head}>Skąd trafiają nowi klienci — udział w miesiącach</div>
@@ -125,7 +133,7 @@
             <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8,fontSize:11,color:subC}}>
               {d.srcKeys.map((k,i)=>srcTot[i]>0&&<span key={k}><i style={{display:"inline-block",width:8,height:8,borderRadius:2,background:srcMeta(k).c,marginRight:5}}/>{srcMeta(k).l} · {srcTot[i]} ({Math.round(srcTot[i]/srcAll*100)}%)</span>)}
             </div>
-            <div style={{fontSize:10,color:subC,marginTop:4,lineHeight:1.5}}>Liczone nowi klienci (start wypożyczenia lub zamówienie wózka). Jeśli udział reklamy rośnie, a „organicznie” maleje, reklama może tylko zabierać klientów, którzy i tak by przyszli.</div>
+            <StatNote lines={["Liczeni są nowi klienci (start wypożyczenia lub zamówienie wózka).","Jeśli udział reklamy rośnie, a „organicznie” maleje, reklama może tylko zabierać klientów, którzy i tak by przyszli."]}/>
           </>}
         </>}
       </div>;
@@ -133,7 +141,7 @@
 
     // ── WYNIKI CPM: wynik, stawka za dzień, puste dni ──
     function CpmResults({c}) {
-      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,marketingSzyny,Z,kv,subC,textC,borderC,trackC,GREEN,RED,ORANGE,BLUE}=c;
+      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,marketingSzyny,Z,kv,subC,textC,borderC,trackC,GREEN,RED,ORANGE,BLUE,dk}=c;
       const d=useMemo(()=>{
         const eqs=equipmentAll.filter(eq=>catOf(eq)==="szyny");
         const cutEnd=pEnd<today?pEnd:today;
@@ -237,7 +245,6 @@
         return {rows,overall,all,revSum,srvSum,emptySum,lostSum,capSum,bookedSum,pay,payTot,profitSum,profitRows,noCost};
       },[rentals,stock,machines,finances,today,pStart,pEnd,equipmentAll,allTimeRevenue]);
       const head={fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 6px"};
-      const note={fontSize:10,color:subC,marginTop:6,lineHeight:1.5};
       const wynik=d.revSum-marketingSzyny-d.srvSum;
       const fmtD=x=>x.slice(8)+"."+x.slice(5,7);
       const rowSt={display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap",padding:"7px 0",borderBottom:"1px solid "+borderC,fontSize:12};
@@ -248,7 +255,7 @@
         {kv("− Reklama szyn",marketingSzyny>0?Z(marketingSzyny):"0 zł",RED)}
         {kv("− Serwis i naprawy",d.srvSum>0?Z(d.srvSum):"0 zł",RED)}
         {kv("= Wynik",(wynik>=0?"+":"−")+Z(Math.abs(wynik)),wynik>=0?GREEN:RED)}
-        <div style={note}>Przychód to wpłaty z okresu, reklama wg podkategorii „Marketing szyny” w budżecie, serwis z kart sztuk i napraw typu. Koszt zakupu nie jest tu odejmowany — patrz niżej.</div>
+        <StatNote lines={["Przychód to wpłaty z okresu.","Reklama wg podkategorii „Marketing szyny” w budżecie, serwis z kart sztuk i napraw typu.","Koszt zakupu nie jest tu odejmowany — patrz niżej."]}/>
 
         <div style={head}>Zysk po zwrocie zakupu — {periodLabel}</div>
         {d.profitRows.length===0?<div style={{fontSize:12,color:subC}}>Brak szyn z wpisanym kosztem zakupu (wpisz w Opłacalności sprzętu).</div>:<>
@@ -257,24 +264,45 @@
           {kv("− Reklama szyn",marketingSzyny>0?Z(marketingSzyny):"0 zł",RED)}
           {kv("= Zysk po zwrocie zakupu i reklamie",(Math.round(d.profitSum-marketingSzyny)>0?"+":Math.round(d.profitSum-marketingSzyny)<0?"−":"")+Z(Math.abs(Math.round(d.profitSum-marketingSzyny))),d.profitSum-marketingSzyny>0?GREEN:d.profitSum-marketingSzyny<0?RED:subC)}
         </>}
-        <div style={note}>Dopóki szyna nie odzyska kosztu zakupu i napraw, jej wynik spłaca inwestycję, więc zysk = 0. Po zwrocie każda złotówka jest zyskiem; gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.{d.noCost>0?" Pominięte szyny bez wpisanego kosztu zakupu: "+d.noCost+".":""}</div>
+        <StatNote lines={["Dopóki szyna nie odzyska kosztu zakupu i napraw, jej wynik spłaca inwestycję, więc zysk = 0.","Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.",d.noCost>0?"Pominięte szyny bez wpisanego kosztu zakupu: "+d.noCost+".":null]}/>
 
         <div style={head}>Zwrot zakupu szyn — tempo z ostatnich 12 miesięcy</div>
         {d.pay.length===0?<div style={{fontSize:12,color:subC}}>Brak szyn z wpisanym kosztem zakupu.</div>:<>
           {kv("Szyny razem",d.payTot.paidPct!=null?"zwrócono "+d.payTot.paidPct+"%"+(d.payTot.allDone?" · wszystkie zwrócone":d.payTot.months==null?"":" · pełny zwrot za ~"+d.payTot.months+" mies. (prognoza dla "+d.payTot.n+" z "+d.payTot.total+" szyn)"):"—",BLUE)}
-          {d.pay.map(x=><div key={x.eq} style={{padding:"9px 0",borderBottom:"1px solid "+borderC}}>
-            <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,fontWeight:700,color:textC}}><span>{x.eq}</span><span style={{color:x.done?GREEN:BLUE}}>{x.done?"✓ zwrócona":"zwrócono "+x.paidPct+"%"}</span></div>
-            <div style={{height:6,borderRadius:3,background:trackC,margin:"5px 0"}}><div style={{height:"100%",width:Math.min(100,x.paidPct)+"%",background:x.done?GREEN:BLUE,borderRadius:3}}/></div>
-            <div style={{fontSize:11,color:subC}}>{Z(Math.round(x.earned))} z {Z(Math.round(x.inv))} (zakup + naprawy)</div>
-            {!x.done&&(x.enough
-              ?<div style={{fontSize:11,color:subC,marginTop:3,lineHeight:1.5}}>
-                 Stawka <b style={{color:textC}}>{Z(Math.round(x.rate))}/dzień</b> × obłożenie <b style={{color:textC}}>{Math.round(x.pct)}%</b> ≈ <b style={{color:textC}}>{Z(Math.round(x.monthly))}/mies.</b> (po odjęciu serwisu)
-                 {x.months!=null?<><br/>Zwrot za ok. <b style={{color:textC}}>{x.months} mies.</b>{x.mHigh!=null&&x.mLow!=null&&<> · przy obłożeniu {Math.min(100,Math.round(x.pct)+10)}%: {x.mHigh} mies., przy {Math.max(5,Math.round(x.pct)-10)}%: {x.mLow} mies.</>}{x.monthsAll!=null&&<span> · wg całego czasu od zakupu: {x.monthsAll} mies.</span>}</>:<><br/>Przy tym tempie szyna się nie zwróci (zarobek miesięczny ≤ 0).</>}
-               </div>
-              :<div style={{fontSize:11,color:subC,marginTop:3}}>Za mało danych na prognozę (potrzeba min. 3 wypożyczeń i 60 dni dostępności w ostatnich 12 miesiącach; masz: wypożyczeń {x.n}, dni dostępności {x.cap}).</div>)}
-          </div>)}
+          {d.pay.map(x=>{
+            const sc=(l,v)=><div style={{display:"flex",justifyContent:"space-between",gap:8}}><span>{l}</span><b style={{color:textC}}>{v}</b></div>;
+            const hi=Math.min(100,Math.round(x.pct||0)+10),lo=Math.max(5,Math.round(x.pct||0)-10);
+            return <div key={x.eq} style={{padding:"14px 0",borderBottom:"1px solid "+borderC}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:15,fontWeight:700,color:textC}}><span>{x.eq}</span><span style={{color:x.done?GREEN:BLUE,whiteSpace:"nowrap"}}>{x.done?"✓ zwrócona":"zwrócono "+x.paidPct+"%"}</span></div>
+              <div style={{height:7,borderRadius:4,background:trackC,margin:"8px 0 6px"}}><div style={{height:"100%",width:Math.min(100,x.paidPct)+"%",background:x.done?GREEN:BLUE,borderRadius:4}}/></div>
+              <div style={{fontSize:13,color:textC}}>{Z(Math.round(x.earned))} <span style={{color:subC}}>z</span> {Z(Math.round(x.inv))} <span style={{color:subC}}>(zakup + naprawy)</span></div>
+              {!x.done&&(x.enough
+                ?<div style={{marginTop:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:subC,padding:"3px 0"}}><span>Średnia stawka</span><b style={{color:textC}}>{Z(Math.round(x.rate))}/dzień</b></div>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:subC,padding:"3px 0"}}><span>Obłożenie (12 mies.)</span><b style={{color:textC}}>{Math.round(x.pct)}%</b></div>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:subC,padding:"3px 0"}}><span>Zarabia miesięcznie</span><b style={{color:textC}}>{Z(Math.round(x.monthly))}</b></div>
+                  <div style={{fontSize:11,color:subC,textAlign:"right"}}>po odjęciu serwisu</div>
+                  {x.months!=null
+                    ?<>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,margin:"10px 0 0",padding:"9px 12px",borderRadius:10,background:dk?"rgba(46,134,171,.18)":"#E6F1F7",fontSize:14,fontWeight:700,color:textC}}><span>Zwrot za około</span><span style={{color:BLUE}}>{x.months} mies.</span></div>
+                      <div style={{marginTop:8,padding:"8px 12px",borderRadius:10,background:dk?"rgba(255,255,255,.05)":"#F3F6FA",fontSize:12,color:dk?"#B4C5D8":"#4F6178",lineHeight:1.7}}>
+                        <div style={{fontWeight:700,marginBottom:2}}>Gdyby obłożenie było inne:</div>
+                        {x.mHigh!=null&&sc("przy obłożeniu "+hi+"%",x.mHigh+" mies.")}
+                        {x.mLow!=null&&sc("przy obłożeniu "+lo+"%",x.mLow+" mies.")}
+                        {x.monthsAll!=null&&sc("wg całego czasu od zakupu",x.monthsAll+" mies.")}
+                      </div>
+                    </>
+                    :<div style={{marginTop:10,fontSize:13,color:RED}}>Przy tym tempie szyna się nie zwróci (zarobek miesięczny ≤ 0).</div>}
+                </div>
+                :<div style={{marginTop:10,padding:"8px 12px",borderRadius:10,background:dk?"rgba(255,255,255,.05)":"#F3F6FA",fontSize:12,lineHeight:1.6,color:dk?"#B4C5D8":"#4F6178"}}>
+                  <div>Za mało danych na prognozę.</div>
+                  <div>Potrzeba min. 3 wypożyczeń i 60 dni dostępności w ostatnich 12 miesiącach.</div>
+                  <div>Masz: wypożyczeń {x.n}, dni dostępności {x.cap}.</div>
+                </div>)}
+            </div>;
+          })}
         </>}
-        <div style={note}>Czas do zwrotu = brakująca kwota ÷ (średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni − średni miesięczny serwis). Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu.</div>
+        <StatNote lines={["Czas do zwrotu = brakująca kwota ÷ miesięczny zarobek.","Miesięczny zarobek = średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni − średni miesięczny serwis.","Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu."]}/>
 
         <div style={head}>Stawka za dzień wypożyczenia</div>
         {d.overall==null?<div style={{fontSize:12,color:subC}}>Brak wypożyczeń szyn rozpoczętych w tym okresie.</div>:<>
@@ -283,7 +311,7 @@
           {d.all.cycD>0&&kv("Cykliczne",Z(Math.round(d.all.cycT/d.all.cycD))+"/dzień ("+d.all.cycD+" dni)")}
           {d.rows.filter(x=>x.rate!=null).map(x=><div key={x.eq} style={rowSt}><span style={{color:textC}}>{x.eq}</span><b style={{color:textC}}>{Z(Math.round(x.rate))}/dzień</b></div>)}
         </>}
-        <div style={note}>Cena umówiona ÷ liczba dni wypożyczenia (z przedłużeniami); cykl = 30 dni. To realna stawka, niezależna od tego, kiedy klient zapłacił.</div>
+        <StatNote lines={["Stawka = cena umówiona ÷ liczba dni wypożyczenia (z przedłużeniami); cykl = 30 dni.","To realna stawka, niezależna od tego, kiedy klient zapłacił."]}/>
 
         <div style={head}>Puste dni szyn (potencjalny przychód)</div>
         {d.capSum===0?<div style={{fontSize:12,color:subC}}>Brak danych o obłożeniu w tym okresie.</div>:<>
@@ -292,7 +320,7 @@
           {kv("Szacunkowo utracone",d.lostSum>0?"~ "+Z(d.lostSum):"—",ORANGE)}
           {d.rows.filter(x=>x.empty>0).map(x=><div key={x.eq} style={rowSt}><span style={{color:textC}}>{x.eq}</span><span style={{color:subC}}>{x.empty} dni{x.lost!=null?" · ~ "+Z(x.lost):""}</span></div>)}
         </>}
-        <div style={note}>Puste dni × stawka za dzień. To górna granica: nie każdy pusty dzień dałoby się wypełnić (zależy od popytu i dojazdów).</div>
+        <StatNote lines={["Utracone = puste dni × stawka za dzień.","To górna granica: nie każdy pusty dzień dałoby się wypełnić (zależy od popytu i dojazdów)."]}/>
       </div>;
     }
     // ── ROK W LICZBACH: rok do roku (YTD), tempo roczne, najlepszy/najsłabszy miesiąc, mapa obłożenia ──
@@ -331,7 +359,6 @@
         return {ytd,ytdPrev,pace,best,worst,heat,toCur,toPrev,cur};
       },[year,today,cat,rentals,stock,equipmentAll,finances]);
       const head={fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 6px"};
-      const note={fontSize:10,color:subC,marginTop:6,lineHeight:1.5};
       const diff=d.ytd-d.ytdPrev,diffPct=d.ytdPrev>0?Math.round(diff/d.ytdPrev*100):null;
       const fmtD=x=>x.slice(8)+"."+x.slice(5,7)+"."+x.slice(0,4);
       const monthName=ym=>PL_MON[+ym.slice(5,7)-1]+" "+ym.slice(0,4);
@@ -349,7 +376,7 @@
         {d.pace!=null&&kv("Tempo roczne (przy obecnym)",Z(d.pace))}
         {d.best&&kv("Najlepszy pełny miesiąc",monthName(d.best.ym)+" · "+Z(d.best.v),GREEN)}
         {d.worst&&kv("Najsłabszy pełny miesiąc",monthName(d.worst.ym)+" · "+Z(d.worst.v),RED)}
-        <div style={note}>Przychód {cat==="all"?"ze sprzętu":cat==="szyny"?"z szyn":cat==="wozki"?"z wózków":"z balkoników"} (wpłaty z wypożyczeń, transportu{cat==="all"||cat==="wozki"?" i wózków NFZ":""}). Bieżący miesiąc nie jest brany do najlepszego/najsłabszego, bo jeszcze trwa.</div>
+        <StatNote lines={["Przychód "+(cat==="all"?"ze sprzętu":cat==="szyny"?"z szyn":cat==="wozki"?"z wózków":"z balkoników")+" (wpłaty z wypożyczeń, transportu"+(cat==="all"||cat==="wozki"?" i wózków NFZ":"")+").","Bieżący miesiąc nie jest brany do najlepszego i najsłabszego, bo jeszcze trwa."]}/>
 
         <div style={head}>Mapa obłożenia szyn w roku {year}</div>
         {(cat==="wozki"||cat==="balkoniki")?<div style={{fontSize:12,color:subC}}>Mapa obłożenia jest liczona tylko dla szyn CPM. Wybierz „Wszystko” albo „Szyny”.</div>:d.heat.length===0?<div style={{fontSize:12,color:subC}}>Brak danych o obłożeniu w tym roku.</div>:<>
@@ -360,7 +387,7 @@
             </div>
             <div style={{display:"flex",gap:2}}>{PL_MON.map((m,i)=><div key={i} style={{flex:1,fontSize:8,color:subC,textAlign:"center"}}>{m}</div>)}</div>
           </div>)}
-          <div style={note}>Procent dni, w których szyna była wypożyczona, w każdym miesiącu. Zielony ≥ 70%, pomarańczowy 40–69%, czerwony poniżej. Pokazuje, kiedy w roku jest popyt, a kiedy luka.</div>
+          <StatNote lines={["Procent dni, w których szyna była wypożyczona, w każdym miesiącu.","Zielony ≥ 70%, pomarańczowy 40–69%, czerwony poniżej.","Pokazuje, kiedy w roku jest popyt, a kiedy luka."]}/>
         </>}
       </div>;
     }

@@ -793,7 +793,7 @@
             })} style={{marginTop:10,width:"100%",padding:"9px",borderRadius:10,border:"1.5px dashed "+BLUE,background:"transparent",color:BLUE,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
             + Załóż w budżecie podkategorie: Marketing szyny / wózki / balkoniki
           </button>}
-          <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Wydatki bierzemy z budżetu: kategoria {(stock&&stock.marketingCat)||"Firma"}, podkategorie „Marketing szyny”, „Marketing wózki”, „Marketing balkoniki”. Dawny „Marketing” (bez podziału) nie jest doliczany do kosztów reklamy w Statystykach.</div>
+          <StatNote lines={["Wydatki bierzemy z budżetu: kategoria "+((stock&&stock.marketingCat)||"Firma")+", podkategorie „Marketing szyny”, „Marketing wózki”, „Marketing balkoniki”.","Dawny „Marketing” (bez podziału) nie jest doliczany do kosztów reklamy w Statystykach."]}/>
         </StatAcc>
 
         {/* 1c. Sezonowość */}
@@ -837,7 +837,7 @@
             </div>
             {!b.future&&b.perDay!==null&&<div style={{fontSize:10,color:subC,marginTop:1}}>śr. {Z(b.perDay)}/dzień · rok temu: {Z(b.prev)}</div>}
           </div>)}
-          <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Porównanie do tego samego okresu rok temu, po kolei od stycznia. Przełącznik zmienia szerokość okna.</div>
+          <StatNote lines={["Porównanie do tego samego okresu rok temu, po kolei od stycznia.","Przełącznik zmienia szerokość okna."]}/>
         </StatAcc>
 
         {/* 2c. Rok w liczbach (nowe: rok do roku, tempo, mapa obłożenia) */}
@@ -881,7 +881,7 @@
                 <b style={{color:col,fontVariantNumeric:"tabular-nums"}}>{x.pct}%</b>
               </div>
               {strip}
-              <div style={{fontSize:10,color:subC,marginTop:4,lineHeight:1.45}}>
+              <div style={{fontSize:12,color:dk?"#B4C5D8":"#4F6178",marginTop:8,lineHeight:1.6,display:"flex",flexDirection:"column",gap:5}}>
                 {x.start>pStart&&<div>liczone od {fmtPl(x.start)}</div>}
                 {x.missingAdded&&<div>brak daty dodania — start = pierwsze wypożyczenie ({fmtPl(x.start)}). Uzupełnij w Sprzęt → Edytuj.</div>}
                 {x.overlapDays>0&&<div style={{color:ORANGE}}>⚠ {x.overlapDays} dni: więcej wypożyczeń naraz niż sztuk ({x.qty}) — sprawdź daty lub liczbę sztuk
@@ -896,7 +896,7 @@
               </div>
             </div>;
           })}
-          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Tylko szyny CPM. {isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."} Liczone jest wypożyczenie pacjenta (od startu do końca okresu, za który płaci), a nie moment odbioru sprzętu. Start = data dodania sprzętu albo pierwsze wypożyczenie; rezerwacje się nie liczą. Pusta ramka = przed dodaniem sprzętu.</div>
+          <StatNote lines={["Tylko szyny CPM. "+(isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."),"Liczone jest wypożyczenie pacjenta (od startu do końca okresu, za który płaci), a nie moment odbioru sprzętu.","Start = data dodania sprzętu albo pierwsze wypożyczenie; rezerwacje się nie liczą.","Pusta ramka = przed dodaniem sprzętu."]}/>
         </StatAcc>
 
         {/* 3b. Wyniki CPM (nowe: wynik, stawka za dzień, puste dni, zajętość na przód) */}
@@ -1001,7 +1001,7 @@
             </div>;
           })}
           {(roiHidden>0||showAllRoi)&&<button onClick={()=>setShowAllRoi(v=>!v)} style={{width:"100%",padding:"8px",borderRadius:10,border:"1px dashed "+borderC,background:"none",color:"#3E6FB0",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit",marginBottom:6}}>{showAllRoi?"Ukryj sprzęt bez danych":"Pokaż resztę sprzętu ("+roiHidden+") — aby wpisać koszt zakupu"}</button>}
-          <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Kreska = punkt zwrotu (zakup + naprawy). Nie zależy od wybranego okresu. Dotknij sprzętu, aby wpisać zakup i naprawy.</div>
+          <StatNote lines={["Kreska = punkt zwrotu (zakup + naprawy).","Nie zależy od wybranego okresu.","Dotknij sprzętu, aby wpisać zakup i naprawy."]}/>
         </StatAcc>
 
         {/* 4c. Kontrola danych */}
@@ -1027,7 +1027,7 @@
               })}
             </div>)
           }
-          <div style={{fontSize:10,color:subC,marginTop:8,lineHeight:1.5}}>Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach. Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan).</div>
+          <StatNote lines={["Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach.","Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan)."]}/>
         </StatAcc>
 
         {repairForm&&(()=>{

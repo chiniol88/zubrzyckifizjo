@@ -147,9 +147,34 @@ function StatPick(_ref2) {
   }, text || "Dotknij słupka, żeby zobaczyć szczegóły.");
 }
 
+// Opis pod sekcją/wykresem: osobne krótkie akapity, większa czcionka i ciemniejszy kolor (czytelniej niż szare 10 px)
+function StatNote(_ref3) {
+  var lines = _ref3.lines;
+  var dk = useContext(DarkCtx);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      padding: "10px 12px",
+      borderRadius: 10,
+      background: dk ? "rgba(255,255,255,.05)" : "#F3F6FA",
+      borderLeft: "3px solid " + (dk ? "#3A5278" : "#C4D2E4"),
+      fontSize: 12,
+      lineHeight: 1.6,
+      color: dk ? "#B4C5D8" : "#4F6178"
+    }
+  }, lines.filter(Boolean).map(function (t, i) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        marginTop: i ? 6 : 0
+      }
+    }, t);
+  }));
+}
+
 // ── REKLAMA: rok w miesiącach (zysk narastająco, koszt klienta, źródła klientów) ──
-function AdsYear(_ref3) {
-  var c = _ref3.c;
+function AdsYear(_ref4) {
+  var c = _ref4.c;
   var year = c.year,
     today = c.today,
     rentals = c.rentals,
@@ -346,11 +371,11 @@ function AdsYear(_ref3) {
       gap: 8,
       marginBottom: 4
     }
-  }, [["Wydano", Z(d.sumSpend), RED], ["Przychód", Z(d.sumRev), GREEN], ["Zysk", (profit >= 0 ? "+" : "−") + Z(Math.abs(profit)), profit >= 0 ? GREEN : RED]].map(function (_ref4) {
-    var _ref5 = _slicedToArray(_ref4, 3),
-      l = _ref5[0],
-      v = _ref5[1],
-      col = _ref5[2];
+  }, [["Wydano", Z(d.sumSpend), RED], ["Przychód", Z(d.sumRev), GREEN], ["Zysk", (profit >= 0 ? "+" : "−") + Z(Math.abs(profit)), profit >= 0 ? GREEN : RED]].map(function (_ref5) {
+    var _ref6 = _slicedToArray(_ref5, 3),
+      l = _ref6[0],
+      v = _ref6[1],
+      col = _ref6[2];
     return /*#__PURE__*/React.createElement("div", {
       key: l,
       style: {
@@ -394,14 +419,9 @@ function AdsYear(_ref3) {
     textC: textC,
     trackC: trackC,
     text: selCum != null && d.cum[selCum] != null ? PL_MON[selCum] + " " + year + ": narastająco " + (d.cum[selCum] >= 0 ? "+" : "−") + Z(Math.abs(d.cum[selCum])) + " · w tym miesiącu przychód " + Z(d.rev[selCum]) + ", koszt " + Z(d.spendTot[selCum]) : null
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginTop: 4,
-      lineHeight: 1.5
-    }
-  }, "Ka\u017Cdy s\u0142upek to stan od pocz\u0105tku roku do ko\u0144ca danego miesi\u0105ca. Zielony = reklama ju\u017C si\u0119 zwr\xF3ci\u0142a, czerwony = jeszcze nie. Przych\xF3d liczony wg daty wp\u0142aty od klient\xF3w oznaczonych \u201Ereklama\u201D."), MKTG_TYPES.map(function (t) {
+  }), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Każdy słupek to stan od początku roku do końca danego miesiąca.", "Zielony = reklama już się zwróciła, czerwony = jeszcze nie.", "Przychód liczony wg daty wpłaty od klientów oznaczonych „reklama”."]
+  }), MKTG_TYPES.map(function (t) {
     var sp = d.types[t.k].spend,
       cn = d.types[t.k].cnt,
       sS = sp.reduce(function (a, b) {
@@ -446,13 +466,9 @@ function AdsYear(_ref3) {
       textC: textC,
       trackC: trackC,
       text: selCac[t.k] != null ? PL_MON[selCac[t.k]] + " " + year + ": wydano " + Z(sp[selCac[t.k]]) + ", nowych klientów z reklamy " + cn[selCac[t.k]] + (cac[selCac[t.k]] != null ? ", koszt klienta " + Z(cac[selCac[t.k]]) : "") : null
-    })), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 10,
-        color: subC,
-        marginTop: 4
-      }
-    }, "W roku: wydano ", Z(sS), ", nowych klient\xF3w z reklamy ", sC, sC > 0 && sS > 0 ? ", średnio " + Z(Math.round(sS / sC)) + " na klienta" : "", ". Pusty s\u0142upek = brak wydatku albo brak klienta w tym miesi\u0105cu."));
+    })), /*#__PURE__*/React.createElement(StatNote, {
+      lines: ["W roku: wydano " + Z(sS) + ", nowych klientów z reklamy " + sC + (sC > 0 && sS > 0 ? ", średnio " + Z(Math.round(sS / sC)) + " na klienta." : "."), "Pusty słupek = w tym miesiącu brak wydatku albo brak klienta z reklamy."]
+    }));
   }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Sk\u0105d trafiaj\u0105 nowi klienci \u2014 udzia\u0142 w miesi\u0105cach"), srcAll === 0 ? /*#__PURE__*/React.createElement("div", {
@@ -563,19 +579,14 @@ function AdsYear(_ref3) {
         marginRight: 5
       }
     }), srcMeta(k).l, " \xB7 ", srcTot[i], " (", Math.round(srcTot[i] / srcAll * 100), "%)");
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginTop: 4,
-      lineHeight: 1.5
-    }
-  }, "Liczone nowi klienci (start wypo\u017Cyczenia lub zam\xF3wienie w\xF3zka). Je\u015Bli udzia\u0142 reklamy ro\u015Bnie, a \u201Eorganicznie\u201D maleje, reklama mo\u017Ce tylko zabiera\u0107 klient\xF3w, kt\xF3rzy i tak by przyszli."))));
+  })), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Liczeni są nowi klienci (start wypożyczenia lub zamówienie wózka).", "Jeśli udział reklamy rośnie, a „organicznie” maleje, reklama może tylko zabierać klientów, którzy i tak by przyszli."]
+  }))));
 }
 
 // ── WYNIKI CPM: wynik, stawka za dzień, puste dni ──
-function CpmResults(_ref6) {
-  var c = _ref6.c;
+function CpmResults(_ref7) {
+  var c = _ref7.c;
   var rentals = c.rentals,
     stock = c.stock,
     machines = c.machines,
@@ -601,7 +612,8 @@ function CpmResults(_ref6) {
     GREEN = c.GREEN,
     RED = c.RED,
     ORANGE = c.ORANGE,
-    BLUE = c.BLUE;
+    BLUE = c.BLUE,
+    dk = c.dk;
   var d = useMemo(function () {
     var eqs = equipmentAll.filter(function (eq) {
       return catOf(eq) === "szyny";
@@ -897,12 +909,6 @@ function CpmResults(_ref6) {
     letterSpacing: ".07em",
     margin: "16px 0 6px"
   };
-  var note = {
-    fontSize: 10,
-    color: subC,
-    marginTop: 6,
-    lineHeight: 1.5
-  };
   var wynik = d.revSum - marketingSzyny - d.srvSum;
   var fmtD = function fmtD(x) {
     return x.slice(8) + "." + x.slice(5, 7);
@@ -924,9 +930,9 @@ function CpmResults(_ref6) {
     style: _objectSpread(_objectSpread({}, head), {}, {
       marginTop: 0
     })
-  }, "Wynik szyn CPM \u2014 ", periodLabel), kv("Przychód z szyn (wpłaty)", Z(d.revSum), GREEN), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("− Serwis i naprawy", d.srvSum > 0 ? Z(d.srvSum) : "0 zł", RED), kv("= Wynik", (wynik >= 0 ? "+" : "−") + Z(Math.abs(wynik)), wynik >= 0 ? GREEN : RED), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Przych\xF3d to wp\u0142aty z okresu, reklama wg podkategorii \u201EMarketing szyny\u201D w bud\u017Cecie, serwis z kart sztuk i napraw typu. Koszt zakupu nie jest tu odejmowany \u2014 patrz ni\u017Cej."), /*#__PURE__*/React.createElement("div", {
+  }, "Wynik szyn CPM \u2014 ", periodLabel), kv("Przychód z szyn (wpłaty)", Z(d.revSum), GREEN), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("− Serwis i naprawy", d.srvSum > 0 ? Z(d.srvSum) : "0 zł", RED), kv("= Wynik", (wynik >= 0 ? "+" : "−") + Z(Math.abs(wynik)), wynik >= 0 ? GREEN : RED), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Przychód to wpłaty z okresu.", "Reklama wg podkategorii „Marketing szyny” w budżecie, serwis z kart sztuk i napraw typu.", "Koszt zakupu nie jest tu odejmowany — patrz niżej."]
+  }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Zysk po zwrocie zakupu \u2014 ", periodLabel), d.profitRows.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -947,9 +953,9 @@ function CpmResults(_ref6) {
         fontWeight: 600
       }
     }, x.p > 0 ? "+" + Z(Math.round(x.p)) : x.done ? "0 zł" : "jeszcze spłaca zakup"));
-  }), kv("Zysk szyn po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - marketingSzyny) > 0 ? "+" : Math.round(d.profitSum - marketingSzyny) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - marketingSzyny))), d.profitSum - marketingSzyny > 0 ? GREEN : d.profitSum - marketingSzyny < 0 ? RED : subC)), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Dop\xF3ki szyna nie odzyska kosztu zakupu i napraw, jej wynik sp\u0142aca inwestycj\u0119, wi\u0119c zysk = 0. Po zwrocie ka\u017Cda z\u0142ot\xF3wka jest zyskiem; gdy zwrot nast\u0105pi\u0142 w \u015Brodku okresu, liczy si\u0119 tylko nadwy\u017Cka.", d.noCost > 0 ? " Pominięte szyny bez wpisanego kosztu zakupu: " + d.noCost + "." : ""), /*#__PURE__*/React.createElement("div", {
+  }), kv("Zysk szyn po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - marketingSzyny) > 0 ? "+" : Math.round(d.profitSum - marketingSzyny) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - marketingSzyny))), d.profitSum - marketingSzyny > 0 ? GREEN : d.profitSum - marketingSzyny < 0 ? RED : subC)), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Dopóki szyna nie odzyska kosztu zakupu i napraw, jej wynik spłaca inwestycję, więc zysk = 0.", "Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.", d.noCost > 0 ? "Pominięte szyny bez wpisanego kosztu zakupu: " + d.noCost + "." : null]
+  }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Zwrot zakupu szyn \u2014 tempo z ostatnich 12 miesi\u0119cy"), d.pay.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -957,10 +963,25 @@ function CpmResults(_ref6) {
       color: subC
     }
   }, "Brak szyn z wpisanym kosztem zakupu.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Szyny razem", d.payTot.paidPct != null ? "zwrócono " + d.payTot.paidPct + "%" + (d.payTot.allDone ? " · wszystkie zwrócone" : d.payTot.months == null ? "" : " · pełny zwrot za ~" + d.payTot.months + " mies. (prognoza dla " + d.payTot.n + " z " + d.payTot.total + " szyn)") : "—", BLUE), d.pay.map(function (x) {
+    var sc = function sc(l, v) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 8
+        }
+      }, /*#__PURE__*/React.createElement("span", null, l), /*#__PURE__*/React.createElement("b", {
+        style: {
+          color: textC
+        }
+      }, v));
+    };
+    var hi = Math.min(100, Math.round(x.pct || 0) + 10),
+      lo = Math.max(5, Math.round(x.pct || 0) - 10);
     return /*#__PURE__*/React.createElement("div", {
       key: x.eq,
       style: {
-        padding: "9px 0",
+        padding: "14px 0",
         borderBottom: "1px solid " + borderC
       }
     }, /*#__PURE__*/React.createElement("div", {
@@ -968,66 +989,144 @@ function CpmResults(_ref6) {
         display: "flex",
         justifyContent: "space-between",
         gap: 8,
-        fontSize: 13,
+        fontSize: 15,
         fontWeight: 700,
         color: textC
       }
     }, /*#__PURE__*/React.createElement("span", null, x.eq), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: x.done ? GREEN : BLUE
+        color: x.done ? GREEN : BLUE,
+        whiteSpace: "nowrap"
       }
     }, x.done ? "✓ zwrócona" : "zwrócono " + x.paidPct + "%")), /*#__PURE__*/React.createElement("div", {
       style: {
-        height: 6,
-        borderRadius: 3,
+        height: 7,
+        borderRadius: 4,
         background: trackC,
-        margin: "5px 0"
+        margin: "8px 0 6px"
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         height: "100%",
         width: Math.min(100, x.paidPct) + "%",
         background: x.done ? GREEN : BLUE,
-        borderRadius: 3
+        borderRadius: 4
       }
     })), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 11,
+        fontSize: 13,
+        color: textC
+      }
+    }, Z(Math.round(x.earned)), " ", /*#__PURE__*/React.createElement("span", {
+      style: {
         color: subC
       }
-    }, Z(Math.round(x.earned)), " z ", Z(Math.round(x.inv)), " (zakup + naprawy)"), !x.done && (x.enough ? /*#__PURE__*/React.createElement("div", {
+    }, "z"), " ", Z(Math.round(x.inv)), " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: subC
+      }
+    }, "(zakup + naprawy)")), !x.done && (x.enough ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 10
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 8,
+        fontSize: 13,
+        color: subC,
+        padding: "3px 0"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "\u015Arednia stawka"), /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: textC
+      }
+    }, Z(Math.round(x.rate)), "/dzie\u0144")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 8,
+        fontSize: 13,
+        color: subC,
+        padding: "3px 0"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "Ob\u0142o\u017Cenie (12 mies.)"), /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: textC
+      }
+    }, Math.round(x.pct), "%")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        gap: 8,
+        fontSize: 13,
+        color: subC,
+        padding: "3px 0"
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "Zarabia miesi\u0119cznie"), /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: textC
+      }
+    }, Z(Math.round(x.monthly)))), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: subC,
-        marginTop: 3,
-        lineHeight: 1.5
+        textAlign: "right"
       }
-    }, "Stawka ", /*#__PURE__*/React.createElement("b", {
+    }, "po odj\u0119ciu serwisu"), x.months != null ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 8,
+        margin: "10px 0 0",
+        padding: "9px 12px",
+        borderRadius: 10,
+        background: dk ? "rgba(46,134,171,.18)" : "#E6F1F7",
+        fontSize: 14,
+        fontWeight: 700,
         color: textC
       }
-    }, Z(Math.round(x.rate)), "/dzie\u0144"), " \xD7 ob\u0142o\u017Cenie ", /*#__PURE__*/React.createElement("b", {
+    }, /*#__PURE__*/React.createElement("span", null, "Zwrot za oko\u0142o"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: textC
+        color: BLUE
       }
-    }, Math.round(x.pct), "%"), " \u2248 ", /*#__PURE__*/React.createElement("b", {
+    }, x.months, " mies.")), /*#__PURE__*/React.createElement("div", {
       style: {
-        color: textC
+        marginTop: 8,
+        padding: "8px 12px",
+        borderRadius: 10,
+        background: dk ? "rgba(255,255,255,.05)" : "#F3F6FA",
+        fontSize: 12,
+        color: dk ? "#B4C5D8" : "#4F6178",
+        lineHeight: 1.7
       }
-    }, Z(Math.round(x.monthly)), "/mies."), " (po odj\u0119ciu serwisu)", x.months != null ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), "Zwrot za ok. ", /*#__PURE__*/React.createElement("b", {
+    }, /*#__PURE__*/React.createElement("div", {
       style: {
-        color: textC
+        fontWeight: 700,
+        marginBottom: 2
       }
-    }, x.months, " mies."), x.mHigh != null && x.mLow != null && /*#__PURE__*/React.createElement(React.Fragment, null, " \xB7 przy ob\u0142o\u017Ceniu ", Math.min(100, Math.round(x.pct) + 10), "%: ", x.mHigh, " mies., przy ", Math.max(5, Math.round(x.pct) - 10), "%: ", x.mLow, " mies."), x.monthsAll != null && /*#__PURE__*/React.createElement("span", null, " \xB7 wg ca\u0142ego czasu od zakupu: ", x.monthsAll, " mies.")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), "Przy tym tempie szyna si\u0119 nie zwr\xF3ci (zarobek miesi\u0119czny \u2264 0).")) : /*#__PURE__*/React.createElement("div", {
+    }, "Gdyby ob\u0142o\u017Cenie by\u0142o inne:"), x.mHigh != null && sc("przy obłożeniu " + hi + "%", x.mHigh + " mies."), x.mLow != null && sc("przy obłożeniu " + lo + "%", x.mLow + " mies."), x.monthsAll != null && sc("wg całego czasu od zakupu", x.monthsAll + " mies."))) : /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 11,
-        color: subC,
-        marginTop: 3
+        marginTop: 10,
+        fontSize: 13,
+        color: RED
       }
-    }, "Za ma\u0142o danych na prognoz\u0119 (potrzeba min. 3 wypo\u017Cycze\u0144 i 60 dni dost\u0119pno\u015Bci w ostatnich 12 miesi\u0105cach; masz: wypo\u017Cycze\u0144 ", x.n, ", dni dost\u0119pno\u015Bci ", x.cap, ").")));
-  })), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Czas do zwrotu = brakuj\u0105ca kwota \xF7 (\u015Brednia stawka za dzie\u0144 \xD7 \u015Brednie ob\u0142o\u017Cenie z ostatnich 12 miesi\u0119cy \xD7 30,4 dni \u2212 \u015Bredni miesi\u0119czny serwis). Reklama nie wchodzi do inwestycji szyny, bo jest wsp\xF3lna dla ca\u0142ego typu."), /*#__PURE__*/React.createElement("div", {
+    }, "Przy tym tempie szyna si\u0119 nie zwr\xF3ci (zarobek miesi\u0119czny \u2264 0).")) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 10,
+        padding: "8px 12px",
+        borderRadius: 10,
+        background: dk ? "rgba(255,255,255,.05)" : "#F3F6FA",
+        fontSize: 12,
+        lineHeight: 1.6,
+        color: dk ? "#B4C5D8" : "#4F6178"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, "Za ma\u0142o danych na prognoz\u0119."), /*#__PURE__*/React.createElement("div", null, "Potrzeba min. 3 wypo\u017Cycze\u0144 i 60 dni dost\u0119pno\u015Bci w ostatnich 12 miesi\u0105cach."), /*#__PURE__*/React.createElement("div", null, "Masz: wypo\u017Cycze\u0144 ", x.n, ", dni dost\u0119pno\u015Bci ", x.cap, "."))));
+  })), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Czas do zwrotu = brakująca kwota ÷ miesięczny zarobek.", "Miesięczny zarobek = średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni − średni miesięczny serwis.", "Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu."]
+  }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Stawka za dzie\u0144 wypo\u017Cyczenia"), d.overall == null ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1049,9 +1148,9 @@ function CpmResults(_ref6) {
         color: textC
       }
     }, Z(Math.round(x.rate)), "/dzie\u0144"));
-  })), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Cena um\xF3wiona \xF7 liczba dni wypo\u017Cyczenia (z przed\u0142u\u017Ceniami); cykl = 30 dni. To realna stawka, niezale\u017Cna od tego, kiedy klient zap\u0142aci\u0142."), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Stawka = cena umówiona ÷ liczba dni wypożyczenia (z przedłużeniami); cykl = 30 dni.", "To realna stawka, niezależna od tego, kiedy klient zapłacił."]
+  }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Puste dni szyn (potencjalny przych\xF3d)"), d.capSum === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1073,13 +1172,13 @@ function CpmResults(_ref6) {
         color: subC
       }
     }, x.empty, " dni", x.lost != null ? " · ~ " + Z(x.lost) : ""));
-  })), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Puste dni \xD7 stawka za dzie\u0144. To g\xF3rna granica: nie ka\u017Cdy pusty dzie\u0144 da\u0142oby si\u0119 wype\u0142ni\u0107 (zale\u017Cy od popytu i dojazd\xF3w)."));
+  })), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Utracone = puste dni × stawka za dzień.", "To górna granica: nie każdy pusty dzień dałoby się wypełnić (zależy od popytu i dojazdów)."]
+  }));
 }
 // ── ROK W LICZBACH: rok do roku (YTD), tempo roczne, najlepszy/najsłabszy miesiąc, mapa obłożenia ──
-function YearInNumbers(_ref7) {
-  var c = _ref7.c;
+function YearInNumbers(_ref8) {
+  var c = _ref8.c;
   var year = c.year,
     today = c.today,
     rentals = c.rentals,
@@ -1184,12 +1283,6 @@ function YearInNumbers(_ref7) {
     letterSpacing: ".07em",
     margin: "16px 0 6px"
   };
-  var note = {
-    fontSize: 10,
-    color: subC,
-    marginTop: 6,
-    lineHeight: 1.5
-  };
   var diff = d.ytd - d.ytdPrev,
     diffPct = d.ytdPrev > 0 ? Math.round(diff / d.ytdPrev * 100) : null;
   var fmtD = function fmtD(x) {
@@ -1243,9 +1336,9 @@ function YearInNumbers(_ref7) {
     style: _objectSpread(_objectSpread({}, head), {}, {
       marginTop: 0
     })
-  }, "Rok ", year, " do dzi\u015B vs rok ", year - 1), kv(year + " (do " + fmtD(d.toCur) + ")", Z(d.ytd), GREEN), kv(year - 1 + " (do " + fmtD(d.toPrev) + ")", Z(d.ytdPrev)), kv("Różnica", (diff >= 0 ? "+" : "−") + Z(Math.abs(diff)) + (diffPct !== null ? " (" + (diff >= 0 ? "+" : "") + diffPct + "%)" : ""), diff >= 0 ? GREEN : RED), d.pace != null && kv("Tempo roczne (przy obecnym)", Z(d.pace)), d.best && kv("Najlepszy pełny miesiąc", monthName(d.best.ym) + " · " + Z(d.best.v), GREEN), d.worst && kv("Najsłabszy pełny miesiąc", monthName(d.worst.ym) + " · " + Z(d.worst.v), RED), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Przych\xF3d ", cat === "all" ? "ze sprzętu" : cat === "szyny" ? "z szyn" : cat === "wozki" ? "z wózków" : "z balkoników", " (wp\u0142aty z wypo\u017Cycze\u0144, transportu", cat === "all" || cat === "wozki" ? " i wózków NFZ" : "", "). Bie\u017C\u0105cy miesi\u0105c nie jest brany do najlepszego/najs\u0142abszego, bo jeszcze trwa."), /*#__PURE__*/React.createElement("div", {
+  }, "Rok ", year, " do dzi\u015B vs rok ", year - 1), kv(year + " (do " + fmtD(d.toCur) + ")", Z(d.ytd), GREEN), kv(year - 1 + " (do " + fmtD(d.toPrev) + ")", Z(d.ytdPrev)), kv("Różnica", (diff >= 0 ? "+" : "−") + Z(Math.abs(diff)) + (diffPct !== null ? " (" + (diff >= 0 ? "+" : "") + diffPct + "%)" : ""), diff >= 0 ? GREEN : RED), d.pace != null && kv("Tempo roczne (przy obecnym)", Z(d.pace)), d.best && kv("Najlepszy pełny miesiąc", monthName(d.best.ym) + " · " + Z(d.best.v), GREEN), d.worst && kv("Najsłabszy pełny miesiąc", monthName(d.worst.ym) + " · " + Z(d.worst.v), RED), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Przychód " + (cat === "all" ? "ze sprzętu" : cat === "szyny" ? "z szyn" : cat === "wozki" ? "z wózków" : "z balkoników") + " (wpłaty z wypożyczeń, transportu" + (cat === "all" || cat === "wozki" ? " i wózków NFZ" : "") + ").", "Bieżący miesiąc nie jest brany do najlepszego i najsłabszego, bo jeszcze trwa."]
+  }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Mapa ob\u0142o\u017Cenia szyn w roku ", year), cat === "wozki" || cat === "balkoniki" ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1319,7 +1412,7 @@ function YearInNumbers(_ref7) {
         }
       }, m);
     })));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Procent dni, w kt\xF3rych szyna by\u0142a wypo\u017Cyczona, w ka\u017Cdym miesi\u0105cu. Zielony \u2265 70%, pomara\u0144czowy 40\u201369%, czerwony poni\u017Cej. Pokazuje, kiedy w roku jest popyt, a kiedy luka.")));
+  }), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Procent dni, w których szyna była wypożyczona, w każdym miesiącu.", "Zielony ≥ 70%, pomarańczowy 40–69%, czerwony poniżej.", "Pokazuje, kiedy w roku jest popyt, a kiedy luka."]
+  })));
 }
