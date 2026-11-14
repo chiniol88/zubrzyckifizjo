@@ -707,7 +707,6 @@ function CpmResults(_ref7) {
       revSum += rev;
       srvSum += srv;
       emptySum += empty;
-      if (lost != null) lostSum += lost;
       capSum += o.cap;
       bookedSum += o.booked;
       return {
@@ -725,7 +724,7 @@ function CpmResults(_ref7) {
     }).filter(function (x) {
       return !x.noData || x.rev > 0;
     });
-
+    lostSum = overall != null ? Math.round(emptySum * overall) : 0; // utracone = puste dni wszystkich szyn × jedna średnia stawka CPM
     // ── ZWROT ZAKUPU: tempo z ostatnich 12 miesięcy (średnia stawka × średnie obłożenie − serwis) ──
     var srvList = function srvList(eq) {
       return [].concat(_toConsumableArray(getMachineSrvForEq(eq)), _toConsumableArray((getCosts(eq).repairs || []).map(function (x) {
@@ -1133,22 +1132,7 @@ function CpmResults(_ref7) {
       fontSize: 12,
       color: subC
     }
-  }, "Brak wypo\u017Cycze\u0144 szyn rozpocz\u0119tych w tym okresie.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Średnio", Z(Math.round(d.overall)) + "/dzień"), d.all.oneD > 0 && kv("Jednorazowe", Z(Math.round(d.all.oneT / d.all.oneD)) + "/dzień (" + d.all.oneD + " dni)"), d.all.cycD > 0 && kv("Cykliczne", Z(Math.round(d.all.cycT / d.all.cycD)) + "/dzień (" + d.all.cycD + " dni)"), d.rows.filter(function (x) {
-    return x.rate != null;
-  }).map(function (x) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: x.eq,
-      style: rowSt
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: textC
-      }
-    }, x.eq), /*#__PURE__*/React.createElement("b", {
-      style: {
-        color: textC
-      }
-    }, Z(Math.round(x.rate)), "/dzie\u0144"));
-  })), /*#__PURE__*/React.createElement(StatNote, {
+  }, "Brak wypo\u017Cycze\u0144 szyn rozpocz\u0119tych w tym okresie.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Średnio", Z(Math.round(d.overall)) + "/dzień"), d.all.oneD > 0 && kv("Jednorazowe", Z(Math.round(d.all.oneT / d.all.oneD)) + "/dzień (" + d.all.oneD + " dni)"), d.all.cycD > 0 && kv("Cykliczne", Z(Math.round(d.all.cycT / d.all.cycD)) + "/dzień (" + d.all.cycD + " dni)")), /*#__PURE__*/React.createElement(StatNote, {
     lines: ["Stawka = cena umówiona ÷ liczba dni wypożyczenia (z przedłużeniami); cykl = 30 dni.", "To realna stawka, niezależna od tego, kiedy klient zapłacił."]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
@@ -1157,22 +1141,7 @@ function CpmResults(_ref7) {
       fontSize: 12,
       color: subC
     }
-  }, "Brak danych o ob\u0142o\u017Ceniu w tym okresie.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Dni dostępności / zajęte", d.capSum + " / " + d.bookedSum + " (" + (d.capSum ? Math.round(d.bookedSum / d.capSum * 100) : 0) + "%)"), kv("Puste dni (sztuko-dni)", String(d.emptySum), ORANGE), kv("Szacunkowo utracone", d.lostSum > 0 ? "~ " + Z(d.lostSum) : "—", ORANGE), d.rows.filter(function (x) {
-    return x.empty > 0;
-  }).map(function (x) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: x.eq,
-      style: rowSt
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: textC
-      }
-    }, x.eq), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: subC
-      }
-    }, x.empty, " dni", x.lost != null ? " · ~ " + Z(x.lost) : ""));
-  })), /*#__PURE__*/React.createElement(StatNote, {
+  }, "Brak danych o ob\u0142o\u017Ceniu w tym okresie.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Dni dostępności / zajęte", d.capSum + " / " + d.bookedSum + " (" + (d.capSum ? Math.round(d.bookedSum / d.capSum * 100) : 0) + "%)"), kv("Puste dni (sztuko-dni)", String(d.emptySum), ORANGE), kv("Szacunkowo utracone", d.lostSum > 0 ? "~ " + Z(d.lostSum) : "—", ORANGE)), /*#__PURE__*/React.createElement(StatNote, {
     lines: ["Utracone = puste dni × stawka za dzień.", "To górna granica: nie każdy pusty dzień dałoby się wypełnić (zależy od popytu i dojazdów)."]
   }));
 }

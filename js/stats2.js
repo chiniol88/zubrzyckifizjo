@@ -174,10 +174,11 @@
           const lost=useRate!=null?Math.round(empty*useRate):null;
           const rev=revenueInRange(pStart,cutEnd,eq);
           const srv=[...getMachineSrvForEq(eq),...((getCosts(eq).repairs)||[]).map(x=>({date:x.date,amount:+x.amount||0}))].filter(x=>x.date&&x.date>=pStart&&x.date<=cutEnd).reduce((s,x)=>s+(+x.amount||0),0);
-          revSum+=rev;srvSum+=srv;emptySum+=empty;if(lost!=null)lostSum+=lost;capSum+=o.cap;bookedSum+=o.booked;
+          revSum+=rev;srvSum+=srv;emptySum+=empty;capSum+=o.cap;bookedSum+=o.booked;
           return {eq,noData:o.noData,cap:o.cap,booked:o.booked,empty,rate:r,rateOne:rate(a.oneT,a.oneD),rateCyc:rate(a.cycT,a.cycD),lost,rev};
         }).filter(x=>!x.noData||x.rev>0);
 
+        lostSum=overall!=null?Math.round(emptySum*overall):0;   // utracone = puste dni wszystkich szyn × jedna średnia stawka CPM
         // ── ZWROT ZAKUPU: tempo z ostatnich 12 miesięcy (średnia stawka × średnie obłożenie − serwis) ──
         const srvList=eq=>[...getMachineSrvForEq(eq),...((getCosts(eq).repairs)||[]).map(x=>({date:x.date,amount:+x.amount||0}))];
         const rateWin=(eq,from)=>{
@@ -309,7 +310,6 @@
           {kv("Średnio",Z(Math.round(d.overall))+"/dzień")}
           {d.all.oneD>0&&kv("Jednorazowe",Z(Math.round(d.all.oneT/d.all.oneD))+"/dzień ("+d.all.oneD+" dni)")}
           {d.all.cycD>0&&kv("Cykliczne",Z(Math.round(d.all.cycT/d.all.cycD))+"/dzień ("+d.all.cycD+" dni)")}
-          {d.rows.filter(x=>x.rate!=null).map(x=><div key={x.eq} style={rowSt}><span style={{color:textC}}>{x.eq}</span><b style={{color:textC}}>{Z(Math.round(x.rate))}/dzień</b></div>)}
         </>}
         <StatNote lines={["Stawka = cena umówiona ÷ liczba dni wypożyczenia (z przedłużeniami); cykl = 30 dni.","To realna stawka, niezależna od tego, kiedy klient zapłacił."]}/>
 
@@ -318,7 +318,6 @@
           {kv("Dni dostępności / zajęte",d.capSum+" / "+d.bookedSum+" ("+(d.capSum?Math.round(d.bookedSum/d.capSum*100):0)+"%)")}
           {kv("Puste dni (sztuko-dni)",String(d.emptySum),ORANGE)}
           {kv("Szacunkowo utracone",d.lostSum>0?"~ "+Z(d.lostSum):"—",ORANGE)}
-          {d.rows.filter(x=>x.empty>0).map(x=><div key={x.eq} style={rowSt}><span style={{color:textC}}>{x.eq}</span><span style={{color:subC}}>{x.empty} dni{x.lost!=null?" · ~ "+Z(x.lost):""}</span></div>)}
         </>}
         <StatNote lines={["Utracone = puste dni × stawka za dzień.","To górna granica: nie każdy pusty dzień dałoby się wypełnić (zależy od popytu i dojazdów)."]}/>
       </div>;
