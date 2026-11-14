@@ -1493,45 +1493,6 @@ function RentalStats(_ref9) {
     });
   }, [rentals, nfzCases, finances, pStart, pEnd, stats.marketingSpend, stats.marketingByType, stock]);
 
-  // ── A10: Struktura długości wypożyczeń jednorazowych (all-time) ──
-  var durationHist = useMemo(function () {
-    var finished = rentals.filter(function (r) {
-      return !r.renewable && r.status === "zakończone" && r.startDate && r.endDate;
-    });
-    var buckets = [{
-      l: "1–7 dni",
-      lo: 1,
-      hi: 7,
-      n: 0
-    }, {
-      l: "8–14 dni",
-      lo: 8,
-      hi: 14,
-      n: 0
-    }, {
-      l: "15–30 dni",
-      lo: 15,
-      hi: 30,
-      n: 0
-    }, {
-      l: "31+ dni",
-      lo: 31,
-      hi: Infinity,
-      n: 0
-    }];
-    finished.forEach(function (r) {
-      var d = Math.max(1, dateDiff(r.startDate, r.endDate));
-      var b = buckets.find(function (x) {
-        return d >= x.lo && d <= x.hi;
-      });
-      if (b) b.n++;
-    });
-    return {
-      buckets: buckets,
-      total: finished.length
-    };
-  }, [rentals]);
-
   // ── A11: Kontrola danych — każdy problem z listą konkretnych, klikalnych pozycji ──
   var dataHealth = useMemo(function () {
     var issues = [];
@@ -3382,65 +3343,6 @@ function RentalStats(_ref9) {
       lineHeight: 1.5
     }
   }, "Kreska = punkt zwrotu (zakup + naprawy). Nie zale\u017Cy od wybranego okresu. Dotknij sprz\u0119tu, aby wpisa\u0107 zakup i naprawy.")), /*#__PURE__*/React.createElement(StatAcc, {
-    dk: dk,
-    open: !!openMap.dur,
-    onToggle: tog("dur"),
-    title: "D\u0142ugo\u015B\u0107 wypo\u017Cycze\u0144 jednorazowych",
-    sub: durationHist.total > 0 ? durationHist.total + " zakończonych, all-time" : "brak danych",
-    keyVal: durationHist.total > 0 ? durationHist.buckets.reduce(function (best, b) {
-      return b.n > best.n ? b : best;
-    }, durationHist.buckets[0]).l : "—"
-  }, durationHist.total === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: subC,
-      textAlign: "center",
-      padding: "8px 0"
-    }
-  }, "Brak zako\u0144czonych wypo\u017Cycze\u0144 jednorazowych.") : durationHist.buckets.map(function (b) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: b.l,
-      style: {
-        marginBottom: 9
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        justifyContent: "space-between",
-        fontSize: 12,
-        marginBottom: 3
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: textC,
-        fontWeight: 600
-      }
-    }, b.l), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: subC
-      }
-    }, b.n, " (", durationHist.total ? Math.round(b.n / durationHist.total * 100) : 0, "%)")), /*#__PURE__*/React.createElement("div", {
-      style: {
-        height: 7,
-        borderRadius: 4,
-        background: trackC
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        height: "100%",
-        width: (durationHist.total ? b.n / durationHist.total * 100 : 0) + "%",
-        background: BLUE,
-        borderRadius: 4
-      }
-    })));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: subC,
-      marginTop: 6,
-      lineHeight: 1.5
-    }
-  }, "Tylko wypo\u017Cyczenia jednorazowe (nie cykliczne), ca\u0142y czas dzia\u0142ania firmy. Pomaga zaplanowa\u0107 pakiety cenowe.")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: !!openMap.health,
     onToggle: tog("health"),

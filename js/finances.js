@@ -541,14 +541,6 @@
         return {...mk(stats.marketingSpend,newCount,revenue),types,general};
       },[rentals,nfzCases,finances,pStart,pEnd,stats.marketingSpend,stats.marketingByType,stock]);
 
-      // ── A10: Struktura długości wypożyczeń jednorazowych (all-time) ──
-      const durationHist=useMemo(()=>{
-        const finished=rentals.filter(r=>!r.renewable&&r.status==="zakończone"&&r.startDate&&r.endDate);
-        const buckets=[{l:"1–7 dni",lo:1,hi:7,n:0},{l:"8–14 dni",lo:8,hi:14,n:0},{l:"15–30 dni",lo:15,hi:30,n:0},{l:"31+ dni",lo:31,hi:Infinity,n:0}];
-        finished.forEach(r=>{const d=Math.max(1,dateDiff(r.startDate,r.endDate));const b=buckets.find(x=>d>=x.lo&&d<=x.hi);if(b)b.n++;});
-        return {buckets,total:finished.length};
-      },[rentals]);
-
       // ── A11: Kontrola danych — każdy problem z listą konkretnych, klikalnych pozycji ──
       const dataHealth=useMemo(()=>{
         const issues=[];
@@ -966,22 +958,6 @@
           })}
           {(roiHidden>0||showAllRoi)&&<button onClick={()=>setShowAllRoi(v=>!v)} style={{width:"100%",padding:"8px",borderRadius:10,border:"1px dashed "+borderC,background:"none",color:"#3E6FB0",fontWeight:600,fontSize:12,cursor:"pointer",fontFamily:"inherit",marginBottom:6}}>{showAllRoi?"Ukryj sprzęt bez danych":"Pokaż resztę sprzętu ("+roiHidden+") — aby wpisać koszt zakupu"}</button>}
           <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Kreska = punkt zwrotu (zakup + naprawy). Nie zależy od wybranego okresu. Dotknij sprzętu, aby wpisać zakup i naprawy.</div>
-        </StatAcc>
-
-        {/* 4b. Długość wypożyczeń jednorazowych */}
-        <StatAcc dk={dk} open={!!openMap.dur} onToggle={tog("dur")} title="Długość wypożyczeń jednorazowych" sub={durationHist.total>0?durationHist.total+" zakończonych, all-time":"brak danych"}
-          keyVal={durationHist.total>0?(durationHist.buckets.reduce((best,b)=>b.n>best.n?b:best,durationHist.buckets[0]).l):"—"}>
-          {durationHist.total===0
-            ?<div style={{fontSize:13,color:subC,textAlign:"center",padding:"8px 0"}}>Brak zakończonych wypożyczeń jednorazowych.</div>
-            :durationHist.buckets.map(b=><div key={b.l} style={{marginBottom:9}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                <span style={{color:textC,fontWeight:600}}>{b.l}</span>
-                <span style={{color:subC}}>{b.n} ({durationHist.total?Math.round(b.n/durationHist.total*100):0}%)</span>
-              </div>
-              <div style={{height:7,borderRadius:4,background:trackC}}><div style={{height:"100%",width:(durationHist.total?b.n/durationHist.total*100:0)+"%",background:BLUE,borderRadius:4}}/></div>
-            </div>)
-          }
-          <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Tylko wypożyczenia jednorazowe (nie cykliczne), cały czas działania firmy. Pomaga zaplanować pakiety cenowe.</div>
         </StatAcc>
 
         {/* 4c. Kontrola danych */}
