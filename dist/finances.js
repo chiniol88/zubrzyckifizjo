@@ -1770,6 +1770,41 @@ function RentalStats(_ref9) {
   var selIdx = stats.monthlyArr.findIndex(function (x) {
     return x[0] === selMonth;
   });
+
+  // kontekst dla nowych sekcji (js/stats2.js)
+  var ctx = {
+    year: displayYear,
+    today: today,
+    rentals: rentals,
+    finances: finances,
+    nfzCases: nfzCases,
+    budget: budget,
+    stock: stock,
+    machines: machines,
+    getRid: getRid,
+    catOf: catOf,
+    demo: demo,
+    Z: Z,
+    kv: kv,
+    dk: dk,
+    subC: subC,
+    textC: textC,
+    borderC: borderC,
+    trackC: trackC,
+    GREEN: GREEN,
+    RED: RED,
+    BLUE: BLUE,
+    PURPLE: PURPLE,
+    ORANGE: ORANGE,
+    pStart: pStart,
+    pEnd: pEnd,
+    periodLabel: periodLabel,
+    equipmentAll: equipmentAll,
+    revenueInRange: revenueInRange,
+    getMachineSrvForEq: getMachineSrvForEq,
+    getCosts: getCosts,
+    marketingSzyny: stats.marketingByType.szyny
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "0 20px 24px"
@@ -2376,7 +2411,7 @@ function RentalStats(_ref9) {
           fontWeight: 600,
           margin: "4px 0"
         }
-      }, "\u26A0 Wydano ", Z(t.spend), ", zero nowych klient\xF3w z reklamy w tym okresie."), kv("Koszt na pozyskanego klienta", t.perPatient !== null ? Z(t.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(t.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", t.roas !== null ? t.roas + "×" : "—"), /*#__PURE__*/React.createElement("button", {
+      }, "\u26A0 Wydano ", Z(t.spend), ", zero nowych klient\xF3w z reklamy w tym okresie."), kv("Koszt na pozyskanego klienta", t.perPatient !== null ? Z(t.perPatient) : "—"), kv("Przychód z reklamy w okresie", Z(t.revenue), GREEN), kv("Zwrot z wydanej złotówki (ROAS)", t.roas !== null ? t.roas + "×" : "—"), kv("Zysk z reklamy (przychód − koszt)", (t.revenue - t.spend >= 0 ? "+" : "−") + Z(Math.abs(t.revenue - t.spend)), t.revenue - t.spend >= 0 ? GREEN : RED), /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
           return setAdsListOpen(function (m) {
             return _objectSpread(_objectSpread({}, m), {}, _defineProperty({}, t.k, !m[t.k]));
@@ -2469,8 +2504,10 @@ function RentalStats(_ref9) {
         marginTop: 6,
         paddingTop: 4
       }
-    }, kv("Razem wydano", Z(adsStats.spend), RED), kv("Razem nowych klientów", String(adsStats.newCount)), kv("Koszt na klienta (razem)", adsStats.perPatient !== null ? Z(adsStats.perPatient) : "—"), kv("Zwrot z wydanej złotówki (razem)", adsStats.roas !== null ? adsStats.roas + "×" : "—")));
-  }(), mktgSetupMissing && setBudget && /*#__PURE__*/React.createElement("button", {
+    }, kv("Razem wydano", Z(adsStats.spend), RED), kv("Razem nowych klientów", String(adsStats.newCount)), kv("Koszt na klienta (razem)", adsStats.perPatient !== null ? Z(adsStats.perPatient) : "—"), kv("Zwrot z wydanej złotówki (razem)", adsStats.roas !== null ? adsStats.roas + "×" : "—"), kv("Zysk z reklamy (razem)", (adsStats.revenue - adsStats.spend >= 0 ? "+" : "−") + Z(Math.abs(adsStats.revenue - adsStats.spend)), adsStats.revenue - adsStats.spend >= 0 ? GREEN : RED)));
+  }(), /*#__PURE__*/React.createElement(AdsYear, {
+    c: ctx
+  }), mktgSetupMissing && setBudget && /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       return setBudget(function (b) {
         var nm = function nm(x) {
@@ -2718,6 +2755,14 @@ function RentalStats(_ref9) {
     }
   }, "Por\xF3wnanie do tego samego okresu rok temu, po kolei od stycznia. Prze\u0142\u0105cznik zmienia szeroko\u015B\u0107 okna.")), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
+    open: !!openMap.yearly,
+    onToggle: tog("yearly"),
+    title: "Rok w liczbach",
+    sub: "rok do roku, tempo roczne, mapa obłożenia szyn · " + displayYear
+  }, /*#__PURE__*/React.createElement(YearInNumbers, {
+    c: ctx
+  })), /*#__PURE__*/React.createElement(StatAcc, {
+    dk: dk,
     open: !!openMap.occ,
     onToggle: tog("occ"),
     title: "Ob\u0142o\u017Cenie szyn CPM",
@@ -2931,6 +2976,14 @@ function RentalStats(_ref9) {
       lineHeight: 1.5
     }
   }, "Tylko szyny CPM. ", isYear ? "Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie." : "Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona.", " Liczone jest wypo\u017Cyczenie pacjenta (od startu do ko\u0144ca okresu, za kt\xF3ry p\u0142aci), a nie moment odbioru sprz\u0119tu. Start = data dodania sprz\u0119tu albo pierwsze wypo\u017Cyczenie; rezerwacje si\u0119 nie licz\u0105. Pusta ramka = przed dodaniem sprz\u0119tu.")), /*#__PURE__*/React.createElement(StatAcc, {
+    dk: dk,
+    open: !!openMap.cpm,
+    onToggle: tog("cpm"),
+    title: "Wyniki CPM",
+    sub: "wynik, stawka za dzień, puste dni, zajętość na przód · " + periodLabel
+  }, /*#__PURE__*/React.createElement(CpmResults, {
+    c: ctx
+  })), /*#__PURE__*/React.createElement(StatAcc, {
     dk: dk,
     open: !!openMap.roi,
     onToggle: tog("roi"),

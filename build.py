@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 JSC = "/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc"
 BABEL = os.path.join(ROOT, "vendor", "babel.min.js")
 # kolejność = kolejność ładowania w index.html
-MODULES = ["core", "crypto", "warehouse", "privacy", "ui", "dashboard", "patients", "rentals", "finances",
+MODULES = ["core", "crypto", "warehouse", "privacy", "ui", "dashboard", "patients", "rentals", "finances", "stats2",
            "budget", "wealth", "nfz", "magazyn", "app", "settings", "auth", "boot"]
 SEP = "@@@@FZ-FILE@@@@"
 
@@ -62,7 +62,7 @@ def main():
             print("dist/ NIEAKTUALNY (zmienione: %s) - uruchom: python3 build.py" % ", ".join(sorted(set(bad)))); sys.exit(1)
         import re
         html = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
-        listed = re.findall(r'<script src="dist/([a-z]+)\.js"></script>', html)
+        listed = re.findall(r'<script src="dist/([a-z0-9]+)\.js"></script>', html)
         if listed != MODULES:
             print("index.html laduje inne pliki dist/ niz build.py (kolejnosc/lista): %s" % listed); sys.exit(1)
         if "text/babel" in html or "babel.min.js" in html:

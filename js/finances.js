@@ -608,6 +608,10 @@
       const miniRoi=<span>{roiKnown.slice(0,6).map(x=><i key={x.eq} style={{display:"inline-block",width:8,height:8,borderRadius:"50%",marginLeft:3,background:x.earned>=x.investment?GREEN:ORANGE}}/>)}</span>;
       const selIdx=stats.monthlyArr.findIndex(x=>x[0]===selMonth);
 
+      // kontekst dla nowych sekcji (js/stats2.js)
+      const ctx={year:displayYear,today,rentals,finances,nfzCases,budget,stock,machines,getRid,catOf,demo,Z,kv,dk,subC,textC,borderC,trackC,GREEN,RED,BLUE,PURPLE,ORANGE,
+        pStart,pEnd,periodLabel,equipmentAll,revenueInRange,getMachineSrvForEq,getCosts,marketingSzyny:stats.marketingByType.szyny};
+
       return <div style={{padding:"0 20px 24px"}}>
         {/* Okres: miesiąc / rok — wspólny dla wszystkich sekcji */}
         <div style={{display:"flex",background:dk?"#1E2F4A":"#DCE5F1",borderRadius:12,padding:3,marginBottom:10}}>
@@ -727,6 +731,7 @@
                 {kv("Koszt na pozyskanego klienta",t.perPatient!==null?Z(t.perPatient):"—")}
                 {kv("Przychód z reklamy w okresie",Z(t.revenue),GREEN)}
                 {kv("Zwrot z wydanej złotówki (ROAS)",t.roas!==null?t.roas+"×":"—")}
+                {kv("Zysk z reklamy (przychód − koszt)",(t.revenue-t.spend>=0?"+":"−")+Z(Math.abs(t.revenue-t.spend)),t.revenue-t.spend>=0?GREEN:RED)}
                 <button onClick={()=>setAdsListOpen(m=>({...m,[t.k]:!m[t.k]}))} aria-expanded={!!adsListOpen[t.k]} style={{marginTop:8,width:"100%",padding:"6px",borderRadius:8,border:"1px solid "+borderC,background:"transparent",color:subC,fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
                   {adsListOpen[t.k]?"▲ Ukryj listę":"▼ Lista wpłat ("+t.items.length+")"}
                 </button>
@@ -750,9 +755,11 @@
                 {kv("Razem nowych klientów",String(adsStats.newCount))}
                 {kv("Koszt na klienta (razem)",adsStats.perPatient!==null?Z(adsStats.perPatient):"—")}
                 {kv("Zwrot z wydanej złotówki (razem)",adsStats.roas!==null?adsStats.roas+"×":"—")}
+                {kv("Zysk z reklamy (razem)",(adsStats.revenue-adsStats.spend>=0?"+":"−")+Z(Math.abs(adsStats.revenue-adsStats.spend)),adsStats.revenue-adsStats.spend>=0?GREEN:RED)}
               </div>}
             </>;
           })()}
+          <AdsYear c={ctx}/>
           {mktgSetupMissing&&setBudget&&<button onClick={()=>setBudget(b=>{
               const nm=x=>String(x==null?"":x).trim().toLowerCase();
               const base=(stock&&stock.marketingCat)||"Firma";
@@ -804,6 +811,11 @@
             {!b.future&&b.perDay!==null&&<div style={{fontSize:10,color:subC,marginTop:1}}>śr. {Z(b.perDay)}/dzień · rok temu: {Z(b.prev)}</div>}
           </div>)}
           <div style={{fontSize:10,color:subC,marginTop:6,lineHeight:1.5}}>Porównanie do tego samego okresu rok temu, po kolei od stycznia. Przełącznik zmienia szerokość okna.</div>
+        </StatAcc>
+
+        {/* 2c. Rok w liczbach (nowe: rok do roku, tempo, mapa obłożenia) */}
+        <StatAcc dk={dk} open={!!openMap.yearly} onToggle={tog("yearly")} title="Rok w liczbach" sub={"rok do roku, tempo roczne, mapa obłożenia szyn · "+displayYear}>
+          <YearInNumbers c={ctx}/>
         </StatAcc>
 
         {/* 3. Obłożenie szyn CPM */}
@@ -858,6 +870,11 @@
             </div>;
           })}
           <div style={{fontSize:11,color:subC,marginTop:6,lineHeight:1.5}}>Tylko szyny CPM. {isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."} Liczone jest wypożyczenie pacjenta (od startu do końca okresu, za który płaci), a nie moment odbioru sprzętu. Start = data dodania sprzętu albo pierwsze wypożyczenie; rezerwacje się nie liczą. Pusta ramka = przed dodaniem sprzętu.</div>
+        </StatAcc>
+
+        {/* 3b. Wyniki CPM (nowe: wynik, stawka za dzień, puste dni, zajętość na przód) */}
+        <StatAcc dk={dk} open={!!openMap.cpm} onToggle={tog("cpm")} title="Wyniki CPM" sub={"wynik, stawka za dzień, puste dni, zajętość na przód · "+periodLabel}>
+          <CpmResults c={ctx}/>
         </StatAcc>
 
         {/* 4. Opłacalność sprzętu */}
