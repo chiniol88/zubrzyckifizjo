@@ -19,7 +19,7 @@ function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 // ── NOWE STATYSTYKI (2026-11-14) ─────────────────────────────────────────────
 // Dokładki do zakładki Statystyki (nic ze starych sekcji nie zmieniają): zysk i koszt klienta z reklamy w ciągu roku, źródła klientów
-// miesiąc po miesiącu, wyniki CPM (stawka za dzień, puste dni, wynik, zajętość na przód) oraz "Rok w liczbach" (rok do roku, mapa obłożenia).
+// miesiąc po miesiącu, wyniki CPM (stawka za dzień, puste dni, wynik) oraz "Rok w liczbach" (rok do roku, mapa obłożenia).
 // Komponenty dostają obiekt `c` z RentalStats (kolory, funkcje pomocnicze, dane). Wszystko liczone z danych, które aplikacja już ma.
 var ST_YMS = function ST_YMS(year) {
   return Array.from({
@@ -41,7 +41,9 @@ function StatBars(_ref) {
     fmt = _ref.fmt,
     labels = _ref.labels,
     sub = _ref.sub,
-    track = _ref.track;
+    track = _ref.track,
+    sel = _ref.sel,
+    onSel = _ref.onSel;
   var max = Math.max.apply(Math, [0].concat(_toConsumableArray(vals.map(function (v) {
     return v != null && v > 0 ? v : 0;
   }))));
@@ -59,14 +61,28 @@ function StatBars(_ref) {
   }, vals.map(function (v, i) {
     var up = v != null && v > 0 ? Math.max(2, Math.round(v / (max || 1) * hp)) : 0;
     var dn = v != null && v < 0 ? Math.max(2, Math.round(-v / (min || 1) * hn)) : 0;
-    return /*#__PURE__*/React.createElement("div", {
+    var dim = sel != null && sel !== i;
+    return /*#__PURE__*/React.createElement("button", {
       key: i,
+      type: "button",
+      onClick: onSel ? function () {
+        return onSel(sel === i ? null : i);
+      } : undefined,
+      "aria-label": labels[i] + (v != null ? ": " + v : ""),
+      "aria-pressed": sel === i,
       style: {
         flex: 1,
         minWidth: 0,
         display: "flex",
         flexDirection: "column",
-        alignItems: "center"
+        alignItems: "center",
+        border: "none",
+        background: sel === i ? track || "transparent" : "transparent",
+        borderRadius: 6,
+        padding: 0,
+        cursor: onSel ? "pointer" : "default",
+        fontFamily: "inherit",
+        opacity: dim ? .45 : 1
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -111,10 +127,29 @@ function StatBars(_ref) {
     }, labels[i]));
   }));
 }
+// podpis wybranego słupka (po dotknięciu) — wspólny wygląd dla wykresów w Reklamie
+function StatPick(_ref2) {
+  var text = _ref2.text,
+    subC = _ref2.subC,
+    textC = _ref2.textC,
+    trackC = _ref2.trackC;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: 30,
+      marginTop: 6,
+      padding: "6px 10px",
+      borderRadius: 10,
+      background: trackC,
+      fontSize: 12,
+      color: text ? textC : subC,
+      lineHeight: 1.4
+    }
+  }, text || "Dotknij słupka, żeby zobaczyć szczegóły.");
+}
 
 // ── REKLAMA: rok w miesiącach (zysk narastająco, koszt klienta, źródła klientów) ──
-function AdsYear(_ref2) {
-  var c = _ref2.c;
+function AdsYear(_ref3) {
+  var c = _ref3.c;
   var year = c.year,
     today = c.today,
     rentals = c.rentals,
@@ -135,6 +170,18 @@ function AdsYear(_ref2) {
     BLUE = c.BLUE,
     PURPLE = c.PURPLE,
     ORANGE = c.ORANGE;
+  var _useState = useState(null),
+    _useState2 = _slicedToArray(_useState, 2),
+    selCum = _useState2[0],
+    setSelCum = _useState2[1],
+    _useState3 = useState(null),
+    _useState4 = _slicedToArray(_useState3, 2),
+    selSrc = _useState4[0],
+    setSelSrc = _useState4[1],
+    _useState5 = useState({}),
+    _useState6 = _slicedToArray(_useState5, 2),
+    selCac = _useState6[0],
+    setSelCac = _useState6[1];
   var d = useMemo(function () {
     var yms = ST_YMS(year),
       idx = {};
@@ -299,11 +346,11 @@ function AdsYear(_ref2) {
       gap: 8,
       marginBottom: 4
     }
-  }, [["Wydano", Z(d.sumSpend), RED], ["Przychód", Z(d.sumRev), GREEN], ["Zysk", (profit >= 0 ? "+" : "−") + Z(Math.abs(profit)), profit >= 0 ? GREEN : RED]].map(function (_ref3) {
-    var _ref4 = _slicedToArray(_ref3, 3),
-      l = _ref4[0],
-      v = _ref4[1],
-      col = _ref4[2];
+  }, [["Wydano", Z(d.sumSpend), RED], ["Przychód", Z(d.sumRev), GREEN], ["Zysk", (profit >= 0 ? "+" : "−") + Z(Math.abs(profit)), profit >= 0 ? GREEN : RED]].map(function (_ref4) {
+    var _ref5 = _slicedToArray(_ref4, 3),
+      l = _ref5[0],
+      v = _ref5[1],
+      col = _ref5[2];
     return /*#__PURE__*/React.createElement("div", {
       key: l,
       style: {
@@ -338,7 +385,15 @@ function AdsYear(_ref2) {
     color: GREEN,
     negColor: RED,
     labels: labels,
-    sub: subC
+    sub: subC,
+    track: trackC,
+    sel: selCum,
+    onSel: setSelCum
+  }), /*#__PURE__*/React.createElement(StatPick, {
+    subC: subC,
+    textC: textC,
+    trackC: trackC,
+    text: selCum != null && d.cum[selCum] != null ? PL_MON[selCum] + " " + year + ": narastająco " + (d.cum[selCum] >= 0 ? "+" : "−") + Z(Math.abs(d.cum[selCum])) + " · w tym miesiącu przychód " + Z(d.rev[selCum]) + ", koszt " + Z(d.spendTot[selCum]) : null
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
@@ -370,16 +425,28 @@ function AdsYear(_ref2) {
         fontSize: 12,
         color: subC
       }
-    }, "Brak miesi\u0105ca, w kt\xF3rym by\u0142 i wydatek na reklam\u0119, i nowy klient z reklamy (wydatek i klient wypad\u0142y w r\xF3\u017Cnych miesi\u0105cach).") : /*#__PURE__*/React.createElement(StatBars, {
+    }, "Brak miesi\u0105ca, w kt\xF3rym by\u0142 i wydatek na reklam\u0119, i nowy klient z reklamy (wydatek i klient wypad\u0142y w r\xF3\u017Cnych miesi\u0105cach).") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(StatBars, {
       vals: cac,
       h: 48,
       color: t.k === "wozki" ? PURPLE : t.k === "balkoniki" ? ORANGE : BLUE,
       labels: labels,
       sub: subC,
+      track: trackC,
+      sel: selCac[t.k] == null ? null : selCac[t.k],
+      onSel: function onSel(i) {
+        return setSelCac(function (m) {
+          return _objectSpread(_objectSpread({}, m), {}, _defineProperty({}, t.k, i));
+        });
+      },
       fmt: demo ? null : function (v) {
         return v >= 1000 ? (v / 1000).toFixed(1).replace(".0", "") + "k" : String(v);
       }
-    }), /*#__PURE__*/React.createElement("div", {
+    }), /*#__PURE__*/React.createElement(StatPick, {
+      subC: subC,
+      textC: textC,
+      trackC: trackC,
+      text: selCac[t.k] != null ? PL_MON[selCac[t.k]] + " " + year + ": wydano " + Z(sp[selCac[t.k]]) + ", nowych klientów z reklamy " + cn[selCac[t.k]] + (cac[selCac[t.k]] != null ? ", koszt klienta " + Z(cac[selCac[t.k]]) : "") : null
+    })), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 10,
         color: subC,
@@ -403,14 +470,26 @@ function AdsYear(_ref2) {
     var tot = d.srcKeys.reduce(function (s, k) {
       return s + d.src[k][i];
     }, 0);
-    return /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement("button", {
       key: i,
+      type: "button",
+      onClick: function onClick() {
+        return setSelSrc(selSrc === i ? null : i);
+      },
+      "aria-pressed": selSrc === i,
+      "aria-label": labels[i] + ": " + tot + " klientów",
       style: {
         flex: 1,
         minWidth: 0,
         display: "flex",
         flexDirection: "column",
-        justifyContent: "flex-end"
+        justifyContent: "flex-end",
+        border: "none",
+        background: "transparent",
+        padding: 0,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        opacity: selSrc != null && selSrc !== i ? .45 : 1
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -448,7 +527,21 @@ function AdsYear(_ref2) {
         textAlign: "center"
       }
     }, l);
-  })), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement(StatPick, {
+    subC: subC,
+    textC: textC,
+    trackC: trackC,
+    text: selSrc != null ? function () {
+      var tot = d.srcKeys.reduce(function (s, k) {
+        return s + d.src[k][selSrc];
+      }, 0);
+      return tot ? PL_MON[selSrc] + " " + year + ": " + tot + " nowych klientów — " + d.srcKeys.filter(function (k) {
+        return d.src[k][selSrc] > 0;
+      }).map(function (k) {
+        return srcMeta(k).l + " " + d.src[k][selSrc] + " (" + Math.round(d.src[k][selSrc] / tot * 100) + "%)";
+      }).join(", ") : PL_MON[selSrc] + " " + year + ": brak nowych klientów";
+    }() : null
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 12,
@@ -480,9 +573,9 @@ function AdsYear(_ref2) {
   }, "Liczone nowi klienci (start wypo\u017Cyczenia lub zam\xF3wienie w\xF3zka). Je\u015Bli udzia\u0142 reklamy ro\u015Bnie, a \u201Eorganicznie\u201D maleje, reklama mo\u017Ce tylko zabiera\u0107 klient\xF3w, kt\xF3rzy i tak by przyszli."))));
 }
 
-// ── WYNIKI CPM: wynik, stawka za dzień, puste dni, zajętość na przód ──
-function CpmResults(_ref5) {
-  var c = _ref5.c;
+// ── WYNIKI CPM: wynik, stawka za dzień, puste dni ──
+function CpmResults(_ref6) {
+  var c = _ref6.c;
   var rentals = c.rentals,
     stock = c.stock,
     machines = c.machines,
@@ -625,66 +718,6 @@ function CpmResults(_ref5) {
     }).filter(function (x) {
       return !x.noData || x.rev > 0;
     });
-    // zajętość na przód (30 i 60 dni): aktywne wypożyczenia i rezerwacje wg planowanych dat
-    var fwd = eqs.map(function (eq) {
-      var rs = rentals.filter(function (r) {
-        return r.equipment === eq && r.status === "aktywne";
-      });
-      var days = Array.from({
-        length: 60
-      }, function (_, i) {
-        return addDays(today, i);
-      });
-      var b30 = 0,
-        c30 = 0,
-        b60 = 0,
-        c60 = 0,
-        next = null;
-      days.forEach(function (dy, i) {
-        var cap = whCapAt(stock, eq, dy);
-        var cnt = rs.filter(function (r) {
-          var s = r.startDate || today;
-          var e = r.renewable ? r.plannedReturn || r.endDate || "9999-12-31" : r.endDate || r.plannedReturn || today;
-          return s <= dy && dy <= e;
-        }).length;
-        var bk = Math.min(cnt, cap);
-        if (i < 30) {
-          b30 += bk;
-          c30 += cap;
-        }
-        b60 += bk;
-        c60 += cap;
-        if (next === null && cnt < cap) next = i;
-      });
-      return {
-        eq: eq,
-        p30: c30 ? Math.round(b30 / c30 * 100) : 0,
-        p60: c60 ? Math.round(b60 / c60 * 100) : 0,
-        b30: b30,
-        c30: c30,
-        b60: b60,
-        c60: c60,
-        next: next,
-        nextDate: next !== null ? days[next] : null
-      };
-    });
-    var f30b = fwd.reduce(function (s, x) {
-        return s + x.b30;
-      }, 0),
-      f30c = fwd.reduce(function (s, x) {
-        return s + x.c30;
-      }, 0),
-      f60b = fwd.reduce(function (s, x) {
-        return s + x.b60;
-      }, 0),
-      f60c = fwd.reduce(function (s, x) {
-        return s + x.c60;
-      }, 0);
-    var nextAny = fwd.filter(function (x) {
-      return x.next !== null;
-    }).sort(function (a, b) {
-      return a.next - b.next;
-    })[0] || null;
     return {
       rows: rows,
       overall: overall,
@@ -695,11 +728,7 @@ function CpmResults(_ref5) {
       emptySum: emptySum,
       lostSum: lostSum,
       capSum: capSum,
-      bookedSum: bookedSum,
-      fwd: fwd,
-      p30: f30c ? Math.round(f30b / f30c * 100) : 0,
-      p60: f60c ? Math.round(f60b / f60c * 100) : 0,
-      nextAny: nextAny
+      bookedSum: bookedSum
     };
   }, [rentals, stock, machines, finances, today, pStart, pEnd, equipmentAll]);
   var head = {
@@ -788,48 +817,18 @@ function CpmResults(_ref5) {
     }, x.empty, " dni", x.lost != null ? " · ~ " + Z(x.lost) : ""));
   })), /*#__PURE__*/React.createElement("div", {
     style: note
-  }, "Puste dni \xD7 stawka za dzie\u0144. To g\xF3rna granica: nie ka\u017Cdy pusty dzie\u0144 da\u0142oby si\u0119 wype\u0142ni\u0107 (zale\u017Cy od popytu i dojazd\xF3w)."), /*#__PURE__*/React.createElement("div", {
-    style: head
-  }, "Zaj\u0119to\u015B\u0107 na prz\xF3d"), d.fwd.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: subC
-    }
-  }, "Brak szyn CPM.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Najbliższe 30 dni", d.p30 + "% zajęte", col(d.p30)), kv("Najbliższe 60 dni", d.p60 + "% zajęte", col(d.p60)), kv("Najbliższa wolna szyna", d.nextAny ? d.nextAny.next === 0 ? "dziś (" + d.nextAny.eq + ")" : fmtD(d.nextAny.nextDate) + " (za " + d.nextAny.next + " dni)" : "w ciągu 60 dni brak wolnej", BLUE), d.fwd.map(function (x) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: x.eq,
-      style: rowSt
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: textC
-      }
-    }, x.eq), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: subC
-      }
-    }, "30 dni: ", /*#__PURE__*/React.createElement("b", {
-      style: {
-        color: col(x.p30)
-      }
-    }, x.p30, "%"), " \xB7 60 dni: ", /*#__PURE__*/React.createElement("b", {
-      style: {
-        color: col(x.p60)
-      }
-    }, x.p60, "%"), x.next !== null ? " · wolna od " + (x.next === 0 ? "dziś" : fmtD(x.nextDate)) : " · zajęta"));
-  })), /*#__PURE__*/React.createElement("div", {
-    style: note
-  }, "Wg aktywnych wypo\u017Cycze\u0144 i rezerwacji oraz ich planowanych dat zwrotu. Cykliczne bez daty ko\u0144ca liczone jako trwaj\u0105ce, jednorazowe bez daty ko\u0144ca jako ko\u0144cz\u0105ce si\u0119 dzi\u015B."));
+  }, "Puste dni \xD7 stawka za dzie\u0144. To g\xF3rna granica: nie ka\u017Cdy pusty dzie\u0144 da\u0142oby si\u0119 wype\u0142ni\u0107 (zale\u017Cy od popytu i dojazd\xF3w)."));
 }
 // ── ROK W LICZBACH: rok do roku (YTD), tempo roczne, najlepszy/najsłabszy miesiąc, mapa obłożenia ──
-function YearInNumbers(_ref6) {
-  var c = _ref6.c;
+function YearInNumbers(_ref7) {
+  var c = _ref7.c;
   var year = c.year,
     today = c.today,
     rentals = c.rentals,
     stock = c.stock,
     equipmentAll = c.equipmentAll,
     catOf = c.catOf,
-    revenueInRange = c.revenueInRange,
+    revenueInRangeCat = c.revenueInRangeCat,
     finances = c.finances,
     Z = c.Z,
     kv = c.kv,
@@ -838,7 +837,12 @@ function YearInNumbers(_ref6) {
     trackC = c.trackC,
     GREEN = c.GREEN,
     RED = c.RED,
-    ORANGE = c.ORANGE;
+    ORANGE = c.ORANGE,
+    dk = c.dk;
+  var _useState7 = useState("all"),
+    _useState8 = _slicedToArray(_useState7, 2),
+    cat = _useState8[0],
+    setCat = _useState8[1]; // filtr: wszystko / szyny / wózki / balkoniki
   var d = useMemo(function () {
     var yms = ST_YMS(year),
       py = year - 1;
@@ -846,7 +850,7 @@ function YearInNumbers(_ref6) {
     var curYM = today.slice(0, 7);
     var monthRev = function monthRev(ys) {
       return ys.map(function (ym) {
-        return ym > curYM ? null : revenueInRange(ym + "-01", ym + "-" + String(ST_LAST(ym)).padStart(2, "0"));
+        return ym > curYM ? null : revenueInRangeCat(ym + "-01", ym + "-" + String(ST_LAST(ym)).padStart(2, "0"), cat);
       });
     };
     var cur = monthRev(yms),
@@ -854,8 +858,8 @@ function YearInNumbers(_ref6) {
     // do dziś (bieżący rok) albo cały rok (rok zamknięty)
     var toCur = year === thisYear ? today : year + "-12-31";
     var toPrev = year === thisYear ? py + "-" + (today.slice(5) === "02-29" ? "02-28" : today.slice(5)) : py + "-12-31";
-    var ytd = revenueInRange(year + "-01-01", toCur),
-      ytdPrev = revenueInRange(py + "-01-01", toPrev);
+    var ytd = revenueInRangeCat(year + "-01-01", toCur, cat),
+      ytdPrev = revenueInRangeCat(py + "-01-01", toPrev, cat);
     var dayOfYear = dateDiff(year + "-01-01", toCur) + 1;
     var pace = year === thisYear && dayOfYear >= 30 ? Math.round(ytd / dayOfYear * (year % 4 === 0 ? 366 : 365)) : null;
     // pełne miesiące: do poprzedniego (bieżący rok) albo wszystkie 12
@@ -878,9 +882,9 @@ function YearInNumbers(_ref6) {
       return b.v < a.v ? b : a;
     }) : null;
     // mapa obłożenia: szyna × miesiąc
-    var eqs = equipmentAll.filter(function (eq) {
+    var eqs = cat === "all" || cat === "szyny" ? equipmentAll.filter(function (eq) {
       return catOf(eq) === "szyny";
-    });
+    }) : [];
     var heat = eqs.map(function (eq) {
       var B = 0,
         C = 0;
@@ -913,7 +917,7 @@ function YearInNumbers(_ref6) {
       toPrev: toPrev,
       cur: cur
     };
-  }, [year, today, rentals, stock, equipmentAll, finances]);
+  }, [year, today, cat, rentals, stock, equipmentAll, finances]);
   var head = {
     fontSize: 11,
     fontWeight: 700,
@@ -940,14 +944,57 @@ function YearInNumbers(_ref6) {
     return p >= 70 ? GREEN : p >= 40 ? ORANGE : RED;
   };
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 14,
+      flexWrap: "wrap"
+    }
+  }, [{
+    k: "all",
+    l: "Wszystko"
+  }, {
+    k: "szyny",
+    l: "Szyny"
+  }, {
+    k: "wozki",
+    l: "Wózki"
+  }, {
+    k: "balkoniki",
+    l: "Balkoniki"
+  }].map(function (t) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: t.k,
+      onClick: function onClick() {
+        return setCat(t.k);
+      },
+      "aria-pressed": cat === t.k,
+      style: {
+        padding: "5px 12px",
+        borderRadius: 14,
+        border: "none",
+        cursor: "pointer",
+        fontWeight: 600,
+        fontSize: 11,
+        background: cat === t.k ? "#3E6FB0" : dk ? "#1E2F4A" : "#D9E2F0",
+        color: cat === t.k ? "#fff" : subC,
+        fontFamily: "inherit"
+      }
+    }, t.l);
+  })), /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, head), {}, {
       marginTop: 0
     })
   }, "Rok ", year, " do dzi\u015B vs rok ", year - 1), kv(year + " (do " + fmtD(d.toCur) + ")", Z(d.ytd), GREEN), kv(year - 1 + " (do " + fmtD(d.toPrev) + ")", Z(d.ytdPrev)), kv("Różnica", (diff >= 0 ? "+" : "−") + Z(Math.abs(diff)) + (diffPct !== null ? " (" + (diff >= 0 ? "+" : "") + diffPct + "%)" : ""), diff >= 0 ? GREEN : RED), d.pace != null && kv("Tempo roczne (przy obecnym)", Z(d.pace)), d.best && kv("Najlepszy pełny miesiąc", monthName(d.best.ym) + " · " + Z(d.best.v), GREEN), d.worst && kv("Najsłabszy pełny miesiąc", monthName(d.worst.ym) + " · " + Z(d.worst.v), RED), /*#__PURE__*/React.createElement("div", {
     style: note
-  }, "Przych\xF3d ze sprz\u0119tu (wp\u0142aty z wypo\u017Cycze\u0144, transportu i w\xF3zk\xF3w NFZ). Bie\u017C\u0105cy miesi\u0105c nie jest brany do najlepszego/najs\u0142abszego, bo jeszcze trwa."), /*#__PURE__*/React.createElement("div", {
+  }, "Przych\xF3d ", cat === "all" ? "ze sprzętu" : cat === "szyny" ? "z szyn" : cat === "wozki" ? "z wózków" : "z balkoników", " (wp\u0142aty z wypo\u017Cycze\u0144, transportu", cat === "all" || cat === "wozki" ? " i wózków NFZ" : "", "). Bie\u017C\u0105cy miesi\u0105c nie jest brany do najlepszego/najs\u0142abszego, bo jeszcze trwa."), /*#__PURE__*/React.createElement("div", {
     style: head
-  }, "Mapa ob\u0142o\u017Cenia szyn w roku ", year), d.heat.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "Mapa ob\u0142o\u017Cenia szyn w roku ", year), cat === "wozki" || cat === "balkoniki" ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: subC
+    }
+  }, "Mapa ob\u0142o\u017Cenia jest liczona tylko dla szyn CPM. Wybierz \u201EWszystko\u201D albo \u201ESzyny\u201D.") : d.heat.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: subC

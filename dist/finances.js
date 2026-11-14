@@ -1842,6 +1842,7 @@ function RentalStats(_ref9) {
     periodLabel: periodLabel,
     equipmentAll: equipmentAll,
     revenueInRange: revenueInRange,
+    revenueInRangeCat: revenueInRangeCat,
     getMachineSrvForEq: getMachineSrvForEq,
     getCosts: getCosts,
     marketingSzyny: stats.marketingByType.szyny
@@ -3063,7 +3064,7 @@ function RentalStats(_ref9) {
     open: !!openMap.cpm,
     onToggle: tog("cpm"),
     title: "Wyniki CPM",
-    sub: "wynik, stawka za dzień, puste dni, zajętość na przód · " + periodLabel
+    sub: "wynik, stawka za dzień, puste dni · " + periodLabel
   }, /*#__PURE__*/React.createElement(CpmResults, {
     c: ctx
   })), /*#__PURE__*/React.createElement(StatAcc, {
