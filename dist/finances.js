@@ -1547,26 +1547,6 @@ function RentalStats(_ref9) {
         return goToWozki(id);
       } : null;
     };
-    var overlapEq = occStats.filter(function (x) {
-      return x.overlapDays > 0;
-    });
-    if (overlapEq.length) issues.push({
-      k: "overlap",
-      l: "Nakładające się wypożyczenia szyn ponad liczbę sztuk",
-      n: overlapEq.reduce(function (s, x) {
-        return s + x.overlapDays;
-      }, 0),
-      hint: "Otwórz Obłożenie szyn CPM — tam przy sprzęcie zobaczysz dokładnie które dni się nakładają.",
-      rows: overlapEq.map(function (x) {
-        return {
-          label: x.eq,
-          sub: x.overlapDays + " dni nakładania",
-          go: function go() {
-            return setOpenSec("occ");
-          }
-        };
-      })
-    });
     var noSrcRentals = rentals.filter(function (r) {
       return !r.reserved && !r.source;
     });
@@ -1579,6 +1559,7 @@ function RentalStats(_ref9) {
       n: noSrcRentals.length + noSrcWozki.length,
       rows: [].concat(_toConsumableArray(noSrcRentals.map(function (r) {
         return {
+          id: "r" + r.id,
           person: true,
           label: r.patientName || "—",
           sub: (r.equipment || "") + " · " + (r.startDate || ""),
@@ -1586,6 +1567,7 @@ function RentalStats(_ref9) {
         };
       })), _toConsumableArray(noSrcWozki.map(function (c) {
         return {
+          id: "w" + c.id,
           person: true,
           label: c.patientName || "—",
           sub: "🦽 wózek · " + (c.orderDate || ""),
@@ -1605,6 +1587,7 @@ function RentalStats(_ref9) {
       hint: "Uzupełnij w zakładce Sprzęt → Edytuj magazyn.",
       rows: eqNoAdded.map(function (eq) {
         return {
+          id: eq,
           label: eq,
           sub: null,
           go: null
@@ -1620,6 +1603,7 @@ function RentalStats(_ref9) {
       n: noEnd.length,
       rows: noEnd.map(function (r) {
         return {
+          id: "r" + r.id,
           person: true,
           label: r.patientName || "—",
           sub: r.equipment || "",
@@ -1636,6 +1620,7 @@ function RentalStats(_ref9) {
       n: oldRes.length,
       rows: oldRes.map(function (r) {
         return {
+          id: "r" + r.id,
           person: true,
           label: r.patientName || "—",
           sub: dateDiff(r.reservedAt, today) + " dni czekania",
@@ -1643,44 +1628,33 @@ function RentalStats(_ref9) {
         };
       })
     });
-    var overdueByRental = {};
-    rentals.forEach(function (r) {
-      if (r.status !== "aktywne" || !r.renewable || r.reserved) return;
-      (r.cycles || []).forEach(function (c) {
-        if (!c.paid && !c.cancelled && (c.dueDate || c.month + "-01") < today) {
-          if (!overdueByRental[r.id]) overdueByRental[r.id] = {
-            r: r,
-            n: 0,
-            sum: 0
-          };
-          overdueByRental[r.id].n++;
-          overdueByRental[r.id].sum += +c.amount || 0;
-        }
+
+    // wyciszone przez użytkownika: cały rodzaj (stock.healthMuted.types) albo pojedyncze pozycje (stock.healthMuted.items["rodzaj:id"])
+    var mu = stock && stock.healthMuted || {};
+    var hidden = 0;
+    var shown = issues.map(function (i) {
+      if (mu.types && mu.types[i.k]) {
+        hidden += (i.rows || []).length || i.n;
+        return null;
+      }
+      var rows = (i.rows || []).filter(function (r) {
+        var m = mu.items && mu.items[i.k + ":" + r.id];
+        if (m) hidden++;
+        return !m;
       });
-    });
-    var overdueList = Object.values(overdueByRental);
-    if (overdueList.length) issues.push({
-      k: "overdue",
-      l: "Zaległe okresy cykliczne",
-      n: overdueList.reduce(function (s, x) {
-        return s + x.n;
-      }, 0),
-      rows: overdueList.map(function (x) {
-        return {
-          person: true,
-          label: x.r.patientName || "—",
-          sub: x.n + " okres" + (x.n === 1 ? "" : "y") + " · " + Z(x.sum),
-          go: goR(x.r.id)
-        };
-      })
-    });
+      return rows.length ? _objectSpread(_objectSpread({}, i), {}, {
+        rows: rows,
+        n: rows.length
+      }) : null;
+    }).filter(Boolean);
     return {
-      issues: issues,
-      total: issues.reduce(function (s, i) {
+      issues: shown,
+      total: shown.reduce(function (s, i) {
         return s + i.n;
-      }, 0)
+      }, 0),
+      hidden: hidden
     };
-  }, [rentals, nfzCases, stock, occStats, equipmentAll, today, goToRental, goToWozki]);
+  }, [rentals, nfzCases, stock, equipmentAll, today, goToRental, goToWozki]);
 
   // ── A3 + A6: przychód/dzień dostępności i przestój między wypożyczeniami (tylko szyny CPM) ──
   var occStatsExt = useMemo(function () {
@@ -1711,6 +1685,36 @@ function RentalStats(_ref9) {
       });
     });
   }, [occStats, rentals, finances, nfzCases, pStart, pEnd, today]);
+
+  // wyciszanie powiadomień w Kontroli danych (zapisane w stock.healthMuted, wspólnie na telefonie i komputerze)
+  var muteType = function muteType(k) {
+    return setStock(function (s) {
+      return _objectSpread(_objectSpread({}, s), {}, {
+        healthMuted: _objectSpread(_objectSpread({}, s.healthMuted || {}), {}, {
+          types: _objectSpread(_objectSpread({}, (s.healthMuted || {}).types || {}), {}, _defineProperty({}, k, true))
+        })
+      });
+    });
+  };
+  var muteItem = function muteItem(k, id) {
+    return setStock(function (s) {
+      return _objectSpread(_objectSpread({}, s), {}, {
+        healthMuted: _objectSpread(_objectSpread({}, s.healthMuted || {}), {}, {
+          items: _objectSpread(_objectSpread({}, (s.healthMuted || {}).items || {}), {}, _defineProperty({}, k + ":" + id, true))
+        })
+      });
+    });
+  };
+  var unmuteAll = function unmuteAll() {
+    return setStock(function (s) {
+      return _objectSpread(_objectSpread({}, s), {}, {
+        healthMuted: {
+          types: {},
+          items: {}
+        }
+      });
+    });
+  };
   var srcPct = pctSplit(src.rows.map(function (r) {
     return r.rev;
   }));
@@ -3507,29 +3511,36 @@ function RentalStats(_ref9) {
       }
     }, i.n)), i.hint && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 11,
+        fontSize: 12,
         color: subC,
         marginBottom: 6
       }
     }, i.hint), i.rows && i.rows.map(function (row, ri) {
       var Tag = row.go ? "button" : "div";
-      return /*#__PURE__*/React.createElement(Tag, {
-        key: ri,
+      return /*#__PURE__*/React.createElement("div", {
+        key: row.id || ri,
+        style: {
+          display: "flex",
+          alignItems: "stretch",
+          gap: 6,
+          marginBottom: 3
+        }
+      }, /*#__PURE__*/React.createElement(Tag, {
         onClick: row.go || undefined,
         style: {
+          flex: 1,
+          minWidth: 0,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          width: "100%",
           gap: 8,
           padding: "7px 8px",
-          marginBottom: 2,
           borderRadius: 9,
           border: "none",
           background: row.go ? dk ? "#1E2F4A" : "#F0F4FA" : "transparent",
           cursor: row.go ? "pointer" : "default",
-          fontFamily: "inherit",
-          textAlign: "left"
+          textAlign: "left",
+          fontFamily: "inherit"
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
@@ -3548,7 +3559,7 @@ function RentalStats(_ref9) {
       }, row.person ? maskName(demo, row.label, ri) : row.label), row.sub && /*#__PURE__*/React.createElement("span", {
         style: {
           display: "block",
-          fontSize: 10,
+          fontSize: 11,
           color: subC
         }
       }, row.sub)), row.go && /*#__PURE__*/React.createElement("span", {
@@ -3557,10 +3568,65 @@ function RentalStats(_ref9) {
           color: subC,
           flexShrink: 0
         }
-      }, "otw\xF3rz \u203A"));
-    }));
-  }), /*#__PURE__*/React.createElement(StatNote, {
-    lines: ["Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach.", "Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan)."]
+      }, "otw\xF3rz \u203A")), /*#__PURE__*/React.createElement("button", {
+        onClick: function onClick() {
+          return muteItem(i.k, row.id);
+        },
+        "aria-label": "Ukryj to powiadomienie",
+        title: "Ukryj to powiadomienie",
+        style: {
+          flexShrink: 0,
+          width: 34,
+          border: "none",
+          borderRadius: 9,
+          background: dk ? "#1E2F4A" : "#F0F4FA",
+          color: subC,
+          fontSize: 14,
+          cursor: "pointer",
+          fontFamily: "inherit"
+        }
+      }, "\u2715"));
+    }), /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return muteType(i.k);
+      },
+      style: {
+        marginTop: 6,
+        background: "transparent",
+        border: "none",
+        color: subC,
+        fontSize: 12,
+        textDecoration: "underline",
+        cursor: "pointer",
+        padding: "4px 0",
+        fontFamily: "inherit"
+      }
+    }, "\uD83D\uDD15 Nie pokazuj wi\u0119cej tego rodzaju powiadomie\u0144"));
+  }), dataHealth.hidden > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 10,
+      fontSize: 12,
+      color: subC
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Ukryte powiadomienia: ", dataHealth.hidden), /*#__PURE__*/React.createElement("button", {
+    onClick: unmuteAll,
+    style: {
+      background: dk ? "#1E2F4A" : "#E1E9F5",
+      border: "none",
+      borderRadius: 8,
+      padding: "6px 12px",
+      fontSize: 12,
+      fontWeight: 600,
+      color: dk ? "#9DB8E8" : "#3E6FB0",
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "Przywr\xF3\u0107 wszystkie")), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach.", "Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan).", "Krzyżyk ukrywa pojedynczą pozycję, a „Nie pokazuj więcej” cały rodzaj powiadomień. Ukryte można przywrócić na dole."]
   })), repairForm && function () {
     var eqCards = whCards(machines, repairForm.eq);
     return /*#__PURE__*/React.createElement(Modal, {

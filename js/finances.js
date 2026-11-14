@@ -569,44 +569,35 @@
         const goR=id=>goToRental?()=>goToRental(id):null;
         const goW=id=>goToWozki?()=>goToWozki(id):null;
 
-        const overlapEq=occStats.filter(x=>x.overlapDays>0);
-        if(overlapEq.length)issues.push({k:"overlap",l:"Nakładające się wypożyczenia szyn ponad liczbę sztuk",n:overlapEq.reduce((s,x)=>s+x.overlapDays,0),
-          hint:"Otwórz Obłożenie szyn CPM — tam przy sprzęcie zobaczysz dokładnie które dni się nakładają.",
-          rows:overlapEq.map(x=>({label:x.eq,sub:x.overlapDays+" dni nakładania",go:()=>setOpenSec("occ")}))});
-
         const noSrcRentals=rentals.filter(r=>!r.reserved&&!r.source);
         const noSrcWozki=(nfzCases||[]).filter(c=>!c.source);
         if(noSrcRentals.length+noSrcWozki.length>0)issues.push({k:"nosrc",l:"Brak oznaczonego źródła",n:noSrcRentals.length+noSrcWozki.length,
-          rows:[...noSrcRentals.map(r=>({person:true,label:r.patientName||"—",sub:(r.equipment||"")+" · "+(r.startDate||""),go:goR(r.id)})),
-                ...noSrcWozki.map(c=>({person:true,label:c.patientName||"—",sub:"🦽 wózek · "+(c.orderDate||""),go:goW(c.id)}))]});
+          rows:[...noSrcRentals.map(r=>({id:"r"+r.id,person:true,label:r.patientName||"—",sub:(r.equipment||"")+" · "+(r.startDate||""),go:goR(r.id)})),
+                ...noSrcWozki.map(c=>({id:"w"+c.id,person:true,label:c.patientName||"—",sub:"🦽 wózek · "+(c.orderDate||""),go:goW(c.id)}))]});
 
         const eqNoAdded=equipmentAll.filter(eq=>catOf(eq)==="szyny"&&!(stock&&stock.addedDate&&stock.addedDate[eq])&&rentals.some(r=>r.equipment===eq));
         if(eqNoAdded.length)issues.push({k:"noadded",l:"Brak daty dodania sprzętu (szyny)",n:eqNoAdded.length,
           hint:"Uzupełnij w zakładce Sprzęt → Edytuj magazyn.",
-          rows:eqNoAdded.map(eq=>({label:eq,sub:null,go:null}))});
+          rows:eqNoAdded.map(eq=>({id:eq,label:eq,sub:null,go:null}))});
 
         const noEnd=rentals.filter(r=>r.status==="zakończone"&&!r.renewable&&!r.endDate);
         if(noEnd.length)issues.push({k:"noend",l:"Zakończone wypożyczenia bez daty końca",n:noEnd.length,
-          rows:noEnd.map(r=>({person:true,label:r.patientName||"—",sub:r.equipment||"",go:goR(r.id)}))});
+          rows:noEnd.map(r=>({id:"r"+r.id,person:true,label:r.patientName||"—",sub:r.equipment||"",go:goR(r.id)}))});
 
         const oldRes=rentals.filter(r=>r.reserved&&r.reservedAt&&dateDiff(r.reservedAt,today)>14);
         if(oldRes.length)issues.push({k:"oldres",l:"Rezerwacje czekające ponad 14 dni",n:oldRes.length,
-          rows:oldRes.map(r=>({person:true,label:r.patientName||"—",sub:dateDiff(r.reservedAt,today)+" dni czekania",go:goR(r.id)}))});
+          rows:oldRes.map(r=>({id:"r"+r.id,person:true,label:r.patientName||"—",sub:dateDiff(r.reservedAt,today)+" dni czekania",go:goR(r.id)}))});
 
-        const overdueByRental={};
-        rentals.forEach(r=>{
-          if(r.status!=="aktywne"||!r.renewable||r.reserved)return;
-          (r.cycles||[]).forEach(c=>{if(!c.paid&&!c.cancelled&&(c.dueDate||c.month+"-01")<today){
-            if(!overdueByRental[r.id])overdueByRental[r.id]={r,n:0,sum:0};
-            overdueByRental[r.id].n++;overdueByRental[r.id].sum+=(+c.amount||0);
-          }});
-        });
-        const overdueList=Object.values(overdueByRental);
-        if(overdueList.length)issues.push({k:"overdue",l:"Zaległe okresy cykliczne",n:overdueList.reduce((s,x)=>s+x.n,0),
-          rows:overdueList.map(x=>({person:true,label:x.r.patientName||"—",sub:x.n+" okres"+(x.n===1?"":"y")+" · "+Z(x.sum),go:goR(x.r.id)}))});
-
-        return {issues,total:issues.reduce((s,i)=>s+i.n,0)};
-      },[rentals,nfzCases,stock,occStats,equipmentAll,today,goToRental,goToWozki]);
+        // wyciszone przez użytkownika: cały rodzaj (stock.healthMuted.types) albo pojedyncze pozycje (stock.healthMuted.items["rodzaj:id"])
+        const mu=(stock&&stock.healthMuted)||{};
+        let hidden=0;
+        const shown=issues.map(i=>{
+          if(mu.types&&mu.types[i.k]){hidden+=(i.rows||[]).length||i.n;return null;}
+          const rows=(i.rows||[]).filter(r=>{const m=mu.items&&mu.items[i.k+":"+r.id];if(m)hidden++;return !m;});
+          return rows.length?{...i,rows,n:rows.length}:null;
+        }).filter(Boolean);
+        return {issues:shown,total:shown.reduce((s,i)=>s+i.n,0),hidden};
+      },[rentals,nfzCases,stock,equipmentAll,today,goToRental,goToWozki]);
 
       // ── A3 + A6: przychód/dzień dostępności i przestój między wypożyczeniami (tylko szyny CPM) ──
       const occStatsExt=useMemo(()=>occStats.map(x=>{
@@ -618,6 +609,10 @@
         return {...x,gapAvg:gaps.length?Math.round(gaps.reduce((a,b)=>a+b,0)/gaps.length):null,gapCount:gaps.length,revPerDay};
       }),[occStats,rentals,finances,nfzCases,pStart,pEnd,today]);
 
+      // wyciszanie powiadomień w Kontroli danych (zapisane w stock.healthMuted, wspólnie na telefonie i komputerze)
+      const muteType=k=>setStock(s=>({...s,healthMuted:{...(s.healthMuted||{}),types:{...((s.healthMuted||{}).types||{}),[k]:true}}}));
+      const muteItem=(k,id)=>setStock(s=>({...s,healthMuted:{...(s.healthMuted||{}),items:{...((s.healthMuted||{}).items||{}),[k+":"+id]:true}}}));
+      const unmuteAll=()=>setStock(s=>({...s,healthMuted:{types:{},items:{}}}));
       const srcPct=pctSplit(src.rows.map(r=>r.rev));
       const tog=id=>()=>setOpenMap(m=>({...m,[id]:!m[id]}));
       const kv=(l,v,c,key)=><div key={key||l} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"9px 0",borderBottom:"1px solid "+borderC,fontSize:13}}><span style={{color:c||textC}}>{l}</span><b style={{color:c||textC,fontVariantNumeric:"tabular-nums",textAlign:"right"}}>{v}</b></div>;
@@ -1014,20 +1009,28 @@
                 <span style={{color:textC,fontWeight:600}}>{i.l}</span>
                 <b style={{color:ORANGE,flexShrink:0}}>{i.n}</b>
               </div>
-              {i.hint&&<div style={{fontSize:11,color:subC,marginBottom:6}}>{i.hint}</div>}
+              {i.hint&&<div style={{fontSize:12,color:subC,marginBottom:6}}>{i.hint}</div>}
               {i.rows&&i.rows.map((row,ri)=>{
                 const Tag=row.go?"button":"div";
-                return <Tag key={ri} onClick={row.go||undefined} style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",gap:8,padding:"7px 8px",marginBottom:2,borderRadius:9,border:"none",background:row.go?(dk?"#1E2F4A":"#F0F4FA"):"transparent",cursor:row.go?"pointer":"default",fontFamily:"inherit",textAlign:"left"}}>
-                  <span style={{minWidth:0}}>
-                    <span style={{display:"block",fontSize:12,fontWeight:600,color:row.go?(dk?"#9CB8E8":"#3E6FB0"):textC,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.person?maskName(demo,row.label,ri):row.label}</span>
-                    {row.sub&&<span style={{display:"block",fontSize:10,color:subC}}>{row.sub}</span>}
-                  </span>
-                  {row.go&&<span style={{fontSize:11,color:subC,flexShrink:0}}>otwórz ›</span>}
-                </Tag>;
+                return <div key={row.id||ri} style={{display:"flex",alignItems:"stretch",gap:6,marginBottom:3}}>
+                  <Tag onClick={row.go||undefined} style={{flex:1,minWidth:0,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,padding:"7px 8px",borderRadius:9,border:"none",background:row.go?(dk?"#1E2F4A":"#F0F4FA"):"transparent",cursor:row.go?"pointer":"default",textAlign:"left",fontFamily:"inherit"}}>
+                    <span style={{minWidth:0}}>
+                      <span style={{display:"block",fontSize:12,fontWeight:600,color:row.go?(dk?"#9CB8E8":"#3E6FB0"):textC,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.person?maskName(demo,row.label,ri):row.label}</span>
+                      {row.sub&&<span style={{display:"block",fontSize:11,color:subC}}>{row.sub}</span>}
+                    </span>
+                    {row.go&&<span style={{fontSize:11,color:subC,flexShrink:0}}>otwórz ›</span>}
+                  </Tag>
+                  <button onClick={()=>muteItem(i.k,row.id)} aria-label="Ukryj to powiadomienie" title="Ukryj to powiadomienie" style={{flexShrink:0,width:34,border:"none",borderRadius:9,background:dk?"#1E2F4A":"#F0F4FA",color:subC,fontSize:14,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                </div>;
               })}
+              <button onClick={()=>muteType(i.k)} style={{marginTop:6,background:"transparent",border:"none",color:subC,fontSize:12,textDecoration:"underline",cursor:"pointer",padding:"4px 0",fontFamily:"inherit"}}>🔕 Nie pokazuj więcej tego rodzaju powiadomień</button>
             </div>)
           }
-          <StatNote lines={["Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach.","Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan)."]}/>
+          {dataHealth.hidden>0&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:10,fontSize:12,color:subC}}>
+            <span>Ukryte powiadomienia: {dataHealth.hidden}</span>
+            <button onClick={unmuteAll} style={{background:dk?"#1E2F4A":"#E1E9F5",border:"none",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,color:dk?"#9DB8E8":"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>Przywróć wszystkie</button>
+          </div>}
+          <StatNote lines={["Rzeczy, które mogą zaniżać albo zawyżać liczby w Statystykach.","Sprawdzane niezależnie od wybranego okresu (all-time / bieżący stan).","Krzyżyk ukrywa pojedynczą pozycję, a „Nie pokazuj więcej” cały rodzaj powiadomień. Ukryte można przywrócić na dole."]}/>
         </StatAcc>
 
         {repairForm&&(()=>{
