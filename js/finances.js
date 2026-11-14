@@ -213,6 +213,7 @@
       const [adsListOpen,setAdsListOpen]=useState({});   // rozwinięte listy wpłat w blokach Reklamy (szyny/wozki/balkoniki)
       const [srcTab,setSrcTab]=useState("all");
       const [seasonGran,setSeasonGran]=useState("2w");
+      const [seasonCat,setSeasonCat]=useState("all");   // filtr sezonowości: wszystko / szyny / wózki / balkoniki
       const equipmentAll=getActiveEquipmentNames(stock);
       const SZYNY_EQ=["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab"];
       const BALKONIKI_EQ=["Ambonka Paula","Balkonik ortopedyczny"];
@@ -476,6 +477,27 @@
         return total;
       };
 
+      // przychód w przedziale dla rodzaju sprzętu (szyny / wózki / balkoniki); "all" = jak revenueInRange bez filtra.
+      // Wózki = wypożyczenia wózków + refundacje NFZ.
+      const revenueInRangeCat=(from,to,cat)=>{
+        if(!cat||cat==="all")return revenueInRange(from,to,null);
+        if(from>to)return 0;
+        let total=0;const countedR=new Set();
+        (finances||[]).forEach(f=>{
+          if(f.type!=="przychód"||(f.date||"")<from||(f.date||"")>to)return;
+          const rid=getRid(f.sourceId);
+          if(rid){if(catOf(rentalEquipMap[rid])!==cat)return;countedR.add(rid);total+=(+f.amount||0);return;}
+          if(cat==="wozki"){const sid=f.sourceId||"";if(sid.startsWith("wozek-")){const cid=+sid.slice(6);if(cid&&(nfzCases||[]).some(x=>x.id===cid))total+=(+f.amount||0);}}
+        });
+        rentals.forEach(r=>{
+          if(catOf(r.equipment)!==cat)return;
+          if(countedR.has(r.id)||(r.payments||[]).length>0||(r.cycles||[]).length>0)return;
+          const paid=+r.amountPaid||0;if(paid<=0)return;
+          const dt=r.startDate||"";if(dt>=from&&dt<=to)total+=paid;
+        });
+        return total;
+      };
+
       // ── A5 + A7: Sezonowość, rok do roku, koszt reklamy ──
       const displayYear=isYear?statsYear:+selMonth.slice(0,4);
       const seasonData=useMemo(()=>{
@@ -483,9 +505,9 @@
         const rows=curChunks.map((b,i)=>{
           const future=b.from>today;
           const to=b.to>today?today:b.to;
-          const cur=future?0:revenueInRange(b.from,to,null);
+          const cur=future?0:revenueInRangeCat(b.from,to,seasonCat);
           const pb=prevChunks[i];
-          const prev=pb?revenueInRange(pb.from,pb.to,null):0;
+          const prev=pb?revenueInRangeCat(pb.from,pb.to,seasonCat):0;
           const days=Math.round((Date.parse(to+"T00:00:00Z")-Date.parse(b.from+"T00:00:00Z"))/864e5)+1;
           return {k:"c"+i,l:b.label,from:b.from,to:b.to,cur,prev,future,perDay:(!future&&days>0)?Math.round(cur/days):null,diffPct:(prev>0&&!future)?Math.round((cur-prev)/prev*100):null};
         });
@@ -494,12 +516,12 @@
           const lastCur=String(new Date(displayYear,i+1,0).getDate()).padStart(2,"0");
           const lastPrev=String(new Date(displayYear-1,i+1,0).getDate()).padStart(2,"0");
           const startCur=displayYear+"-"+mm+"-01";
-          const cur=startCur>today?0:revenueInRange(startCur,(displayYear+"-"+mm+"-"+lastCur)>today?today:(displayYear+"-"+mm+"-"+lastCur),null);
-          const prev=revenueInRange((displayYear-1)+"-"+mm+"-01",(displayYear-1)+"-"+mm+"-"+lastPrev,null);
+          const cur=startCur>today?0:revenueInRangeCat(startCur,(displayYear+"-"+mm+"-"+lastCur)>today?today:(displayYear+"-"+mm+"-"+lastCur),seasonCat);
+          const prev=revenueInRangeCat((displayYear-1)+"-"+mm+"-01",(displayYear-1)+"-"+mm+"-"+lastPrev,seasonCat);
           return {m:i,cur,prev};
         });
         return {rows,yoyMonths};
-      },[displayYear,seasonGran,rentals,finances,nfzCases,today]);
+      },[displayYear,seasonGran,seasonCat,rentals,finances,nfzCases,today,stock]);
       // czy w budżecie brakuje podkategorii marketingu (szyny/wózki/balkoniki) — pokazujemy przycisk "Załóż"
       const mktgSetupMissing=(()=>{
         const nm=x=>String(x==null?"":x).trim().toLowerCase();
@@ -775,8 +797,13 @@
         </StatAcc>
 
         {/* 1c. Sezonowość */}
-        <StatAcc dk={dk} open={!!openMap.season} onToggle={tog("season")} title="Sezonowość" sub={displayYear+" vs "+(displayYear-1)}
+        <StatAcc dk={dk} open={!!openMap.season} onToggle={tog("season")} title="Sezonowość" sub={displayYear+" vs "+(displayYear-1)+(seasonCat!=="all"?" · "+({szyny:"szyny",wozki:"wózki",balkoniki:"balkoniki"})[seasonCat]:"")}
           keyVal={Z(seasonData.yoyMonths.reduce((a,m)=>a+m.cur,0))} keyColor={BLUE}>
+          <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+            {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
+              <button key={t.k} onClick={()=>setSeasonCat(t.k)} aria-pressed={seasonCat===t.k} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:seasonCat===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:seasonCat===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+            )}
+          </div>
           <div style={{fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"0 0 8px"}}>Rok do roku — {displayYear} vs {displayYear-1}</div>
           <div style={{display:"flex",alignItems:"flex-end",gap:3,height:78}}>
             {seasonData.yoyMonths.map(mo=>{

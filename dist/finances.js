@@ -732,6 +732,10 @@ function RentalStats(_ref9) {
     _useState20 = _slicedToArray(_useState19, 2),
     seasonGran = _useState20[0],
     setSeasonGran = _useState20[1];
+  var _useState21 = useState("all"),
+    _useState22 = _slicedToArray(_useState21, 2),
+    seasonCat = _useState22[0],
+    setSeasonCat = _useState22[1]; // filtr sezonowości: wszystko / szyny / wózki / balkoniki
   var equipmentAll = getActiveEquipmentNames(stock);
   var SZYNY_EQ = ["Artromot K1 2025", "Artromot K1 I", "Kinetec Spectra", "Kinetec Spectra SZ", "Optiflex", "OrthoRehab"];
   var BALKONIKI_EQ = ["Ambonka Paula", "Balkonik ortopedyczny"];
@@ -1313,6 +1317,43 @@ function RentalStats(_ref9) {
     return total;
   };
 
+  // przychód w przedziale dla rodzaju sprzętu (szyny / wózki / balkoniki); "all" = jak revenueInRange bez filtra.
+  // Wózki = wypożyczenia wózków + refundacje NFZ.
+  var revenueInRangeCat = function revenueInRangeCat(from, to, cat) {
+    if (!cat || cat === "all") return revenueInRange(from, to, null);
+    if (from > to) return 0;
+    var total = 0;
+    var countedR = new Set();
+    (finances || []).forEach(function (f) {
+      if (f.type !== "przychód" || (f.date || "") < from || (f.date || "") > to) return;
+      var rid = getRid(f.sourceId);
+      if (rid) {
+        if (catOf(rentalEquipMap[rid]) !== cat) return;
+        countedR.add(rid);
+        total += +f.amount || 0;
+        return;
+      }
+      if (cat === "wozki") {
+        var sid = f.sourceId || "";
+        if (sid.startsWith("wozek-")) {
+          var cid = +sid.slice(6);
+          if (cid && (nfzCases || []).some(function (x) {
+            return x.id === cid;
+          })) total += +f.amount || 0;
+        }
+      }
+    });
+    rentals.forEach(function (r) {
+      if (catOf(r.equipment) !== cat) return;
+      if (countedR.has(r.id) || (r.payments || []).length > 0 || (r.cycles || []).length > 0) return;
+      var paid = +r.amountPaid || 0;
+      if (paid <= 0) return;
+      var dt = r.startDate || "";
+      if (dt >= from && dt <= to) total += paid;
+    });
+    return total;
+  };
+
   // ── A5 + A7: Sezonowość, rok do roku, koszt reklamy ──
   var displayYear = isYear ? statsYear : +selMonth.slice(0, 4);
   var seasonData = useMemo(function () {
@@ -1321,9 +1362,9 @@ function RentalStats(_ref9) {
     var rows = curChunks.map(function (b, i) {
       var future = b.from > today;
       var to = b.to > today ? today : b.to;
-      var cur = future ? 0 : revenueInRange(b.from, to, null);
+      var cur = future ? 0 : revenueInRangeCat(b.from, to, seasonCat);
       var pb = prevChunks[i];
-      var prev = pb ? revenueInRange(pb.from, pb.to, null) : 0;
+      var prev = pb ? revenueInRangeCat(pb.from, pb.to, seasonCat) : 0;
       var days = Math.round((Date.parse(to + "T00:00:00Z") - Date.parse(b.from + "T00:00:00Z")) / 864e5) + 1;
       return {
         k: "c" + i,
@@ -1344,8 +1385,8 @@ function RentalStats(_ref9) {
       var lastCur = String(new Date(displayYear, i + 1, 0).getDate()).padStart(2, "0");
       var lastPrev = String(new Date(displayYear - 1, i + 1, 0).getDate()).padStart(2, "0");
       var startCur = displayYear + "-" + mm + "-01";
-      var cur = startCur > today ? 0 : revenueInRange(startCur, displayYear + "-" + mm + "-" + lastCur > today ? today : displayYear + "-" + mm + "-" + lastCur, null);
-      var prev = revenueInRange(displayYear - 1 + "-" + mm + "-01", displayYear - 1 + "-" + mm + "-" + lastPrev, null);
+      var cur = startCur > today ? 0 : revenueInRangeCat(startCur, displayYear + "-" + mm + "-" + lastCur > today ? today : displayYear + "-" + mm + "-" + lastCur, seasonCat);
+      var prev = revenueInRangeCat(displayYear - 1 + "-" + mm + "-01", displayYear - 1 + "-" + mm + "-" + lastPrev, seasonCat);
       return {
         m: i,
         cur: cur,
@@ -1356,7 +1397,7 @@ function RentalStats(_ref9) {
       rows: rows,
       yoyMonths: yoyMonths
     };
-  }, [displayYear, seasonGran, rentals, finances, nfzCases, today]);
+  }, [displayYear, seasonGran, seasonCat, rentals, finances, nfzCases, today, stock]);
   // czy w budżecie brakuje podkategorii marketingu (szyny/wózki/balkoniki) — pokazujemy przycisk "Załóż"
   var mktgSetupMissing = function () {
     var nm = function nm(x) {
@@ -2576,12 +2617,54 @@ function RentalStats(_ref9) {
     open: !!openMap.season,
     onToggle: tog("season"),
     title: "Sezonowo\u015B\u0107",
-    sub: displayYear + " vs " + (displayYear - 1),
+    sub: displayYear + " vs " + (displayYear - 1) + (seasonCat !== "all" ? " · " + {
+      szyny: "szyny",
+      wozki: "wózki",
+      balkoniki: "balkoniki"
+    }[seasonCat] : ""),
     keyVal: Z(seasonData.yoyMonths.reduce(function (a, m) {
       return a + m.cur;
     }, 0)),
     keyColor: BLUE
   }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 14,
+      flexWrap: "wrap"
+    }
+  }, [{
+    k: "all",
+    l: "Wszystko"
+  }, {
+    k: "szyny",
+    l: "Szyny"
+  }, {
+    k: "wozki",
+    l: "Wózki"
+  }, {
+    k: "balkoniki",
+    l: "Balkoniki"
+  }].map(function (t) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: t.k,
+      onClick: function onClick() {
+        return setSeasonCat(t.k);
+      },
+      "aria-pressed": seasonCat === t.k,
+      style: {
+        padding: "5px 12px",
+        borderRadius: 14,
+        border: "none",
+        cursor: "pointer",
+        fontWeight: 600,
+        fontSize: 11,
+        background: seasonCat === t.k ? "#3E6FB0" : dk ? "#1E2F4A" : "#D9E2F0",
+        color: seasonCat === t.k ? "#fff" : subC,
+        fontFamily: "inherit"
+      }
+    }, t.l);
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
@@ -3648,65 +3731,65 @@ function Finances(_ref15) {
     goToWozki = _ref15.goToWozki;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
-  var _useState21 = useState(null),
-    _useState22 = _slicedToArray(_useState21, 2),
-    editE = _useState22[0],
-    setEditE = _useState22[1];
-  var _useState23 = useState(function () {
+  var _useState23 = useState(null),
+    _useState24 = _slicedToArray(_useState23, 2),
+    editE = _useState24[0],
+    setEditE = _useState24[1];
+  var _useState25 = useState(function () {
       var h = window.location.hash.replace("#", "").split("-");
       return h[1] || "month";
     }),
-    _useState24 = _slicedToArray(_useState23, 2),
-    viewMode = _useState24[0],
-    setViewMode = _useState24[1];
+    _useState26 = _slicedToArray(_useState25, 2),
+    viewMode = _useState26[0],
+    setViewMode = _useState26[1];
   useEffect(function () {
     window.location.replace("#finances-" + viewMode);
   }, [viewMode]);
-  var _useState25 = useState(function () {
+  var _useState27 = useState(function () {
       return todayLocal().slice(0, 7);
     }),
-    _useState26 = _slicedToArray(_useState25, 2),
-    month = _useState26[0],
-    setMonth = _useState26[1];
-  var _useState27 = useState(function () {
+    _useState28 = _slicedToArray(_useState27, 2),
+    month = _useState28[0],
+    setMonth = _useState28[1];
+  var _useState29 = useState(function () {
       return todayLocal().slice(0, 4);
     }),
-    _useState28 = _slicedToArray(_useState27, 2),
-    year = _useState28[0],
-    setYear = _useState28[1];
-  var _useState29 = useState(function () {
+    _useState30 = _slicedToArray(_useState29, 2),
+    year = _useState30[0],
+    setYear = _useState30[1];
+  var _useState31 = useState(function () {
       var d = new Date();
       var day = d.getDay() || 7;
       d.setDate(d.getDate() - day + 1);
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }),
-    _useState30 = _slicedToArray(_useState29, 2),
-    weekStart = _useState30[0],
-    setWeekStart = _useState30[1];
-  var _useState31 = useState(function () {
+    _useState32 = _slicedToArray(_useState31, 2),
+    weekStart = _useState32[0],
+    setWeekStart = _useState32[1];
+  var _useState33 = useState(function () {
       return todayLocal().slice(0, 7) + "-01";
     }),
-    _useState32 = _slicedToArray(_useState31, 2),
-    rangeFrom = _useState32[0],
-    setRangeFrom = _useState32[1];
-  var _useState33 = useState(function () {
+    _useState34 = _slicedToArray(_useState33, 2),
+    rangeFrom = _useState34[0],
+    setRangeFrom = _useState34[1];
+  var _useState35 = useState(function () {
       return todayLocal();
     }),
-    _useState34 = _slicedToArray(_useState33, 2),
-    rangeTo = _useState34[0],
-    setRangeTo = _useState34[1];
-  var _useState35 = useState(null),
     _useState36 = _slicedToArray(_useState35, 2),
-    toast = _useState36[0],
-    setToast = _useState36[1];
-  var _useState37 = useState(false),
+    rangeTo = _useState36[0],
+    setRangeTo = _useState36[1];
+  var _useState37 = useState(null),
     _useState38 = _slicedToArray(_useState37, 2),
-    showAllPats = _useState38[0],
-    setShowAllPats = _useState38[1];
-  var _useState39 = useState(null),
+    toast = _useState38[0],
+    setToast = _useState38[1];
+  var _useState39 = useState(false),
     _useState40 = _slicedToArray(_useState39, 2),
-    expandedCat = _useState40[0],
-    setExpandedCat = _useState40[1];
+    showAllPats = _useState40[0],
+    setShowAllPats = _useState40[1];
+  var _useState41 = useState(null),
+    _useState42 = _slicedToArray(_useState41, 2),
+    expandedCat = _useState42[0],
+    setExpandedCat = _useState42[1];
   var cats = ["Wizyta", "Wypożyczalnia", "Wózek", "Inne"];
   var weekEnd = useMemo(function () {
     var d = new Date(weekStart + "T12:00:00");
@@ -4771,34 +4854,34 @@ function ReceiptScanner(_ref24) {
   var bg2 = dk ? "#18202F" : "#fff";
   var border = dk ? "#2A3A56" : "#D9E2F0";
   var sub = "#7A8FA6";
-  var _useState41 = useState([]),
-    _useState42 = _slicedToArray(_useState41, 2),
-    images = _useState42[0],
-    setImages = _useState42[1]; // base64 strings
-  var _useState43 = useState("upload"),
+  var _useState43 = useState([]),
     _useState44 = _slicedToArray(_useState43, 2),
-    step = _useState44[0],
-    setStep = _useState44[1]; // upload | analyzing | review | done
-  var _useState45 = useState([]),
+    images = _useState44[0],
+    setImages = _useState44[1]; // base64 strings
+  var _useState45 = useState("upload"),
     _useState46 = _slicedToArray(_useState45, 2),
-    items = _useState46[0],
-    setItems = _useState46[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
-  var _useState47 = useState(todayLocal()),
+    step = _useState46[0],
+    setStep = _useState46[1]; // upload | analyzing | review | done
+  var _useState47 = useState([]),
     _useState48 = _slicedToArray(_useState47, 2),
-    receiptDate = _useState48[0],
-    setReceiptDate = _useState48[1];
-  var _useState49 = useState(""),
+    items = _useState48[0],
+    setItems = _useState48[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
+  var _useState49 = useState(todayLocal()),
     _useState50 = _slicedToArray(_useState49, 2),
-    receiptTotal = _useState50[0],
-    setReceiptTotal = _useState50[1];
-  var _useState51 = useState(null),
+    receiptDate = _useState50[0],
+    setReceiptDate = _useState50[1];
+  var _useState51 = useState(""),
     _useState52 = _slicedToArray(_useState51, 2),
-    aiError = _useState52[0],
-    setAiError = _useState52[1];
-  var _useState53 = useState(false),
+    receiptTotal = _useState52[0],
+    setReceiptTotal = _useState52[1];
+  var _useState53 = useState(null),
     _useState54 = _slicedToArray(_useState53, 2),
-    dupWarning = _useState54[0],
-    setDupWarning = _useState54[1];
+    aiError = _useState54[0],
+    setAiError = _useState54[1];
+  var _useState55 = useState(false),
+    _useState56 = _slicedToArray(_useState55, 2),
+    dupWarning = _useState56[0],
+    setDupWarning = _useState56[1];
   var allExpCatNames = expCats.flatMap(function (c) {
     return [c.name].concat(_toConsumableArray((c.subs || []).map(function (s) {
       return c.name + "/" + s;
