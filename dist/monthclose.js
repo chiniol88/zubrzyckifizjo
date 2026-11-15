@@ -449,14 +449,7 @@ function MonthClose(_ref) {
         color: subC,
         marginTop: 3
       }
-    }, it.note)), dd && /*#__PURE__*/React.createElement("span", {
-      style: {
-        flexShrink: 0,
-        fontSize: 12,
-        color: GREEN,
-        marginTop: 3
-      }
-    }, dd.slice(8) + "." + dd.slice(5, 7)));
+    }, it.note)));
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",

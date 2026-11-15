@@ -78,7 +78,6 @@
                 <span style={{display:"block",fontSize:15,lineHeight:1.4,color:textC}}>{it.text}</span>
                 {it.note&&<span style={{display:"block",fontSize:12,lineHeight:1.5,color:subC,marginTop:3}}>{it.note}</span>}
               </span>
-              {dd&&<span style={{flexShrink:0,fontSize:12,color:GREEN,marginTop:3}}>{dd.slice(8)+"."+dd.slice(5,7)}</span>}
             </button>;
           })}
           <div style={{display:"flex",gap:8,marginTop:10,paddingTop:12,borderTop:"1px solid "+borderC}}>
