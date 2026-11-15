@@ -8,6 +8,15 @@
     function NFZ({nfzCases,setNfzCases,initialSel,onSelCleared,setFinances,patients,setPatients,rentals,setRentals,allClients}) {
       const dk = useContext(DarkCtx);
       const demo = useDemo();
+      // e-mail z formularza idzie do KARTY PACJENTA (jak w wypożyczeniach), nie do samej sprawy NFZ
+      const patOf = f => (patients||[]).find(p=>p.id===f.patientId)||(patients||[]).find(p=>p.name===f.patientName);
+      const emailToCard = (f,emailTyped) => {
+        const em=String(emailTyped==null?"":emailTyped).trim();
+        if(!em||!setPatients)return;
+        const pat=patOf(f);
+        if(pat)rentalEmailToPatient(setPatients,pat.id,pat.name,em);
+        else setPatients(ps=>[...(ps||[]),{id:Date.now()+2,name:f.patientName,phone:f.phone||"",address:f.address||"",emails:[{id:Date.now()+3,address:em,label:""}],email:em,diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);
+      };
       const [showAdd,setShowAdd] = useState(false);
       const [form,setForm] = useState(emptyNFZ);
       const [selId,setSelId] = useState(null);
@@ -59,7 +68,7 @@
             <div style={{padding:"16px 20px 0"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                 <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800}}>{demo?"Pacjent":cas.patientName}</div>
-                <Btn small variant="secondary" onClick={()=>setEditForm({...cas})}>✏️ Edytuj</Btn>
+                <Btn small variant="secondary" onClick={()=>setEditForm({...cas,email:patientFirstEmail(patOf(cas))})}>✏️ Edytuj</Btn>
               </div>
               <Card style={{marginBottom:10}}>
                 <SectionLabel>Dane pacjenta</SectionLabel>
@@ -112,9 +121,10 @@
             </div>
           </div>
           {editForm&&<Modal title="Edytuj" onClose={()=>setEditForm(null)}>
-            <PatientPicker label="Klient" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} onSelect={p=>setEditForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id,source:f.source||sourceFromRentals(p)}))} patients={allClients||patients||[]}/>
+            <PatientPicker label="Klient" value={editForm.patientName} onChange={v=>setEditForm(f=>({...f,patientName:v}))} onSelect={p=>setEditForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id,email:patientFirstEmail(p),source:f.source||sourceFromRentals(p)}))} patients={allClients||patients||[]}/>
             <Inp label="Adres" value={editForm.address||""} onChange={v=>setEditForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
             <Inp label="Telefon" value={editForm.phone||""} onChange={v=>setEditForm(f=>({...f,phone:v}))} type="tel"/>
+            <EmailInp value={editForm.email} onChange={v=>setEditForm(f=>({...f,email:v}))} patient={patOf(editForm)}/>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setEditForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
               <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${editForm.hasDisabilityCert?"#3DAA72":"#D9E2F0"}`,background:editForm.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 {editForm.hasDisabilityCert&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
@@ -127,7 +137,9 @@
             <Txa label="Notatki" value={editForm.notes||""} onChange={v=>setEditForm(f=>({...f,notes:v}))} rows={2}/>
             <Btn style={{width:"100%",justifyContent:"center"}} onClick={()=>{
               const orig=cases.find(x=>x.id===selId);
-              setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...editForm}:x));
+              const {email:emailTyped,...efSave}=editForm;
+              setNfzCases(cs=>cs.map(x=>x.id===selId?{...x,...efSave}:x));
+              emailToCard(editForm,emailTyped);
               if(orig&&orig.patientName!==editForm.patientName){
                 setFinances(fs=>fs.map(f=>f.sourceId==="wozek-"+selId?{...f,description:"Wózek – "+editForm.patientName}:f));
               }
@@ -210,9 +222,10 @@
           })}
         </div>
         {showAdd&&<Modal title="Nowy wózek" onClose={()=>setShowAdd(false)}>
-          <PatientPicker label="Klient *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id,source:f.source||sourceFromRentals(p)}))} patients={allClients||patients||[]}/>
+          <PatientPicker label="Klient *" value={form.patientName} onChange={v=>setForm(f=>({...f,patientName:v}))} onSelect={p=>setForm(f=>({...f,patientName:p.name,phone:p.phone||f.phone,address:p.address||f.address,patientId:p.id,email:patientFirstEmail(p),source:f.source||sourceFromRentals(p)}))} patients={allClients||patients||[]}/>
           <Inp label="Adres" value={form.address} onChange={v=>setForm(f=>({...f,address:v}))} placeholder="ul. Przykładowa 1, Gliwice"/>
           <Inp label="Telefon" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} type="tel"/>
+          <EmailInp value={form.email} onChange={v=>setForm(f=>({...f,email:v}))} patient={patOf(form)}/>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,cursor:"pointer"}} onClick={()=>setForm(f=>({...f,hasDisabilityCert:!f.hasDisabilityCert}))}>
             <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${form.hasDisabilityCert?"#3DAA72":"#D9E2F0"}`,background:form.hasDisabilityCert?"#3DAA72":"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
               {form.hasDisabilityCert&&<span style={{color:"#fff",fontSize:13}}>✓</span>}
@@ -223,7 +236,7 @@
           <Inp label="Data zamówienia" value={form.orderDate} onChange={v=>setForm(f=>({...f,orderDate:v}))} type="date"/>
           <Sel label="Skąd dowiedział się o wózku?" value={form.source||""} onChange={v=>setForm(f=>({...f,source:v}))} options={[{value:"",label:"— nie wiem / nie podał"},...RENTAL_SOURCES.map(s=>({value:s.value,label:s.label}))]}/>
           <Txa label="Notatki" value={form.notes} onChange={v=>setForm(f=>({...f,notes:v}))} rows={2}/>
-          <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.patientName)return;setNfzCases(cs=>[{...form,id:Date.now()},...(cs||[])]);if(setPatients&&!(patients||[]).find(p=>p.name===form.patientName)){setPatients(ps=>[...(ps||[]),{id:Date.now()+1,name:form.patientName,phone:form.phone||"",address:form.address||"",diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}setForm(emptyNFZ());setShowAdd(false);setToast("Dodano");}}>Dodaj</Btn>
+          <Btn disabled={!form.patientName} style={{width:"100%",justifyContent:"center"}} onClick={()=>{if(!form.patientName)return;const {email:emailTyped,...formSave}=form;setNfzCases(cs=>[{...formSave,id:Date.now()},...(cs||[])]);if(setPatients&&!patOf(form)){const em=String(emailTyped||"").trim();setPatients(ps=>[...(ps||[]),{id:Date.now()+1,name:form.patientName,phone:form.phone||"",address:form.address||"",...(em?{emails:[{id:Date.now()+3,address:em,label:""}],email:em}:{}),diagnosis:"",notes:"",defaultPrice:"",birthday:""}]);}else emailToCard(form,emailTyped);setForm(emptyNFZ());setShowAdd(false);setToast("Dodano");}}>Dodaj</Btn>
         </Modal>}
         {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
       </div>;
