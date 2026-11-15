@@ -1851,7 +1851,8 @@ function RentalStats(_ref9) {
     getCosts: getCosts,
     getTotalInvestment: getTotalInvestment,
     allTimeRevenue: allTimeRevenue,
-    marketingSzyny: stats.marketingByType.szyny
+    marketingSzyny: stats.marketingByType.szyny,
+    marketingByType: stats.marketingByType
   };
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3057,8 +3058,8 @@ function RentalStats(_ref9) {
     dk: dk,
     open: !!openMap.cpm,
     onToggle: tog("cpm"),
-    title: "Wyniki CPM",
-    sub: "wynik, stawka za dzień, puste dni · " + periodLabel
+    title: "Wyniki sprz\u0119tu",
+    sub: "wynik, zwrot zakupu, stawka, puste dni · " + periodLabel
   }, /*#__PURE__*/React.createElement(CpmResults, {
     c: ctx
   })), /*#__PURE__*/React.createElement(StatAcc, {

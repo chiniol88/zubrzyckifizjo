@@ -627,7 +627,7 @@
 
       // kontekst dla nowych sekcji (js/stats2.js)
       const ctx={year:displayYear,today,rentals,finances,nfzCases,budget,stock,machines,getRid,catOf,demo,Z,kv,dk,subC,textC,borderC,trackC,GREEN,RED,BLUE,PURPLE,ORANGE,
-        pStart,pEnd,periodLabel,equipmentAll,revenueInRange,revenueInRangeCat,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,marketingSzyny:stats.marketingByType.szyny};
+        pStart,pEnd,periodLabel,equipmentAll,revenueInRange,revenueInRangeCat,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,marketingSzyny:stats.marketingByType.szyny,marketingByType:stats.marketingByType};
 
       return <div style={{padding:"0 20px 24px"}}>
         {/* Okres: miesiąc / rok — wspólny dla wszystkich sekcji */}
@@ -894,8 +894,8 @@
           <StatNote lines={["Tylko szyny CPM. "+(isYear?"Każdy kwadracik to jeden miesiąc — ciemniejszy = większe obłożenie.":"Każdy kwadracik to jeden dzień — zapełniony, gdy szyna była wypożyczona."),"Liczone jest wypożyczenie pacjenta (od startu do końca okresu, za który płaci), a nie moment odbioru sprzętu.","Start = data dodania sprzętu albo pierwsze wypożyczenie; rezerwacje się nie liczą.","Pusta ramka = przed dodaniem sprzętu."]}/>
         </StatAcc>
 
-        {/* 3b. Wyniki CPM (nowe: wynik, stawka za dzień, puste dni, zajętość na przód) */}
-        <StatAcc dk={dk} open={!!openMap.cpm} onToggle={tog("cpm")} title="Wyniki CPM" sub={"wynik, stawka za dzień, puste dni · "+periodLabel}>
+        {/* 3b. Wyniki sprzętu (nowe: wynik, zwrot zakupu, stawka za dzień, puste dni; Wszystko/Szyny/Wózki/Balkoniki) */}
+        <StatAcc dk={dk} open={!!openMap.cpm} onToggle={tog("cpm")} title="Wyniki sprzętu" sub={"wynik, zwrot zakupu, stawka, puste dni · "+periodLabel}>
           <CpmResults c={ctx}/>
         </StatAcc>
 

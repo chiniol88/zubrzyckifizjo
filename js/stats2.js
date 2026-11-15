@@ -139,16 +139,18 @@
       </div>;
     }
 
-    // ── WYNIKI CPM: wynik, stawka za dzień, puste dni ──
+    // ── WYNIKI SPRZĘTU (dawniej tylko CPM): wynik, zysk po zwrocie zakupu, zwrot zakupu, stawka za dzień, puste dni — dla Wszystko / Szyny / Wózki / Balkoniki ──
     function CpmResults({c}) {
-      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,marketingSzyny,Z,kv,subC,textC,borderC,trackC,GREEN,RED,ORANGE,BLUE,dk}=c;
+      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,revenueInRangeCat,marketingByType,Z,kv,subC,textC,borderC,trackC,GREEN,RED,ORANGE,BLUE,dk}=c;
+      const [cat,setCat]=useState("szyny");   // domyślnie szyny CPM (jak dotąd); można przełączyć na wszystko / wózki / balkoniki
+      const inCat=eq=>cat==="all"||catOf(eq)===cat;
       const d=useMemo(()=>{
-        const eqs=equipmentAll.filter(eq=>catOf(eq)==="szyny");
+        const eqs=equipmentAll.filter(inCat);
         const cutEnd=pEnd<today?pEnd:today;
         // stawka za dzień wypożyczenia = należność / dni (jednorazowe), cykl / 30 dni (cykliczne); wypożyczenia rozpoczęte w okresie
         const acc={};const A=eq=>acc[eq]||(acc[eq]={oneT:0,oneD:0,cycT:0,cycD:0});
         rentals.forEach(r=>{
-          if(!r.equipment||catOf(r.equipment)!=="szyny"||r.reserved||!r.startDate||r.startDate<pStart||r.startDate>pEnd)return;
+          if(!r.equipment||!inCat(r.equipment)||r.reserved||!r.startDate||r.startDate<pStart||r.startDate>pEnd)return;
           if(r.renewable){
             const cy=(r.cycles||[]).filter(x=>!x.cancelled&&+x.amount>0);
             const n=cy.length||1,tot=cy.length?cy.reduce((s,x)=>s+(+x.amount||0),0):(+r.amount||0);
@@ -178,6 +180,7 @@
           return {eq,noData:o.noData,cap:o.cap,booked:o.booked,empty,rate:r,rateOne:rate(a.oneT,a.oneD),rateCyc:rate(a.cycT,a.cycD),lost,rev};
         }).filter(x=>!x.noData||x.rev>0);
 
+        revSum=revenueInRangeCat(pStart,cutEnd,cat);   // cały przychód kategorii (dla wózków także refundacje NFZ)
         lostSum=overall!=null?Math.round(emptySum*overall):0;   // utracone = puste dni wszystkich szyn × jedna średnia stawka CPM
         // ── ZWROT ZAKUPU: tempo z ostatnich 12 miesięcy (średnia stawka × średnie obłożenie − serwis) ──
         const srvList=eq=>[...getMachineSrvForEq(eq),...((getCosts(eq).repairs)||[]).map(x=>({date:x.date,amount:+x.amount||0}))];
@@ -245,31 +248,38 @@
           profitSum+=p;return {eq,p,done:n1>=0};
         }).filter(Boolean);
         return {rows,overall,all,revSum,srvSum,emptySum,lostSum,capSum,bookedSum,pay,payTot,profitSum,profitRows,noCost};
-      },[rentals,stock,machines,finances,today,pStart,pEnd,equipmentAll,allTimeRevenue]);
+      },[rentals,stock,machines,finances,today,pStart,pEnd,equipmentAll,allTimeRevenue,cat]);
+      const adSpend=cat==="all"?(marketingByType.szyny+marketingByType.wozki+marketingByType.balkoniki):(marketingByType[cat]||0);
+      const catName={all:"cały sprzęt",szyny:"szyny CPM",wozki:"wózki",balkoniki:"balkoniki"}[cat];
       const head={fontSize:11,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",margin:"16px 0 6px"};
-      const wynik=d.revSum-marketingSzyny-d.srvSum;
+      const wynik=d.revSum-adSpend-d.srvSum;
       const fmtD=x=>x.slice(8)+"."+x.slice(5,7);
       const rowSt={display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,flexWrap:"wrap",padding:"7px 0",borderBottom:"1px solid "+borderC,fontSize:12};
       const col=p=>p>=70?GREEN:p>=40?ORANGE:RED;
       return <div>
-        <div style={{...head,marginTop:0}}>Wynik szyn CPM — {periodLabel}</div>
-        {kv("Przychód z szyn (wpłaty)",Z(d.revSum),GREEN)}
-        {kv("− Reklama szyn",marketingSzyny>0?Z(marketingSzyny):"0 zł",RED)}
+        <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+          {[{k:"all",l:"Wszystko"},{k:"szyny",l:"Szyny"},{k:"wozki",l:"Wózki"},{k:"balkoniki",l:"Balkoniki"}].map(t=>
+            <button key={t.k} onClick={()=>setCat(t.k)} aria-pressed={cat===t.k} style={{padding:"5px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:11,background:cat===t.k?"#3E6FB0":dk?"#1E2F4A":"#D9E2F0",color:cat===t.k?"#fff":subC,fontFamily:"inherit"}}>{t.l}</button>
+          )}
+        </div>
+        <div style={{...head,marginTop:0}}>Wynik: {catName} — {periodLabel}</div>
+        {kv(cat==="wozki"||cat==="all"?"Przychód (wypożyczenia, transport, refundacje NFZ)":"Przychód (wpłaty)",Z(d.revSum),GREEN)}
+        {kv("− Reklama",adSpend>0?Z(adSpend):"0 zł",RED)}
         {kv("− Serwis i naprawy",d.srvSum>0?Z(d.srvSum):"0 zł",RED)}
         {kv("= Wynik",(wynik>=0?"+":"−")+Z(Math.abs(wynik)),wynik>=0?GREEN:RED)}
-        <StatNote lines={["Przychód to wpłaty z okresu.","Reklama wg podkategorii „Marketing szyny” w budżecie, serwis z kart sztuk i napraw typu.","Koszt zakupu nie jest tu odejmowany — patrz niżej."]}/>
+        <StatNote lines={["Przychód to wpłaty z okresu.","Reklama wg podkategorii „Marketing …” w budżecie (dla wybranego rodzaju), serwis z kart sztuk i napraw typu.","Koszt zakupu nie jest tu odejmowany — patrz niżej."]}/>
 
         <div style={head}>Zysk po zwrocie zakupu — {periodLabel}</div>
-        {d.profitRows.length===0?<div style={{fontSize:12,color:subC}}>Brak szyn z wpisanym kosztem zakupu (wpisz w Opłacalności sprzętu).</div>:<>
-          {kv("Zysk szyn po zwrocie zakupu",(d.profitSum>0?"+":"")+Z(Math.round(d.profitSum)),d.profitSum>0?GREEN:subC)}
-          {kv("− Reklama szyn",marketingSzyny>0?Z(marketingSzyny):"0 zł",RED)}
-          {kv("= Zysk po zwrocie zakupu i reklamie",(Math.round(d.profitSum-marketingSzyny)>0?"+":Math.round(d.profitSum-marketingSzyny)<0?"−":"")+Z(Math.abs(Math.round(d.profitSum-marketingSzyny))),d.profitSum-marketingSzyny>0?GREEN:d.profitSum-marketingSzyny<0?RED:subC)}
+        {d.profitRows.length===0?<div style={{fontSize:12,color:subC}}>Brak sprzętu z wpisanym kosztem zakupu (wpisz w Opłacalności sprzętu).</div>:<>
+          {kv("Zysk po zwrocie zakupu",(d.profitSum>0?"+":"")+Z(Math.round(d.profitSum)),d.profitSum>0?GREEN:subC)}
+          {kv("− Reklama",adSpend>0?Z(adSpend):"0 zł",RED)}
+          {kv("= Zysk po zwrocie zakupu i reklamie",(Math.round(d.profitSum-adSpend)>0?"+":Math.round(d.profitSum-adSpend)<0?"−":"")+Z(Math.abs(Math.round(d.profitSum-adSpend))),d.profitSum-adSpend>0?GREEN:d.profitSum-adSpend<0?RED:subC)}
         </>}
-        <StatNote lines={["Dopóki szyna nie odzyska kosztu zakupu i napraw, jej wynik spłaca inwestycję, więc zysk = 0.","Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.",d.noCost>0?"Pominięte szyny bez wpisanego kosztu zakupu: "+d.noCost+".":null]}/>
+        <StatNote lines={["Dopóki sprzęt nie odzyska kosztu zakupu i napraw, jego wynik spłaca inwestycję, więc zysk = 0.","Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.",d.noCost>0?"Pominięty sprzęt bez wpisanego kosztu zakupu: "+d.noCost+".":null]}/>
 
-        <div style={head}>Zwrot zakupu szyn — tempo z ostatnich 12 miesięcy</div>
-        {d.pay.length===0?<div style={{fontSize:12,color:subC}}>Brak szyn z wpisanym kosztem zakupu.</div>:<>
-          {kv("Szyny razem",d.payTot.paidPct!=null?"zwrócono "+d.payTot.paidPct+"%"+(d.payTot.allDone?" · wszystkie zwrócone":d.payTot.months==null?"":" · pełny zwrot za ~"+d.payTot.months+" mies. (prognoza dla "+d.payTot.n+" z "+d.payTot.total+" szyn)"):"—",BLUE)}
+        <div style={head}>Zwrot zakupu — tempo z ostatnich 12 miesięcy</div>
+        {d.pay.length===0?<div style={{fontSize:12,color:subC}}>Brak sprzętu z wpisanym kosztem zakupu.</div>:<>
+          {kv("Razem",d.payTot.paidPct!=null?"zwrócono "+d.payTot.paidPct+"%"+(d.payTot.allDone?" · wszystkie zwrócone":d.payTot.months==null?"":" · pełny zwrot za ~"+d.payTot.months+" mies. (prognoza dla "+d.payTot.n+" z "+d.payTot.total+" pozycji)"):"—",BLUE)}
           {d.pay.map(x=>{
             const sc=(l,v)=><div style={{display:"flex",justifyContent:"space-between",gap:8}}><span>{l}</span><b style={{color:textC}}>{v}</b></div>;
             const hi=Math.min(100,Math.round(x.pct||0)+10),lo=Math.max(5,Math.round(x.pct||0)-10);
@@ -293,7 +303,7 @@
                         {x.monthsAll!=null&&sc("wg całego czasu od zakupu",x.monthsAll+" mies.")}
                       </div>
                     </>
-                    :<div style={{marginTop:10,fontSize:13,color:RED}}>Przy tym tempie szyna się nie zwróci (zarobek miesięczny ≤ 0).</div>}
+                    :<div style={{marginTop:10,fontSize:13,color:RED}}>Przy tym tempie sprzęt się nie zwróci (zarobek miesięczny ≤ 0).</div>}
                 </div>
                 :<div style={{marginTop:10,padding:"8px 12px",borderRadius:10,background:dk?"rgba(255,255,255,.05)":"#F3F6FA",fontSize:12,lineHeight:1.6,color:dk?"#B4C5D8":"#4F6178"}}>
                   <div>Za mało danych na prognozę.</div>
@@ -306,14 +316,14 @@
         <StatNote lines={["Czas do zwrotu = brakująca kwota ÷ miesięczny zarobek.","Miesięczny zarobek = średnia stawka za dzień × średnie obłożenie z ostatnich 12 miesięcy × 30,4 dni × liczba sztuk modelu − średni miesięczny serwis.","Reklama nie wchodzi do inwestycji szyny, bo jest wspólna dla całego typu."]}/>
 
         <div style={head}>Stawka za dzień wypożyczenia</div>
-        {d.overall==null?<div style={{fontSize:12,color:subC}}>Brak wypożyczeń szyn rozpoczętych w tym okresie.</div>:<>
+        {d.overall==null?<div style={{fontSize:12,color:subC}}>Brak wypożyczeń rozpoczętych w tym okresie.</div>:<>
           {kv("Średnio",Z(Math.round(d.overall))+"/dzień")}
           {d.all.oneD>0&&kv("Jednorazowe",Z(Math.round(d.all.oneT/d.all.oneD))+"/dzień ("+d.all.oneD+" dni)")}
           {d.all.cycD>0&&kv("Cykliczne",Z(Math.round(d.all.cycT/d.all.cycD))+"/dzień ("+d.all.cycD+" dni)")}
         </>}
         <StatNote lines={["Stawka = cena umówiona ÷ liczba dni wypożyczenia (z przedłużeniami); cykl = 30 dni.","To realna stawka, niezależna od tego, kiedy klient zapłacił."]}/>
 
-        <div style={head}>Puste dni szyn (potencjalny przychód)</div>
+        <div style={head}>Puste dni (potencjalny przychód)</div>
         {d.capSum===0?<div style={{fontSize:12,color:subC}}>Brak danych o obłożeniu w tym okresie.</div>:<>
           {kv("Dni dostępności / zajęte",d.capSum+" / "+d.bookedSum+" ("+(d.capSum?Math.round(d.bookedSum/d.capSum*100):0)+"%)")}
           {kv("Puste dni (sztuko-dni)",String(d.emptySum),ORANGE)}

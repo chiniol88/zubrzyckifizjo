@@ -584,7 +584,7 @@ function AdsYear(_ref4) {
   }))));
 }
 
-// ── WYNIKI CPM: wynik, stawka za dzień, puste dni ──
+// ── WYNIKI SPRZĘTU (dawniej tylko CPM): wynik, zysk po zwrocie zakupu, zwrot zakupu, stawka za dzień, puste dni — dla Wszystko / Szyny / Wózki / Balkoniki ──
 function CpmResults(_ref7) {
   var c = _ref7.c;
   var rentals = c.rentals,
@@ -602,7 +602,8 @@ function CpmResults(_ref7) {
     getCosts = c.getCosts,
     getTotalInvestment = c.getTotalInvestment,
     allTimeRevenue = c.allTimeRevenue,
-    marketingSzyny = c.marketingSzyny,
+    revenueInRangeCat = c.revenueInRangeCat,
+    marketingByType = c.marketingByType,
     Z = c.Z,
     kv = c.kv,
     subC = c.subC,
@@ -614,10 +615,15 @@ function CpmResults(_ref7) {
     ORANGE = c.ORANGE,
     BLUE = c.BLUE,
     dk = c.dk;
+  var _useState7 = useState("szyny"),
+    _useState8 = _slicedToArray(_useState7, 2),
+    cat = _useState8[0],
+    setCat = _useState8[1]; // domyślnie szyny CPM (jak dotąd); można przełączyć na wszystko / wózki / balkoniki
+  var inCat = function inCat(eq) {
+    return cat === "all" || catOf(eq) === cat;
+  };
   var d = useMemo(function () {
-    var eqs = equipmentAll.filter(function (eq) {
-      return catOf(eq) === "szyny";
-    });
+    var eqs = equipmentAll.filter(inCat);
     var cutEnd = pEnd < today ? pEnd : today;
     // stawka za dzień wypożyczenia = należność / dni (jednorazowe), cykl / 30 dni (cykliczne); wypożyczenia rozpoczęte w okresie
     var acc = {};
@@ -630,7 +636,7 @@ function CpmResults(_ref7) {
       });
     };
     rentals.forEach(function (r) {
-      if (!r.equipment || catOf(r.equipment) !== "szyny" || r.reserved || !r.startDate || r.startDate < pStart || r.startDate > pEnd) return;
+      if (!r.equipment || !inCat(r.equipment) || r.reserved || !r.startDate || r.startDate < pStart || r.startDate > pEnd) return;
       if (r.renewable) {
         var cy = (r.cycles || []).filter(function (x) {
           return !x.cancelled && +x.amount > 0;
@@ -724,6 +730,7 @@ function CpmResults(_ref7) {
     }).filter(function (x) {
       return !x.noData || x.rev > 0;
     });
+    revSum = revenueInRangeCat(pStart, cutEnd, cat); // cały przychód kategorii (dla wózków także refundacje NFZ)
     lostSum = overall != null ? Math.round(emptySum * overall) : 0; // utracone = puste dni wszystkich szyn × jedna średnia stawka CPM
     // ── ZWROT ZAKUPU: tempo z ostatnich 12 miesięcy (średnia stawka × średnie obłożenie − serwis) ──
     var srvList = function srvList(eq) {
@@ -901,7 +908,14 @@ function CpmResults(_ref7) {
       profitRows: profitRows,
       noCost: noCost
     };
-  }, [rentals, stock, machines, finances, today, pStart, pEnd, equipmentAll, allTimeRevenue]);
+  }, [rentals, stock, machines, finances, today, pStart, pEnd, equipmentAll, allTimeRevenue, cat]);
+  var adSpend = cat === "all" ? marketingByType.szyny + marketingByType.wozki + marketingByType.balkoniki : marketingByType[cat] || 0;
+  var catName = {
+    all: "cały sprzęt",
+    szyny: "szyny CPM",
+    wozki: "wózki",
+    balkoniki: "balkoniki"
+  }[cat];
   var head = {
     fontSize: 11,
     fontWeight: 700,
@@ -910,7 +924,7 @@ function CpmResults(_ref7) {
     letterSpacing: ".07em",
     margin: "16px 0 6px"
   };
-  var wynik = d.revSum - marketingSzyny - d.srvSum;
+  var wynik = d.revSum - adSpend - d.srvSum;
   var fmtD = function fmtD(x) {
     return x.slice(8) + "." + x.slice(5, 7);
   };
@@ -928,11 +942,49 @@ function CpmResults(_ref7) {
     return p >= 70 ? GREEN : p >= 40 ? ORANGE : RED;
   };
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 14,
+      flexWrap: "wrap"
+    }
+  }, [{
+    k: "all",
+    l: "Wszystko"
+  }, {
+    k: "szyny",
+    l: "Szyny"
+  }, {
+    k: "wozki",
+    l: "Wózki"
+  }, {
+    k: "balkoniki",
+    l: "Balkoniki"
+  }].map(function (t) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: t.k,
+      onClick: function onClick() {
+        return setCat(t.k);
+      },
+      "aria-pressed": cat === t.k,
+      style: {
+        padding: "5px 12px",
+        borderRadius: 14,
+        border: "none",
+        cursor: "pointer",
+        fontWeight: 600,
+        fontSize: 11,
+        background: cat === t.k ? "#3E6FB0" : dk ? "#1E2F4A" : "#D9E2F0",
+        color: cat === t.k ? "#fff" : subC,
+        fontFamily: "inherit"
+      }
+    }, t.l);
+  })), /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, head), {}, {
       marginTop: 0
     })
-  }, "Wynik szyn CPM \u2014 ", periodLabel), kv("Przychód z szyn (wpłaty)", Z(d.revSum), GREEN), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("− Serwis i naprawy", d.srvSum > 0 ? Z(d.srvSum) : "0 zł", RED), kv("= Wynik", (wynik >= 0 ? "+" : "−") + Z(Math.abs(wynik)), wynik >= 0 ? GREEN : RED), /*#__PURE__*/React.createElement(StatNote, {
-    lines: ["Przychód to wpłaty z okresu.", "Reklama wg podkategorii „Marketing szyny” w budżecie, serwis z kart sztuk i napraw typu.", "Koszt zakupu nie jest tu odejmowany — patrz niżej."]
+  }, "Wynik: ", catName, " \u2014 ", periodLabel), kv(cat === "wozki" || cat === "all" ? "Przychód (wypożyczenia, transport, refundacje NFZ)" : "Przychód (wpłaty)", Z(d.revSum), GREEN), kv("− Reklama", adSpend > 0 ? Z(adSpend) : "0 zł", RED), kv("− Serwis i naprawy", d.srvSum > 0 ? Z(d.srvSum) : "0 zł", RED), kv("= Wynik", (wynik >= 0 ? "+" : "−") + Z(Math.abs(wynik)), wynik >= 0 ? GREEN : RED), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Przychód to wpłaty z okresu.", "Reklama wg podkategorii „Marketing …” w budżecie (dla wybranego rodzaju), serwis z kart sztuk i napraw typu.", "Koszt zakupu nie jest tu odejmowany — patrz niżej."]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Zysk po zwrocie zakupu \u2014 ", periodLabel), d.profitRows.length === 0 ? /*#__PURE__*/React.createElement("div", {
@@ -940,16 +992,16 @@ function CpmResults(_ref7) {
       fontSize: 12,
       color: subC
     }
-  }, "Brak szyn z wpisanym kosztem zakupu (wpisz w Op\u0142acalno\u015Bci sprz\u0119tu).") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Zysk szyn po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama szyn", marketingSzyny > 0 ? Z(marketingSzyny) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - marketingSzyny) > 0 ? "+" : Math.round(d.profitSum - marketingSzyny) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - marketingSzyny))), d.profitSum - marketingSzyny > 0 ? GREEN : d.profitSum - marketingSzyny < 0 ? RED : subC)), /*#__PURE__*/React.createElement(StatNote, {
-    lines: ["Dopóki szyna nie odzyska kosztu zakupu i napraw, jej wynik spłaca inwestycję, więc zysk = 0.", "Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.", d.noCost > 0 ? "Pominięte szyny bez wpisanego kosztu zakupu: " + d.noCost + "." : null]
+  }, "Brak sprz\u0119tu z wpisanym kosztem zakupu (wpisz w Op\u0142acalno\u015Bci sprz\u0119tu).") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Zysk po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama", adSpend > 0 ? Z(adSpend) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - adSpend) > 0 ? "+" : Math.round(d.profitSum - adSpend) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - adSpend))), d.profitSum - adSpend > 0 ? GREEN : d.profitSum - adSpend < 0 ? RED : subC)), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Dopóki sprzęt nie odzyska kosztu zakupu i napraw, jego wynik spłaca inwestycję, więc zysk = 0.", "Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.", d.noCost > 0 ? "Pominięty sprzęt bez wpisanego kosztu zakupu: " + d.noCost + "." : null]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
-  }, "Zwrot zakupu szyn \u2014 tempo z ostatnich 12 miesi\u0119cy"), d.pay.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "Zwrot zakupu \u2014 tempo z ostatnich 12 miesi\u0119cy"), d.pay.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: subC
     }
-  }, "Brak szyn z wpisanym kosztem zakupu.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Szyny razem", d.payTot.paidPct != null ? "zwrócono " + d.payTot.paidPct + "%" + (d.payTot.allDone ? " · wszystkie zwrócone" : d.payTot.months == null ? "" : " · pełny zwrot za ~" + d.payTot.months + " mies. (prognoza dla " + d.payTot.n + " z " + d.payTot.total + " szyn)") : "—", BLUE), d.pay.map(function (x) {
+  }, "Brak sprz\u0119tu z wpisanym kosztem zakupu.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Razem", d.payTot.paidPct != null ? "zwrócono " + d.payTot.paidPct + "%" + (d.payTot.allDone ? " · wszystkie zwrócone" : d.payTot.months == null ? "" : " · pełny zwrot za ~" + d.payTot.months + " mies. (prognoza dla " + d.payTot.n + " z " + d.payTot.total + " pozycji)") : "—", BLUE), d.pay.map(function (x) {
     var sc = function sc(l, v) {
       return /*#__PURE__*/React.createElement("div", {
         style: {
@@ -1106,7 +1158,7 @@ function CpmResults(_ref7) {
         fontSize: 13,
         color: RED
       }
-    }, "Przy tym tempie szyna si\u0119 nie zwr\xF3ci (zarobek miesi\u0119czny \u2264 0).")) : /*#__PURE__*/React.createElement("div", {
+    }, "Przy tym tempie sprz\u0119t si\u0119 nie zwr\xF3ci (zarobek miesi\u0119czny \u2264 0).")) : /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 10,
         padding: "8px 12px",
@@ -1126,11 +1178,11 @@ function CpmResults(_ref7) {
       fontSize: 12,
       color: subC
     }
-  }, "Brak wypo\u017Cycze\u0144 szyn rozpocz\u0119tych w tym okresie.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Średnio", Z(Math.round(d.overall)) + "/dzień"), d.all.oneD > 0 && kv("Jednorazowe", Z(Math.round(d.all.oneT / d.all.oneD)) + "/dzień (" + d.all.oneD + " dni)"), d.all.cycD > 0 && kv("Cykliczne", Z(Math.round(d.all.cycT / d.all.cycD)) + "/dzień (" + d.all.cycD + " dni)")), /*#__PURE__*/React.createElement(StatNote, {
+  }, "Brak wypo\u017Cycze\u0144 rozpocz\u0119tych w tym okresie.") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Średnio", Z(Math.round(d.overall)) + "/dzień"), d.all.oneD > 0 && kv("Jednorazowe", Z(Math.round(d.all.oneT / d.all.oneD)) + "/dzień (" + d.all.oneD + " dni)"), d.all.cycD > 0 && kv("Cykliczne", Z(Math.round(d.all.cycT / d.all.cycD)) + "/dzień (" + d.all.cycD + " dni)")), /*#__PURE__*/React.createElement(StatNote, {
     lines: ["Stawka = cena umówiona ÷ liczba dni wypożyczenia (z przedłużeniami); cykl = 30 dni.", "To realna stawka, niezależna od tego, kiedy klient zapłacił."]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
-  }, "Puste dni szyn (potencjalny przych\xF3d)"), d.capSum === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "Puste dni (potencjalny przych\xF3d)"), d.capSum === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: subC
@@ -1159,10 +1211,10 @@ function YearInNumbers(_ref8) {
     RED = c.RED,
     ORANGE = c.ORANGE,
     dk = c.dk;
-  var _useState7 = useState("all"),
-    _useState8 = _slicedToArray(_useState7, 2),
-    cat = _useState8[0],
-    setCat = _useState8[1]; // filtr: wszystko / szyny / wózki / balkoniki
+  var _useState9 = useState("all"),
+    _useState0 = _slicedToArray(_useState9, 2),
+    cat = _useState0[0],
+    setCat = _useState0[1]; // filtr: wszystko / szyny / wózki / balkoniki
   var d = useMemo(function () {
     var yms = ST_YMS(year),
       py = year - 1;
