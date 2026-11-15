@@ -15,7 +15,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 JSC = "/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc"
 BABEL = os.path.join(ROOT, "vendor", "babel.min.js")
 # kolejność = kolejność ładowania w index.html
-MODULES = ["core", "crypto", "warehouse", "privacy", "ui", "dashboard", "patients", "rentals", "finances", "stats2",
+MODULES = ["core", "crypto", "warehouse", "privacy", "ui", "dashboard", "patients", "rentals", "finances", "stats2", "monthclose",
            "budget", "wealth", "nfz", "magazyn", "app", "settings", "auth", "boot"]
 SEP = "@@@@FZ-FILE@@@@"
 

@@ -316,6 +316,8 @@ function App(_ref) {
     setMachines: setMachines,
     wealth: wealth,
     setWealth: setWealth,
+    settings: settings,
+    setSettings: setSettings,
     goToRental: function goToRental(id) {
       return _goToRental(id, "finances");
     },

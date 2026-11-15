@@ -3774,6 +3774,8 @@ function Finances(_ref15) {
     setMachines = _ref15.setMachines,
     wealth = _ref15.wealth,
     setWealth = _ref15.setWealth,
+    settings = _ref15.settings,
+    setSettings = _ref15.setSettings,
     goToRental = _ref15.goToRental,
     goToWozki = _ref15.goToWozki;
   var demo = useDemo();
@@ -4278,6 +4280,10 @@ function Finances(_ref15) {
     k: "wealth",
     l: "💼",
     t: "Majątek"
+  }, {
+    k: "close",
+    l: "✅",
+    t: "Zamknięcie miesiąca"
   }].map(function (x) {
     return /*#__PURE__*/React.createElement("button", {
       key: x.k,
@@ -4390,6 +4396,9 @@ function Finances(_ref15) {
   }), viewMode === "wealth" && /*#__PURE__*/React.createElement(Wealth, {
     wealth: wealth,
     setWealth: setWealth
+  }), viewMode === "close" && /*#__PURE__*/React.createElement(MonthClose, {
+    settings: settings,
+    setSettings: setSettings
   }), viewMode === "range" && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
@@ -4437,7 +4446,7 @@ function Finances(_ref15) {
       fontSize: 14,
       fontFamily: "inherit"
     }
-  })), viewMode !== "budget" && viewMode !== "sprzet" && viewMode !== "wealth" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  })), viewMode !== "budget" && viewMode !== "sprzet" && viewMode !== "wealth" && viewMode !== "close" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       background: bg2,
       borderRadius: 16,
