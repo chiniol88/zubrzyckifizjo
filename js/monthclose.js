@@ -17,15 +17,15 @@
       {id:"s13",text:"Pobrać kopię zapasową (Ustawienia → Dane)",note:""}
     ];
 
-    // Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
-    const MC_FIRST="2026-10";
+    // Zamknięcia miesięcy zaczynają się od listopada 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
+    const MC_FIRST="2026-11";
 
     function MonthClose({settings,setSettings}) {
       const dk=useContext(DarkCtx);
       const today=todayLocal(),curYM=today.slice(0,7);
       const mc=(settings&&settings.monthClose)||{items:MC_SEED,done:{}};
       const items=Array.isArray(mc.items)?mc.items:[],done=mc.done||{};
-      const [ym,setYm]=useState(()=>ymAdd(curYM,-1));   // domyślnie miesiąc, który się właśnie skończył
+      const [ym,setYm]=useState(()=>{const p=ymAdd(curYM,-1);return p<MC_FIRST?MC_FIRST:p;});   // miesiąc do zamknięcia, ale nie wcześniej niż pierwszy miesiąc listy   // domyślnie miesiąc, który się właśnie skończył
       const [edit,setEdit]=useState(false);
       const [newText,setNewText]=useState("");
       const textC=dk?"#E8F5F5":"#1C2B3A",subC=dk?"#93A9C4":"#5E7288",borderC=dk?"#2A3A56":"#E4EAF3",bg=dk?"#18202F":"#fff";
@@ -38,7 +38,7 @@
       const move=(i,dir)=>upd(b=>{const a=b.items.slice(),j=i+dir;if(j<0||j>=a.length)return b;[a[i],a[j]]=[a[j],a[i]];return {...b,items:a};});
       const ids=items.map(x=>x.id);
       const cnt=m=>ids.filter(id=>done[m]&&done[m][id]).length;
-      const before=ym<MC_FIRST;   // miesiące sprzed października 2026: pusta lista
+      const before=ym<MC_FIRST;   // miesiące sprzed listopada 2026: pusta lista
       const shownItems=before?[]:items;
       const total=shownItems.length,nDone=before?0:cnt(ym),allDone=total>0&&nDone===total;
       const suggestions=MC_SEED.filter(s=>!items.some(x=>x.id===s.id||x.text===s.text));

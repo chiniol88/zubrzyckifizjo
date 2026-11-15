@@ -74,8 +74,8 @@ var MC_SEED = [{
   note: ""
 }];
 
-// Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
-var MC_FIRST = "2026-10";
+// Zamknięcia miesięcy zaczynają się od listopada 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
+var MC_FIRST = "2026-11";
 function MonthClose(_ref) {
   var settings = _ref.settings,
     setSettings = _ref.setSettings;
@@ -89,11 +89,12 @@ function MonthClose(_ref) {
   var items = Array.isArray(mc.items) ? mc.items : [],
     done = mc.done || {};
   var _useState = useState(function () {
-      return ymAdd(curYM, -1);
+      var p = ymAdd(curYM, -1);
+      return p < MC_FIRST ? MC_FIRST : p;
     }),
     _useState2 = _slicedToArray(_useState, 2),
     ym = _useState2[0],
-    setYm = _useState2[1]; // domyślnie miesiąc, który się właśnie skończył
+    setYm = _useState2[1]; // miesiąc do zamknięcia, ale nie wcześniej niż pierwszy miesiąc listy   // domyślnie miesiąc, który się właśnie skończył
   var _useState3 = useState(false),
     _useState4 = _slicedToArray(_useState3, 2),
     edit = _useState4[0],
@@ -186,7 +187,7 @@ function MonthClose(_ref) {
       return done[m] && done[m][id];
     }).length;
   };
-  var before = ym < MC_FIRST; // miesiące sprzed października 2026: pusta lista
+  var before = ym < MC_FIRST; // miesiące sprzed listopada 2026: pusta lista
   var shownItems = before ? [] : items;
   var total = shownItems.length,
     nDone = before ? 0 : cnt(ym),
