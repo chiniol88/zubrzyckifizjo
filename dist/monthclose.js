@@ -74,7 +74,7 @@ var MC_SEED = [{
   note: ""
 }];
 
-// Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące nie mają listy (nie da się do nich przejść)
+// Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
 var MC_FIRST = "2026-10";
 function MonthClose(_ref) {
   var settings = _ref.settings,
@@ -89,8 +89,7 @@ function MonthClose(_ref) {
   var items = Array.isArray(mc.items) ? mc.items : [],
     done = mc.done || {};
   var _useState = useState(function () {
-      var p = ymAdd(curYM, -1);
-      return p < MC_FIRST ? MC_FIRST : p;
+      return ymAdd(curYM, -1);
     }),
     _useState2 = _slicedToArray(_useState, 2),
     ym = _useState2[0],
@@ -187,8 +186,10 @@ function MonthClose(_ref) {
       return done[m] && done[m][id];
     }).length;
   };
-  var total = items.length,
-    nDone = cnt(ym),
+  var before = ym < MC_FIRST; // miesiące sprzed października 2026: pusta lista
+  var shownItems = before ? [] : items;
+  var total = shownItems.length,
+    nDone = before ? 0 : cnt(ym),
     allDone = total > 0 && nDone === total;
   var suggestions = MC_SEED.filter(function (s) {
     return !items.some(function (x) {
@@ -251,15 +252,13 @@ function MonthClose(_ref) {
   }, /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       return setYm(function (m) {
-        return m <= MC_FIRST ? m : ymAdd(m, -1);
+        return ymAdd(m, -1);
       });
     },
-    disabled: ym <= MC_FIRST,
     "aria-label": "Wcze\u015Bniejszy miesi\u0105c",
     style: _objectSpread(_objectSpread({}, small), {}, {
       width: 36,
-      height: 36,
-      opacity: ym <= MC_FIRST ? .35 : 1
+      height: 36
     })
   }, "\u2039"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -278,7 +277,7 @@ function MonthClose(_ref) {
       fontSize: 12,
       color: subC
     }
-  }, ym === curYM ? "bieżący miesiąc (jeszcze trwa)" : ym === ymAdd(curYM, -1) ? "miesiąc do zamknięcia" : ym > curYM ? "" : "zamknięty miesiąc")), /*#__PURE__*/React.createElement("button", {
+  }, ym === curYM ? "bieżący miesiąc (jeszcze trwa)" : ym === ymAdd(curYM, -1) ? "miesiąc do zamknięcia" : "zamknięty miesiąc")), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       return setYm(function (m) {
         return ym >= curYM ? m : ymAdd(m, 1);
@@ -309,7 +308,7 @@ function MonthClose(_ref) {
       fontWeight: 700,
       color: allDone ? GREEN : textC
     }
-  }, /*#__PURE__*/React.createElement("span", null, allDone ? "✅ Miesiąc zamknięty" : "Do zrobienia"), /*#__PURE__*/React.createElement("span", null, nDone, " z ", total)), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, allDone ? "✅ Miesiąc zamknięty" : "Do zrobienia"), /*#__PURE__*/React.createElement("span", null, before ? "" : nDone + " z " + total)), /*#__PURE__*/React.createElement("div", {
     style: {
       height: 7,
       borderRadius: 4,
@@ -324,13 +323,20 @@ function MonthClose(_ref) {
       borderRadius: 4,
       transition: "width .25s"
     }
-  })), total === 0 && /*#__PURE__*/React.createElement("div", {
+  })), before && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: subC,
+      padding: "14px 0 18px",
+      textAlign: "center"
+    }
+  }, "Lista jest pusta."), !before && total === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       color: subC,
       padding: "10px 0"
     }
-  }, "Lista jest pusta. Dodaj pierwszy punkt poni\u017Cej albo wybierz podpowied\u017A."), items.map(function (it, i) {
+  }, "Lista jest pusta. Dodaj pierwszy punkt poni\u017Cej albo wybierz podpowied\u017A."), shownItems.map(function (it, i) {
     var dd = done[ym] && done[ym][it.id];
     if (edit) return /*#__PURE__*/React.createElement("div", {
       key: it.id,
@@ -450,7 +456,7 @@ function MonthClose(_ref) {
         marginTop: 3
       }
     }, it.note)));
-  }), /*#__PURE__*/React.createElement("div", {
+  }), !before && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
@@ -490,7 +496,7 @@ function MonthClose(_ref) {
       cursor: newText.trim() ? "pointer" : "default",
       fontFamily: "inherit"
     }
-  }, "+ Dodaj")), /*#__PURE__*/React.createElement("div", {
+  }, "+ Dodaj")), !before && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       justifyContent: "flex-end",
@@ -512,7 +518,7 @@ function MonthClose(_ref) {
       padding: "6px 0",
       fontFamily: "inherit"
     }
-  }, edit ? "✓ Gotowe" : "✏️ Edytuj listę (treść, kolejność, usuwanie)"))), suggestions.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, edit ? "✓ Gotowe" : "✏️ Edytuj listę (treść, kolejność, usuwanie)"))), !before && suggestions.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       background: bg,
       border: "1px solid " + borderC,

@@ -17,7 +17,7 @@
       {id:"s13",text:"Pobrać kopię zapasową (Ustawienia → Dane)",note:""}
     ];
 
-    // Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące nie mają listy (nie da się do nich przejść)
+    // Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
     const MC_FIRST="2026-10";
 
     function MonthClose({settings,setSettings}) {
@@ -25,7 +25,7 @@
       const today=todayLocal(),curYM=today.slice(0,7);
       const mc=(settings&&settings.monthClose)||{items:MC_SEED,done:{}};
       const items=Array.isArray(mc.items)?mc.items:[],done=mc.done||{};
-      const [ym,setYm]=useState(()=>{const p=ymAdd(curYM,-1);return p<MC_FIRST?MC_FIRST:p;});   // domyślnie miesiąc, który się właśnie skończył
+      const [ym,setYm]=useState(()=>ymAdd(curYM,-1));   // domyślnie miesiąc, który się właśnie skończył
       const [edit,setEdit]=useState(false);
       const [newText,setNewText]=useState("");
       const textC=dk?"#E8F5F5":"#1C2B3A",subC=dk?"#93A9C4":"#5E7288",borderC=dk?"#2A3A56":"#E4EAF3",bg=dk?"#18202F":"#fff";
@@ -38,7 +38,9 @@
       const move=(i,dir)=>upd(b=>{const a=b.items.slice(),j=i+dir;if(j<0||j>=a.length)return b;[a[i],a[j]]=[a[j],a[i]];return {...b,items:a};});
       const ids=items.map(x=>x.id);
       const cnt=m=>ids.filter(id=>done[m]&&done[m][id]).length;
-      const total=items.length,nDone=cnt(ym),allDone=total>0&&nDone===total;
+      const before=ym<MC_FIRST;   // miesiące sprzed października 2026: pusta lista
+      const shownItems=before?[]:items;
+      const total=shownItems.length,nDone=before?0:cnt(ym),allDone=total>0&&nDone===total;
       const suggestions=MC_SEED.filter(s=>!items.some(x=>x.id===s.id||x.text===s.text));
       const monthName=m=>new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
       const hist=Object.keys(done).filter(m=>m>=MC_FIRST&&cnt(m)>0).sort().reverse().slice(0,12);
@@ -47,21 +49,22 @@
       const small={flexShrink:0,width:32,height:32,border:"none",borderRadius:8,background:dk?"#1E2F4A":"#F0F4FA",color:subC,fontSize:14,cursor:"pointer",fontFamily:"inherit"};
       return <div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:12}}>
-          <button onClick={()=>setYm(m=>m<=MC_FIRST?m:ymAdd(m,-1))} disabled={ym<=MC_FIRST} aria-label="Wcześniejszy miesiąc" style={{...small,width:36,height:36,opacity:ym<=MC_FIRST?.35:1}}>‹</button>
+          <button onClick={()=>setYm(m=>ymAdd(m,-1))} aria-label="Wcześniejszy miesiąc" style={{...small,width:36,height:36}}>‹</button>
           <div style={{textAlign:"center"}}>
             <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:17,color:textC,textTransform:"capitalize"}}>{monthName(ym)}</div>
-            <div style={{fontSize:12,color:subC}}>{ym===curYM?"bieżący miesiąc (jeszcze trwa)":ym===ymAdd(curYM,-1)?"miesiąc do zamknięcia":ym>curYM?"":"zamknięty miesiąc"}</div>
+            <div style={{fontSize:12,color:subC}}>{ym===curYM?"bieżący miesiąc (jeszcze trwa)":ym===ymAdd(curYM,-1)?"miesiąc do zamknięcia":"zamknięty miesiąc"}</div>
           </div>
           <button onClick={()=>setYm(m=>ym>=curYM?m:ymAdd(m,1))} disabled={ym>=curYM} aria-label="Późniejszy miesiąc" style={{...small,width:36,height:36,opacity:ym>=curYM?.35:1}}>›</button>
         </div>
 
         <div style={{background:bg,border:"1px solid "+borderC,borderRadius:16,padding:"14px 14px 10px",marginBottom:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,fontSize:14,fontWeight:700,color:allDone?GREEN:textC}}>
-            <span>{allDone?"✅ Miesiąc zamknięty":"Do zrobienia"}</span><span>{nDone} z {total}</span>
+            <span>{allDone?"✅ Miesiąc zamknięty":"Do zrobienia"}</span><span>{before?"":nDone+" z "+total}</span>
           </div>
           <div style={{height:7,borderRadius:4,background:dk?"#22304B":"#EAEFF6",marginBottom:10}}><div style={{height:"100%",width:(total?nDone/total*100:0)+"%",background:allDone?GREEN:BLUE,borderRadius:4,transition:"width .25s"}}/></div>
-          {total===0&&<div style={{fontSize:13,color:subC,padding:"10px 0"}}>Lista jest pusta. Dodaj pierwszy punkt poniżej albo wybierz podpowiedź.</div>}
-          {items.map((it,i)=>{
+          {before&&<div style={{fontSize:14,color:subC,padding:"14px 0 18px",textAlign:"center"}}>Lista jest pusta.</div>}
+          {!before&&total===0&&<div style={{fontSize:13,color:subC,padding:"10px 0"}}>Lista jest pusta. Dodaj pierwszy punkt poniżej albo wybierz podpowiedź.</div>}
+          {shownItems.map((it,i)=>{
             const dd=done[ym]&&done[ym][it.id];
             if(edit)return <div key={it.id} style={{padding:"10px 0",borderTop:i?"1px solid "+borderC:"none"}}>
               <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
@@ -80,16 +83,16 @@
               </span>
             </button>;
           })}
-          <div style={{display:"flex",gap:8,marginTop:10,paddingTop:12,borderTop:"1px solid "+borderC}}>
+          {!before&&<div style={{display:"flex",gap:8,marginTop:10,paddingTop:12,borderTop:"1px solid "+borderC}}>
             <input value={newText} onChange={e=>setNewText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){addItem(newText);setNewText("");}}} placeholder="Nowy punkt listy…" style={inp} aria-label="Nowy punkt"/>
             <button onClick={()=>{addItem(newText);setNewText("");}} disabled={!newText.trim()} style={{flexShrink:0,padding:"0 16px",border:"none",borderRadius:10,background:newText.trim()?BLUE:(dk?"#22304B":"#D9E2F0"),color:"#fff",fontWeight:700,fontSize:14,cursor:newText.trim()?"pointer":"default",fontFamily:"inherit"}}>+ Dodaj</button>
-          </div>
-          <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+          </div>}
+          {!before&&<div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
             <button onClick={()=>setEdit(v=>!v)} style={{background:"transparent",border:"none",color:subC,fontSize:13,textDecoration:"underline",cursor:"pointer",padding:"6px 0",fontFamily:"inherit"}}>{edit?"✓ Gotowe":"✏️ Edytuj listę (treść, kolejność, usuwanie)"}</button>
-          </div>
+          </div>}
         </div>
 
-        {suggestions.length>0&&<div style={{background:bg,border:"1px solid "+borderC,borderRadius:16,padding:"14px",marginBottom:12}}>
+        {!before&&suggestions.length>0&&<div style={{background:bg,border:"1px solid "+borderC,borderRadius:16,padding:"14px",marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Podpowiedzi (dotknij, żeby dodać)</div>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {suggestions.map(s=><button key={s.id} onClick={()=>addItem(s.text,s.note)} style={chip}>+ {s.text}</button>)}
