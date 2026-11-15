@@ -433,8 +433,7 @@ function MonthClose(_ref) {
         display: "block",
         fontSize: 15,
         lineHeight: 1.4,
-        color: dd ? subC : textC,
-        textDecoration: dd ? "line-through" : "none"
+        color: textC
       }
     }, it.text), it.note && /*#__PURE__*/React.createElement("span", {
       style: {

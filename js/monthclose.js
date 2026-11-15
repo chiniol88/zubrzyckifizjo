@@ -72,7 +72,7 @@
             return <button key={it.id} onClick={()=>toggle(it.id)} role="checkbox" aria-checked={!!dd} style={{display:"flex",alignItems:"flex-start",gap:12,width:"100%",textAlign:"left",padding:"12px 0",border:"none",borderTop:i?"1px solid "+borderC:"none",background:"transparent",cursor:"pointer",fontFamily:"inherit"}}>
               <span style={{flexShrink:0,width:26,height:26,borderRadius:8,border:"2px solid "+(dd?GREEN:(dk?"#4A5E7C":"#B9C7DA")),background:dd?GREEN:"transparent",color:"#fff",fontSize:15,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>{dd?"✓":""}</span>
               <span style={{flex:1,minWidth:0}}>
-                <span style={{display:"block",fontSize:15,lineHeight:1.4,color:dd?subC:textC,textDecoration:dd?"line-through":"none"}}>{it.text}</span>
+                <span style={{display:"block",fontSize:15,lineHeight:1.4,color:textC}}>{it.text}</span>
                 {it.note&&<span style={{display:"block",fontSize:12,lineHeight:1.5,color:subC,marginTop:3}}>{it.note}</span>}
               </span>
               {dd&&<span style={{flexShrink:0,fontSize:12,color:GREEN,marginTop:3}}>{dd.slice(8)+"."+dd.slice(5,7)}</span>}
