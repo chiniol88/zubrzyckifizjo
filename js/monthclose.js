@@ -17,12 +17,15 @@
       {id:"s13",text:"Pobrać kopię zapasową (Ustawienia → Dane)",note:""}
     ];
 
+    // Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące nie mają listy (nie da się do nich przejść)
+    const MC_FIRST="2026-10";
+
     function MonthClose({settings,setSettings}) {
       const dk=useContext(DarkCtx);
       const today=todayLocal(),curYM=today.slice(0,7);
       const mc=(settings&&settings.monthClose)||{items:MC_SEED,done:{}};
       const items=Array.isArray(mc.items)?mc.items:[],done=mc.done||{};
-      const [ym,setYm]=useState(()=>ymAdd(curYM,-1));   // domyślnie miesiąc, który się właśnie skończył
+      const [ym,setYm]=useState(()=>{const p=ymAdd(curYM,-1);return p<MC_FIRST?MC_FIRST:p;});   // domyślnie miesiąc, który się właśnie skończył
       const [edit,setEdit]=useState(false);
       const [newText,setNewText]=useState("");
       const textC=dk?"#E8F5F5":"#1C2B3A",subC=dk?"#93A9C4":"#5E7288",borderC=dk?"#2A3A56":"#E4EAF3",bg=dk?"#18202F":"#fff";
@@ -38,13 +41,13 @@
       const total=items.length,nDone=cnt(ym),allDone=total>0&&nDone===total;
       const suggestions=MC_SEED.filter(s=>!items.some(x=>x.id===s.id||x.text===s.text));
       const monthName=m=>new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-      const hist=Object.keys(done).filter(m=>cnt(m)>0).sort().reverse().slice(0,12);
+      const hist=Object.keys(done).filter(m=>m>=MC_FIRST&&cnt(m)>0).sort().reverse().slice(0,12);
       const chip={padding:"6px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:dk?"#1E2F4A":"#E1E9F5",color:dk?"#9DB8E8":BLUE,fontFamily:"inherit",textAlign:"left"};
       const inp={width:"100%",padding:"9px 11px",border:"1.5px solid "+borderC,borderRadius:10,fontSize:14,outline:"none",background:dk?"#111826":"#FAFCFD",color:textC,fontFamily:"inherit",boxSizing:"border-box"};
       const small={flexShrink:0,width:32,height:32,border:"none",borderRadius:8,background:dk?"#1E2F4A":"#F0F4FA",color:subC,fontSize:14,cursor:"pointer",fontFamily:"inherit"};
       return <div>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:12}}>
-          <button onClick={()=>setYm(m=>ymAdd(m,-1))} aria-label="Wcześniejszy miesiąc" style={{...small,width:36,height:36}}>‹</button>
+          <button onClick={()=>setYm(m=>m<=MC_FIRST?m:ymAdd(m,-1))} disabled={ym<=MC_FIRST} aria-label="Wcześniejszy miesiąc" style={{...small,width:36,height:36,opacity:ym<=MC_FIRST?.35:1}}>‹</button>
           <div style={{textAlign:"center"}}>
             <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:17,color:textC,textTransform:"capitalize"}}>{monthName(ym)}</div>
             <div style={{fontSize:12,color:subC}}>{ym===curYM?"bieżący miesiąc (jeszcze trwa)":ym===ymAdd(curYM,-1)?"miesiąc do zamknięcia":ym>curYM?"":"zamknięty miesiąc"}</div>

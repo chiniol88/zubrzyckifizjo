@@ -73,6 +73,9 @@ var MC_SEED = [{
   text: "Pobrać kopię zapasową (Ustawienia → Dane)",
   note: ""
 }];
+
+// Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące nie mają listy (nie da się do nich przejść)
+var MC_FIRST = "2026-10";
 function MonthClose(_ref) {
   var settings = _ref.settings,
     setSettings = _ref.setSettings;
@@ -86,7 +89,8 @@ function MonthClose(_ref) {
   var items = Array.isArray(mc.items) ? mc.items : [],
     done = mc.done || {};
   var _useState = useState(function () {
-      return ymAdd(curYM, -1);
+      var p = ymAdd(curYM, -1);
+      return p < MC_FIRST ? MC_FIRST : p;
     }),
     _useState2 = _slicedToArray(_useState, 2),
     ym = _useState2[0],
@@ -198,7 +202,7 @@ function MonthClose(_ref) {
     });
   };
   var hist = Object.keys(done).filter(function (m) {
-    return cnt(m) > 0;
+    return m >= MC_FIRST && cnt(m) > 0;
   }).sort().reverse().slice(0, 12);
   var chip = {
     padding: "6px 12px",
@@ -247,13 +251,15 @@ function MonthClose(_ref) {
   }, /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       return setYm(function (m) {
-        return ymAdd(m, -1);
+        return m <= MC_FIRST ? m : ymAdd(m, -1);
       });
     },
+    disabled: ym <= MC_FIRST,
     "aria-label": "Wcze\u015Bniejszy miesi\u0105c",
     style: _objectSpread(_objectSpread({}, small), {}, {
       width: 36,
-      height: 36
+      height: 36,
+      opacity: ym <= MC_FIRST ? .35 : 1
     })
   }, "\u2039"), /*#__PURE__*/React.createElement("div", {
     style: {
