@@ -6,17 +6,17 @@ function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArra
 function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
 function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
-function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
-function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
-function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
-function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
-function _toPrimitive(t, e) { if ("object" != _typeof(t) || !t) return t; var r; if ("undefined" != typeof Symbol && void 0 !== (r = t[Symbol.toPrimitive])) { var i = r.call(t, e || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === e ? String : Number)(t); }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
 function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, e) { if ("object" != _typeof(t) || !t) return t; var r; if ("undefined" != typeof Symbol && void 0 !== (r = t[Symbol.toPrimitive])) { var i = r.call(t, e || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === e ? String : Number)(t); }
 // ── ZAMKNIĘCIE MIESIĄCA (Finanse → ✅): własna lista powtarzalnych spraw do ogarnięcia po każdym miesiącu ──────────────
 // Wzór listy (settings.monthClose.items) tworzy użytkownik; dla każdego miesiąca ta sama lista jest odhaczana osobno
 // (settings.monthClose.done["RRRR-MM"][idPunktu] = data odhaczenia). Zapis idzie do ustawień aplikacji (wspólne na urządzeniach).
@@ -82,19 +82,37 @@ function MonthClose(_ref) {
   var dk = useContext(DarkCtx);
   var today = todayLocal(),
     curYM = today.slice(0, 7);
-  var mc = settings && settings.monthClose || {
-    items: MC_SEED,
-    done: {}
+  // Dane: lists["RRRR-MM"] = punkty TEGO miesiąca (każdy miesiąc ma własną listę), done["RRRR-MM"][idPunktu] = odhaczone.
+  // Nowy miesiąc zaczyna jako kopia listy poprzedniego miesiąca (bez odhaczeń); zmiana listy dotyczy tylko miesiąca, w którym ją robisz.
+  // Starszy format (jedna wspólna lista w mc.items) służy jako lista startowa pierwszego miesiąca.
+  var normB = function normB(m) {
+    return {
+      lists: m && m.lists || {},
+      done: m && m.done || {},
+      items: m && Array.isArray(m.items) ? m.items : null
+    };
   };
-  var items = Array.isArray(mc.items) ? mc.items : [],
-    done = mc.done || {};
+  var deriveList = function deriveList(b, m) {
+    var prev = Object.keys(b.lists).filter(function (k) {
+      return k < m && k >= MC_FIRST;
+    }).sort();
+    var src = prev.length ? b.lists[prev[prev.length - 1]] : b.items || MC_SEED;
+    return src.map(function (x) {
+      return _objectSpread({}, x);
+    });
+  };
+  var listOf = function listOf(b, m) {
+    return b.lists[m] || deriveList(b, m);
+  };
+  var mcB = normB(settings && settings.monthClose);
+  var done = mcB.done;
   var _useState = useState(function () {
       var p = ymAdd(curYM, -1);
       return p < MC_FIRST ? MC_FIRST : p;
     }),
     _useState2 = _slicedToArray(_useState, 2),
     ym = _useState2[0],
-    setYm = _useState2[1]; // miesiąc do zamknięcia, ale nie wcześniej niż pierwszy miesiąc listy   // domyślnie miesiąc, który się właśnie skończył
+    setYm = _useState2[1]; // miesiąc do zamknięcia, ale nie wcześniej niż pierwszy miesiąc listy
   var _useState3 = useState(false),
     _useState4 = _slicedToArray(_useState3, 2),
     edit = _useState4[0],
@@ -103,34 +121,52 @@ function MonthClose(_ref) {
     _useState6 = _slicedToArray(_useState5, 2),
     newText = _useState6[0],
     setNewText = _useState6[1];
+  var before = ym < MC_FIRST; // miesiące sprzed listopada 2026: pusta lista
+  var items = before ? [] : listOf(mcB, ym);
   var textC = dk ? "#E8F5F5" : "#1C2B3A",
     subC = dk ? "#93A9C4" : "#5E7288",
     borderC = dk ? "#2A3A56" : "#E4EAF3",
     bg = dk ? "#18202F" : "#fff";
   var GREEN = "#3DAA72",
     BLUE = "#3E6FB0";
+  // zapis: fn dostaje {lists,done,items}; zmienia tylko to, co zwróci (lista bieżącego miesiąca przez cur(b))
   var upd = function upd(fn) {
     return setSettings(function (s) {
-      var b = s && s.monthClose || {
-        items: MC_SEED,
-        done: {}
-      };
+      var b = normB(s && s.monthClose);
+      var nb = fn(b);
       return _objectSpread(_objectSpread({}, s), {}, {
-        monthClose: fn({
-          items: Array.isArray(b.items) ? b.items : [],
-          done: b.done || {}
-        })
+        monthClose: {
+          items: b.items || undefined,
+          lists: nb.lists,
+          done: nb.done
+        }
       });
     });
   };
+  var withList = function withList(b, fn) {
+    return _objectSpread(_objectSpread({}, b), {}, {
+      lists: _objectSpread(_objectSpread({}, b.lists), {}, _defineProperty({}, ym, fn(listOf(b, ym))))
+    });
+  };
+  // pierwszy raz oglądany miesiąc dostaje własną, zapisaną listę (kopia poprzedniego), żeby późniejsze zmiany w innych miesiącach go nie ruszały
+  useEffect(function () {
+    if (before || settings && settings.monthClose && settings.monthClose.lists && settings.monthClose.lists[ym]) return;
+    upd(function (b) {
+      return withList(b, function (l) {
+        return l;
+      });
+    });
+  }, [ym, before, !!(settings && settings.monthClose && settings.monthClose.lists && settings.monthClose.lists[ym])]);
   var toggle = function toggle(id) {
     return upd(function (b) {
       var d = _objectSpread({}, b.done);
       var m = _objectSpread({}, d[ym] || {});
       if (m[id]) delete m[id];else m[id] = today;
       d[ym] = m;
-      return _objectSpread(_objectSpread({}, b), {}, {
+      return withList(_objectSpread(_objectSpread({}, b), {}, {
         done: d
+      }), function (l) {
+        return l;
       });
     });
   };
@@ -138,59 +174,67 @@ function MonthClose(_ref) {
     var t = String(text || "").trim();
     if (!t) return;
     upd(function (b) {
-      return _objectSpread(_objectSpread({}, b), {}, {
-        items: [].concat(_toConsumableArray(b.items), [{
+      return withList(b, function (l) {
+        return [].concat(_toConsumableArray(l), [{
           id: "i" + Date.now() + Math.floor(Math.random() * 1000),
           text: t,
           note: note || ""
-        }])
+        }]);
       });
     });
   };
   var patch = function patch(id, p) {
     return upd(function (b) {
-      return _objectSpread(_objectSpread({}, b), {}, {
-        items: b.items.map(function (x) {
+      return withList(b, function (l) {
+        return l.map(function (x) {
           return x.id === id ? _objectSpread(_objectSpread({}, x), p) : x;
-        })
+        });
       });
     });
   };
   var remove = function remove(id) {
-    if (!window.confirm("Usunąć ten punkt z listy? Zniknie też z historii odhaczeń.")) return;
+    if (!window.confirm("Usunąć ten punkt z tego miesiąca? Inne miesiące zostają bez zmian.")) return;
     upd(function (b) {
-      return _objectSpread(_objectSpread({}, b), {}, {
-        items: b.items.filter(function (x) {
+      var d = _objectSpread({}, b.done);
+      if (d[ym]) {
+        var m = _objectSpread({}, d[ym]);
+        delete m[id];
+        d[ym] = m;
+      }
+      return withList(_objectSpread(_objectSpread({}, b), {}, {
+        done: d
+      }), function (l) {
+        return l.filter(function (x) {
           return x.id !== id;
-        })
+        });
       });
     });
   };
   var move = function move(i, dir) {
     return upd(function (b) {
-      var a = b.items.slice(),
-        j = i + dir;
-      if (j < 0 || j >= a.length) return b;
-      var _ref2 = [a[j], a[i]];
-      a[i] = _ref2[0];
-      a[j] = _ref2[1];
-      return _objectSpread(_objectSpread({}, b), {}, {
-        items: a
+      return withList(b, function (l) {
+        var a = l.slice(),
+          j = i + dir;
+        if (j < 0 || j >= a.length) return l;
+        var _ref2 = [a[j], a[i]];
+        a[i] = _ref2[0];
+        a[j] = _ref2[1];
+        return a;
       });
     });
   };
-  var ids = items.map(function (x) {
-    return x.id;
-  });
-  var cnt = function cnt(m) {
-    return ids.filter(function (id) {
-      return done[m] && done[m][id];
-    }).length;
+  var cntOf = function cntOf(m) {
+    var l = m < MC_FIRST ? [] : listOf(mcB, m);
+    return {
+      n: l.filter(function (x) {
+        return done[m] && done[m][x.id];
+      }).length,
+      total: l.length
+    };
   };
-  var before = ym < MC_FIRST; // miesiące sprzed listopada 2026: pusta lista
-  var shownItems = before ? [] : items;
+  var shownItems = items;
   var total = shownItems.length,
-    nDone = before ? 0 : cnt(ym),
+    nDone = before ? 0 : cntOf(ym).n,
     allDone = total > 0 && nDone === total;
   var monthName = function monthName(m) {
     return new Date(m + "-15").toLocaleDateString("pl-PL", {
@@ -199,7 +243,7 @@ function MonthClose(_ref) {
     });
   };
   var hist = Object.keys(done).filter(function (m) {
-    return m >= MC_FIRST && cnt(m) > 0;
+    return m >= MC_FIRST && cntOf(m).n > 0;
   }).sort().reverse().slice(0, 12);
   var inp = {
     width: "100%",
@@ -546,9 +590,9 @@ function MonthClose(_ref) {
       }
     }, monthName(m)), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: cnt(m) === total && total > 0 ? GREEN : subC,
+        color: cntOf(m).n === cntOf(m).total && cntOf(m).total > 0 ? GREEN : subC,
         fontWeight: 600
       }
-    }, cnt(m) === total && total > 0 ? "✓ " : "", cnt(m), " z ", total));
+    }, cntOf(m).n === cntOf(m).total && cntOf(m).total > 0 ? "✓ " : "", cntOf(m).n, " z ", cntOf(m).total));
   })));
 }

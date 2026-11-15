@@ -23,26 +23,43 @@
     function MonthClose({settings,setSettings}) {
       const dk=useContext(DarkCtx);
       const today=todayLocal(),curYM=today.slice(0,7);
-      const mc=(settings&&settings.monthClose)||{items:MC_SEED,done:{}};
-      const items=Array.isArray(mc.items)?mc.items:[],done=mc.done||{};
-      const [ym,setYm]=useState(()=>{const p=ymAdd(curYM,-1);return p<MC_FIRST?MC_FIRST:p;});   // miesiąc do zamknięcia, ale nie wcześniej niż pierwszy miesiąc listy   // domyślnie miesiąc, który się właśnie skończył
+      // Dane: lists["RRRR-MM"] = punkty TEGO miesiąca (każdy miesiąc ma własną listę), done["RRRR-MM"][idPunktu] = odhaczone.
+      // Nowy miesiąc zaczyna jako kopia listy poprzedniego miesiąca (bez odhaczeń); zmiana listy dotyczy tylko miesiąca, w którym ją robisz.
+      // Starszy format (jedna wspólna lista w mc.items) służy jako lista startowa pierwszego miesiąca.
+      const normB=m=>({lists:(m&&m.lists)||{},done:(m&&m.done)||{},items:m&&Array.isArray(m.items)?m.items:null});
+      const deriveList=(b,m)=>{
+        const prev=Object.keys(b.lists).filter(k=>k<m&&k>=MC_FIRST).sort();
+        const src=prev.length?b.lists[prev[prev.length-1]]:(b.items||MC_SEED);
+        return src.map(x=>({...x}));
+      };
+      const listOf=(b,m)=>b.lists[m]||deriveList(b,m);
+      const mcB=normB(settings&&settings.monthClose);
+      const done=mcB.done;
+      const [ym,setYm]=useState(()=>{const p=ymAdd(curYM,-1);return p<MC_FIRST?MC_FIRST:p;});   // miesiąc do zamknięcia, ale nie wcześniej niż pierwszy miesiąc listy
       const [edit,setEdit]=useState(false);
       const [newText,setNewText]=useState("");
+      const before=ym<MC_FIRST;   // miesiące sprzed listopada 2026: pusta lista
+      const items=before?[]:listOf(mcB,ym);
       const textC=dk?"#E8F5F5":"#1C2B3A",subC=dk?"#93A9C4":"#5E7288",borderC=dk?"#2A3A56":"#E4EAF3",bg=dk?"#18202F":"#fff";
       const GREEN="#3DAA72",BLUE="#3E6FB0";
-      const upd=fn=>setSettings(s=>{const b=(s&&s.monthClose)||{items:MC_SEED,done:{}};return {...s,monthClose:fn({items:Array.isArray(b.items)?b.items:[],done:b.done||{}})};});
-      const toggle=id=>upd(b=>{const d={...b.done};const m={...(d[ym]||{})};if(m[id])delete m[id];else m[id]=today;d[ym]=m;return {...b,done:d};});
-      const addItem=(text,note)=>{const t=String(text||"").trim();if(!t)return;upd(b=>({...b,items:[...b.items,{id:"i"+Date.now()+Math.floor(Math.random()*1000),text:t,note:note||""}]}));};
-      const patch=(id,p)=>upd(b=>({...b,items:b.items.map(x=>x.id===id?{...x,...p}:x)}));
-      const remove=id=>{if(!window.confirm("Usunąć ten punkt z listy? Zniknie też z historii odhaczeń."))return;upd(b=>({...b,items:b.items.filter(x=>x.id!==id)}));};
-      const move=(i,dir)=>upd(b=>{const a=b.items.slice(),j=i+dir;if(j<0||j>=a.length)return b;[a[i],a[j]]=[a[j],a[i]];return {...b,items:a};});
-      const ids=items.map(x=>x.id);
-      const cnt=m=>ids.filter(id=>done[m]&&done[m][id]).length;
-      const before=ym<MC_FIRST;   // miesiące sprzed listopada 2026: pusta lista
-      const shownItems=before?[]:items;
-      const total=shownItems.length,nDone=before?0:cnt(ym),allDone=total>0&&nDone===total;
+      // zapis: fn dostaje {lists,done,items}; zmienia tylko to, co zwróci (lista bieżącego miesiąca przez cur(b))
+      const upd=fn=>setSettings(s=>{const b=normB(s&&s.monthClose);const nb=fn(b);return {...s,monthClose:{items:b.items||undefined,lists:nb.lists,done:nb.done}};});
+      const withList=(b,fn)=>({...b,lists:{...b.lists,[ym]:fn(listOf(b,ym))}});
+      // pierwszy raz oglądany miesiąc dostaje własną, zapisaną listę (kopia poprzedniego), żeby późniejsze zmiany w innych miesiącach go nie ruszały
+      useEffect(()=>{
+        if(before||(settings&&settings.monthClose&&settings.monthClose.lists&&settings.monthClose.lists[ym]))return;
+        upd(b=>withList(b,l=>l));
+      },[ym,before,!!(settings&&settings.monthClose&&settings.monthClose.lists&&settings.monthClose.lists[ym])]);
+      const toggle=id=>upd(b=>{const d={...b.done};const m={...(d[ym]||{})};if(m[id])delete m[id];else m[id]=today;d[ym]=m;return withList({...b,done:d},l=>l);});
+      const addItem=(text,note)=>{const t=String(text||"").trim();if(!t)return;upd(b=>withList(b,l=>[...l,{id:"i"+Date.now()+Math.floor(Math.random()*1000),text:t,note:note||""}]));};
+      const patch=(id,p)=>upd(b=>withList(b,l=>l.map(x=>x.id===id?{...x,...p}:x)));
+      const remove=id=>{if(!window.confirm("Usunąć ten punkt z tego miesiąca? Inne miesiące zostają bez zmian."))return;upd(b=>{const d={...b.done};if(d[ym]){const m={...d[ym]};delete m[id];d[ym]=m;}return withList({...b,done:d},l=>l.filter(x=>x.id!==id));});};
+      const move=(i,dir)=>upd(b=>withList(b,l=>{const a=l.slice(),j=i+dir;if(j<0||j>=a.length)return l;[a[i],a[j]]=[a[j],a[i]];return a;}));
+      const cntOf=m=>{const l=m<MC_FIRST?[]:listOf(mcB,m);return {n:l.filter(x=>done[m]&&done[m][x.id]).length,total:l.length};};
+      const shownItems=items;
+      const total=shownItems.length,nDone=before?0:cntOf(ym).n,allDone=total>0&&nDone===total;
       const monthName=m=>new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-      const hist=Object.keys(done).filter(m=>m>=MC_FIRST&&cnt(m)>0).sort().reverse().slice(0,12);
+      const hist=Object.keys(done).filter(m=>m>=MC_FIRST&&cntOf(m).n>0).sort().reverse().slice(0,12);
       const inp={width:"100%",padding:"9px 11px",border:"1.5px solid "+borderC,borderRadius:10,fontSize:14,outline:"none",background:dk?"#111826":"#FAFCFD",color:textC,fontFamily:"inherit",boxSizing:"border-box"};
       const small={flexShrink:0,width:32,height:32,border:"none",borderRadius:8,background:dk?"#1E2F4A":"#F0F4FA",color:subC,fontSize:14,cursor:"pointer",fontFamily:"inherit"};
       return <div>
@@ -94,7 +111,7 @@
           <div style={{fontSize:12,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Historia zamknięć</div>
           {hist.map(m=><button key={m} onClick={()=>setYm(m)} style={{display:"flex",justifyContent:"space-between",width:"100%",padding:"9px 0",border:"none",borderTop:"1px solid "+borderC,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:14,color:textC,textAlign:"left"}}>
             <span style={{textTransform:"capitalize",fontWeight:m===ym?700:400}}>{monthName(m)}</span>
-            <span style={{color:cnt(m)===total&&total>0?GREEN:subC,fontWeight:600}}>{cnt(m)===total&&total>0?"✓ ":""}{cnt(m)} z {total}</span>
+            <span style={{color:cntOf(m).n===cntOf(m).total&&cntOf(m).total>0?GREEN:subC,fontWeight:600}}>{cntOf(m).n===cntOf(m).total&&cntOf(m).total>0?"✓ ":""}{cntOf(m).n} z {cntOf(m).total}</span>
           </button>)}
         </div>}
       </div>;
