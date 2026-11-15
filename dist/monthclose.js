@@ -192,11 +192,6 @@ function MonthClose(_ref) {
   var total = shownItems.length,
     nDone = before ? 0 : cnt(ym),
     allDone = total > 0 && nDone === total;
-  var suggestions = MC_SEED.filter(function (s) {
-    return !items.some(function (x) {
-      return x.id === s.id || x.text === s.text;
-    });
-  });
   var monthName = function monthName(m) {
     return new Date(m + "-15").toLocaleDateString("pl-PL", {
       month: "long",
@@ -206,18 +201,6 @@ function MonthClose(_ref) {
   var hist = Object.keys(done).filter(function (m) {
     return m >= MC_FIRST && cnt(m) > 0;
   }).sort().reverse().slice(0, 12);
-  var chip = {
-    padding: "6px 12px",
-    borderRadius: 14,
-    border: "none",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: 12,
-    background: dk ? "#1E2F4A" : "#E1E9F5",
-    color: dk ? "#9DB8E8" : BLUE,
-    fontFamily: "inherit",
-    textAlign: "left"
-  };
   var inp = {
     width: "100%",
     padding: "9px 11px",
@@ -337,7 +320,7 @@ function MonthClose(_ref) {
       color: subC,
       padding: "10px 0"
     }
-  }, "Lista jest pusta. Dodaj pierwszy punkt poni\u017Cej albo wybierz podpowied\u017A."), shownItems.map(function (it, i) {
+  }, "Lista jest pusta. Dodaj pierwszy punkt poni\u017Cej."), shownItems.map(function (it, i) {
     var dd = done[ym] && done[ym][it.id];
     if (edit) return /*#__PURE__*/React.createElement("div", {
       key: it.id,
@@ -519,38 +502,7 @@ function MonthClose(_ref) {
       padding: "6px 0",
       fontFamily: "inherit"
     }
-  }, edit ? "✓ Gotowe" : "✏️ Edytuj listę (treść, kolejność, usuwanie)"))), !before && suggestions.length > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: bg,
-      border: "1px solid " + borderC,
-      borderRadius: 16,
-      padding: "14px",
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      fontWeight: 700,
-      color: subC,
-      textTransform: "uppercase",
-      letterSpacing: ".07em",
-      marginBottom: 8
-    }
-  }, "Podpowiedzi (dotknij, \u017Ceby doda\u0107)"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 6
-    }
-  }, suggestions.map(function (s) {
-    return /*#__PURE__*/React.createElement("button", {
-      key: s.id,
-      onClick: function onClick() {
-        return addItem(s.text, s.note);
-      },
-      style: chip
-    }, "+ ", s.text);
-  }))), hist.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, edit ? "✓ Gotowe" : "✏️ Edytuj listę (treść, kolejność, usuwanie)"))), hist.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       background: bg,
       border: "1px solid " + borderC,

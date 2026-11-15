@@ -41,10 +41,8 @@
       const before=ym<MC_FIRST;   // miesiące sprzed listopada 2026: pusta lista
       const shownItems=before?[]:items;
       const total=shownItems.length,nDone=before?0:cnt(ym),allDone=total>0&&nDone===total;
-      const suggestions=MC_SEED.filter(s=>!items.some(x=>x.id===s.id||x.text===s.text));
       const monthName=m=>new Date(m+"-15").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
       const hist=Object.keys(done).filter(m=>m>=MC_FIRST&&cnt(m)>0).sort().reverse().slice(0,12);
-      const chip={padding:"6px 12px",borderRadius:14,border:"none",cursor:"pointer",fontWeight:600,fontSize:12,background:dk?"#1E2F4A":"#E1E9F5",color:dk?"#9DB8E8":BLUE,fontFamily:"inherit",textAlign:"left"};
       const inp={width:"100%",padding:"9px 11px",border:"1.5px solid "+borderC,borderRadius:10,fontSize:14,outline:"none",background:dk?"#111826":"#FAFCFD",color:textC,fontFamily:"inherit",boxSizing:"border-box"};
       const small={flexShrink:0,width:32,height:32,border:"none",borderRadius:8,background:dk?"#1E2F4A":"#F0F4FA",color:subC,fontSize:14,cursor:"pointer",fontFamily:"inherit"};
       return <div>
@@ -63,7 +61,7 @@
           </div>
           <div style={{height:7,borderRadius:4,background:dk?"#22304B":"#EAEFF6",marginBottom:10}}><div style={{height:"100%",width:(total?nDone/total*100:0)+"%",background:allDone?GREEN:BLUE,borderRadius:4,transition:"width .25s"}}/></div>
           {before&&<div style={{fontSize:14,color:subC,padding:"14px 0 18px",textAlign:"center"}}>Lista jest pusta.</div>}
-          {!before&&total===0&&<div style={{fontSize:13,color:subC,padding:"10px 0"}}>Lista jest pusta. Dodaj pierwszy punkt poniżej albo wybierz podpowiedź.</div>}
+          {!before&&total===0&&<div style={{fontSize:13,color:subC,padding:"10px 0"}}>Lista jest pusta. Dodaj pierwszy punkt poniżej.</div>}
           {shownItems.map((it,i)=>{
             const dd=done[ym]&&done[ym][it.id];
             if(edit)return <div key={it.id} style={{padding:"10px 0",borderTop:i?"1px solid "+borderC:"none"}}>
@@ -91,13 +89,6 @@
             <button onClick={()=>setEdit(v=>!v)} style={{background:"transparent",border:"none",color:subC,fontSize:13,textDecoration:"underline",cursor:"pointer",padding:"6px 0",fontFamily:"inherit"}}>{edit?"✓ Gotowe":"✏️ Edytuj listę (treść, kolejność, usuwanie)"}</button>
           </div>}
         </div>
-
-        {!before&&suggestions.length>0&&<div style={{background:bg,border:"1px solid "+borderC,borderRadius:16,padding:"14px",marginBottom:12}}>
-          <div style={{fontSize:12,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Podpowiedzi (dotknij, żeby dodać)</div>
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {suggestions.map(s=><button key={s.id} onClick={()=>addItem(s.text,s.note)} style={chip}>+ {s.text}</button>)}
-          </div>
-        </div>}
 
         {hist.length>0&&<div style={{background:bg,border:"1px solid "+borderC,borderRadius:16,padding:"14px",marginBottom:12}}>
           <div style={{fontSize:12,fontWeight:700,color:subC,textTransform:"uppercase",letterSpacing:".07em",marginBottom:8}}>Historia zamknięć</div>
