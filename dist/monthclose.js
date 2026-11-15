@@ -38,16 +38,12 @@ var MC_SEED = [{
   note: "Raport miesięczny (251) zdejmuje się po zakończeniu miesiąca."
 }, {
   id: "s5",
-  text: "VAT-9M za ten miesiąc (usługi z Google, import z UE)",
-  note: "Płacisz i składasz w następnym miesiącu, zwykle do 25. Sprawdź termin u księgowej."
+  text: "VAT-9M za usługi z Google (import usług z UE)",
+  note: "Zwykle do 25. następnego miesiąca — sprawdź termin u księgowej."
 }, {
   id: "s6",
-  text: "Opłacić składki ZUS za ten miesiąc",
-  note: "Przelew robisz w następnym miesiącu (zwykle do 20.)."
-}, {
-  id: "s6b",
-  text: "Opłacić zaliczkę na podatek (PIT) za ten miesiąc",
-  note: "Przelew robisz w następnym miesiącu. Termin sprawdź u księgowej."
+  text: "Opłacić składki ZUS i podatek",
+  note: ""
 }, {
   id: "s7",
   text: "Wysłać dokumenty księgowej",
@@ -80,16 +76,6 @@ var MC_SEED = [{
 
 // Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
 var MC_FIRST = "2026-10";
-var MC_LOC = ["styczniu", "lutym", "marcu", "kwietniu", "maju", "czerwcu", "lipcu", "sierpniu", "wrześniu", "październiku", "listopadzie", "grudniu"];
-
-// starsze zapisane listy miały nieprecyzyjne teksty ("Opłacić składki ZUS i podatek") — jednorazowo je doprecyzowujemy
-var MC_OLD = {
-  "VAT-9M za usługi z Google (import usług z UE)": {
-    text: "VAT-9M za ten miesiąc (usługi z Google, import z UE)",
-    note: "Płacisz i składasz w następnym miesiącu, zwykle do 25. Sprawdź termin u księgowej."
-  }
-};
-var MC_OLD_ZUS = "Opłacić składki ZUS i podatek";
 function MonthClose(_ref) {
   var settings = _ref.settings,
     setSettings = _ref.setSettings;
@@ -192,32 +178,6 @@ function MonthClose(_ref) {
       });
     });
   };
-  // jednorazowa migracja zapisanej listy (tylko jeśli ma jeszcze stare teksty)
-  useEffect(function () {
-    var hasOld = items.some(function (x) {
-      return x.text === MC_OLD_ZUS || MC_OLD[x.text];
-    });
-    if (!hasOld || !(settings && settings.monthClose)) return;
-    upd(function (b) {
-      var out = [];
-      b.items.forEach(function (x) {
-        if (x.text === MC_OLD_ZUS) {
-          out.push(_objectSpread(_objectSpread({}, x), {}, {
-            text: "Opłacić składki ZUS za ten miesiąc",
-            note: "Przelew robisz w następnym miesiącu (zwykle do 20.)."
-          }));
-          out.push({
-            id: "s6b" + Date.now(),
-            text: "Opłacić zaliczkę na podatek (PIT) za ten miesiąc",
-            note: "Przelew robisz w następnym miesiącu. Termin sprawdź u księgowej."
-          });
-        } else if (MC_OLD[x.text]) out.push(_objectSpread(_objectSpread({}, x), MC_OLD[x.text]));else out.push(x);
-      });
-      return _objectSpread(_objectSpread({}, b), {}, {
-        items: out
-      });
-    });
-  }, []);
   var ids = items.map(function (x) {
     return x.id;
   });
@@ -330,24 +290,7 @@ function MonthClose(_ref) {
       height: 36,
       opacity: ym >= curYM ? .35 : 1
     })
-  }, "\u203A")), !before && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      lineHeight: 1.55,
-      color: subC,
-      padding: "0 2px",
-      marginBottom: 10
-    }
-  }, "Wszystkie punkty dotycz\u0105 miesi\u0105ca: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: textC,
-      textTransform: "lowercase"
-    }
-  }, monthName(ym)), " i robisz je po jego zako\u0144czeniu (w ", MC_LOC[+ymAdd(ym, 1).slice(5, 7) - 1], "). Przelewy ZUS, PIT i VAT-9M to wi\u0119c p\u0142atno\u015Bci ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: textC
-    }
-  }, "za ten miesi\u0105c"), ", wykonywane w nast\u0119pnym."), /*#__PURE__*/React.createElement("div", {
+  }, "\u203A")), /*#__PURE__*/React.createElement("div", {
     style: {
       background: bg,
       border: "1px solid " + borderC,

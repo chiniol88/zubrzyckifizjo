@@ -6,9 +6,8 @@
       {id:"s2",text:"Sprawdzić i przypisać faktury kosztowe",note:""},
       {id:"s3",text:"Opłacić wszystkie koszty i zobowiązania",note:""},
       {id:"s4",text:"Porównać raport miesięczny z kasy fiskalnej (Novitus) z przychodem w apce",note:"Raport miesięczny (251) zdejmuje się po zakończeniu miesiąca."},
-      {id:"s5",text:"VAT-9M za ten miesiąc (usługi z Google, import z UE)",note:"Płacisz i składasz w następnym miesiącu, zwykle do 25. Sprawdź termin u księgowej."},
-      {id:"s6",text:"Opłacić składki ZUS za ten miesiąc",note:"Przelew robisz w następnym miesiącu (zwykle do 20.)."},
-      {id:"s6b",text:"Opłacić zaliczkę na podatek (PIT) za ten miesiąc",note:"Przelew robisz w następnym miesiącu. Termin sprawdź u księgowej."},
+      {id:"s5",text:"VAT-9M za usługi z Google (import usług z UE)",note:"Zwykle do 25. następnego miesiąca — sprawdź termin u księgowej."},
+      {id:"s6",text:"Opłacić składki ZUS i podatek",note:""},
       {id:"s7",text:"Wysłać dokumenty księgowej",note:""},
       {id:"s8",text:"Sprawdzić nieopłacone wypożyczenia i zaległe okresy cykliczne",note:""},
       {id:"s9",text:"Sprawdzić przeglądy i uwagi do szyn w Magazynie",note:""},
@@ -20,13 +19,6 @@
 
     // Zamknięcia miesięcy zaczynają się od października 2026 — wcześniejsze miesiące można oglądać, ale ich lista jest pusta
     const MC_FIRST="2026-10";
-    const MC_LOC=["styczniu","lutym","marcu","kwietniu","maju","czerwcu","lipcu","sierpniu","wrześniu","październiku","listopadzie","grudniu"];
-
-    // starsze zapisane listy miały nieprecyzyjne teksty ("Opłacić składki ZUS i podatek") — jednorazowo je doprecyzowujemy
-    const MC_OLD={
-      "VAT-9M za usługi z Google (import usług z UE)":{text:"VAT-9M za ten miesiąc (usługi z Google, import z UE)",note:"Płacisz i składasz w następnym miesiącu, zwykle do 25. Sprawdź termin u księgowej."}
-    };
-    const MC_OLD_ZUS="Opłacić składki ZUS i podatek";
 
     function MonthClose({settings,setSettings}) {
       const dk=useContext(DarkCtx);
@@ -44,20 +36,6 @@
       const patch=(id,p)=>upd(b=>({...b,items:b.items.map(x=>x.id===id?{...x,...p}:x)}));
       const remove=id=>{if(!window.confirm("Usunąć ten punkt z listy? Zniknie też z historii odhaczeń."))return;upd(b=>({...b,items:b.items.filter(x=>x.id!==id)}));};
       const move=(i,dir)=>upd(b=>{const a=b.items.slice(),j=i+dir;if(j<0||j>=a.length)return b;[a[i],a[j]]=[a[j],a[i]];return {...b,items:a};});
-      // jednorazowa migracja zapisanej listy (tylko jeśli ma jeszcze stare teksty)
-      useEffect(()=>{
-        const hasOld=items.some(x=>x.text===MC_OLD_ZUS||MC_OLD[x.text]);
-        if(!hasOld||!(settings&&settings.monthClose))return;
-        upd(b=>{
-          const out=[];
-          b.items.forEach(x=>{
-            if(x.text===MC_OLD_ZUS){out.push({...x,text:"Opłacić składki ZUS za ten miesiąc",note:"Przelew robisz w następnym miesiącu (zwykle do 20.)."});out.push({id:"s6b"+Date.now(),text:"Opłacić zaliczkę na podatek (PIT) za ten miesiąc",note:"Przelew robisz w następnym miesiącu. Termin sprawdź u księgowej."});}
-            else if(MC_OLD[x.text])out.push({...x,...MC_OLD[x.text]});
-            else out.push(x);
-          });
-          return {...b,items:out};
-        });
-      },[]);
       const ids=items.map(x=>x.id);
       const cnt=m=>ids.filter(id=>done[m]&&done[m][id]).length;
       const before=ym<MC_FIRST;   // miesiące sprzed października 2026: pusta lista
@@ -79,9 +57,6 @@
           <button onClick={()=>setYm(m=>ym>=curYM?m:ymAdd(m,1))} disabled={ym>=curYM} aria-label="Późniejszy miesiąc" style={{...small,width:36,height:36,opacity:ym>=curYM?.35:1}}>›</button>
         </div>
 
-        {!before&&<div style={{fontSize:13,lineHeight:1.55,color:subC,padding:"0 2px",marginBottom:10}}>
-          Wszystkie punkty dotyczą miesiąca: <b style={{color:textC,textTransform:"lowercase"}}>{monthName(ym)}</b> i robisz je po jego zakończeniu (w {MC_LOC[+ymAdd(ym,1).slice(5,7)-1]}). Przelewy ZUS, PIT i VAT-9M to więc płatności <b style={{color:textC}}>za ten miesiąc</b>, wykonywane w następnym.
-        </div>}
         <div style={{background:bg,border:"1px solid "+borderC,borderRadius:16,padding:"14px 14px 10px",marginBottom:12}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,fontSize:14,fontWeight:700,color:allDone?GREEN:textC}}>
             <span>{allDone?"✅ Miesiąc zamknięty":"Do zrobienia"}</span><span>{before?"":nDone+" z "+total}</span>
