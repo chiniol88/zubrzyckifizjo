@@ -3927,40 +3927,7 @@ function Finances(_ref15) {
   var visitAvg = visitCount > 0 ? periodVisits.reduce(function (s, v) {
     return s + (+v.price || 0);
   }, 0) / visitCount : 0;
-  // Trend liczby wizyt (karta Kategorie → Wizyta): liczba w okresie, różnica względem poprzedniego okresu i 12 miesięcy na małym wykresie
-  var visitOk = function visitOk(v) {
-    return v.status !== "anulowana" && !v.skipFinance && visitStatus(v) === "zakończona";
-  };
-  var prevVisitCount = useMemo(function () {
-    return (visits || []).filter(function (v) {
-      return inPrevPeriod(v.date) && visitOk(v);
-    }).length;
-  }, [visits, viewMode, month, year, weekStart, weekEnd, rangeFrom, rangeTo]);
-  var visitTrend = useMemo(function () {
-    var base = viewMode === "year" ? year + "-12" : viewMode === "month" ? month : todayLocal().slice(0, 7);
-    var months = Array.from({
-      length: 12
-    }, function (_, i) {
-      return ymAdd(base, i - 11);
-    });
-    var idx = {};
-    months.forEach(function (m, i) {
-      idx[m] = i;
-    });
-    var counts = Array(12).fill(0);
-    (visits || []).forEach(function (v) {
-      if (!v.date || !visitOk(v)) return;
-      var i = idx[v.date.slice(0, 7)];
-      if (i !== undefined) counts[i]++;
-    });
-    return {
-      months: months,
-      counts: counts,
-      sel: viewMode === "week" || viewMode === "range" ? -1 : 11
-    };
-  }, [visits, viewMode, month, year]);
-  var _td = todayLocal();
-  var visitOngoing = viewMode === "month" ? month === _td.slice(0, 7) : viewMode === "week" ? _td >= weekStart && _td <= weekEnd : viewMode === "year" ? String(year) === _td.slice(0, 4) : false; // okres jeszcze trwa: porównanie z pełnym poprzednim byłoby mylące
+  // Liczba wizyt przy kategorii Wizyta (karta Kategorie)
   var plWiz = function plWiz(n) {
     return n === 1 ? "wizyta" : n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14) ? "wizyty" : "wizyt";
   };
@@ -4631,9 +4598,10 @@ function Finances(_ref15) {
     }, isOpen ? "▲" : "▼")), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 13,
-        color: sub
+        color: sub,
+        whiteSpace: "nowrap"
       }
-    }, demo ? "****" : c.v.toFixed(2), " z\u0142 ", /*#__PURE__*/React.createElement("span", {
+    }, c.label === "Wizyta" && /*#__PURE__*/React.createElement("span", null, visitCount, " ", plWiz(visitCount), " \xB7 "), demo ? "****" : c.v.toFixed(2), " z\u0142 ", /*#__PURE__*/React.createElement("span", {
       style: {
         color: c.color,
         fontWeight: 700
@@ -4652,59 +4620,7 @@ function Finances(_ref15) {
         borderRadius: 4,
         transition: "width .3s"
       }
-    })), c.label === "Wizyta" && /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-end",
-        gap: 10,
-        marginTop: 7
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 12,
-        color: sub,
-        lineHeight: 1.4
-      }
-    }, /*#__PURE__*/React.createElement("b", {
-      style: {
-        color: dk ? "#C8E8E8" : "#1C2B3A"
-      }
-    }, visitCount, " ", plWiz(visitCount)), viewMode !== "range" && /*#__PURE__*/React.createElement("span", {
-      style: {
-        marginLeft: 6,
-        color: visitOngoing ? sub : visitCount > prevVisitCount ? "#3DAA72" : visitCount < prevVisitCount ? "#E05C5C" : sub,
-        fontWeight: 600
-      }
-    }, visitCount === prevVisitCount ? "tyle samo" : (visitCount > prevVisitCount ? "↑ +" : "↓ −") + Math.abs(visitCount - prevVisitCount), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontWeight: 400,
-        color: sub
-      }
-    }, " vs ", viewMode === "month" ? "poprz. miesiąc" : viewMode === "week" ? "poprz. tydzień" : "poprz. rok", visitOngoing ? " (trwa)" : ""))), /*#__PURE__*/React.createElement("div", {
-      title: "Wizyty w ostatnich 12 miesi\u0105cach",
-      "aria-label": "Liczba wizyt w ostatnich 12 miesi\u0105cach",
-      style: {
-        display: "flex",
-        alignItems: "flex-end",
-        gap: 2,
-        height: 22,
-        flexShrink: 0
-      }
-    }, visitTrend.counts.map(function (n, i) {
-      var mx = Math.max.apply(Math, [1].concat(_toConsumableArray(visitTrend.counts)));
-      return /*#__PURE__*/React.createElement("div", {
-        key: i,
-        title: PL_MON[+visitTrend.months[i].slice(5, 7) - 1] + " " + visitTrend.months[i].slice(0, 4) + ": " + n + " " + plWiz(n),
-        style: {
-          width: 5,
-          height: Math.max(2, Math.round(n / mx * 22)),
-          borderRadius: 1.5,
-          background: c.color,
-          opacity: i === visitTrend.sel ? 1 : .4
-        }
-      });
-    })))), isOpen && /*#__PURE__*/React.createElement("div", {
+    }))), isOpen && /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 8,
         paddingLeft: 2
