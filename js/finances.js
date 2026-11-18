@@ -86,6 +86,94 @@
       });
       return out;
     };
+    // ── KOSZTY FIRMY (Finanse → 🏠): ile naprawdę kosztuje prowadzenie firmy w wybranym miesiącu/roku, z budżetu ──
+    // Co się liczy do kosztów firmy, wybiera użytkownik (✏️): kategorie i podkategorie wydatków z Budżetu; domyślnie cała kategoria "Firma".
+    function BusinessCosts({budget,setBudget,viewMode,month,year,inc,bg2,dk,sub,border}) {
+      const demo=useDemo();
+      const txt=dk?"#C8E8E8":"#1C2B3A";
+      const [editing,setEditing]=useState(false);
+      const [draft,setDraft]=useState([]);
+      const cats=useMemo(()=>normCats((budget&&budget.expenseCategories)||[]),[budget]);
+      const opts=c=>[c.name.trim().toLowerCase()+"|",...(c.subs||[]).map(x=>c.name.trim().toLowerCase()+"|"+String(x).trim().toLowerCase())];
+      const defaultSel=()=>{const f=cats.find(c=>c.name.trim().toLowerCase()==="firma");return f?opts(f):[];};
+      const d=useMemo(()=>{
+        const today=todayLocal();
+        let yms;
+        if(viewMode==="month")yms=[month];
+        else{ // rok: do bieżącego miesiąca (przyszłe cykliczne jeszcze nie są kosztem)
+          const last=String(year)===today.slice(0,4)?+today.slice(5,7):12;
+          yms=Array.from({length:last},(_,i)=>year+"-"+String(i+1).padStart(2,"0"));
+        }
+        const tot={};
+        yms.forEach(ym=>{const o=businessCostsByMonth(budget,ym);Object.keys(o).forEach(k=>{tot[k]=(tot[k]||0)+o[k];});});
+        const ORDER=["zus","podatek","kredyt","marketing","inwestycje"];
+        const keys=Object.keys(tot).filter(k=>tot[k]>0).sort((a,b)=>{
+          const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);
+          if(a==="inne")return 1;if(b==="inne")return -1;
+          if(ia>=0&&ib>=0)return ia-ib;if(ia>=0)return -1;if(ib>=0)return 1;
+          return a.localeCompare(b,"pl");
+        });
+        const total=keys.reduce((s,k)=>s+tot[k],0);
+        return {tot,keys,total};
+      },[budget,viewMode,month,year]);
+      const name=k=>k==="zus"?"ZUS":k.charAt(0).toUpperCase()+k.slice(1);
+      const left=inc-d.total;
+      const pct=inc>0?Math.round(d.total/inc*100):null;
+      const row={display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:13};
+      const curSel=Array.isArray(budget&&budget.businessSel)?budget.businessSel:defaultSel();
+      const openEdit=()=>{setDraft(curSel.slice());setEditing(true);};
+      const toggle=(list)=>setDraft(dr=>list.every(x=>dr.includes(x))?dr.filter(x=>!list.includes(x)):[...new Set([...dr,...list])]);
+      const Check=({on,part,label,onClick,bold,indent})=><div onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0 7px "+(indent?26:0)+"px",cursor:"pointer"}}>
+        <div style={{width:20,height:20,borderRadius:6,border:"2px solid "+(on||part?"#3DAA72":"#B9C7DA"),background:on?"#3DAA72":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:on?"#fff":"#3DAA72",fontSize:12,fontWeight:800,flexShrink:0}}>{on?"✓":part?"–":""}</div>
+        <span style={{fontSize:14,fontWeight:bold?700:400,color:txt}}>{label}</span>
+      </div>;
+      const editBtn=<button onClick={openEdit} aria-label="Edytuj, co liczyć jako koszty firmy" style={{background:"transparent",border:"none",cursor:"pointer",fontSize:14,color:sub,padding:"2px 6px"}}>✏️</button>;
+      const shell=(children)=><div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>{children}</div>;
+      return <>
+        {shell(<>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <SectionLabel style={{marginBottom:0}}>Koszty firmy ({viewMode==="month"?"ten miesiąc":"rok "+year})</SectionLabel>
+            {editBtn}
+          </div>
+          {!(d.total>0)&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak kosztów w tym okresie. Kliknij ✏️, żeby wybrać, co liczyć jako koszty firmy (domyślnie kategoria Firma z Budżetu).</div>}
+          {d.total>0&&<>
+            {d.keys.map(k=><div key={k} style={row}>
+              <span style={{color:txt,fontWeight:500}}>{name(k)}{k==="inwestycje"&&<span style={{color:sub,fontSize:11,fontWeight:400}}> (zakup sprzętu)</span>}</span>
+              <span style={{color:sub,whiteSpace:"nowrap"}}>{demo?"****":d.tot[k].toFixed(2)} zł <span style={{fontSize:11}}>({Math.round(d.tot[k]/d.total*100)}%)</span></span>
+            </div>)}
+            <div style={{...row,borderTop:"1px solid "+border,marginTop:6,paddingTop:9}}>
+              <span style={{color:txt,fontWeight:700}}>Razem koszty firmy</span>
+              <span style={{color:"#E05C5C",fontWeight:800,whiteSpace:"nowrap"}}>{demo?"****":d.total.toFixed(2)} zł</span>
+            </div>
+            <div style={row}>
+              <span style={{color:sub}}>Przychód{pct!=null&&!demo?" (koszty to "+pct+"%)":""}</span>
+              <span style={{color:sub,whiteSpace:"nowrap"}}>{demo?"****":inc.toFixed(2)} zł</span>
+            </div>
+            <div style={row}>
+              <span style={{color:txt,fontWeight:700}}>Zostaje po kosztach</span>
+              <span style={{color:left>=0?"#3DAA72":"#E05C5C",fontWeight:800,whiteSpace:"nowrap"}}>{demo?"****":(left>=0?"+":"−")+Math.abs(left).toFixed(2)} zł</span>
+            </div>
+          </>}
+        </>)}
+        {editing&&<Modal title="Co liczyć jako koszty firmy" onClose={()=>setEditing(false)}>
+          <div style={{fontSize:13,color:sub,marginBottom:10,lineHeight:1.5}}>Zaznacz kategorie i podkategorie wydatków z Budżetu, które są kosztami Twojej firmy. Kwoty biorą się z Budżetu, więc nic nie trzeba wpisywać drugi raz.</div>
+          {cats.length===0&&<div style={{fontSize:13,color:sub}}>Brak kategorii wydatków w Budżecie.</div>}
+          {cats.map(c=>{const o=opts(c),all=o.every(x=>draft.includes(x)),some=o.some(x=>draft.includes(x));
+            return <div key={c.name} style={{marginBottom:6}}>
+              <Check on={all} part={some&&!all} label={c.name} bold onClick={()=>toggle(o)}/>
+              {(c.subs||[]).length>0&&<>
+                <Check indent on={draft.includes(o[0])} label="(bez podkategorii)" onClick={()=>toggle([o[0]])}/>
+                {(c.subs||[]).map((sb,i)=><Check key={sb} indent on={draft.includes(o[i+1])} label={sb} onClick={()=>toggle([o[i+1]])}/>)}
+              </>}
+            </div>;})}
+          <div style={{display:"flex",gap:8,marginTop:14}}>
+            <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setDraft(defaultSel())}>Tylko Firma</Btn>
+            <Btn style={{flex:1,justifyContent:"center"}} onClick={()=>{setBudget(b=>({...b,businessSel:draft}));setEditing(false);}}>Zapisz</Btn>
+          </div>
+        </Modal>}
+      </>;
+    }
+
     function PassiveRow({rentals,inPeriod,inPrevPeriod,base,isOpen,onToggle,border,sub,goToRental}) {
       const demo=useDemo();
       const dk=useContext(DarkCtx);
@@ -1336,6 +1424,8 @@
                 })}
                 <PassiveRow rentals={rentals} inPeriod={inPeriod} inPrevPeriod={inPrevPeriod} base={inc} isOpen={expandedCat==="__passive"} onToggle={()=>setExpandedCat(expandedCat==="__passive"?null:"__passive")} border={border} sub={sub} goToRental={goToRental}/>
               </div>}
+
+              {(viewMode==="month"||viewMode==="year")&&<BusinessCosts budget={budget} setBudget={setBudget} viewMode={viewMode} month={month} year={year} inc={inc} bg2={bg2} dk={dk} sub={sub} border={border}/>}
 
               {topPats.length>0&&<div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
                 <SectionLabel style={{marginBottom:12}}>Pacjenci</SectionLabel>

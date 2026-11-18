@@ -219,16 +219,351 @@ var passiveEvents = function passiveEvents(rentals) {
   });
   return out;
 };
-function PassiveRow(_ref3) {
-  var rentals = _ref3.rentals,
-    inPeriod = _ref3.inPeriod,
-    inPrevPeriod = _ref3.inPrevPeriod,
-    base = _ref3.base,
-    isOpen = _ref3.isOpen,
-    onToggle = _ref3.onToggle,
-    border = _ref3.border,
+// ── KOSZTY FIRMY (Finanse → 🏠): ile naprawdę kosztuje prowadzenie firmy w wybranym miesiącu/roku, z budżetu ──
+// Co się liczy do kosztów firmy, wybiera użytkownik (✏️): kategorie i podkategorie wydatków z Budżetu; domyślnie cała kategoria "Firma".
+function BusinessCosts(_ref3) {
+  var budget = _ref3.budget,
+    setBudget = _ref3.setBudget,
+    viewMode = _ref3.viewMode,
+    month = _ref3.month,
+    year = _ref3.year,
+    inc = _ref3.inc,
+    bg2 = _ref3.bg2,
+    dk = _ref3.dk,
     sub = _ref3.sub,
-    goToRental = _ref3.goToRental;
+    border = _ref3.border;
+  var demo = useDemo();
+  var txt = dk ? "#C8E8E8" : "#1C2B3A";
+  var _useState = useState(false),
+    _useState2 = _slicedToArray(_useState, 2),
+    editing = _useState2[0],
+    setEditing = _useState2[1];
+  var _useState3 = useState([]),
+    _useState4 = _slicedToArray(_useState3, 2),
+    draft = _useState4[0],
+    setDraft = _useState4[1];
+  var cats = useMemo(function () {
+    return normCats(budget && budget.expenseCategories || []);
+  }, [budget]);
+  var opts = function opts(c) {
+    return [c.name.trim().toLowerCase() + "|"].concat(_toConsumableArray((c.subs || []).map(function (x) {
+      return c.name.trim().toLowerCase() + "|" + String(x).trim().toLowerCase();
+    })));
+  };
+  var defaultSel = function defaultSel() {
+    var f = cats.find(function (c) {
+      return c.name.trim().toLowerCase() === "firma";
+    });
+    return f ? opts(f) : [];
+  };
+  var d = useMemo(function () {
+    var today = todayLocal();
+    var yms;
+    if (viewMode === "month") yms = [month];else {
+      // rok: do bieżącego miesiąca (przyszłe cykliczne jeszcze nie są kosztem)
+      var last = String(year) === today.slice(0, 4) ? +today.slice(5, 7) : 12;
+      yms = Array.from({
+        length: last
+      }, function (_, i) {
+        return year + "-" + String(i + 1).padStart(2, "0");
+      });
+    }
+    var tot = {};
+    yms.forEach(function (ym) {
+      var o = businessCostsByMonth(budget, ym);
+      Object.keys(o).forEach(function (k) {
+        tot[k] = (tot[k] || 0) + o[k];
+      });
+    });
+    var ORDER = ["zus", "podatek", "kredyt", "marketing", "inwestycje"];
+    var keys = Object.keys(tot).filter(function (k) {
+      return tot[k] > 0;
+    }).sort(function (a, b) {
+      var ia = ORDER.indexOf(a),
+        ib = ORDER.indexOf(b);
+      if (a === "inne") return 1;
+      if (b === "inne") return -1;
+      if (ia >= 0 && ib >= 0) return ia - ib;
+      if (ia >= 0) return -1;
+      if (ib >= 0) return 1;
+      return a.localeCompare(b, "pl");
+    });
+    var total = keys.reduce(function (s, k) {
+      return s + tot[k];
+    }, 0);
+    return {
+      tot: tot,
+      keys: keys,
+      total: total
+    };
+  }, [budget, viewMode, month, year]);
+  var name = function name(k) {
+    return k === "zus" ? "ZUS" : k.charAt(0).toUpperCase() + k.slice(1);
+  };
+  var left = inc - d.total;
+  var pct = inc > 0 ? Math.round(d.total / inc * 100) : null;
+  var row = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    padding: "5px 0",
+    fontSize: 13
+  };
+  var curSel = Array.isArray(budget && budget.businessSel) ? budget.businessSel : defaultSel();
+  var openEdit = function openEdit() {
+    setDraft(curSel.slice());
+    setEditing(true);
+  };
+  var toggle = function toggle(list) {
+    return setDraft(function (dr) {
+      return list.every(function (x) {
+        return dr.includes(x);
+      }) ? dr.filter(function (x) {
+        return !list.includes(x);
+      }) : _toConsumableArray(new Set([].concat(_toConsumableArray(dr), _toConsumableArray(list))));
+    });
+  };
+  var Check = function Check(_ref4) {
+    var on = _ref4.on,
+      part = _ref4.part,
+      label = _ref4.label,
+      onClick = _ref4.onClick,
+      bold = _ref4.bold,
+      indent = _ref4.indent;
+    return /*#__PURE__*/React.createElement("div", {
+      onClick: onClick,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "7px 0 7px " + (indent ? 26 : 0) + "px",
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 20,
+        height: 20,
+        borderRadius: 6,
+        border: "2px solid " + (on || part ? "#3DAA72" : "#B9C7DA"),
+        background: on ? "#3DAA72" : "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: on ? "#fff" : "#3DAA72",
+        fontSize: 12,
+        fontWeight: 800,
+        flexShrink: 0
+      }
+    }, on ? "✓" : part ? "–" : ""), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        fontWeight: bold ? 700 : 400,
+        color: txt
+      }
+    }, label));
+  };
+  var editBtn = /*#__PURE__*/React.createElement("button", {
+    onClick: openEdit,
+    "aria-label": "Edytuj, co liczy\u0107 jako koszty firmy",
+    style: {
+      background: "transparent",
+      border: "none",
+      cursor: "pointer",
+      fontSize: 14,
+      color: sub,
+      padding: "2px 6px"
+    }
+  }, "\u270F\uFE0F");
+  var shell = function shell(children) {
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: bg2,
+        borderRadius: 16,
+        padding: "16px",
+        marginBottom: 12,
+        boxShadow: dk ? "0 2px 14px rgba(0,0,0,.22)" : "0 2px 14px rgba(16,40,40,.06)"
+      }
+    }, children);
+  };
+  return /*#__PURE__*/React.createElement(React.Fragment, null, shell(/*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement(SectionLabel, {
+    style: {
+      marginBottom: 0
+    }
+  }, "Koszty firmy (", viewMode === "month" ? "ten miesiąc" : "rok " + year, ")"), editBtn), !(d.total > 0) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: sub,
+      padding: "4px 0"
+    }
+  }, "Brak koszt\xF3w w tym okresie. Kliknij \u270F\uFE0F, \u017Ceby wybra\u0107, co liczy\u0107 jako koszty firmy (domy\u015Blnie kategoria Firma z Bud\u017Cetu)."), d.total > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, d.keys.map(function (k) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: k,
+      style: row
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: txt,
+        fontWeight: 500
+      }
+    }, name(k), k === "inwestycje" && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: sub,
+        fontSize: 11,
+        fontWeight: 400
+      }
+    }, " (zakup sprz\u0119tu)")), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: sub,
+        whiteSpace: "nowrap"
+      }
+    }, demo ? "****" : d.tot[k].toFixed(2), " z\u0142 ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11
+      }
+    }, "(", Math.round(d.tot[k] / d.total * 100), "%)")));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: _objectSpread(_objectSpread({}, row), {}, {
+      borderTop: "1px solid " + border,
+      marginTop: 6,
+      paddingTop: 9
+    })
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: txt,
+      fontWeight: 700
+    }
+  }, "Razem koszty firmy"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "#E05C5C",
+      fontWeight: 800,
+      whiteSpace: "nowrap"
+    }
+  }, demo ? "****" : d.total.toFixed(2), " z\u0142")), /*#__PURE__*/React.createElement("div", {
+    style: row
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: sub
+    }
+  }, "Przych\xF3d", pct != null && !demo ? " (koszty to " + pct + "%)" : ""), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: sub,
+      whiteSpace: "nowrap"
+    }
+  }, demo ? "****" : inc.toFixed(2), " z\u0142")), /*#__PURE__*/React.createElement("div", {
+    style: row
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: txt,
+      fontWeight: 700
+    }
+  }, "Zostaje po kosztach"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: left >= 0 ? "#3DAA72" : "#E05C5C",
+      fontWeight: 800,
+      whiteSpace: "nowrap"
+    }
+  }, demo ? "****" : (left >= 0 ? "+" : "−") + Math.abs(left).toFixed(2), " z\u0142"))))), editing && /*#__PURE__*/React.createElement(Modal, {
+    title: "Co liczy\u0107 jako koszty firmy",
+    onClose: function onClose() {
+      return setEditing(false);
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: sub,
+      marginBottom: 10,
+      lineHeight: 1.5
+    }
+  }, "Zaznacz kategorie i podkategorie wydatk\xF3w z Bud\u017Cetu, kt\xF3re s\u0105 kosztami Twojej firmy. Kwoty bior\u0105 si\u0119 z Bud\u017Cetu, wi\u0119c nic nie trzeba wpisywa\u0107 drugi raz."), cats.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: sub
+    }
+  }, "Brak kategorii wydatk\xF3w w Bud\u017Cecie."), cats.map(function (c) {
+    var o = opts(c),
+      all = o.every(function (x) {
+        return draft.includes(x);
+      }),
+      some = o.some(function (x) {
+        return draft.includes(x);
+      });
+    return /*#__PURE__*/React.createElement("div", {
+      key: c.name,
+      style: {
+        marginBottom: 6
+      }
+    }, /*#__PURE__*/React.createElement(Check, {
+      on: all,
+      part: some && !all,
+      label: c.name,
+      bold: true,
+      onClick: function onClick() {
+        return toggle(o);
+      }
+    }), (c.subs || []).length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Check, {
+      indent: true,
+      on: draft.includes(o[0]),
+      label: "(bez podkategorii)",
+      onClick: function onClick() {
+        return toggle([o[0]]);
+      }
+    }), (c.subs || []).map(function (sb, i) {
+      return /*#__PURE__*/React.createElement(Check, {
+        key: sb,
+        indent: true,
+        on: draft.includes(o[i + 1]),
+        label: sb,
+        onClick: function onClick() {
+          return toggle([o[i + 1]]);
+        }
+      });
+    })));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement(Btn, {
+    variant: "secondary",
+    style: {
+      flex: 1,
+      justifyContent: "center"
+    },
+    onClick: function onClick() {
+      return setDraft(defaultSel());
+    }
+  }, "Tylko Firma"), /*#__PURE__*/React.createElement(Btn, {
+    style: {
+      flex: 1,
+      justifyContent: "center"
+    },
+    onClick: function onClick() {
+      setBudget(function (b) {
+        return _objectSpread(_objectSpread({}, b), {}, {
+          businessSel: draft
+        });
+      });
+      setEditing(false);
+    }
+  }, "Zapisz"))));
+}
+function PassiveRow(_ref5) {
+  var rentals = _ref5.rentals,
+    inPeriod = _ref5.inPeriod,
+    inPrevPeriod = _ref5.inPrevPeriod,
+    base = _ref5.base,
+    isOpen = _ref5.isOpen,
+    onToggle = _ref5.onToggle,
+    border = _ref5.border,
+    sub = _ref5.sub,
+    goToRental = _ref5.goToRental;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
   var ev = useMemo(function () {
@@ -401,9 +736,9 @@ var pctSplit = function pctSplit(vals) {
     return [r - fl[i], i];
   }).sort(function (a, b) {
     return b[0] - a[0];
-  }).forEach(function (_ref4) {
-    var _ref5 = _slicedToArray(_ref4, 2),
-      i = _ref5[1];
+  }).forEach(function (_ref6) {
+    var _ref7 = _slicedToArray(_ref6, 2),
+      i = _ref7[1];
     if (rest > 0) {
       fl[i]++;
       rest--;
@@ -443,12 +778,12 @@ var chunkRanges = function chunkRanges(year, gran) {
 };
 
 // ── STATYSTYKI (dawniej Sprzęt) — lista rozwijana ────────────────────────
-function StatSpark(_ref6) {
-  var vals = _ref6.vals,
-    w = _ref6.w,
-    h = _ref6.h,
-    color = _ref6.color,
-    sel = _ref6.sel;
+function StatSpark(_ref8) {
+  var vals = _ref8.vals,
+    w = _ref8.w,
+    h = _ref8.h,
+    color = _ref8.color,
+    sel = _ref8.sel;
   var mx = Math.max.apply(Math, [1].concat(_toConsumableArray(vals))) * 1.08;
   var pts = vals.map(function (v, i) {
     return [2 + i / Math.max(1, vals.length - 1) * (w - 4), h - 2 - v / mx * (h - 6)];
@@ -494,14 +829,14 @@ function StatSpark(_ref6) {
     fill: color
   }));
 }
-function StatDonut(_ref7) {
-  var rows = _ref7.rows,
-    size = _ref7.size,
-    top = _ref7.top,
-    bottom = _ref7.bottom,
-    track = _ref7.track,
-    ink = _ref7.ink,
-    sub = _ref7.sub;
+function StatDonut(_ref9) {
+  var rows = _ref9.rows,
+    size = _ref9.size,
+    top = _ref9.top,
+    bottom = _ref9.bottom,
+    track = _ref9.track,
+    ink = _ref9.ink,
+    sub = _ref9.sub;
   var r = size / 2 - 9,
     c = 2 * Math.PI * r;
   var tot = rows.reduce(function (s, x) {
@@ -557,16 +892,16 @@ function StatDonut(_ref7) {
     fontFamily: "DM Sans"
   }, bottom));
 }
-function StatAcc(_ref8) {
-  var open = _ref8.open,
-    onToggle = _ref8.onToggle,
-    title = _ref8.title,
-    sub = _ref8.sub,
-    mini = _ref8.mini,
-    keyVal = _ref8.keyVal,
-    keyColor = _ref8.keyColor,
-    children = _ref8.children,
-    dk = _ref8.dk;
+function StatAcc(_ref0) {
+  var open = _ref0.open,
+    onToggle = _ref0.onToggle,
+    title = _ref0.title,
+    sub = _ref0.sub,
+    mini = _ref0.mini,
+    keyVal = _ref0.keyVal,
+    keyColor = _ref0.keyColor,
+    children = _ref0.children,
+    dk = _ref0.dk;
   var bd = dk ? "#2A3A56" : "#E4EAF3";
   var ref = useRef(null);
   var mounted = useRef(false);
@@ -661,81 +996,81 @@ function StatAcc(_ref8) {
     }
   }, children));
 }
-function RentalStats(_ref9) {
-  var rentals = _ref9.rentals,
-    stock = _ref9.stock,
-    setStock = _ref9.setStock,
-    finances = _ref9.finances,
-    setFinances = _ref9.setFinances,
-    budget = _ref9.budget,
-    setBudget = _ref9.setBudget,
-    machines = _ref9.machines,
-    setMachines = _ref9.setMachines,
-    nfzCases = _ref9.nfzCases,
-    goToRental = _ref9.goToRental,
-    goToWozki = _ref9.goToWozki;
+function RentalStats(_ref1) {
+  var rentals = _ref1.rentals,
+    stock = _ref1.stock,
+    setStock = _ref1.setStock,
+    finances = _ref1.finances,
+    setFinances = _ref1.setFinances,
+    budget = _ref1.budget,
+    setBudget = _ref1.setBudget,
+    machines = _ref1.machines,
+    setMachines = _ref1.setMachines,
+    nfzCases = _ref1.nfzCases,
+    goToRental = _ref1.goToRental,
+    goToWozki = _ref1.goToWozki;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
-  var _useState = useState("month"),
-    _useState2 = _slicedToArray(_useState, 2),
-    scope = _useState2[0],
-    setScope = _useState2[1];
-  var _useState3 = useState(function () {
+  var _useState5 = useState("month"),
+    _useState6 = _slicedToArray(_useState5, 2),
+    scope = _useState6[0],
+    setScope = _useState6[1];
+  var _useState7 = useState(function () {
       return todayLocal().slice(0, 7);
     }),
-    _useState4 = _slicedToArray(_useState3, 2),
-    selMonth = _useState4[0],
-    setSelMonth = _useState4[1];
-  var _useState5 = useState(function () {
+    _useState8 = _slicedToArray(_useState7, 2),
+    selMonth = _useState8[0],
+    setSelMonth = _useState8[1];
+  var _useState9 = useState(function () {
       return new Date().getFullYear();
     }),
-    _useState6 = _slicedToArray(_useState5, 2),
-    statsYear = _useState6[0],
-    setStatsYear = _useState6[1];
+    _useState0 = _slicedToArray(_useState9, 2),
+    statsYear = _useState0[0],
+    setStatsYear = _useState0[1];
   // każda sekcja rozwija się niezależnie; domyślnie otwarta: Przychód ze sprzętu (razem ze źródłami klientów)
-  var _useState7 = useState({
+  var _useState1 = useState({
       rev: true
     }),
-    _useState8 = _slicedToArray(_useState7, 2),
-    openMap = _useState8[0],
-    setOpenMap = _useState8[1];
+    _useState10 = _slicedToArray(_useState1, 2),
+    openMap = _useState10[0],
+    setOpenMap = _useState10[1];
   var setOpenSec = function setOpenSec(id) {
     return setOpenMap(function (m) {
       return _objectSpread(_objectSpread({}, m), {}, _defineProperty({}, id, true));
     });
   };
-  var _useState9 = useState(null),
-    _useState0 = _slicedToArray(_useState9, 2),
-    roiEq = _useState0[0],
-    setRoiEq = _useState0[1];
-  var _useState1 = useState(false),
-    _useState10 = _slicedToArray(_useState1, 2),
-    showAllRoi = _useState10[0],
-    setShowAllRoi = _useState10[1];
   var _useState11 = useState(null),
     _useState12 = _slicedToArray(_useState11, 2),
-    repairForm = _useState12[0],
-    setRepairForm = _useState12[1];
+    roiEq = _useState12[0],
+    setRoiEq = _useState12[1];
   var _useState13 = useState(false),
     _useState14 = _slicedToArray(_useState13, 2),
-    showRentalList = _useState14[0],
-    setShowRentalList = _useState14[1];
-  var _useState15 = useState({}),
+    showAllRoi = _useState14[0],
+    setShowAllRoi = _useState14[1];
+  var _useState15 = useState(null),
     _useState16 = _slicedToArray(_useState15, 2),
-    adsListOpen = _useState16[0],
-    setAdsListOpen = _useState16[1]; // rozwinięte listy wpłat w blokach Reklamy (szyny/wozki/balkoniki)
-  var _useState17 = useState("all"),
+    repairForm = _useState16[0],
+    setRepairForm = _useState16[1];
+  var _useState17 = useState(false),
     _useState18 = _slicedToArray(_useState17, 2),
-    srcTab = _useState18[0],
-    setSrcTab = _useState18[1];
-  var _useState19 = useState("2w"),
+    showRentalList = _useState18[0],
+    setShowRentalList = _useState18[1];
+  var _useState19 = useState({}),
     _useState20 = _slicedToArray(_useState19, 2),
-    seasonGran = _useState20[0],
-    setSeasonGran = _useState20[1];
+    adsListOpen = _useState20[0],
+    setAdsListOpen = _useState20[1]; // rozwinięte listy wpłat w blokach Reklamy (szyny/wozki/balkoniki)
   var _useState21 = useState("all"),
     _useState22 = _slicedToArray(_useState21, 2),
-    seasonCat = _useState22[0],
-    setSeasonCat = _useState22[1]; // filtr sezonowości: wszystko / szyny / wózki / balkoniki
+    srcTab = _useState22[0],
+    setSrcTab = _useState22[1];
+  var _useState23 = useState("2w"),
+    _useState24 = _slicedToArray(_useState23, 2),
+    seasonGran = _useState24[0],
+    setSeasonGran = _useState24[1];
+  var _useState25 = useState("all"),
+    _useState26 = _slicedToArray(_useState25, 2),
+    seasonCat = _useState26[0],
+    setSeasonCat = _useState26[1]; // filtr sezonowości: wszystko / szyny / wózki / balkoniki
   var equipmentAll = getActiveEquipmentNames(stock);
   var SZYNY_EQ = ["Artromot K1 2025", "Artromot K1 I", "Kinetec Spectra", "Kinetec Spectra SZ", "Optiflex", "OrthoRehab"];
   var BALKONIKI_EQ = ["Ambonka Paula", "Balkonik ortopedyczny"];
@@ -1884,10 +2219,10 @@ function RentalStats(_ref9) {
       padding: 3,
       marginBottom: 10
     }
-  }, [["month", "Miesiąc"], ["year", "Rok"]].map(function (_ref0) {
-    var _ref1 = _slicedToArray(_ref0, 2),
-      k = _ref1[0],
-      l = _ref1[1];
+  }, [["month", "Miesiąc"], ["year", "Rok"]].map(function (_ref10) {
+    var _ref11 = _slicedToArray(_ref10, 2),
+      k = _ref11[0],
+      l = _ref11[1];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -1988,12 +2323,12 @@ function RentalStats(_ref9) {
       height: 112,
       paddingTop: 14
     }
-  }, stats.monthlyArr.map(function (_ref10) {
-    var _ref11 = _slicedToArray(_ref10, 4),
-      m = _ref11[0],
-      v = _ref11[1],
-      w = _ref11[2],
-      tr = _ref11[3];
+  }, stats.monthlyArr.map(function (_ref12) {
+    var _ref13 = _slicedToArray(_ref12, 4),
+      m = _ref13[0],
+      v = _ref13[1],
+      w = _ref13[2],
+      tr = _ref13[3];
     var t = v + w + tr,
       h = Math.max(t > 0 ? 3 : 0, Math.round(t / stats.maxMonthly * 80)),
       hw = t > 0 ? w / t * 100 : 0,
@@ -2792,10 +3127,10 @@ function RentalStats(_ref9) {
       borderRadius: 10,
       padding: 2
     }
-  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref12) {
-    var _ref13 = _slicedToArray(_ref12, 2),
-      k = _ref13[0],
-      l = _ref13[1];
+  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref14) {
+    var _ref15 = _slicedToArray(_ref14, 2),
+      k = _ref15[0],
+      l = _ref15[1];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -3095,12 +3430,12 @@ function RentalStats(_ref9) {
       textAlign: "center",
       padding: "8px 0"
     }
-  }, "Brak sprz\u0119tu z przychodem lub kosztem zakupu"), roiShown.map(function (_ref14) {
-    var eq = _ref14.eq,
-      earned = _ref14.earned,
-      investment = _ref14.investment,
-      roi = _ref14.roi,
-      repairsPer100 = _ref14.repairsPer100;
+  }, "Brak sprz\u0119tu z przychodem lub kosztem zakupu"), roiShown.map(function (_ref16) {
+    var eq = _ref16.eq,
+      earned = _ref16.earned,
+      investment = _ref16.investment,
+      roi = _ref16.roi,
+      repairsPer100 = _ref16.repairsPer100;
     var isOpen = roiEq === eq;
     var c = getCosts(eq);
     var qty = getQty(eq);
@@ -3775,89 +4110,89 @@ function RentalStats(_ref9) {
 
 // ── FINANCES ──────────────────────────────────────────────────────────────
 
-function Finances(_ref15) {
-  var finances = _ref15.finances,
-    setFinances = _ref15.setFinances,
-    visits = _ref15.visits,
-    setVisits = _ref15.setVisits,
-    rentals = _ref15.rentals,
-    setRentals = _ref15.setRentals,
-    nfzCases = _ref15.nfzCases,
-    setNfzCases = _ref15.setNfzCases,
-    budget = _ref15.budget,
-    setBudget = _ref15.setBudget,
-    desk = _ref15.desk,
-    stock = _ref15.stock,
-    setStock = _ref15.setStock,
-    machines = _ref15.machines,
-    setMachines = _ref15.setMachines,
-    wealth = _ref15.wealth,
-    setWealth = _ref15.setWealth,
-    settings = _ref15.settings,
-    setSettings = _ref15.setSettings,
-    goToRental = _ref15.goToRental,
-    goToWozki = _ref15.goToWozki;
+function Finances(_ref17) {
+  var finances = _ref17.finances,
+    setFinances = _ref17.setFinances,
+    visits = _ref17.visits,
+    setVisits = _ref17.setVisits,
+    rentals = _ref17.rentals,
+    setRentals = _ref17.setRentals,
+    nfzCases = _ref17.nfzCases,
+    setNfzCases = _ref17.setNfzCases,
+    budget = _ref17.budget,
+    setBudget = _ref17.setBudget,
+    desk = _ref17.desk,
+    stock = _ref17.stock,
+    setStock = _ref17.setStock,
+    machines = _ref17.machines,
+    setMachines = _ref17.setMachines,
+    wealth = _ref17.wealth,
+    setWealth = _ref17.setWealth,
+    settings = _ref17.settings,
+    setSettings = _ref17.setSettings,
+    goToRental = _ref17.goToRental,
+    goToWozki = _ref17.goToWozki;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
-  var _useState23 = useState(null),
-    _useState24 = _slicedToArray(_useState23, 2),
-    editE = _useState24[0],
-    setEditE = _useState24[1];
-  var _useState25 = useState(function () {
+  var _useState27 = useState(null),
+    _useState28 = _slicedToArray(_useState27, 2),
+    editE = _useState28[0],
+    setEditE = _useState28[1];
+  var _useState29 = useState(function () {
       var h = window.location.hash.replace("#", "").split("-");
       return h[1] || "month";
     }),
-    _useState26 = _slicedToArray(_useState25, 2),
-    viewMode = _useState26[0],
-    setViewMode = _useState26[1];
+    _useState30 = _slicedToArray(_useState29, 2),
+    viewMode = _useState30[0],
+    setViewMode = _useState30[1];
   useEffect(function () {
     window.location.replace("#finances-" + viewMode);
   }, [viewMode]);
-  var _useState27 = useState(function () {
+  var _useState31 = useState(function () {
       return todayLocal().slice(0, 7);
     }),
-    _useState28 = _slicedToArray(_useState27, 2),
-    month = _useState28[0],
-    setMonth = _useState28[1];
-  var _useState29 = useState(function () {
+    _useState32 = _slicedToArray(_useState31, 2),
+    month = _useState32[0],
+    setMonth = _useState32[1];
+  var _useState33 = useState(function () {
       return todayLocal().slice(0, 4);
     }),
-    _useState30 = _slicedToArray(_useState29, 2),
-    year = _useState30[0],
-    setYear = _useState30[1];
-  var _useState31 = useState(function () {
+    _useState34 = _slicedToArray(_useState33, 2),
+    year = _useState34[0],
+    setYear = _useState34[1];
+  var _useState35 = useState(function () {
       var d = new Date();
       var day = d.getDay() || 7;
       d.setDate(d.getDate() - day + 1);
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }),
-    _useState32 = _slicedToArray(_useState31, 2),
-    weekStart = _useState32[0],
-    setWeekStart = _useState32[1];
-  var _useState33 = useState(function () {
+    _useState36 = _slicedToArray(_useState35, 2),
+    weekStart = _useState36[0],
+    setWeekStart = _useState36[1];
+  var _useState37 = useState(function () {
       return todayLocal().slice(0, 7) + "-01";
     }),
-    _useState34 = _slicedToArray(_useState33, 2),
-    rangeFrom = _useState34[0],
-    setRangeFrom = _useState34[1];
-  var _useState35 = useState(function () {
+    _useState38 = _slicedToArray(_useState37, 2),
+    rangeFrom = _useState38[0],
+    setRangeFrom = _useState38[1];
+  var _useState39 = useState(function () {
       return todayLocal();
     }),
-    _useState36 = _slicedToArray(_useState35, 2),
-    rangeTo = _useState36[0],
-    setRangeTo = _useState36[1];
-  var _useState37 = useState(null),
-    _useState38 = _slicedToArray(_useState37, 2),
-    toast = _useState38[0],
-    setToast = _useState38[1];
-  var _useState39 = useState(false),
     _useState40 = _slicedToArray(_useState39, 2),
-    showAllPats = _useState40[0],
-    setShowAllPats = _useState40[1];
+    rangeTo = _useState40[0],
+    setRangeTo = _useState40[1];
   var _useState41 = useState(null),
     _useState42 = _slicedToArray(_useState41, 2),
-    expandedCat = _useState42[0],
-    setExpandedCat = _useState42[1];
+    toast = _useState42[0],
+    setToast = _useState42[1];
+  var _useState43 = useState(false),
+    _useState44 = _slicedToArray(_useState43, 2),
+    showAllPats = _useState44[0],
+    setShowAllPats = _useState44[1];
+  var _useState45 = useState(null),
+    _useState46 = _slicedToArray(_useState45, 2),
+    expandedCat = _useState46[0],
+    setExpandedCat = _useState46[1];
   var cats = ["Wizyta", "Wypożyczalnia", "Wózek", "Inne"];
   var weekEnd = useMemo(function () {
     var d = new Date(weekStart + "T12:00:00");
@@ -3969,14 +4304,14 @@ function Finances(_ref15) {
       Wózek: "#7B4FBF",
       Inne: "#7A8FA6"
     };
-    return Object.entries(map).filter(function (_ref16) {
-      var _ref17 = _slicedToArray(_ref16, 2),
-        v = _ref17[1];
-      return v > 0;
-    }).map(function (_ref18) {
+    return Object.entries(map).filter(function (_ref18) {
       var _ref19 = _slicedToArray(_ref18, 2),
-        k = _ref19[0],
         v = _ref19[1];
+      return v > 0;
+    }).map(function (_ref20) {
+      var _ref21 = _slicedToArray(_ref20, 2),
+        k = _ref21[0],
+        v = _ref21[1];
       return {
         label: k,
         v: v,
@@ -4004,10 +4339,10 @@ function Finances(_ref15) {
     });
     return Object.entries(map).sort(function (a, b) {
       return b[1] - a[1];
-    }).map(function (_ref20) {
-      var _ref21 = _slicedToArray(_ref20, 2),
-        n = _ref21[0],
-        v = _ref21[1];
+    }).map(function (_ref22) {
+      var _ref23 = _slicedToArray(_ref22, 2),
+        n = _ref23[0],
+        v = _ref23[1];
       return [n, v, cnt[n] || 0];
     });
   }, [periodVisits, periodNonVisitFinances]);
@@ -4682,7 +5017,18 @@ function Finances(_ref15) {
     border: border,
     sub: sub,
     goToRental: goToRental
-  })), topPats.length > 0 && /*#__PURE__*/React.createElement("div", {
+  })), (viewMode === "month" || viewMode === "year") && /*#__PURE__*/React.createElement(BusinessCosts, {
+    budget: budget,
+    setBudget: setBudget,
+    viewMode: viewMode,
+    month: month,
+    year: year,
+    inc: inc,
+    bg2: bg2,
+    dk: dk,
+    sub: sub,
+    border: border
+  }), topPats.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       background: bg2,
       borderRadius: 16,
@@ -4694,11 +5040,11 @@ function Finances(_ref15) {
     style: {
       marginBottom: 12
     }
-  }, "Pacjenci"), visiblePats.map(function (_ref22, i) {
-    var _ref23 = _slicedToArray(_ref22, 3),
-      name = _ref23[0],
-      v = _ref23[1],
-      c = _ref23[2];
+  }, "Pacjenci"), visiblePats.map(function (_ref24, i) {
+    var _ref25 = _slicedToArray(_ref24, 3),
+      name = _ref25[0],
+      v = _ref25[1],
+      c = _ref25[2];
     return /*#__PURE__*/React.createElement("div", {
       key: name,
       style: {
@@ -4921,47 +5267,47 @@ function Finances(_ref15) {
 }
 
 // ── RECEIPT SCANNER ───────────────────────────────────────────────────────
-function ReceiptScanner(_ref24) {
-  var onClose = _ref24.onClose,
-    onConfirm = _ref24.onConfirm,
-    expCats = _ref24.expCats,
-    incCats = _ref24.incCats,
-    memory = _ref24.memory,
-    setMemory = _ref24.setMemory,
-    selMonth = _ref24.selMonth,
-    existingExpenses = _ref24.existingExpenses;
+function ReceiptScanner(_ref26) {
+  var onClose = _ref26.onClose,
+    onConfirm = _ref26.onConfirm,
+    expCats = _ref26.expCats,
+    incCats = _ref26.incCats,
+    memory = _ref26.memory,
+    setMemory = _ref26.setMemory,
+    selMonth = _ref26.selMonth,
+    existingExpenses = _ref26.existingExpenses;
   var dk = useContext(DarkCtx);
   var bg2 = dk ? "#18202F" : "#fff";
   var border = dk ? "#2A3A56" : "#D9E2F0";
   var sub = "#7A8FA6";
-  var _useState43 = useState([]),
-    _useState44 = _slicedToArray(_useState43, 2),
-    images = _useState44[0],
-    setImages = _useState44[1]; // base64 strings
-  var _useState45 = useState("upload"),
-    _useState46 = _slicedToArray(_useState45, 2),
-    step = _useState46[0],
-    setStep = _useState46[1]; // upload | analyzing | review | done
   var _useState47 = useState([]),
     _useState48 = _slicedToArray(_useState47, 2),
-    items = _useState48[0],
-    setItems = _useState48[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
-  var _useState49 = useState(todayLocal()),
+    images = _useState48[0],
+    setImages = _useState48[1]; // base64 strings
+  var _useState49 = useState("upload"),
     _useState50 = _slicedToArray(_useState49, 2),
-    receiptDate = _useState50[0],
-    setReceiptDate = _useState50[1];
-  var _useState51 = useState(""),
+    step = _useState50[0],
+    setStep = _useState50[1]; // upload | analyzing | review | done
+  var _useState51 = useState([]),
     _useState52 = _slicedToArray(_useState51, 2),
-    receiptTotal = _useState52[0],
-    setReceiptTotal = _useState52[1];
-  var _useState53 = useState(null),
+    items = _useState52[0],
+    setItems = _useState52[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
+  var _useState53 = useState(todayLocal()),
     _useState54 = _slicedToArray(_useState53, 2),
-    aiError = _useState54[0],
-    setAiError = _useState54[1];
-  var _useState55 = useState(false),
+    receiptDate = _useState54[0],
+    setReceiptDate = _useState54[1];
+  var _useState55 = useState(""),
     _useState56 = _slicedToArray(_useState55, 2),
-    dupWarning = _useState56[0],
-    setDupWarning = _useState56[1];
+    receiptTotal = _useState56[0],
+    setReceiptTotal = _useState56[1];
+  var _useState57 = useState(null),
+    _useState58 = _slicedToArray(_useState57, 2),
+    aiError = _useState58[0],
+    setAiError = _useState58[1];
+  var _useState59 = useState(false),
+    _useState60 = _slicedToArray(_useState59, 2),
+    dupWarning = _useState60[0],
+    setDupWarning = _useState60[1];
   var allExpCatNames = expCats.flatMap(function (c) {
     return [c.name].concat(_toConsumableArray((c.subs || []).map(function (s) {
       return c.name + "/" + s;
@@ -4992,7 +5338,7 @@ function ReceiptScanner(_ref24) {
     });
   };
   var analyze = /*#__PURE__*/function () {
-    var _ref25 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
+    var _ref27 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
       var memoryHints, catList, prompt, _data$content, content, resp, data, _data$error, text, jsonStart, jsonEnd, clean, parsed, newItems, day, sameDayTotal, _t, _t2;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.p = _context.n) {
@@ -5005,10 +5351,10 @@ function ReceiptScanner(_ref24) {
           case 1:
             setStep("analyzing");
             setAiError(null);
-            memoryHints = Object.entries(memory || {}).slice(0, 40).map(function (_ref26) {
-              var _ref27 = _slicedToArray(_ref26, 2),
-                k = _ref27[0],
-                v = _ref27[1];
+            memoryHints = Object.entries(memory || {}).slice(0, 40).map(function (_ref28) {
+              var _ref29 = _slicedToArray(_ref28, 2),
+                k = _ref29[0],
+                v = _ref29[1];
               return "\"".concat(k, "\" => \"").concat(v, "\"");
             }).join(", ");
             catList = allExpCatNames.join(", ");
@@ -5133,7 +5479,7 @@ function ReceiptScanner(_ref24) {
       }, _callee, null, [[8, 9], [2, 11]]);
     }));
     return function analyze() {
-      return _ref25.apply(this, arguments);
+      return _ref27.apply(this, arguments);
     };
   }();
   var updateItem = function updateItem(id, field, val) {

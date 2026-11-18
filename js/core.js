@@ -557,6 +557,37 @@ const marketingSpendByType = (budget, stock, ym) => {
   });
   return out;
 };
+// Koszty firmy z budżetu w miesiącu. Co się liczy, wybiera użytkownik (budget.businessSel = lista "kategoria|podkategoria" małymi literami,
+// "kategoria|" = wpisy bez podkategorii); bez wyboru liczy się cała kategoria "Firma". Podkategorie z "marketing"/"reklam" łączą się w "marketing".
+const businessCostsByMonth = (budget, ym) => {
+  const sel=budget&&Array.isArray(budget.businessSel)?new Set(budget.businessSel):null;
+  const known={};
+  ((budget&&budget.expenseCategories)||[]).forEach(c=>{const n=String(typeof c==="string"?c:c.name||"").trim().toLowerCase();known[n]=new Set((typeof c==="string"?[]:(c.subs||[])).map(x=>String(x).trim().toLowerCase()));});
+  const out={};
+  const add=(cat,sub,amt)=>{
+    const c=String(cat||"").trim().toLowerCase(),sl=String(sub||"").trim().toLowerCase();
+    let ok;
+    if(!sel)ok=c==="firma";
+    else ok=sel.has(c+"|"+sl)||(sl!==""&&!(known[c]&&known[c].has(sl))&&sel.has(c+"|"));   // podkategoria usunięta z listy → jak "bez podkategorii"
+    if(!ok)return;
+    let k;
+    if(c==="firma")k=!sl?"inne":/marketing|reklam/.test(sl)?"marketing":sl;
+    else k=c+(sl?" – "+sl:"");
+    out[k]=(out[k]||0)+(+amt||0);
+  };
+  const mData=(budget&&budget.months&&budget.months[ym])||{};
+  (mData.expenses||[]).forEach(e=>add(e.cat,e.subcat,e.amount));
+  ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense").forEach(r=>{
+    const rStart=(r.startMonth||"0000-00").slice(0,7);
+    const rEnd=(r.endMonth||"9999-99").slice(0,7);
+    if(ym>=rStart&&ym<=rEnd){
+      const ov=((budget.months||{})[ym]||{}).recurringOverrides||{};
+      const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
+      add(r.cat,r.subcat,(amt||0)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1));
+    }
+  });
+  return out;
+};
 const marketingSpendForMonth = (budget, stock, ym) => {
   const o=marketingSpendByType(budget,stock,ym);
   return o.szyny+o.wozki+o.balkoniki+o.ogolne;
