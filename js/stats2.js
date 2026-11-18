@@ -141,7 +141,7 @@
 
     // ── WYNIKI SPRZĘTU (dawniej tylko CPM): wynik, zysk po zwrocie zakupu, zwrot zakupu, stawka za dzień, puste dni — dla Wszystko / Szyny / Wózki / Balkoniki ──
     function CpmResults({c}) {
-      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,revenueInRangeCat,marketingByType,Z,kv,subC,textC,borderC,trackC,GREEN,RED,ORANGE,BLUE,dk}=c;
+      const {rentals,stock,machines,finances,today,pStart,pEnd,periodLabel,equipmentAll,catOf,revenueInRange,getMachineSrvForEq,getCosts,getTotalInvestment,allTimeRevenue,revenueInRangeCat,nfzRevenueInRange,marketingByType,Z,kv,subC,textC,borderC,trackC,GREEN,RED,ORANGE,BLUE,dk}=c;
       const [cat,setCat]=useState("szyny");   // domyślnie szyny CPM (jak dotąd); można przełączyć na wszystko / wózki / balkoniki
       const inCat=eq=>cat==="all"||catOf(eq)===cat;
       const d=useMemo(()=>{
@@ -247,7 +247,9 @@
           const p=Math.max(0,n1)-Math.max(0,n0);
           profitSum+=p;return {eq,p,done:n1>=0};
         }).filter(Boolean);
-        return {rows,overall,all,revSum,srvSum,emptySum,lostSum,capSum,bookedSum,pay,payTot,profitSum,profitRows,noCost};
+        // refundacje NFZ (wózki): bez kosztu zakupu, więc cała kwota jest zyskiem (dotyczy widoku Wszystko i Wózki)
+        const nfzSum=(cat==="all"||cat==="wozki")?nfzRevenueInRange(pStart,cutEnd):0;
+        return {rows,overall,all,revSum,srvSum,emptySum,lostSum,capSum,bookedSum,pay,payTot,profitSum,profitRows,noCost,nfzSum};
       },[rentals,stock,machines,finances,today,pStart,pEnd,equipmentAll,allTimeRevenue,cat]);
       const adSpend=cat==="all"?(marketingByType.szyny+marketingByType.wozki+marketingByType.balkoniki):(marketingByType[cat]||0);
       const catName={all:"cały sprzęt",szyny:"szyny CPM",wozki:"wózki",balkoniki:"balkoniki"}[cat];
@@ -270,12 +272,13 @@
         <StatNote lines={["Przychód to wpłaty z okresu.","Reklama wg podkategorii „Marketing …” w budżecie (dla wybranego rodzaju), serwis z kart sztuk i napraw typu.","Koszt zakupu nie jest tu odejmowany — patrz niżej."]}/>
 
         <div style={head}>Zysk po zwrocie zakupu — {periodLabel}</div>
-        {d.profitRows.length===0?<div style={{fontSize:12,color:subC}}>Brak sprzętu z wpisanym kosztem zakupu (wpisz w Opłacalności sprzętu).</div>:<>
-          {kv("Zysk po zwrocie zakupu",(d.profitSum>0?"+":"")+Z(Math.round(d.profitSum)),d.profitSum>0?GREEN:subC)}
+        {d.profitRows.length===0&&!(d.nfzSum>0)?<div style={{fontSize:12,color:subC}}>Brak sprzętu z wpisanym kosztem zakupu (wpisz w Opłacalności sprzętu).</div>:<>
+          {d.profitRows.length>0&&kv(d.nfzSum>0?"Sprzęt po zwrocie zakupu":"Zysk po zwrocie zakupu",(d.profitSum>0?"+":"")+Z(Math.round(d.profitSum)),d.profitSum>0?GREEN:subC)}
+          {d.nfzSum>0&&kv("+ Refundacje NFZ (bez kosztu zakupu)","+"+Z(Math.round(d.nfzSum)),GREEN)}
           {kv("− Reklama",adSpend>0?Z(adSpend):"0 zł",RED)}
-          {kv("= Zysk po zwrocie zakupu i reklamie",(Math.round(d.profitSum-adSpend)>0?"+":Math.round(d.profitSum-adSpend)<0?"−":"")+Z(Math.abs(Math.round(d.profitSum-adSpend))),d.profitSum-adSpend>0?GREEN:d.profitSum-adSpend<0?RED:subC)}
+          {kv("= Zysk po zwrocie zakupu i reklamie",(Math.round(d.profitSum+d.nfzSum-adSpend)>0?"+":Math.round(d.profitSum+d.nfzSum-adSpend)<0?"−":"")+Z(Math.abs(Math.round(d.profitSum+d.nfzSum-adSpend))),d.profitSum+d.nfzSum-adSpend>0?GREEN:d.profitSum+d.nfzSum-adSpend<0?RED:subC)}
         </>}
-        <StatNote lines={["Dopóki sprzęt nie odzyska kosztu zakupu i napraw, jego wynik spłaca inwestycję, więc zysk = 0.","Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.",d.noCost>0?"Pominięty sprzęt bez wpisanego kosztu zakupu: "+d.noCost+".":null]}/>
+        <StatNote lines={["Dopóki sprzęt nie odzyska kosztu zakupu i napraw, jego wynik spłaca inwestycję, więc zysk = 0.","Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.",d.nfzSum>0?"Refundacje NFZ nie mają kosztu zakupu sprzętu, więc liczą się w całości.":null,d.noCost>0?"Pominięty sprzęt bez wpisanego kosztu zakupu: "+d.noCost+".":null]}/>
 
         <div style={head}>Zwrot zakupu — tempo z ostatnich 12 miesięcy</div>
         {d.pay.length===0?<div style={{fontSize:12,color:subC}}>Brak sprzętu z wpisanym kosztem zakupu.</div>:<>

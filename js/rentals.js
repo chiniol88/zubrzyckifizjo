@@ -740,6 +740,7 @@
               const newPaid=ef.renewable?(cur?.amountPaid||0):((cur&&(cur.payments||[]).length>0)?(cur.payments||[]).reduce((t,q)=>t+(+q.amount||0),0):Math.min(+(ef.amountPaid||0),raw));
               const u={...ef,amount:raw,amountPaid:newPaid,patientId:pat?.id||ef.patientId||null,machineId:whValidMachineId(machines,ef.equipment,ef.machineId)};
               const emailTyped=u.email;delete u.email;   // e-mail idzie do karty pacjenta, nie do wypożyczenia
+              if(cur&&cur.transportPaid&&!(+u.transport>0)){u.transportPaid=false;u.transportPaidDate=null;}   // transport wyzerowany po opłaceniu: wpis finansowy znika (niżej), opłacenie się cofa
               rentalEmailToPatient(setPatients,u.patientId,u.patientName,emailTyped);
               // Dla jednorazowych bez payments: jeśli wpisano zapłacono → utwórz wpłatę i wpis finansowy
               const hasPayments=cur&&(cur.payments||[]).length>0;
@@ -765,9 +766,9 @@
                   const suffix=idx>=0?f.description.slice(idx+1):"";
                   return{...f,description:"Wypożyczenie – "+u.patientName+" ("+(u.equipment||"Do ustalenia")+")"+suffix};
                 }
-                if(isTransport) return{...f,description:"Transport – "+u.patientName+" ("+(u.equipment||"Do ustalenia")+")"};
+                if(isTransport) return{...f,amount:(cur.transportPaid?(+u.transport||0):f.amount),description:"Transport – "+u.patientName+" ("+(u.equipment||"Do ustalenia")+")"};   // kwota wpisu idzie za zmianą kwoty transportu
                 return f;
-              }));
+              }).filter(f=>!(f.sourceId==="transport-"+effectiveDetail&&!(+f.amount>0))));
               const pending=syncContactOnSave(
                 {kind:"rental",id:effectiveDetail,patientId:u.patientId,patientName:u.patientName,original:{phone:cur?.phone||"",address:cur?.address||""},updated:{phone:u.phone||"",address:u.address||""}},
                 {patients,setPatients,rentals,setRentals,nfzCases,setNfzCases}

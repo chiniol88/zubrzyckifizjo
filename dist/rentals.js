@@ -3358,6 +3358,10 @@ function Rentals(_ref7) {
         });
         var emailTyped = u.email;
         delete u.email; // e-mail idzie do karty pacjenta, nie do wypożyczenia
+        if (cur && cur.transportPaid && !(+u.transport > 0)) {
+          u.transportPaid = false;
+          u.transportPaidDate = null;
+        } // transport wyzerowany po opłaceniu: wpis finansowy znika (niżej), opłacenie się cofa
         rentalEmailToPatient(setPatients, u.patientId, u.patientName, emailTyped);
         // Dla jednorazowych bez payments: jeśli wpisano zapłacono → utwórz wpłatę i wpis finansowy
         var hasPayments = cur && (cur.payments || []).length > 0;
@@ -3417,9 +3421,12 @@ function Rentals(_ref7) {
               });
             }
             if (isTransport) return _objectSpread(_objectSpread({}, f), {}, {
+              amount: cur.transportPaid ? +u.transport || 0 : f.amount,
               description: "Transport – " + u.patientName + " (" + (u.equipment || "Do ustalenia") + ")"
-            });
+            }); // kwota wpisu idzie za zmianą kwoty transportu
             return f;
+          }).filter(function (f) {
+            return !(f.sourceId === "transport-" + effectiveDetail && !(+f.amount > 0));
           });
         });
         var pending = syncContactOnSave({

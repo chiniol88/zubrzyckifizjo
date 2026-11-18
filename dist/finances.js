@@ -1317,6 +1317,23 @@ function RentalStats(_ref9) {
     return total;
   };
 
+  // refundacje NFZ (prowizje za wózki) w przedziale dat: nie mają kosztu zakupu sprzętu, więc w "Zysku po zwrocie zakupu" liczą się w całości
+  var nfzRevenueInRange = function nfzRevenueInRange(from, to) {
+    if (from > to) return 0;
+    var t = 0;
+    (finances || []).forEach(function (f) {
+      if (f.type !== "przychód" || (f.date || "") < from || (f.date || "") > to) return;
+      var sid = f.sourceId || "";
+      if (sid.startsWith("wozek-")) {
+        var cid = +sid.slice(6);
+        if (cid && (nfzCases || []).some(function (x) {
+          return x.id === cid;
+        })) t += +f.amount || 0;
+      }
+    });
+    return t;
+  };
+
   // przychód w przedziale dla rodzaju sprzętu (szyny / wózki / balkoniki); "all" = jak revenueInRange bez filtra.
   // Wózki = wypożyczenia wózków + refundacje NFZ.
   var revenueInRangeCat = function revenueInRangeCat(from, to, cat) {
@@ -1847,6 +1864,7 @@ function RentalStats(_ref9) {
     equipmentAll: equipmentAll,
     revenueInRange: revenueInRange,
     revenueInRangeCat: revenueInRangeCat,
+    nfzRevenueInRange: nfzRevenueInRange,
     getMachineSrvForEq: getMachineSrvForEq,
     getCosts: getCosts,
     getTotalInvestment: getTotalInvestment,

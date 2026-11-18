@@ -603,6 +603,7 @@ function CpmResults(_ref7) {
     getTotalInvestment = c.getTotalInvestment,
     allTimeRevenue = c.allTimeRevenue,
     revenueInRangeCat = c.revenueInRangeCat,
+    nfzRevenueInRange = c.nfzRevenueInRange,
     marketingByType = c.marketingByType,
     Z = c.Z,
     kv = c.kv,
@@ -892,6 +893,8 @@ function CpmResults(_ref7) {
         done: n1 >= 0
       };
     }).filter(Boolean);
+    // refundacje NFZ (wózki): bez kosztu zakupu, więc cała kwota jest zyskiem (dotyczy widoku Wszystko i Wózki)
+    var nfzSum = cat === "all" || cat === "wozki" ? nfzRevenueInRange(pStart, cutEnd) : 0;
     return {
       rows: rows,
       overall: overall,
@@ -906,7 +909,8 @@ function CpmResults(_ref7) {
       payTot: payTot,
       profitSum: profitSum,
       profitRows: profitRows,
-      noCost: noCost
+      noCost: noCost,
+      nfzSum: nfzSum
     };
   }, [rentals, stock, machines, finances, today, pStart, pEnd, equipmentAll, allTimeRevenue, cat]);
   var adSpend = cat === "all" ? marketingByType.szyny + marketingByType.wozki + marketingByType.balkoniki : marketingByType[cat] || 0;
@@ -987,13 +991,13 @@ function CpmResults(_ref7) {
     lines: ["Przychód to wpłaty z okresu.", "Reklama wg podkategorii „Marketing …” w budżecie (dla wybranego rodzaju), serwis z kart sztuk i napraw typu.", "Koszt zakupu nie jest tu odejmowany — patrz niżej."]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
-  }, "Zysk po zwrocie zakupu \u2014 ", periodLabel), d.profitRows.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "Zysk po zwrocie zakupu \u2014 ", periodLabel), d.profitRows.length === 0 && !(d.nfzSum > 0) ? /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: subC
     }
-  }, "Brak sprz\u0119tu z wpisanym kosztem zakupu (wpisz w Op\u0142acalno\u015Bci sprz\u0119tu).") : /*#__PURE__*/React.createElement(React.Fragment, null, kv("Zysk po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), kv("− Reklama", adSpend > 0 ? Z(adSpend) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum - adSpend) > 0 ? "+" : Math.round(d.profitSum - adSpend) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum - adSpend))), d.profitSum - adSpend > 0 ? GREEN : d.profitSum - adSpend < 0 ? RED : subC)), /*#__PURE__*/React.createElement(StatNote, {
-    lines: ["Dopóki sprzęt nie odzyska kosztu zakupu i napraw, jego wynik spłaca inwestycję, więc zysk = 0.", "Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.", d.noCost > 0 ? "Pominięty sprzęt bez wpisanego kosztu zakupu: " + d.noCost + "." : null]
+  }, "Brak sprz\u0119tu z wpisanym kosztem zakupu (wpisz w Op\u0142acalno\u015Bci sprz\u0119tu).") : /*#__PURE__*/React.createElement(React.Fragment, null, d.profitRows.length > 0 && kv(d.nfzSum > 0 ? "Sprzęt po zwrocie zakupu" : "Zysk po zwrocie zakupu", (d.profitSum > 0 ? "+" : "") + Z(Math.round(d.profitSum)), d.profitSum > 0 ? GREEN : subC), d.nfzSum > 0 && kv("+ Refundacje NFZ (bez kosztu zakupu)", "+" + Z(Math.round(d.nfzSum)), GREEN), kv("− Reklama", adSpend > 0 ? Z(adSpend) : "0 zł", RED), kv("= Zysk po zwrocie zakupu i reklamie", (Math.round(d.profitSum + d.nfzSum - adSpend) > 0 ? "+" : Math.round(d.profitSum + d.nfzSum - adSpend) < 0 ? "−" : "") + Z(Math.abs(Math.round(d.profitSum + d.nfzSum - adSpend))), d.profitSum + d.nfzSum - adSpend > 0 ? GREEN : d.profitSum + d.nfzSum - adSpend < 0 ? RED : subC)), /*#__PURE__*/React.createElement(StatNote, {
+    lines: ["Dopóki sprzęt nie odzyska kosztu zakupu i napraw, jego wynik spłaca inwestycję, więc zysk = 0.", "Po zwrocie każda złotówka jest zyskiem. Gdy zwrot nastąpił w środku okresu, liczy się tylko nadwyżka.", d.nfzSum > 0 ? "Refundacje NFZ nie mają kosztu zakupu sprzętu, więc liczą się w całości." : null, d.noCost > 0 ? "Pominięty sprzęt bez wpisanego kosztu zakupu: " + d.noCost + "." : null]
   }), /*#__PURE__*/React.createElement("div", {
     style: head
   }, "Zwrot zakupu \u2014 tempo z ostatnich 12 miesi\u0119cy"), d.pay.length === 0 ? /*#__PURE__*/React.createElement("div", {
