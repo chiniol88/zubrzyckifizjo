@@ -1133,6 +1133,20 @@
       const periodVisits=useMemo(()=>(visits||[]).filter(v=>inPeriod(v.date)&&v.status!=="anulowana"&&!v.skipFinance&&visitStatus(v)==="zakończona"),[visits,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
       const visitCount=periodVisits.length;
       const visitAvg=visitCount>0?periodVisits.reduce((s,v)=>s+(+v.price||0),0)/visitCount:0;
+      // Trend liczby wizyt (karta Kategorie → Wizyta): liczba w okresie, różnica względem poprzedniego okresu i 12 miesięcy na małym wykresie
+      const visitOk=v=>v.status!=="anulowana"&&!v.skipFinance&&visitStatus(v)==="zakończona";
+      const prevVisitCount=useMemo(()=>(visits||[]).filter(v=>inPrevPeriod(v.date)&&visitOk(v)).length,[visits,viewMode,month,year,weekStart,weekEnd,rangeFrom,rangeTo]);
+      const visitTrend=useMemo(()=>{
+        const base=viewMode==="year"?year+"-12":viewMode==="month"?month:todayLocal().slice(0,7);
+        const months=Array.from({length:12},(_,i)=>ymAdd(base,i-11));
+        const idx={};months.forEach((m,i)=>{idx[m]=i;});
+        const counts=Array(12).fill(0);
+        (visits||[]).forEach(v=>{if(!v.date||!visitOk(v))return;const i=idx[v.date.slice(0,7)];if(i!==undefined)counts[i]++;});
+        return {months,counts,sel:viewMode==="week"||viewMode==="range"?-1:11};
+      },[visits,viewMode,month,year]);
+      const _td=todayLocal();
+      const visitOngoing=viewMode==="month"?month===_td.slice(0,7):viewMode==="week"?(_td>=weekStart&&_td<=weekEnd):viewMode==="year"?String(year)===_td.slice(0,4):false;   // okres jeszcze trwa: porównanie z pełnym poprzednim byłoby mylące
+      const plWiz=n=>n===1?"wizyta":(n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14))?"wizyty":"wizyt";
 
       // Finanse nie-wizytowe w okresie (payment, cycle, extend, wozek, ręczne)
       const periodNonVisitFinances=useMemo(()=>finances.filter(f=>{
@@ -1317,6 +1331,18 @@
                       <div style={{height:7,borderRadius:4,background:dk?"#2A3A56":"#F0F4F8"}}>
                         <div style={{height:"100%",width:pct+"%",background:c.color,borderRadius:4,transition:"width .3s"}}/>
                       </div>
+                      {c.label==="Wizyta"&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:10,marginTop:7}}>
+                        <div style={{fontSize:12,color:sub,lineHeight:1.4}}>
+                          <b style={{color:dk?"#C8E8E8":"#1C2B3A"}}>{visitCount} {plWiz(visitCount)}</b>
+                          {viewMode!=="range"&&<span style={{marginLeft:6,color:visitOngoing?sub:visitCount>prevVisitCount?"#3DAA72":visitCount<prevVisitCount?"#E05C5C":sub,fontWeight:600}}>
+                            {visitCount===prevVisitCount?"tyle samo":(visitCount>prevVisitCount?"↑ +":"↓ −")+Math.abs(visitCount-prevVisitCount)}
+                            <span style={{fontWeight:400,color:sub}}> vs {viewMode==="month"?"poprz. miesiąc":viewMode==="week"?"poprz. tydzień":"poprz. rok"}{visitOngoing?" (trwa)":""}</span>
+                          </span>}
+                        </div>
+                        <div title="Wizyty w ostatnich 12 miesiącach" aria-label="Liczba wizyt w ostatnich 12 miesiącach" style={{display:"flex",alignItems:"flex-end",gap:2,height:22,flexShrink:0}}>
+                          {visitTrend.counts.map((n,i)=>{const mx=Math.max(1,...visitTrend.counts);return <div key={i} title={PL_MON[+visitTrend.months[i].slice(5,7)-1]+" "+visitTrend.months[i].slice(0,4)+": "+n+" "+plWiz(n)} style={{width:5,height:Math.max(2,Math.round(n/mx*22)),borderRadius:1.5,background:c.color,opacity:i===visitTrend.sel?1:.4}}/>;})}
+                        </div>
+                      </div>}
                     </div>
                     {isOpen&&<div style={{marginTop:8,paddingLeft:2}}>
                       {entries.length===0&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak wpisów</div>}
