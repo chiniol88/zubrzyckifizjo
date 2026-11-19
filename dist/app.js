@@ -707,6 +707,15 @@ function AppWithSync(_ref2) {
       });
     });
   }, [rentalsLoaded, rentals]);
+  // Jedna data odbioru: jednorazowe wypożyczenia z "Planowanym odbiorem" scalamy z "Data do" (patrz mergePickup w core.js)
+  useEffect(function () {
+    if (!rentalsLoaded || !rentals || !rentals.some(needsPickupMerge)) return;
+    setRentals(function (rs) {
+      return rs.map(function (r) {
+        return needsPickupMerge(r) ? mergePickup(r) : r;
+      });
+    });
+  }, [rentalsLoaded, rentals]);
   useEffect(function () {
     if (!rentalsLoaded || !financesLoaded || !visits || !rentals || !finances) return;
     var now = new Date(),

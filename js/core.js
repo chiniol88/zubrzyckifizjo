@@ -391,6 +391,21 @@ const emptyRental = () => ({equipment:"",patientName:"",phone:"",address:"",star
 const VISIT_TYPES = ["Rehabilitacja domowa","Kinezyterapia","Masaż leczniczy","Krioterapia","Elektroterapia","Konsultacja","Inne"];
 const EQUIPMENT = ["Artromot K1 2025","Artromot K1 I","Kinetec Spectra","Kinetec Spectra SZ","Optiflex","OrthoRehab","Ambonka Paula","Balkonik ortopedyczny","Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
 const WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim","Wózek Vermeiren V500"];
+// JEDNA DATA ODBIORU na wypożyczenie (2026-11-20): jednorazowe = "Data do" (endDate + endTime/endAllDay/endUntil), odnawialne = "Planowany odbiór"
+// (plannedReturn + plannedReturnTime/AllDay/Until). Dawne jednorazowe z oboma polami: aktywne przenosimy do "Data do" (wygrywa planowany odbiór —
+// tę datę pokazywały kalendarz i Nadchodzące), zakończone tylko tracą zbędny planowany odbiór (ich "Data do" to faktyczny zwrot).
+const needsPickupMerge = r => !!r && !r.renewable && !!r.plannedReturn && !(r.status==="aktywne"&&WOZEK_EQUIPMENT.includes(r.equipment));
+const mergePickup = r => {
+  const o={...r};
+  if(r.status!=="zakończone"){
+    o.endDate=r.plannedReturn;
+    o.endTime=r.plannedReturnTime||r.endTime||"";
+    o.endUntil=r.plannedReturnUntil||"";
+    o.endAllDay=r.plannedReturnAllDay!==false;
+  }
+  delete o.plannedReturn;delete o.plannedReturnAllDay;delete o.plannedReturnTime;delete o.plannedReturnUntil;
+  return o;
+};
 const EQUIPMENT_GROUPS = [{key:"szyny",label:"Szyny CPM"},{key:"wozki",label:"Wózki"},{key:"balkoniki",label:"Balkoniki"}];
 
 // ── Miasto z adresu ─────────────────────────────────────────────────────────────────────────────────

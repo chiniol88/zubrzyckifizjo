@@ -1800,11 +1800,17 @@ function Rentals(_ref7) {
         color: "#7A8FA6",
         marginBottom: 3
       }
-    }, "Data do"), /*#__PURE__*/React.createElement("div", {
+    }, r.renewable ? r.status === "zakończone" ? "Data zakończenia" : "Odbiór" : "Data do (odbiór)"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontWeight: 600
       }
-    }, r.endDate || "—")), r.status === "aktywne" && !r.renewable && r.endDate && /*#__PURE__*/React.createElement("button", {
+    }, (r.renewable && r.status !== "zakończone" ? r.plannedReturn : r.endDate) || "—"), !r.renewable && r.endDate && r.status === "aktywne" && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#7A8FA6",
+        marginTop: 1
+      }
+    }, r.endAllDay || r.allDay ? "cały dzień" : r.endTime ? r.endTime + (r.endUntil ? "–" + r.endUntil : "") : "")), r.status === "aktywne" && !r.renewable && r.endDate && /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         setExtForm({
           newEndDate: "",
@@ -2625,7 +2631,7 @@ function Rentals(_ref7) {
         fontWeight: 400,
         marginLeft: 4
       }
-    }, r.startDate ? "· start " + r.startDate : "· czeka " + (r.reservedAt ? dateDiff(r.reservedAt, todayLocal()) : 0) + "d"))), /*#__PURE__*/React.createElement("div", {
+    }, r.startDate ? "· start " + r.startDate : "· czeka " + (r.reservedAt ? dateDiff(r.reservedAt, todayLocal()) : 0) + "d"))), r.renewable && /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 14,
         background: dk ? "#0F2020" : "#F0F9F5",

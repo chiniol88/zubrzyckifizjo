@@ -917,6 +917,26 @@ var emptyRental = function emptyRental() {
 var VISIT_TYPES = ["Rehabilitacja domowa", "Kinezyterapia", "Masaż leczniczy", "Krioterapia", "Elektroterapia", "Konsultacja", "Inne"];
 var EQUIPMENT = ["Artromot K1 2025", "Artromot K1 I", "Kinetec Spectra", "Kinetec Spectra SZ", "Optiflex", "OrthoRehab", "Ambonka Paula", "Balkonik ortopedyczny", "Wózek inwalidzki Elite Tim", "Wózek Vermeiren V500"];
 var WOZEK_EQUIPMENT = ["Wózek inwalidzki Elite Tim", "Wózek Vermeiren V500"];
+// JEDNA DATA ODBIORU na wypożyczenie (2026-11-20): jednorazowe = "Data do" (endDate + endTime/endAllDay/endUntil), odnawialne = "Planowany odbiór"
+// (plannedReturn + plannedReturnTime/AllDay/Until). Dawne jednorazowe z oboma polami: aktywne przenosimy do "Data do" (wygrywa planowany odbiór —
+// tę datę pokazywały kalendarz i Nadchodzące), zakończone tylko tracą zbędny planowany odbiór (ich "Data do" to faktyczny zwrot).
+var needsPickupMerge = function needsPickupMerge(r) {
+  return !!r && !r.renewable && !!r.plannedReturn && !(r.status === "aktywne" && WOZEK_EQUIPMENT.includes(r.equipment));
+};
+var mergePickup = function mergePickup(r) {
+  var o = _objectSpread({}, r);
+  if (r.status !== "zakończone") {
+    o.endDate = r.plannedReturn;
+    o.endTime = r.plannedReturnTime || r.endTime || "";
+    o.endUntil = r.plannedReturnUntil || "";
+    o.endAllDay = r.plannedReturnAllDay !== false;
+  }
+  delete o.plannedReturn;
+  delete o.plannedReturnAllDay;
+  delete o.plannedReturnTime;
+  delete o.plannedReturnUntil;
+  return o;
+};
 var EQUIPMENT_GROUPS = [{
   key: "szyny",
   label: "Szyny CPM"

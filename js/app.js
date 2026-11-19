@@ -153,6 +153,11 @@
         if(!needsMigration)return;
         setRentals(rs=>rs.map(r=>(r.status==="aktywne"&&!r.renewable&&WOZEK_EQUIPMENT.includes(r.equipment))?{...r,renewable:true}:r));
       },[rentalsLoaded,rentals]);
+      // Jedna data odbioru: jednorazowe wypożyczenia z "Planowanym odbiorem" scalamy z "Data do" (patrz mergePickup w core.js)
+      useEffect(()=>{
+        if(!rentalsLoaded||!rentals||!rentals.some(needsPickupMerge))return;
+        setRentals(rs=>rs.map(r=>needsPickupMerge(r)?mergePickup(r):r));
+      },[rentalsLoaded,rentals]);
       useEffect(()=>{
         if(!rentalsLoaded||!financesLoaded||!visits||!rentals||!finances)return;
         const now=new Date(),ex=new Set(finances.map(f=>f.sourceId).filter(Boolean)),toAdd=[];

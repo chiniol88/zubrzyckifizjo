@@ -428,7 +428,7 @@
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data od</div><div style={{fontWeight:600}}>{r.startDate}</div></div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
-                    <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Data do</div><div style={{fontWeight:600}}>{r.endDate||"—"}</div></div>
+                    <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>{r.renewable?(r.status==="zakończone"?"Data zakończenia":"Odbiór"):"Data do (odbiór)"}</div><div style={{fontWeight:600}}>{(r.renewable&&r.status!=="zakończone"?r.plannedReturn:r.endDate)||"—"}</div>{!r.renewable&&r.endDate&&r.status==="aktywne"&&<div style={{fontSize:11,color:"#7A8FA6",marginTop:1}}>{(r.endAllDay||r.allDay)?"cały dzień":(r.endTime?r.endTime+(r.endUntil?"–"+r.endUntil:""):"")}</div>}</div>
                     {r.status==="aktywne"&&!r.renewable&&r.endDate&&<button onClick={()=>{setExtForm({newEndDate:"",endTime:"10:00",amountDue:"",amountPaid:"",payDate:"",notes:"",editId:null});setShowExtend(true);}} style={{background:"#E1E9F5",border:"none",borderRadius:8,padding:"5px 10px",fontSize:12,fontWeight:600,color:"#3E6FB0",cursor:"pointer",fontFamily:"inherit"}}>+ Przedłuż</button>}
                   </div>
                   <div><div style={{fontSize:11,color:"#7A8FA6",marginBottom:3}}>Typ</div><div style={{fontWeight:600}}>{r.renewable?"Odnawialne":"Jednorazowe"}</div></div>
@@ -634,7 +634,7 @@
                     {r.reserved&&<span style={{fontSize:11,fontWeight:400,marginLeft:4}}>{r.startDate?"· start "+r.startDate:"· czeka "+(r.reservedAt?dateDiff(r.reservedAt,todayLocal()):0)+"d"}</span>}
                   </button>
                 </div>
-                <div style={{marginBottom:14,background:dk?"#0F2020":"#F0F9F5",borderRadius:12,padding:"12px 14px"}}>
+                {r.renewable&&<div style={{marginBottom:14,background:dk?"#0F2020":"#F0F9F5",borderRadius:12,padding:"12px 14px"}}>
                   <div style={{fontSize:12,color:"#3DAA72",marginBottom:8,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>📅 Planowany odbiór</div>
                   <Inp label="" value={r.plannedReturn||""} onChange={v=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:v||null}:x))} type="date"/>
                   {r.plannedReturn&&<><div style={{marginBottom:6,fontSize:12,fontWeight:600,color:"#7A8FA6",textTransform:"uppercase",letterSpacing:.5}}>Odbiór</div>
@@ -642,7 +642,7 @@
                   {r.plannedReturnAllDay===false&&<TimeRange kind="pickup" autofill={false} labelStart="Odbiór od godziny" labelEnd="do godziny" start={r.plannedReturnTime||"10:00"} end={r.plannedReturnUntil} onChange={(t,e)=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturnTime:t,plannedReturnUntil:e}:x))}/>}
                   <button onClick={()=>setRentals(rs=>rs.map(x=>x.id===r.id?{...x,plannedReturn:null,plannedReturnAllDay:undefined,plannedReturnTime:undefined,plannedReturnUntil:undefined}:x))} style={{background:"none",border:"none",fontSize:12,color:"#E05C5C",cursor:"pointer",fontFamily:"inherit",padding:"4px 0"}}>× Usuń planowany odbiór</button>
                   </>}
-                </div>
+                </div>}
                 {r.renewable&&<div style={{marginBottom:10}}>
                   <div style={{fontSize:12,color:"#7A8FA6",marginBottom:6,fontWeight:600}}>Data zakończenia wypożyczenia</div>
                   <Inp label="" value={closeDate||r.plannedReturn||""} onChange={v=>setCloseDate(v)} type="date"/>
