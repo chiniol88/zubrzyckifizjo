@@ -87,24 +87,16 @@
       return out;
     };
     // ── KOSZTY FIRMY (Finanse → 🏠): koszty prowadzenia firmy w wybranym miesiącu/roku — widać je, dodaje, poprawia i usuwa tutaj ──
-    // Dane są w tej samej bazie co Budżet (kategoria "Firma" z podkategoriami ZUS, Podatek itd.), więc Budżet i Statystyki widzą to samo,
-    // ale nie trzeba do niego wchodzić. Co się liczy do kosztów firmy, wybiera użytkownik przez ⚙ (domyślnie cała kategoria Firma).
+    // To okienko do kategorii "Firma" z Budżetu (te same dane i podkategorie, bez własnych ustawień), więc Budżet i Statystyki widzą to samo,
+    // ale nie trzeba do niego wchodzić.
     function BusinessCosts({budget,setBudget,viewMode,month,year,inc,bg2,dk,sub,border}) {
       const demo=useDemo();
       const txt=dk?"#C8E8E8":"#1C2B3A";
-      const [editing,setEditing]=useState(false);   // okno wyboru kategorii
-      const [draft,setDraft]=useState([]);
       const [openKey,setOpenKey]=useState(null);
       const [form,setForm]=useState(null);          // okno dodawania / poprawiania kosztu
       const cats=useMemo(()=>normCats((budget&&budget.expenseCategories)||[]),[budget]);
-      const opts=c=>[c.name.trim().toLowerCase()+"|",...(c.subs||[]).map(x=>c.name.trim().toLowerCase()+"|"+String(x).trim().toLowerCase())];
-      const defaultSel=()=>{const f=cats.find(c=>c.name.trim().toLowerCase()==="firma");return f?opts(f):[];};
-      // kategoria, do której trafiają nowe koszty z tego okna: "Firma", a gdy jej nie ma, pierwsza wybrana
-      const bizCatName=useMemo(()=>{
-        const f=cats.find(c=>c.name.trim().toLowerCase()==="firma");if(f)return f.name;
-        const selc=cats.find(c=>(Array.isArray(budget&&budget.businessSel)?budget.businessSel:[]).some(x=>x.startsWith(c.name.trim().toLowerCase()+"|")));
-        return selc?selc.name:"Firma";
-      },[cats,budget]);
+      // kategoria kosztów firmy = "Firma" z Budżetu (jeśli jej tam jeszcze nie ma, powstanie przy pierwszym koszcie)
+      const bizCatName=useMemo(()=>{const f=cats.find(c=>c.name.trim().toLowerCase()==="firma");return f?f.name:"Firma";},[cats]);
       const bizSubs=useMemo(()=>{const c=cats.find(x=>x.name===bizCatName);return c?(c.subs||[]):[];},[cats,bizCatName]);
       const yms=useMemo(()=>{
         const today=todayLocal();
@@ -128,9 +120,6 @@
       const left=inc-d.total;
       const pct=inc>0?Math.round(d.total/inc*100):null;
       const row={display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"5px 0",fontSize:13};
-      const curSel=Array.isArray(budget&&budget.businessSel)?budget.businessSel:defaultSel();
-      const openEdit=()=>{setDraft(curSel.slice());setEditing(true);};
-      const toggle=(list)=>setDraft(dr=>list.every(x=>dr.includes(x))?dr.filter(x=>!list.includes(x)):[...new Set([...dr,...list])]);
       const lastDay=ym=>ym+"-"+String(new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate()).padStart(2,"0");
 
       // ── zapis do Budżetu (te same struktury co w zakładce Budżet) ──
@@ -149,8 +138,6 @@
             const base=normCats(nb.expenseCategories||[]);
             const has=base.some(c=>c.name===bizCatName);
             nb={...nb,expenseCategories:has?base.map(c=>c.name===bizCatName?{...c,subs:[...(c.subs||[]),sc]}:c):[...base,{name:bizCatName,subs:[sc]}]};
-            // nowa podkategoria wchodzi do wybranych, jeśli wybór jest ręczny
-            if(Array.isArray(nb.businessSel))nb={...nb,businessSel:[...new Set([...nb.businessSel,bizCatName.trim().toLowerCase()+"|"+sc.toLowerCase()])]};
           }
           if(f.mode==="edit-one"){
             nb=dropOne(nb,f.ym,f.id);
@@ -180,10 +167,6 @@
         ?{mode:"edit-one",id:it.id,ym:it.ym,cat:it.cat,subcat:it.subcat,newSub:"",desc:it.desc,amount:String(it.amount),date:it.date||lastDay(it.ym)}
         :{mode:"edit-rec",id:it.id,ym:it.ym,subcat:it.subcat,desc:it.desc,amount:String(it.amount)});
 
-      const Check=({on,part,label,onClick,bold,indent})=><div onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0 7px "+(indent?26:0)+"px",cursor:"pointer"}}>
-        <div style={{width:20,height:20,borderRadius:6,border:"2px solid "+(on||part?"#3DAA72":"#B9C7DA"),background:on?"#3DAA72":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:on?"#fff":"#3DAA72",fontSize:12,fontWeight:800,flexShrink:0}}>{on?"✓":part?"–":""}</div>
-        <span style={{fontSize:14,fontWeight:bold?700:400,color:txt}}>{label}</span>
-      </div>;
       const ib={background:"transparent",border:"none",cursor:"pointer",fontSize:14,color:sub,padding:"2px 5px",fontFamily:"inherit"};
       const mk=/marketing|reklam/i;
       const isMk=form&&mk.test((bizCatName)+" "+(form.subcat==="__new"?form.newSub:form.subcat));
@@ -194,7 +177,6 @@
             <SectionLabel style={{marginBottom:0}}>Koszty firmy ({periodLbl})</SectionLabel>
             <div style={{display:"flex",alignItems:"center",gap:4}}>
               <button onClick={()=>setForm(newForm())} style={{background:"#E05C5C",color:"#fff",border:"none",borderRadius:9,padding:"5px 11px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Koszt</button>
-              <button onClick={openEdit} aria-label="Ustaw, co liczyć jako koszty firmy" title="Co liczyć jako koszty firmy" style={ib}>⚙</button>
             </div>
           </div>
           {!(d.total>0)&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak kosztów w tym okresie. Dodaj pierwszy przyciskiem „+ Koszt” (np. ZUS, podatek, kredyt).</div>}
@@ -264,22 +246,6 @@
           <Btn disabled={!(+String(form.amount).replace(",",".")>0)||(form.mode!=="edit-rec"&&!/^\d{4}-\d{2}-\d{2}$/.test(form.date))||(form.subcat==="__new"&&!String(form.newSub||"").trim())} style={{width:"100%",justifyContent:"center"}} onClick={save}>Zapisz</Btn>
         </Modal>}
 
-        {editing&&<Modal title="Co liczyć jako koszty firmy" onClose={()=>setEditing(false)}>
-          <div style={{fontSize:13,color:sub,marginBottom:10,lineHeight:1.5}}>Zaznacz kategorie i podkategorie wydatków z Budżetu, które są kosztami Twojej firmy. Kwoty biorą się z Budżetu, więc nic nie trzeba wpisywać drugi raz.</div>
-          {cats.length===0&&<div style={{fontSize:13,color:sub}}>Brak kategorii wydatków w Budżecie.</div>}
-          {cats.map(c=>{const o=opts(c),all=o.every(x=>draft.includes(x)),some=o.some(x=>draft.includes(x));
-            return <div key={c.name} style={{marginBottom:6}}>
-              <Check on={all} part={some&&!all} label={c.name} bold onClick={()=>toggle(o)}/>
-              {(c.subs||[]).length>0&&<>
-                <Check indent on={draft.includes(o[0])} label="(bez podkategorii)" onClick={()=>toggle([o[0]])}/>
-                {(c.subs||[]).map((sb,i)=><Check key={sb} indent on={draft.includes(o[i+1])} label={sb} onClick={()=>toggle([o[i+1]])}/>)}
-              </>}
-            </div>;})}
-          <div style={{display:"flex",gap:8,marginTop:14}}>
-            <Btn variant="secondary" style={{flex:1,justifyContent:"center"}} onClick={()=>setDraft(defaultSel())}>Tylko Firma</Btn>
-            <Btn style={{flex:1,justifyContent:"center"}} onClick={()=>{setBudget(b=>({...b,businessSel:draft}));setEditing(false);}}>Zapisz</Btn>
-          </div>
-        </Modal>}
       </>;
     }
 

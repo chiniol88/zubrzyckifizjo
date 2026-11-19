@@ -557,34 +557,22 @@ const marketingSpendByType = (budget, stock, ym) => {
   });
   return out;
 };
-// Pozycje kosztów firmy z budżetu w miesiącu (jednorazowe i cykliczne). Co się liczy, wybiera użytkownik (budget.businessSel = lista
-// "kategoria|podkategoria" małymi literami, "kategoria|" = wpisy bez podkategorii); bez wyboru liczy się cała kategoria "Firma".
-// Podkategorie z "marketing"/"reklam" łączą się w jedno "marketing". Zwraca [{key,kind:"one"|"rec",id,r?,cat,subcat,desc,amount,date,ym}].
+// Pozycje kosztów firmy z budżetu w miesiącu: wszystko z kategorii "Firma" (wydatki jednorazowe i cykliczne), z podkategoriami tak, jak są w Budżecie
+// (bez własnych ustawień i bez łączenia). Zwraca [{key,kind:"one"|"rec",id,r?,cat,subcat,desc,amount,date,ym}]; key = podkategoria małymi literami ("inne" = bez podkategorii).
 const businessItemsByMonth = (budget, ym) => {
-  const sel=budget&&Array.isArray(budget.businessSel)?new Set(budget.businessSel):null;
-  const known={};
-  ((budget&&budget.expenseCategories)||[]).forEach(c=>{const n=String(typeof c==="string"?c:c.name||"").trim().toLowerCase();known[n]=new Set((typeof c==="string"?[]:(c.subs||[])).map(x=>String(x).trim().toLowerCase()));});
-  const keyOf=(cat,sub)=>{
-    const c=String(cat||"").trim().toLowerCase(),sl=String(sub||"").trim().toLowerCase();
-    let ok;
-    if(!sel)ok=c==="firma";
-    else ok=sel.has(c+"|"+sl)||(sl!==""&&!(known[c]&&known[c].has(sl))&&sel.has(c+"|"));   // podkategoria usunięta z listy → jak "bez podkategorii"
-    if(!ok)return null;
-    if(c==="firma")return !sl?"inne":/marketing|reklam/.test(sl)?"marketing":sl;
-    return c+(sl?" – "+sl:"");
-  };
+  const isBiz=cat=>String(cat||"").trim().toLowerCase()==="firma";
+  const keyOf=sub=>{const sl=String(sub||"").trim().toLowerCase();return sl||"inne";};
   const out=[];
   const mData=(budget&&budget.months&&budget.months[ym])||{};
-  (mData.expenses||[]).forEach(e=>{const k=keyOf(e.cat,e.subcat);if(k&&(+e.amount||0)!==0)out.push({key:k,kind:"one",id:e.id,cat:e.cat,subcat:e.subcat||"",desc:e.desc||"",amount:+e.amount||0,date:e.date||"",ym});});
-  ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense").forEach(r=>{
+  (mData.expenses||[]).forEach(e=>{if(isBiz(e.cat)&&(+e.amount||0)!==0)out.push({key:keyOf(e.subcat),kind:"one",id:e.id,cat:e.cat,subcat:e.subcat||"",desc:e.desc||"",amount:+e.amount||0,date:e.date||"",ym});});
+  ((budget&&budget.recurring)||[]).filter(r=>r.type==="expense"&&isBiz(r.cat)).forEach(r=>{
     const rStart=(r.startMonth||"0000-00").slice(0,7);
     const rEnd=(r.endMonth||"9999-99").slice(0,7);
     if(ym>=rStart&&ym<=rEnd){
-      const k=keyOf(r.cat,r.subcat);if(!k)return;
       const ov=((budget.months||{})[ym]||{}).recurringOverrides||{};
       const amt=ov[r.id]!==undefined?+ov[r.id].amount:(+r.amount||0);
       const val=(amt||0)*(r.cycle==="weekly"?WEEKS_PER_MONTH:1);
-      if(val!==0)out.push({key:k,kind:"rec",id:r.id,r,cat:r.cat,subcat:r.subcat||"",desc:(ov[r.id]&&ov[r.id].desc)||r.desc||"",amount:val,date:"",ym,overridden:ov[r.id]!==undefined});
+      if(val!==0)out.push({key:keyOf(r.subcat),kind:"rec",id:r.id,r,cat:r.cat,subcat:r.subcat||"",desc:(ov[r.id]&&ov[r.id].desc)||r.desc||"",amount:val,date:"",ym,overridden:ov[r.id]!==undefined});
     }
   });
   return out;

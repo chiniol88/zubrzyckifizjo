@@ -6,15 +6,15 @@ function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present,
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
 function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, e) { if ("object" != _typeof(t) || !t) return t; var r; if ("undefined" != typeof Symbol && void 0 !== (r = t[Symbol.toPrimitive])) { var i = r.call(t, e || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === e ? String : Number)(t); }
-function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
-function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
-function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -220,8 +220,8 @@ var passiveEvents = function passiveEvents(rentals) {
   return out;
 };
 // ── KOSZTY FIRMY (Finanse → 🏠): koszty prowadzenia firmy w wybranym miesiącu/roku — widać je, dodaje, poprawia i usuwa tutaj ──
-// Dane są w tej samej bazie co Budżet (kategoria "Firma" z podkategoriami ZUS, Podatek itd.), więc Budżet i Statystyki widzą to samo,
-// ale nie trzeba do niego wchodzić. Co się liczy do kosztów firmy, wybiera użytkownik przez ⚙ (domyślnie cała kategoria Firma).
+// To okienko do kategorii "Firma" z Budżetu (te same dane i podkategorie, bez własnych ustawień), więc Budżet i Statystyki widzą to samo,
+// ale nie trzeba do niego wchodzić.
 function BusinessCosts(_ref3) {
   var budget = _ref3.budget,
     setBudget = _ref3.setBudget,
@@ -235,49 +235,24 @@ function BusinessCosts(_ref3) {
     border = _ref3.border;
   var demo = useDemo();
   var txt = dk ? "#C8E8E8" : "#1C2B3A";
-  var _useState = useState(false),
+  var _useState = useState(null),
     _useState2 = _slicedToArray(_useState, 2),
-    editing = _useState2[0],
-    setEditing = _useState2[1]; // okno wyboru kategorii
-  var _useState3 = useState([]),
+    openKey = _useState2[0],
+    setOpenKey = _useState2[1];
+  var _useState3 = useState(null),
     _useState4 = _slicedToArray(_useState3, 2),
-    draft = _useState4[0],
-    setDraft = _useState4[1];
-  var _useState5 = useState(null),
-    _useState6 = _slicedToArray(_useState5, 2),
-    openKey = _useState6[0],
-    setOpenKey = _useState6[1];
-  var _useState7 = useState(null),
-    _useState8 = _slicedToArray(_useState7, 2),
-    form = _useState8[0],
-    setForm = _useState8[1]; // okno dodawania / poprawiania kosztu
+    form = _useState4[0],
+    setForm = _useState4[1]; // okno dodawania / poprawiania kosztu
   var cats = useMemo(function () {
     return normCats(budget && budget.expenseCategories || []);
   }, [budget]);
-  var opts = function opts(c) {
-    return [c.name.trim().toLowerCase() + "|"].concat(_toConsumableArray((c.subs || []).map(function (x) {
-      return c.name.trim().toLowerCase() + "|" + String(x).trim().toLowerCase();
-    })));
-  };
-  var defaultSel = function defaultSel() {
-    var f = cats.find(function (c) {
-      return c.name.trim().toLowerCase() === "firma";
-    });
-    return f ? opts(f) : [];
-  };
-  // kategoria, do której trafiają nowe koszty z tego okna: "Firma", a gdy jej nie ma, pierwsza wybrana
+  // kategoria kosztów firmy = "Firma" z Budżetu (jeśli jej tam jeszcze nie ma, powstanie przy pierwszym koszcie)
   var bizCatName = useMemo(function () {
     var f = cats.find(function (c) {
       return c.name.trim().toLowerCase() === "firma";
     });
-    if (f) return f.name;
-    var selc = cats.find(function (c) {
-      return (Array.isArray(budget && budget.businessSel) ? budget.businessSel : []).some(function (x) {
-        return x.startsWith(c.name.trim().toLowerCase() + "|");
-      });
-    });
-    return selc ? selc.name : "Firma";
-  }, [cats, budget]);
+    return f ? f.name : "Firma";
+  }, [cats]);
   var bizSubs = useMemo(function () {
     var c = cats.find(function (x) {
       return x.name === bizCatName;
@@ -338,20 +313,6 @@ function BusinessCosts(_ref3) {
     alignItems: "baseline",
     padding: "5px 0",
     fontSize: 13
-  };
-  var curSel = Array.isArray(budget && budget.businessSel) ? budget.businessSel : defaultSel();
-  var openEdit = function openEdit() {
-    setDraft(curSel.slice());
-    setEditing(true);
-  };
-  var toggle = function toggle(list) {
-    return setDraft(function (dr) {
-      return list.every(function (x) {
-        return dr.includes(x);
-      }) ? dr.filter(function (x) {
-        return !list.includes(x);
-      }) : _toConsumableArray(new Set([].concat(_toConsumableArray(dr), _toConsumableArray(list))));
-    });
   };
   var lastDay = function lastDay(ym) {
     return ym + "-" + String(new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate()).padStart(2, "0");
@@ -425,10 +386,6 @@ function BusinessCosts(_ref3) {
             name: bizCatName,
             subs: [sc]
           }])
-        });
-        // nowa podkategoria wchodzi do wybranych, jeśli wybór jest ręczny
-        if (Array.isArray(nb.businessSel)) nb = _objectSpread(_objectSpread({}, nb), {}, {
-          businessSel: _toConsumableArray(new Set([].concat(_toConsumableArray(nb.businessSel), [bizCatName.trim().toLowerCase() + "|" + sc.toLowerCase()])))
         });
       }
       if (f.mode === "edit-one") {
@@ -520,45 +477,6 @@ function BusinessCosts(_ref3) {
       amount: String(it.amount)
     });
   };
-  var Check = function Check(_ref4) {
-    var on = _ref4.on,
-      part = _ref4.part,
-      label = _ref4.label,
-      onClick = _ref4.onClick,
-      bold = _ref4.bold,
-      indent = _ref4.indent;
-    return /*#__PURE__*/React.createElement("div", {
-      onClick: onClick,
-      style: {
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "7px 0 7px " + (indent ? 26 : 0) + "px",
-        cursor: "pointer"
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 20,
-        height: 20,
-        borderRadius: 6,
-        border: "2px solid " + (on || part ? "#3DAA72" : "#B9C7DA"),
-        background: on ? "#3DAA72" : "transparent",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: on ? "#fff" : "#3DAA72",
-        fontSize: 12,
-        fontWeight: 800,
-        flexShrink: 0
-      }
-    }, on ? "✓" : part ? "–" : ""), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 14,
-        fontWeight: bold ? 700 : 400,
-        color: txt
-      }
-    }, label));
-  };
   var ib = {
     background: "transparent",
     border: "none",
@@ -612,12 +530,7 @@ function BusinessCosts(_ref3) {
       cursor: "pointer",
       fontFamily: "inherit"
     }
-  }, "+ Koszt"), /*#__PURE__*/React.createElement("button", {
-    onClick: openEdit,
-    "aria-label": "Ustaw, co liczy\u0107 jako koszty firmy",
-    title: "Co liczy\u0107 jako koszty firmy",
-    style: ib
-  }, "\u2699"))), !(d.total > 0) && /*#__PURE__*/React.createElement("div", {
+  }, "+ Koszt"))), !(d.total > 0) && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: sub,
@@ -945,102 +858,18 @@ function BusinessCosts(_ref3) {
       justifyContent: "center"
     },
     onClick: save
-  }, "Zapisz")), editing && /*#__PURE__*/React.createElement(Modal, {
-    title: "Co liczy\u0107 jako koszty firmy",
-    onClose: function onClose() {
-      return setEditing(false);
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: sub,
-      marginBottom: 10,
-      lineHeight: 1.5
-    }
-  }, "Zaznacz kategorie i podkategorie wydatk\xF3w z Bud\u017Cetu, kt\xF3re s\u0105 kosztami Twojej firmy. Kwoty bior\u0105 si\u0119 z Bud\u017Cetu, wi\u0119c nic nie trzeba wpisywa\u0107 drugi raz."), cats.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 13,
-      color: sub
-    }
-  }, "Brak kategorii wydatk\xF3w w Bud\u017Cecie."), cats.map(function (c) {
-    var o = opts(c),
-      all = o.every(function (x) {
-        return draft.includes(x);
-      }),
-      some = o.some(function (x) {
-        return draft.includes(x);
-      });
-    return /*#__PURE__*/React.createElement("div", {
-      key: c.name,
-      style: {
-        marginBottom: 6
-      }
-    }, /*#__PURE__*/React.createElement(Check, {
-      on: all,
-      part: some && !all,
-      label: c.name,
-      bold: true,
-      onClick: function onClick() {
-        return toggle(o);
-      }
-    }), (c.subs || []).length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Check, {
-      indent: true,
-      on: draft.includes(o[0]),
-      label: "(bez podkategorii)",
-      onClick: function onClick() {
-        return toggle([o[0]]);
-      }
-    }), (c.subs || []).map(function (sb, i) {
-      return /*#__PURE__*/React.createElement(Check, {
-        key: sb,
-        indent: true,
-        on: draft.includes(o[i + 1]),
-        label: sb,
-        onClick: function onClick() {
-          return toggle([o[i + 1]]);
-        }
-      });
-    })));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "flex",
-      gap: 8,
-      marginTop: 14
-    }
-  }, /*#__PURE__*/React.createElement(Btn, {
-    variant: "secondary",
-    style: {
-      flex: 1,
-      justifyContent: "center"
-    },
-    onClick: function onClick() {
-      return setDraft(defaultSel());
-    }
-  }, "Tylko Firma"), /*#__PURE__*/React.createElement(Btn, {
-    style: {
-      flex: 1,
-      justifyContent: "center"
-    },
-    onClick: function onClick() {
-      setBudget(function (b) {
-        return _objectSpread(_objectSpread({}, b), {}, {
-          businessSel: draft
-        });
-      });
-      setEditing(false);
-    }
-  }, "Zapisz"))));
+  }, "Zapisz")));
 }
-function PassiveRow(_ref5) {
-  var rentals = _ref5.rentals,
-    inPeriod = _ref5.inPeriod,
-    inPrevPeriod = _ref5.inPrevPeriod,
-    base = _ref5.base,
-    isOpen = _ref5.isOpen,
-    onToggle = _ref5.onToggle,
-    border = _ref5.border,
-    sub = _ref5.sub,
-    goToRental = _ref5.goToRental;
+function PassiveRow(_ref4) {
+  var rentals = _ref4.rentals,
+    inPeriod = _ref4.inPeriod,
+    inPrevPeriod = _ref4.inPrevPeriod,
+    base = _ref4.base,
+    isOpen = _ref4.isOpen,
+    onToggle = _ref4.onToggle,
+    border = _ref4.border,
+    sub = _ref4.sub,
+    goToRental = _ref4.goToRental;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
   var ev = useMemo(function () {
@@ -1213,9 +1042,9 @@ var pctSplit = function pctSplit(vals) {
     return [r - fl[i], i];
   }).sort(function (a, b) {
     return b[0] - a[0];
-  }).forEach(function (_ref6) {
-    var _ref7 = _slicedToArray(_ref6, 2),
-      i = _ref7[1];
+  }).forEach(function (_ref5) {
+    var _ref6 = _slicedToArray(_ref5, 2),
+      i = _ref6[1];
     if (rest > 0) {
       fl[i]++;
       rest--;
@@ -1255,12 +1084,12 @@ var chunkRanges = function chunkRanges(year, gran) {
 };
 
 // ── STATYSTYKI (dawniej Sprzęt) — lista rozwijana ────────────────────────
-function StatSpark(_ref8) {
-  var vals = _ref8.vals,
-    w = _ref8.w,
-    h = _ref8.h,
-    color = _ref8.color,
-    sel = _ref8.sel;
+function StatSpark(_ref7) {
+  var vals = _ref7.vals,
+    w = _ref7.w,
+    h = _ref7.h,
+    color = _ref7.color,
+    sel = _ref7.sel;
   var mx = Math.max.apply(Math, [1].concat(_toConsumableArray(vals))) * 1.08;
   var pts = vals.map(function (v, i) {
     return [2 + i / Math.max(1, vals.length - 1) * (w - 4), h - 2 - v / mx * (h - 6)];
@@ -1306,14 +1135,14 @@ function StatSpark(_ref8) {
     fill: color
   }));
 }
-function StatDonut(_ref9) {
-  var rows = _ref9.rows,
-    size = _ref9.size,
-    top = _ref9.top,
-    bottom = _ref9.bottom,
-    track = _ref9.track,
-    ink = _ref9.ink,
-    sub = _ref9.sub;
+function StatDonut(_ref8) {
+  var rows = _ref8.rows,
+    size = _ref8.size,
+    top = _ref8.top,
+    bottom = _ref8.bottom,
+    track = _ref8.track,
+    ink = _ref8.ink,
+    sub = _ref8.sub;
   var r = size / 2 - 9,
     c = 2 * Math.PI * r;
   var tot = rows.reduce(function (s, x) {
@@ -1369,16 +1198,16 @@ function StatDonut(_ref9) {
     fontFamily: "DM Sans"
   }, bottom));
 }
-function StatAcc(_ref0) {
-  var open = _ref0.open,
-    onToggle = _ref0.onToggle,
-    title = _ref0.title,
-    sub = _ref0.sub,
-    mini = _ref0.mini,
-    keyVal = _ref0.keyVal,
-    keyColor = _ref0.keyColor,
-    children = _ref0.children,
-    dk = _ref0.dk;
+function StatAcc(_ref9) {
+  var open = _ref9.open,
+    onToggle = _ref9.onToggle,
+    title = _ref9.title,
+    sub = _ref9.sub,
+    mini = _ref9.mini,
+    keyVal = _ref9.keyVal,
+    keyColor = _ref9.keyColor,
+    children = _ref9.children,
+    dk = _ref9.dk;
   var bd = dk ? "#2A3A56" : "#E4EAF3";
   var ref = useRef(null);
   var mounted = useRef(false);
@@ -1473,81 +1302,81 @@ function StatAcc(_ref0) {
     }
   }, children));
 }
-function RentalStats(_ref1) {
-  var rentals = _ref1.rentals,
-    stock = _ref1.stock,
-    setStock = _ref1.setStock,
-    finances = _ref1.finances,
-    setFinances = _ref1.setFinances,
-    budget = _ref1.budget,
-    setBudget = _ref1.setBudget,
-    machines = _ref1.machines,
-    setMachines = _ref1.setMachines,
-    nfzCases = _ref1.nfzCases,
-    goToRental = _ref1.goToRental,
-    goToWozki = _ref1.goToWozki;
+function RentalStats(_ref0) {
+  var rentals = _ref0.rentals,
+    stock = _ref0.stock,
+    setStock = _ref0.setStock,
+    finances = _ref0.finances,
+    setFinances = _ref0.setFinances,
+    budget = _ref0.budget,
+    setBudget = _ref0.setBudget,
+    machines = _ref0.machines,
+    setMachines = _ref0.setMachines,
+    nfzCases = _ref0.nfzCases,
+    goToRental = _ref0.goToRental,
+    goToWozki = _ref0.goToWozki;
   var dk = useContext(DarkCtx);
   var demo = useDemo();
-  var _useState9 = useState("month"),
-    _useState0 = _slicedToArray(_useState9, 2),
-    scope = _useState0[0],
-    setScope = _useState0[1];
-  var _useState1 = useState(function () {
+  var _useState5 = useState("month"),
+    _useState6 = _slicedToArray(_useState5, 2),
+    scope = _useState6[0],
+    setScope = _useState6[1];
+  var _useState7 = useState(function () {
       return todayLocal().slice(0, 7);
     }),
-    _useState10 = _slicedToArray(_useState1, 2),
-    selMonth = _useState10[0],
-    setSelMonth = _useState10[1];
-  var _useState11 = useState(function () {
+    _useState8 = _slicedToArray(_useState7, 2),
+    selMonth = _useState8[0],
+    setSelMonth = _useState8[1];
+  var _useState9 = useState(function () {
       return new Date().getFullYear();
     }),
-    _useState12 = _slicedToArray(_useState11, 2),
-    statsYear = _useState12[0],
-    setStatsYear = _useState12[1];
+    _useState0 = _slicedToArray(_useState9, 2),
+    statsYear = _useState0[0],
+    setStatsYear = _useState0[1];
   // każda sekcja rozwija się niezależnie; domyślnie otwarta: Przychód ze sprzętu (razem ze źródłami klientów)
-  var _useState13 = useState({
+  var _useState1 = useState({
       rev: true
     }),
-    _useState14 = _slicedToArray(_useState13, 2),
-    openMap = _useState14[0],
-    setOpenMap = _useState14[1];
+    _useState10 = _slicedToArray(_useState1, 2),
+    openMap = _useState10[0],
+    setOpenMap = _useState10[1];
   var setOpenSec = function setOpenSec(id) {
     return setOpenMap(function (m) {
       return _objectSpread(_objectSpread({}, m), {}, _defineProperty({}, id, true));
     });
   };
+  var _useState11 = useState(null),
+    _useState12 = _slicedToArray(_useState11, 2),
+    roiEq = _useState12[0],
+    setRoiEq = _useState12[1];
+  var _useState13 = useState(false),
+    _useState14 = _slicedToArray(_useState13, 2),
+    showAllRoi = _useState14[0],
+    setShowAllRoi = _useState14[1];
   var _useState15 = useState(null),
     _useState16 = _slicedToArray(_useState15, 2),
-    roiEq = _useState16[0],
-    setRoiEq = _useState16[1];
+    repairForm = _useState16[0],
+    setRepairForm = _useState16[1];
   var _useState17 = useState(false),
     _useState18 = _slicedToArray(_useState17, 2),
-    showAllRoi = _useState18[0],
-    setShowAllRoi = _useState18[1];
-  var _useState19 = useState(null),
+    showRentalList = _useState18[0],
+    setShowRentalList = _useState18[1];
+  var _useState19 = useState({}),
     _useState20 = _slicedToArray(_useState19, 2),
-    repairForm = _useState20[0],
-    setRepairForm = _useState20[1];
-  var _useState21 = useState(false),
+    adsListOpen = _useState20[0],
+    setAdsListOpen = _useState20[1]; // rozwinięte listy wpłat w blokach Reklamy (szyny/wozki/balkoniki)
+  var _useState21 = useState("all"),
     _useState22 = _slicedToArray(_useState21, 2),
-    showRentalList = _useState22[0],
-    setShowRentalList = _useState22[1];
-  var _useState23 = useState({}),
+    srcTab = _useState22[0],
+    setSrcTab = _useState22[1];
+  var _useState23 = useState("2w"),
     _useState24 = _slicedToArray(_useState23, 2),
-    adsListOpen = _useState24[0],
-    setAdsListOpen = _useState24[1]; // rozwinięte listy wpłat w blokach Reklamy (szyny/wozki/balkoniki)
+    seasonGran = _useState24[0],
+    setSeasonGran = _useState24[1];
   var _useState25 = useState("all"),
     _useState26 = _slicedToArray(_useState25, 2),
-    srcTab = _useState26[0],
-    setSrcTab = _useState26[1];
-  var _useState27 = useState("2w"),
-    _useState28 = _slicedToArray(_useState27, 2),
-    seasonGran = _useState28[0],
-    setSeasonGran = _useState28[1];
-  var _useState29 = useState("all"),
-    _useState30 = _slicedToArray(_useState29, 2),
-    seasonCat = _useState30[0],
-    setSeasonCat = _useState30[1]; // filtr sezonowości: wszystko / szyny / wózki / balkoniki
+    seasonCat = _useState26[0],
+    setSeasonCat = _useState26[1]; // filtr sezonowości: wszystko / szyny / wózki / balkoniki
   var equipmentAll = getActiveEquipmentNames(stock);
   var SZYNY_EQ = ["Artromot K1 2025", "Artromot K1 I", "Kinetec Spectra", "Kinetec Spectra SZ", "Optiflex", "OrthoRehab"];
   var BALKONIKI_EQ = ["Ambonka Paula", "Balkonik ortopedyczny"];
@@ -2696,10 +2525,10 @@ function RentalStats(_ref1) {
       padding: 3,
       marginBottom: 10
     }
-  }, [["month", "Miesiąc"], ["year", "Rok"]].map(function (_ref10) {
-    var _ref11 = _slicedToArray(_ref10, 2),
-      k = _ref11[0],
-      l = _ref11[1];
+  }, [["month", "Miesiąc"], ["year", "Rok"]].map(function (_ref1) {
+    var _ref10 = _slicedToArray(_ref1, 2),
+      k = _ref10[0],
+      l = _ref10[1];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -2800,12 +2629,12 @@ function RentalStats(_ref1) {
       height: 112,
       paddingTop: 14
     }
-  }, stats.monthlyArr.map(function (_ref12) {
-    var _ref13 = _slicedToArray(_ref12, 4),
-      m = _ref13[0],
-      v = _ref13[1],
-      w = _ref13[2],
-      tr = _ref13[3];
+  }, stats.monthlyArr.map(function (_ref11) {
+    var _ref12 = _slicedToArray(_ref11, 4),
+      m = _ref12[0],
+      v = _ref12[1],
+      w = _ref12[2],
+      tr = _ref12[3];
     var t = v + w + tr,
       h = Math.max(t > 0 ? 3 : 0, Math.round(t / stats.maxMonthly * 80)),
       hw = t > 0 ? w / t * 100 : 0,
@@ -3604,10 +3433,10 @@ function RentalStats(_ref1) {
       borderRadius: 10,
       padding: 2
     }
-  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref14) {
-    var _ref15 = _slicedToArray(_ref14, 2),
-      k = _ref15[0],
-      l = _ref15[1];
+  }, [["2w", "2 tyg."], ["month", "Miesiąc"]].map(function (_ref13) {
+    var _ref14 = _slicedToArray(_ref13, 2),
+      k = _ref14[0],
+      l = _ref14[1];
     return /*#__PURE__*/React.createElement("button", {
       key: k,
       onClick: function onClick() {
@@ -3907,12 +3736,12 @@ function RentalStats(_ref1) {
       textAlign: "center",
       padding: "8px 0"
     }
-  }, "Brak sprz\u0119tu z przychodem lub kosztem zakupu"), roiShown.map(function (_ref16) {
-    var eq = _ref16.eq,
-      earned = _ref16.earned,
-      investment = _ref16.investment,
-      roi = _ref16.roi,
-      repairsPer100 = _ref16.repairsPer100;
+  }, "Brak sprz\u0119tu z przychodem lub kosztem zakupu"), roiShown.map(function (_ref15) {
+    var eq = _ref15.eq,
+      earned = _ref15.earned,
+      investment = _ref15.investment,
+      roi = _ref15.roi,
+      repairsPer100 = _ref15.repairsPer100;
     var isOpen = roiEq === eq;
     var c = getCosts(eq);
     var qty = getQty(eq);
@@ -4587,89 +4416,89 @@ function RentalStats(_ref1) {
 
 // ── FINANCES ──────────────────────────────────────────────────────────────
 
-function Finances(_ref17) {
-  var finances = _ref17.finances,
-    setFinances = _ref17.setFinances,
-    visits = _ref17.visits,
-    setVisits = _ref17.setVisits,
-    rentals = _ref17.rentals,
-    setRentals = _ref17.setRentals,
-    nfzCases = _ref17.nfzCases,
-    setNfzCases = _ref17.setNfzCases,
-    budget = _ref17.budget,
-    setBudget = _ref17.setBudget,
-    desk = _ref17.desk,
-    stock = _ref17.stock,
-    setStock = _ref17.setStock,
-    machines = _ref17.machines,
-    setMachines = _ref17.setMachines,
-    wealth = _ref17.wealth,
-    setWealth = _ref17.setWealth,
-    settings = _ref17.settings,
-    setSettings = _ref17.setSettings,
-    goToRental = _ref17.goToRental,
-    goToWozki = _ref17.goToWozki;
+function Finances(_ref16) {
+  var finances = _ref16.finances,
+    setFinances = _ref16.setFinances,
+    visits = _ref16.visits,
+    setVisits = _ref16.setVisits,
+    rentals = _ref16.rentals,
+    setRentals = _ref16.setRentals,
+    nfzCases = _ref16.nfzCases,
+    setNfzCases = _ref16.setNfzCases,
+    budget = _ref16.budget,
+    setBudget = _ref16.setBudget,
+    desk = _ref16.desk,
+    stock = _ref16.stock,
+    setStock = _ref16.setStock,
+    machines = _ref16.machines,
+    setMachines = _ref16.setMachines,
+    wealth = _ref16.wealth,
+    setWealth = _ref16.setWealth,
+    settings = _ref16.settings,
+    setSettings = _ref16.setSettings,
+    goToRental = _ref16.goToRental,
+    goToWozki = _ref16.goToWozki;
   var demo = useDemo();
   var dk = useContext(DarkCtx);
-  var _useState31 = useState(null),
-    _useState32 = _slicedToArray(_useState31, 2),
-    editE = _useState32[0],
-    setEditE = _useState32[1];
-  var _useState33 = useState(function () {
+  var _useState27 = useState(null),
+    _useState28 = _slicedToArray(_useState27, 2),
+    editE = _useState28[0],
+    setEditE = _useState28[1];
+  var _useState29 = useState(function () {
       var h = window.location.hash.replace("#", "").split("-");
       return h[1] || "month";
     }),
-    _useState34 = _slicedToArray(_useState33, 2),
-    viewMode = _useState34[0],
-    setViewMode = _useState34[1];
+    _useState30 = _slicedToArray(_useState29, 2),
+    viewMode = _useState30[0],
+    setViewMode = _useState30[1];
   useEffect(function () {
     window.location.replace("#finances-" + viewMode);
   }, [viewMode]);
-  var _useState35 = useState(function () {
+  var _useState31 = useState(function () {
       return todayLocal().slice(0, 7);
     }),
-    _useState36 = _slicedToArray(_useState35, 2),
-    month = _useState36[0],
-    setMonth = _useState36[1];
-  var _useState37 = useState(function () {
+    _useState32 = _slicedToArray(_useState31, 2),
+    month = _useState32[0],
+    setMonth = _useState32[1];
+  var _useState33 = useState(function () {
       return todayLocal().slice(0, 4);
     }),
-    _useState38 = _slicedToArray(_useState37, 2),
-    year = _useState38[0],
-    setYear = _useState38[1];
-  var _useState39 = useState(function () {
+    _useState34 = _slicedToArray(_useState33, 2),
+    year = _useState34[0],
+    setYear = _useState34[1];
+  var _useState35 = useState(function () {
       var d = new Date();
       var day = d.getDay() || 7;
       d.setDate(d.getDate() - day + 1);
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     }),
-    _useState40 = _slicedToArray(_useState39, 2),
-    weekStart = _useState40[0],
-    setWeekStart = _useState40[1];
-  var _useState41 = useState(function () {
+    _useState36 = _slicedToArray(_useState35, 2),
+    weekStart = _useState36[0],
+    setWeekStart = _useState36[1];
+  var _useState37 = useState(function () {
       return todayLocal().slice(0, 7) + "-01";
     }),
-    _useState42 = _slicedToArray(_useState41, 2),
-    rangeFrom = _useState42[0],
-    setRangeFrom = _useState42[1];
-  var _useState43 = useState(function () {
+    _useState38 = _slicedToArray(_useState37, 2),
+    rangeFrom = _useState38[0],
+    setRangeFrom = _useState38[1];
+  var _useState39 = useState(function () {
       return todayLocal();
     }),
+    _useState40 = _slicedToArray(_useState39, 2),
+    rangeTo = _useState40[0],
+    setRangeTo = _useState40[1];
+  var _useState41 = useState(null),
+    _useState42 = _slicedToArray(_useState41, 2),
+    toast = _useState42[0],
+    setToast = _useState42[1];
+  var _useState43 = useState(false),
     _useState44 = _slicedToArray(_useState43, 2),
-    rangeTo = _useState44[0],
-    setRangeTo = _useState44[1];
+    showAllPats = _useState44[0],
+    setShowAllPats = _useState44[1];
   var _useState45 = useState(null),
     _useState46 = _slicedToArray(_useState45, 2),
-    toast = _useState46[0],
-    setToast = _useState46[1];
-  var _useState47 = useState(false),
-    _useState48 = _slicedToArray(_useState47, 2),
-    showAllPats = _useState48[0],
-    setShowAllPats = _useState48[1];
-  var _useState49 = useState(null),
-    _useState50 = _slicedToArray(_useState49, 2),
-    expandedCat = _useState50[0],
-    setExpandedCat = _useState50[1];
+    expandedCat = _useState46[0],
+    setExpandedCat = _useState46[1];
   var cats = ["Wizyta", "Wypożyczalnia", "Wózek", "Inne"];
   var weekEnd = useMemo(function () {
     var d = new Date(weekStart + "T12:00:00");
@@ -4781,14 +4610,14 @@ function Finances(_ref17) {
       Wózek: "#7B4FBF",
       Inne: "#7A8FA6"
     };
-    return Object.entries(map).filter(function (_ref18) {
-      var _ref19 = _slicedToArray(_ref18, 2),
-        v = _ref19[1];
+    return Object.entries(map).filter(function (_ref17) {
+      var _ref18 = _slicedToArray(_ref17, 2),
+        v = _ref18[1];
       return v > 0;
-    }).map(function (_ref20) {
-      var _ref21 = _slicedToArray(_ref20, 2),
-        k = _ref21[0],
-        v = _ref21[1];
+    }).map(function (_ref19) {
+      var _ref20 = _slicedToArray(_ref19, 2),
+        k = _ref20[0],
+        v = _ref20[1];
       return {
         label: k,
         v: v,
@@ -4816,10 +4645,10 @@ function Finances(_ref17) {
     });
     return Object.entries(map).sort(function (a, b) {
       return b[1] - a[1];
-    }).map(function (_ref22) {
-      var _ref23 = _slicedToArray(_ref22, 2),
-        n = _ref23[0],
-        v = _ref23[1];
+    }).map(function (_ref21) {
+      var _ref22 = _slicedToArray(_ref21, 2),
+        n = _ref22[0],
+        v = _ref22[1];
       return [n, v, cnt[n] || 0];
     });
   }, [periodVisits, periodNonVisitFinances]);
@@ -5517,11 +5346,11 @@ function Finances(_ref17) {
     style: {
       marginBottom: 12
     }
-  }, "Pacjenci"), visiblePats.map(function (_ref24, i) {
-    var _ref25 = _slicedToArray(_ref24, 3),
-      name = _ref25[0],
-      v = _ref25[1],
-      c = _ref25[2];
+  }, "Pacjenci"), visiblePats.map(function (_ref23, i) {
+    var _ref24 = _slicedToArray(_ref23, 3),
+      name = _ref24[0],
+      v = _ref24[1],
+      c = _ref24[2];
     return /*#__PURE__*/React.createElement("div", {
       key: name,
       style: {
@@ -5744,47 +5573,47 @@ function Finances(_ref17) {
 }
 
 // ── RECEIPT SCANNER ───────────────────────────────────────────────────────
-function ReceiptScanner(_ref26) {
-  var onClose = _ref26.onClose,
-    onConfirm = _ref26.onConfirm,
-    expCats = _ref26.expCats,
-    incCats = _ref26.incCats,
-    memory = _ref26.memory,
-    setMemory = _ref26.setMemory,
-    selMonth = _ref26.selMonth,
-    existingExpenses = _ref26.existingExpenses;
+function ReceiptScanner(_ref25) {
+  var onClose = _ref25.onClose,
+    onConfirm = _ref25.onConfirm,
+    expCats = _ref25.expCats,
+    incCats = _ref25.incCats,
+    memory = _ref25.memory,
+    setMemory = _ref25.setMemory,
+    selMonth = _ref25.selMonth,
+    existingExpenses = _ref25.existingExpenses;
   var dk = useContext(DarkCtx);
   var bg2 = dk ? "#18202F" : "#fff";
   var border = dk ? "#2A3A56" : "#D9E2F0";
   var sub = "#7A8FA6";
+  var _useState47 = useState([]),
+    _useState48 = _slicedToArray(_useState47, 2),
+    images = _useState48[0],
+    setImages = _useState48[1]; // base64 strings
+  var _useState49 = useState("upload"),
+    _useState50 = _slicedToArray(_useState49, 2),
+    step = _useState50[0],
+    setStep = _useState50[1]; // upload | analyzing | review | done
   var _useState51 = useState([]),
     _useState52 = _slicedToArray(_useState51, 2),
-    images = _useState52[0],
-    setImages = _useState52[1]; // base64 strings
-  var _useState53 = useState("upload"),
+    items = _useState52[0],
+    setItems = _useState52[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
+  var _useState53 = useState(todayLocal()),
     _useState54 = _slicedToArray(_useState53, 2),
-    step = _useState54[0],
-    setStep = _useState54[1]; // upload | analyzing | review | done
-  var _useState55 = useState([]),
+    receiptDate = _useState54[0],
+    setReceiptDate = _useState54[1];
+  var _useState55 = useState(""),
     _useState56 = _slicedToArray(_useState55, 2),
-    items = _useState56[0],
-    setItems = _useState56[1]; // {id, name, amount, cat, subcat, confidence, discount, isDiscount}
-  var _useState57 = useState(todayLocal()),
+    receiptTotal = _useState56[0],
+    setReceiptTotal = _useState56[1];
+  var _useState57 = useState(null),
     _useState58 = _slicedToArray(_useState57, 2),
-    receiptDate = _useState58[0],
-    setReceiptDate = _useState58[1];
-  var _useState59 = useState(""),
+    aiError = _useState58[0],
+    setAiError = _useState58[1];
+  var _useState59 = useState(false),
     _useState60 = _slicedToArray(_useState59, 2),
-    receiptTotal = _useState60[0],
-    setReceiptTotal = _useState60[1];
-  var _useState61 = useState(null),
-    _useState62 = _slicedToArray(_useState61, 2),
-    aiError = _useState62[0],
-    setAiError = _useState62[1];
-  var _useState63 = useState(false),
-    _useState64 = _slicedToArray(_useState63, 2),
-    dupWarning = _useState64[0],
-    setDupWarning = _useState64[1];
+    dupWarning = _useState60[0],
+    setDupWarning = _useState60[1];
   var allExpCatNames = expCats.flatMap(function (c) {
     return [c.name].concat(_toConsumableArray((c.subs || []).map(function (s) {
       return c.name + "/" + s;
@@ -5815,7 +5644,7 @@ function ReceiptScanner(_ref26) {
     });
   };
   var analyze = /*#__PURE__*/function () {
-    var _ref27 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
+    var _ref26 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
       var memoryHints, catList, prompt, _data$content, content, resp, data, _data$error, text, jsonStart, jsonEnd, clean, parsed, newItems, day, sameDayTotal, _t, _t2;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.p = _context.n) {
@@ -5828,10 +5657,10 @@ function ReceiptScanner(_ref26) {
           case 1:
             setStep("analyzing");
             setAiError(null);
-            memoryHints = Object.entries(memory || {}).slice(0, 40).map(function (_ref28) {
-              var _ref29 = _slicedToArray(_ref28, 2),
-                k = _ref29[0],
-                v = _ref29[1];
+            memoryHints = Object.entries(memory || {}).slice(0, 40).map(function (_ref27) {
+              var _ref28 = _slicedToArray(_ref27, 2),
+                k = _ref28[0],
+                v = _ref28[1];
               return "\"".concat(k, "\" => \"").concat(v, "\"");
             }).join(", ");
             catList = allExpCatNames.join(", ");
@@ -5956,7 +5785,7 @@ function ReceiptScanner(_ref26) {
       }, _callee, null, [[8, 9], [2, 11]]);
     }));
     return function analyze() {
-      return _ref27.apply(this, arguments);
+      return _ref26.apply(this, arguments);
     };
   }();
   var updateItem = function updateItem(id, field, val) {
