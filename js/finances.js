@@ -86,26 +86,35 @@
       });
       return out;
     };
-    // ── KOSZTY FIRMY (Finanse → 🏠): ile naprawdę kosztuje prowadzenie firmy w wybranym miesiącu/roku, z budżetu ──
-    // Co się liczy do kosztów firmy, wybiera użytkownik (✏️): kategorie i podkategorie wydatków z Budżetu; domyślnie cała kategoria "Firma".
+    // ── KOSZTY FIRMY (Finanse → 🏠): koszty prowadzenia firmy w wybranym miesiącu/roku — widać je, dodaje, poprawia i usuwa tutaj ──
+    // Dane są w tej samej bazie co Budżet (kategoria "Firma" z podkategoriami ZUS, Podatek itd.), więc Budżet i Statystyki widzą to samo,
+    // ale nie trzeba do niego wchodzić. Co się liczy do kosztów firmy, wybiera użytkownik przez ⚙ (domyślnie cała kategoria Firma).
     function BusinessCosts({budget,setBudget,viewMode,month,year,inc,bg2,dk,sub,border}) {
       const demo=useDemo();
       const txt=dk?"#C8E8E8":"#1C2B3A";
-      const [editing,setEditing]=useState(false);
+      const [editing,setEditing]=useState(false);   // okno wyboru kategorii
       const [draft,setDraft]=useState([]);
+      const [openKey,setOpenKey]=useState(null);
+      const [form,setForm]=useState(null);          // okno dodawania / poprawiania kosztu
       const cats=useMemo(()=>normCats((budget&&budget.expenseCategories)||[]),[budget]);
       const opts=c=>[c.name.trim().toLowerCase()+"|",...(c.subs||[]).map(x=>c.name.trim().toLowerCase()+"|"+String(x).trim().toLowerCase())];
       const defaultSel=()=>{const f=cats.find(c=>c.name.trim().toLowerCase()==="firma");return f?opts(f):[];};
-      const d=useMemo(()=>{
+      // kategoria, do której trafiają nowe koszty z tego okna: "Firma", a gdy jej nie ma, pierwsza wybrana
+      const bizCatName=useMemo(()=>{
+        const f=cats.find(c=>c.name.trim().toLowerCase()==="firma");if(f)return f.name;
+        const selc=cats.find(c=>(Array.isArray(budget&&budget.businessSel)?budget.businessSel:[]).some(x=>x.startsWith(c.name.trim().toLowerCase()+"|")));
+        return selc?selc.name:"Firma";
+      },[cats,budget]);
+      const bizSubs=useMemo(()=>{const c=cats.find(x=>x.name===bizCatName);return c?(c.subs||[]):[];},[cats,bizCatName]);
+      const yms=useMemo(()=>{
         const today=todayLocal();
-        let yms;
-        if(viewMode==="month")yms=[month];
-        else{ // rok: do bieżącego miesiąca (przyszłe cykliczne jeszcze nie są kosztem)
-          const last=String(year)===today.slice(0,4)?+today.slice(5,7):12;
-          yms=Array.from({length:last},(_,i)=>year+"-"+String(i+1).padStart(2,"0"));
-        }
-        const tot={};
-        yms.forEach(ym=>{const o=businessCostsByMonth(budget,ym);Object.keys(o).forEach(k=>{tot[k]=(tot[k]||0)+o[k];});});
+        if(viewMode==="month")return [month];
+        const last=String(year)===today.slice(0,4)?+today.slice(5,7):12;   // rok: do bieżącego miesiąca (przyszłe cykliczne jeszcze nie są kosztem)
+        return Array.from({length:last},(_,i)=>year+"-"+String(i+1).padStart(2,"0"));
+      },[viewMode,month,year]);
+      const d=useMemo(()=>{
+        const items=[];yms.forEach(ym=>businessItemsByMonth(budget,ym).forEach(it=>items.push(it)));
+        const tot={};items.forEach(it=>{tot[it.key]=(tot[it.key]||0)+it.amount;});
         const ORDER=["zus","podatek","kredyt","marketing","inwestycje"];
         const keys=Object.keys(tot).filter(k=>tot[k]>0).sort((a,b)=>{
           const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);
@@ -113,9 +122,8 @@
           if(ia>=0&&ib>=0)return ia-ib;if(ia>=0)return -1;if(ib>=0)return 1;
           return a.localeCompare(b,"pl");
         });
-        const total=keys.reduce((s,k)=>s+tot[k],0);
-        return {tot,keys,total};
-      },[budget,viewMode,month,year]);
+        return {tot,keys,items,total:keys.reduce((s,k)=>s+tot[k],0)};
+      },[budget,yms]);
       const name=k=>k==="zus"?"ZUS":k.charAt(0).toUpperCase()+k.slice(1);
       const left=inc-d.total;
       const pct=inc>0?Math.round(d.total/inc*100):null;
@@ -123,24 +131,107 @@
       const curSel=Array.isArray(budget&&budget.businessSel)?budget.businessSel:defaultSel();
       const openEdit=()=>{setDraft(curSel.slice());setEditing(true);};
       const toggle=(list)=>setDraft(dr=>list.every(x=>dr.includes(x))?dr.filter(x=>!list.includes(x)):[...new Set([...dr,...list])]);
+      const lastDay=ym=>ym+"-"+String(new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate()).padStart(2,"0");
+
+      // ── zapis do Budżetu (te same struktury co w zakładce Budżet) ──
+      const monthOf=(b,ym)=>((b.months||{})[ym])||{income:[],expenses:[]};
+      const putOne=(b,item)=>{const ym=item.date.slice(0,7);const m=monthOf(b,ym);return {...b,months:{...(b.months||{}),[ym]:{...m,expenses:[...(m.expenses||[]),item]}}};};
+      const dropOne=(b,ym,id)=>{const m=(b.months||{})[ym];if(!m)return b;return {...b,months:{...b.months,[ym]:{...m,expenses:(m.expenses||[]).filter(e=>e.id!==id)}}};};
+      const newForm=()=>({mode:"add",subcat:(bizSubs.find(x=>/zus/i.test(x))||bizSubs[0]||""),newSub:"",desc:"",amount:"",date:viewMode==="month"&&month!==todayLocal().slice(0,7)?lastDay(month):todayLocal(),repeat:false});
+      const save=()=>{
+        const f=form;const amt=+String(f.amount).replace(",",".");if(!(amt>0))return;
+        let sc=f.subcat;
+        if(sc==="__new"){sc=String(f.newSub||"").trim();if(!sc)return;}
+        const addSub=f.subcat==="__new"&&!bizSubs.some(x=>x.toLowerCase()===sc.toLowerCase());
+        setBudget(b=>{
+          let nb=b;
+          if(addSub){
+            const base=normCats(nb.expenseCategories||[]);
+            const has=base.some(c=>c.name===bizCatName);
+            nb={...nb,expenseCategories:has?base.map(c=>c.name===bizCatName?{...c,subs:[...(c.subs||[]),sc]}:c):[...base,{name:bizCatName,subs:[sc]}]};
+            // nowa podkategoria wchodzi do wybranych, jeśli wybór jest ręczny
+            if(Array.isArray(nb.businessSel))nb={...nb,businessSel:[...new Set([...nb.businessSel,bizCatName.trim().toLowerCase()+"|"+sc.toLowerCase()])]};
+          }
+          if(f.mode==="edit-one"){
+            nb=dropOne(nb,f.ym,f.id);
+            return putOne(nb,{id:f.id,cat:f.cat||bizCatName,subcat:sc==="__new"?"":sc,desc:f.desc,amount:amt,date:f.date});
+          }
+          if(f.mode==="edit-rec"){   // tylko ten miesiąc: nadpisanie kwoty cyklicznej pozycji (jak w Budżecie)
+            const m=monthOf(nb,f.ym);
+            return {...nb,months:{...(nb.months||{}),[f.ym]:{...m,recurringOverrides:{...(m.recurringOverrides||{}),[f.id]:{amount:amt,desc:f.desc}}}}};
+          }
+          if(f.repeat){
+            return {...nb,recurring:[...(nb.recurring||[]),{id:Date.now(),type:"expense",cat:bizCatName,subcat:sc,desc:f.desc,amount:amt,cycle:"monthly",dayOfMonth:Math.min(28,+f.date.slice(8)||1),startMonth:f.date.slice(0,7)+"-01"}]};
+          }
+          return putOne(nb,{id:Date.now(),cat:bizCatName,subcat:sc,desc:f.desc,amount:amt,date:f.date});
+        });
+        setForm(null);
+      };
+      const delOne=it=>{if(!window.confirm("Usunąć ten koszt ("+it.amount.toFixed(2)+" zł)?"))return;setBudget(b=>dropOne(b,it.ym,it.id));};
+      const stopRec=it=>{
+        if(!window.confirm("Zakończyć ten koszt cykliczny od miesiąca "+it.ym+"? Wcześniejsze miesiące zostają bez zmian."))return;
+        setBudget(b=>({...b,recurring:(b.recurring||[]).flatMap(r=>{
+          if(r.id!==it.id)return [r];
+          if((r.startMonth||"0000-00").slice(0,7)>=it.ym)return [];
+          return [{...r,endMonth:ymAdd(it.ym,-1)+"-01"}];
+        })}));
+      };
+      const editIt=it=>setForm(it.kind==="one"
+        ?{mode:"edit-one",id:it.id,ym:it.ym,cat:it.cat,subcat:it.subcat,newSub:"",desc:it.desc,amount:String(it.amount),date:it.date||lastDay(it.ym)}
+        :{mode:"edit-rec",id:it.id,ym:it.ym,subcat:it.subcat,desc:it.desc,amount:String(it.amount)});
+
       const Check=({on,part,label,onClick,bold,indent})=><div onClick={onClick} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 0 7px "+(indent?26:0)+"px",cursor:"pointer"}}>
         <div style={{width:20,height:20,borderRadius:6,border:"2px solid "+(on||part?"#3DAA72":"#B9C7DA"),background:on?"#3DAA72":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:on?"#fff":"#3DAA72",fontSize:12,fontWeight:800,flexShrink:0}}>{on?"✓":part?"–":""}</div>
         <span style={{fontSize:14,fontWeight:bold?700:400,color:txt}}>{label}</span>
       </div>;
-      const editBtn=<button onClick={openEdit} aria-label="Edytuj, co liczyć jako koszty firmy" style={{background:"transparent",border:"none",cursor:"pointer",fontSize:14,color:sub,padding:"2px 6px"}}>✏️</button>;
-      const shell=(children)=><div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>{children}</div>;
+      const ib={background:"transparent",border:"none",cursor:"pointer",fontSize:14,color:sub,padding:"2px 5px",fontFamily:"inherit"};
+      const mk=/marketing|reklam/i;
+      const isMk=form&&mk.test((bizCatName)+" "+(form.subcat==="__new"?form.newSub:form.subcat));
+      const periodLbl=viewMode==="month"?"ten miesiąc":"rok "+year;
       return <>
-        {shell(<>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-            <SectionLabel style={{marginBottom:0}}>Koszty firmy ({viewMode==="month"?"ten miesiąc":"rok "+year})</SectionLabel>
-            {editBtn}
+        <div style={{background:bg2,borderRadius:16,padding:"16px",marginBottom:12,boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,gap:8}}>
+            <SectionLabel style={{marginBottom:0}}>Koszty firmy ({periodLbl})</SectionLabel>
+            <div style={{display:"flex",alignItems:"center",gap:4}}>
+              <button onClick={()=>setForm(newForm())} style={{background:"#E05C5C",color:"#fff",border:"none",borderRadius:9,padding:"5px 11px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+ Koszt</button>
+              <button onClick={openEdit} aria-label="Ustaw, co liczyć jako koszty firmy" title="Co liczyć jako koszty firmy" style={ib}>⚙</button>
+            </div>
           </div>
-          {!(d.total>0)&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak kosztów w tym okresie. Kliknij ✏️, żeby wybrać, co liczyć jako koszty firmy (domyślnie kategoria Firma z Budżetu).</div>}
+          {!(d.total>0)&&<div style={{fontSize:12,color:sub,padding:"4px 0"}}>Brak kosztów w tym okresie. Dodaj pierwszy przyciskiem „+ Koszt” (np. ZUS, podatek, kredyt).</div>}
           {d.total>0&&<>
-            {d.keys.map(k=><div key={k} style={row}>
-              <span style={{color:txt,fontWeight:500}}>{name(k)}{k==="inwestycje"&&<span style={{color:sub,fontSize:11,fontWeight:400}}> (zakup sprzętu)</span>}</span>
-              <span style={{color:sub,whiteSpace:"nowrap"}}>{demo?"****":d.tot[k].toFixed(2)} zł <span style={{fontSize:11}}>({Math.round(d.tot[k]/d.total*100)}%)</span></span>
-            </div>)}
+            {d.keys.map(k=>{
+              let its=d.items.filter(x=>x.key===k).sort((a,b)=>(b.date||b.ym).localeCompare(a.date||a.ym));
+              if(viewMode==="year"){   // w roku koszt cykliczny to jedna linia (suma z miesięcy), nie dwanaście
+                const seen={};const merged=[];
+                its.forEach(it=>{if(it.kind!=="rec"){merged.push(it);return;}const m=seen[it.id];if(m){m.amount+=it.amount;m.n++;}else{const c={...it,n:1};seen[it.id]=c;merged.push(c);}});
+                its=merged;
+              }
+              const isOpen=openKey===k;
+              return <div key={k}>
+                <div onClick={()=>setOpenKey(isOpen?null:k)} style={{...row,cursor:"pointer"}}>
+                  <span style={{color:txt,fontWeight:500}}>{name(k)} <span style={{color:sub,fontSize:10}}>{isOpen?"▲":"▼"}</span>{k==="inwestycje"&&<span style={{color:sub,fontSize:11,fontWeight:400}}> (zakup sprzętu)</span>}</span>
+                  <span style={{color:sub,whiteSpace:"nowrap"}}>{demo?"****":d.tot[k].toFixed(2)} zł <span style={{fontSize:11}}>({Math.round(d.tot[k]/d.total*100)}%)</span></span>
+                </div>
+                {isOpen&&<div style={{margin:"0 0 6px",paddingLeft:2}}>
+                  {its.map((it,i)=><div key={it.kind+it.id+it.ym} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 0",borderBottom:i<its.length-1?"1px solid "+border:"none",fontSize:12}}>
+                    <div style={{minWidth:0,flex:1,paddingRight:6}}>
+                      <div style={{color:txt,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{demo?name(k):(it.desc||it.subcat||name(k))}</div>
+                      <div style={{color:sub,fontSize:11}}>{it.kind==="rec"?"🔁 co miesiąc"+(viewMode==="year"?" · "+it.n+" mies.":"")+(it.overridden&&viewMode==="month"?" · zmieniono w tym miesiącu":""):cpmDate(it.date||it.ym+"-01")}</div>
+                    </div>
+                    <span style={{color:"#E05C5C",fontWeight:700,whiteSpace:"nowrap"}}>{demo?"****":it.amount.toFixed(2)} zł</span>
+                    {viewMode==="month"&&<span style={{display:"flex",flexShrink:0}}>
+                      <button onClick={()=>editIt(it)} aria-label="Popraw koszt" style={ib}>✏️</button>
+                      <button onClick={()=>it.kind==="one"?delOne(it):stopRec(it)} aria-label={it.kind==="one"?"Usuń koszt":"Zakończ koszt cykliczny"} style={{...ib,color:"#E05C5C"}}>{it.kind==="one"?"🗑":"⏹"}</button>
+                    </span>}
+                    {viewMode==="year"&&it.kind==="one"&&<span style={{display:"flex",flexShrink:0}}>
+                      <button onClick={()=>editIt(it)} aria-label="Popraw koszt" style={ib}>✏️</button>
+                      <button onClick={()=>delOne(it)} aria-label="Usuń koszt" style={{...ib,color:"#E05C5C"}}>🗑</button>
+                    </span>}
+                  </div>)}
+                  {viewMode==="year"&&its.some(x=>x.kind==="rec")&&<div style={{fontSize:11,color:sub,padding:"4px 0"}}>Koszty cykliczne poprawisz w widoku miesiąca.</div>}
+                </div>}
+              </div>;
+            })}
             <div style={{...row,borderTop:"1px solid "+border,marginTop:6,paddingTop:9}}>
               <span style={{color:txt,fontWeight:700}}>Razem koszty firmy</span>
               <span style={{color:"#E05C5C",fontWeight:800,whiteSpace:"nowrap"}}>{demo?"****":d.total.toFixed(2)} zł</span>
@@ -154,7 +245,25 @@
               <span style={{color:left>=0?"#3DAA72":"#E05C5C",fontWeight:800,whiteSpace:"nowrap"}}>{demo?"****":(left>=0?"+":"−")+Math.abs(left).toFixed(2)} zł</span>
             </div>
           </>}
-        </>)}
+        </div>
+
+        {form&&<Modal title={form.mode==="add"?"Nowy koszt firmy":form.mode==="edit-rec"?"Koszt cykliczny · "+form.ym:"Popraw koszt"} onClose={()=>setForm(null)}>
+          {form.mode!=="edit-rec"&&<>
+            <Sel label="Rodzaj kosztu" value={form.subcat} onChange={v=>setForm(f=>({...f,subcat:v}))} options={[...bizSubs.map(x=>({value:x,label:x})),{value:"",label:"— inne (bez rodzaju) —"},{value:"__new",label:"+ nowy rodzaj…"}]}/>
+            {form.subcat==="__new"&&<Inp label="Nazwa nowego rodzaju" value={form.newSub} onChange={v=>setForm(f=>({...f,newSub:v}))} placeholder="np. Księgowość, Telefon"/>}
+          </>}
+          <Inp label="Opis (opcjonalnie)" value={form.desc} onChange={v=>setForm(f=>({...f,desc:v}))} placeholder="np. ZUS za październik, zapłacone 20.11"/>
+          <AmountVat label="Kwota (zł) *" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} placeholder="0" show={!!isMk&&form.mode!=="edit-rec"}/>
+          {form.mode!=="edit-rec"&&<Inp label={form.repeat?"Pierwszy miesiąc (data) *":"Data (miesiąc, do którego należy koszt) *"} value={form.date} onChange={v=>setForm(f=>({...f,date:v}))} type="date"/>}
+          {form.mode==="add"&&<div onClick={()=>setForm(f=>({...f,repeat:!f.repeat}))} style={{display:"flex",alignItems:"center",gap:10,margin:"2px 0 14px",cursor:"pointer"}}>
+            <div style={{width:22,height:22,borderRadius:6,border:"2px solid "+(form.repeat?"#3DAA72":"#B9C7DA"),background:form.repeat?"#3DAA72":"transparent",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>{form.repeat?"✓":""}</div>
+            <span style={{fontSize:14,fontWeight:500,color:txt}}>🔁 Powtarza się co miesiąc (np. rata kredytu)</span>
+          </div>}
+          {form.mode==="edit-rec"&&<div style={{fontSize:12,color:sub,margin:"-4px 0 12px",lineHeight:1.5}}>Zmiana dotyczy tylko tego miesiąca. Żeby zakończyć koszt od tego miesiąca, użyj ⏹ na liście.</div>}
+          {form.mode==="add"&&!form.repeat&&<div style={{fontSize:12,color:sub,margin:"-4px 0 12px",lineHeight:1.5}}>Koszt trafia do miesiąca z daty. ZUS, PIT i VAT-9M za październik wpisz z datą październikową.</div>}
+          <Btn disabled={!(+String(form.amount).replace(",",".")>0)||(form.mode!=="edit-rec"&&!/^\d{4}-\d{2}-\d{2}$/.test(form.date))||(form.subcat==="__new"&&!String(form.newSub||"").trim())} style={{width:"100%",justifyContent:"center"}} onClick={save}>Zapisz</Btn>
+        </Modal>}
+
         {editing&&<Modal title="Co liczyć jako koszty firmy" onClose={()=>setEditing(false)}>
           <div style={{fontSize:13,color:sub,marginBottom:10,lineHeight:1.5}}>Zaznacz kategorie i podkategorie wydatków z Budżetu, które są kosztami Twojej firmy. Kwoty biorą się z Budżetu, więc nic nie trzeba wpisywać drugi raz.</div>
           {cats.length===0&&<div style={{fontSize:13,color:sub}}>Brak kategorii wydatków w Budżecie.</div>}

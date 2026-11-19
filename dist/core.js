@@ -1339,9 +1339,10 @@ var marketingSpendByType = function marketingSpendByType(budget, stock, ym) {
   });
   return out;
 };
-// Koszty firmy z budżetu w miesiącu. Co się liczy, wybiera użytkownik (budget.businessSel = lista "kategoria|podkategoria" małymi literami,
-// "kategoria|" = wpisy bez podkategorii); bez wyboru liczy się cała kategoria "Firma". Podkategorie z "marketing"/"reklam" łączą się w "marketing".
-var businessCostsByMonth = function businessCostsByMonth(budget, ym) {
+// Pozycje kosztów firmy z budżetu w miesiącu (jednorazowe i cykliczne). Co się liczy, wybiera użytkownik (budget.businessSel = lista
+// "kategoria|podkategoria" małymi literami, "kategoria|" = wpisy bez podkategorii); bez wyboru liczy się cała kategoria "Firma".
+// Podkategorie z "marketing"/"reklam" łączą się w jedno "marketing". Zwraca [{key,kind:"one"|"rec",id,r?,cat,subcat,desc,amount,date,ym}].
+var businessItemsByMonth = function businessItemsByMonth(budget, ym) {
   var sel = budget && Array.isArray(budget.businessSel) ? new Set(budget.businessSel) : null;
   var known = {};
   (budget && budget.expenseCategories || []).forEach(function (c) {
@@ -1350,20 +1351,30 @@ var businessCostsByMonth = function businessCostsByMonth(budget, ym) {
       return String(x).trim().toLowerCase();
     }));
   });
-  var out = {};
-  var add = function add(cat, sub, amt) {
+  var keyOf = function keyOf(cat, sub) {
     var c = String(cat || "").trim().toLowerCase(),
       sl = String(sub || "").trim().toLowerCase();
     var ok;
     if (!sel) ok = c === "firma";else ok = sel.has(c + "|" + sl) || sl !== "" && !(known[c] && known[c].has(sl)) && sel.has(c + "|"); // podkategoria usunięta z listy → jak "bez podkategorii"
-    if (!ok) return;
-    var k;
-    if (c === "firma") k = !sl ? "inne" : /marketing|reklam/.test(sl) ? "marketing" : sl;else k = c + (sl ? " – " + sl : "");
-    out[k] = (out[k] || 0) + (+amt || 0);
+    if (!ok) return null;
+    if (c === "firma") return !sl ? "inne" : /marketing|reklam/.test(sl) ? "marketing" : sl;
+    return c + (sl ? " – " + sl : "");
   };
+  var out = [];
   var mData = budget && budget.months && budget.months[ym] || {};
   (mData.expenses || []).forEach(function (e) {
-    return add(e.cat, e.subcat, e.amount);
+    var k = keyOf(e.cat, e.subcat);
+    if (k && (+e.amount || 0) !== 0) out.push({
+      key: k,
+      kind: "one",
+      id: e.id,
+      cat: e.cat,
+      subcat: e.subcat || "",
+      desc: e.desc || "",
+      amount: +e.amount || 0,
+      date: e.date || "",
+      ym: ym
+    });
   });
   (budget && budget.recurring || []).filter(function (r) {
     return r.type === "expense";
@@ -1371,10 +1382,33 @@ var businessCostsByMonth = function businessCostsByMonth(budget, ym) {
     var rStart = (r.startMonth || "0000-00").slice(0, 7);
     var rEnd = (r.endMonth || "9999-99").slice(0, 7);
     if (ym >= rStart && ym <= rEnd) {
+      var k = keyOf(r.cat, r.subcat);
+      if (!k) return;
       var ov = ((budget.months || {})[ym] || {}).recurringOverrides || {};
       var amt = ov[r.id] !== undefined ? +ov[r.id].amount : +r.amount || 0;
-      add(r.cat, r.subcat, (amt || 0) * (r.cycle === "weekly" ? WEEKS_PER_MONTH : 1));
+      var val = (amt || 0) * (r.cycle === "weekly" ? WEEKS_PER_MONTH : 1);
+      if (val !== 0) out.push({
+        key: k,
+        kind: "rec",
+        id: r.id,
+        r: r,
+        cat: r.cat,
+        subcat: r.subcat || "",
+        desc: ov[r.id] && ov[r.id].desc || r.desc || "",
+        amount: val,
+        date: "",
+        ym: ym,
+        overridden: ov[r.id] !== undefined
+      });
     }
+  });
+  return out;
+};
+// Sumy kosztów firmy w miesiącu po podkategoriach (klucze małymi literami).
+var businessCostsByMonth = function businessCostsByMonth(budget, ym) {
+  var out = {};
+  businessItemsByMonth(budget, ym).forEach(function (it) {
+    out[it.key] = (out[it.key] || 0) + it.amount;
   });
   return out;
 };
