@@ -221,6 +221,37 @@ function MiniCalendar(_ref) {
       return n;
     });
   };
+  // Widok kalendarza: miesiąc (jak dotąd), tydzień (oś godzin) albo agenda (lista najbliższych dni). Wybór pamiętany na tym urządzeniu.
+  var _useState15 = useState(function () {
+      try {
+        var v = localStorage.getItem("fizjo-cal-view");
+        return v === "week" || v === "agenda" ? v : "month";
+      } catch (_unused3) {
+        return "month";
+      }
+    }),
+    _useState16 = _slicedToArray(_useState15, 2),
+    view = _useState16[0],
+    setView = _useState16[1];
+  var changeView = function changeView(v) {
+    setView(v);
+    try {
+      localStorage.setItem("fizjo-cal-view", v);
+    } catch (_unused4) {}
+  };
+  var wide = useCalWide();
+  var _useState17 = useState(function () {
+      return today;
+    }),
+    _useState18 = _slicedToArray(_useState17, 2),
+    wkStart = _useState18[0],
+    setWkStart = _useState18[1];
+  var _useState19 = useState(function () {
+      return today;
+    }),
+    _useState20 = _slicedToArray(_useState19, 2),
+    agStart = _useState20[0],
+    setAgStart = _useState20[1];
   var daysInMonth = new Date(calYear, calMonth, 0).getDate();
   var firstDow = new Date(calYear, calMonth - 1, 1).getDay();
   var startOffset = (firstDow + 6) % 7;
@@ -228,6 +259,40 @@ function MiniCalendar(_ref) {
   var prevMonthStr = calMonth === 1 ? "".concat(calYear - 1, "-12") : "".concat(calYear, "-").concat(String(calMonth - 1).padStart(2, "0"));
   var nextMonthStr = calMonth === 12 ? "".concat(calYear + 1, "-01") : "".concat(calYear, "-").concat(String(calMonth + 1).padStart(2, "0"));
   var prevMonthDays = new Date(calYear, calMonth - 1, 0).getDate();
+  var wkDays = useMemo(function () {
+    return wide ? Array.from({
+      length: 7
+    }, function (_, i) {
+      return addDays(calMondayOf(wkStart), i);
+    }) : Array.from({
+      length: 3
+    }, function (_, i) {
+      return addDays(wkStart, i);
+    });
+  }, [wkStart, wide]);
+  var agDays = useMemo(function () {
+    return Array.from({
+      length: 14
+    }, function (_, i) {
+      return addDays(agStart, i);
+    });
+  }, [agStart]);
+  var rangeDays = view === "week" ? wkDays : view === "agenda" ? agDays : [];
+  // miesiące, z których potrzebne są wpisy: sąsiednie miesiące widoku miesiąca + miesiące dni z tygodnia/agendy
+  var needMonths = useMemo(function () {
+    var st = new Set([prevMonthStr, monthStr, nextMonthStr]);
+    rangeDays.forEach(function (d) {
+      return st.add(d.slice(0, 7));
+    });
+    return _toConsumableArray(st).sort();
+  }, [prevMonthStr, monthStr, nextMonthStr, view, wkStart, agStart, wide]);
+  var shiftRange = function shiftRange(n) {
+    if (view === "week") setWkStart(function (s) {
+      return wide ? addDays(calMondayOf(s), 7 * n) : addDays(s, 3 * n);
+    });else setAgStart(function (s) {
+      return addDays(s, 14 * n);
+    });
+  };
   var prevMonth = function prevMonth() {
     if (calMonth === 1) {
       setCalYear(function (y) {
@@ -256,7 +321,7 @@ function MiniCalendar(_ref) {
       if (!m[dateStr]) m[dateStr] = [];
       m[dateStr].push(ev);
     };
-    var visibleMonths = [prevMonthStr, monthStr, nextMonthStr];
+    var visibleMonths = needMonths;
     rentals.forEach(function (r) {
       if (r.status === "zakończone" && !visibleMonths.some(function (ms) {
         return (r.startDate || "").startsWith(ms);
@@ -335,10 +400,10 @@ function MiniCalendar(_ref) {
       }
     });
     return m;
-  }, [rentals, monthStr, prevMonthStr, nextMonthStr, today]);
+  }, [rentals, monthStr, prevMonthStr, nextMonthStr, today, needMonths]);
   var visitsByDay = useMemo(function () {
     var m = {};
-    var visibleMonths = [prevMonthStr, monthStr, nextMonthStr];
+    var visibleMonths = needMonths;
     visits.filter(function (v) {
       return v.date && visibleMonths.some(function (ms) {
         return v.date.startsWith(ms);
@@ -348,10 +413,10 @@ function MiniCalendar(_ref) {
       m[v.date].push(v);
     });
     return m;
-  }, [visits, monthStr, prevMonthStr, nextMonthStr]);
+  }, [visits, monthStr, prevMonthStr, nextMonthStr, needMonths]);
   var eventsByDay = useMemo(function () {
-    return evtByDay(events, prevMonthStr + "-01", nextMonthStr + "-31");
-  }, [events, monthStr, prevMonthStr, nextMonthStr]);
+    return evtByDay(events, needMonths[0] + "-01", needMonths[needMonths.length - 1] + "-31");
+  }, [events, monthStr, prevMonthStr, nextMonthStr, needMonths]);
   var saveEvt = function saveEvt() {
     if (!evtForm.title.trim() || !evtForm.date) return;
     if (evtForm.repeat && evtForm.days.length === 0) {
@@ -382,6 +447,77 @@ function MiniCalendar(_ref) {
     }
     setShowEvtModal(false);
   };
+
+  // Wpisy dnia w jednolitej postaci dla widoków Tydzień i Agenda (godziny w minutach; null = bez godziny / cały dzień)
+  var itemsFor = React.useCallback(function (ds) {
+    var out = [];
+    (visitsByDay[ds] || []).forEach(function (v) {
+      var s = v.allDay ? null : hmToMin(v.time);
+      out.push({
+        key: "v" + v.id,
+        kind: "visit",
+        allDay: s === null,
+        start: s,
+        end: s === null ? null : hmToMin(calEnd(durs, "visit", v.time, v.endTime)),
+        title: demo ? "Pacjent" : v.patientName || "Wizyta",
+        sub: "",
+        color: "#3DAA72",
+        done: visitStatus(v) === "zakończona",
+        open: function open() {
+          return onEditVisit(v);
+        }
+      });
+    });
+    (rentalEventsByDay[ds] || []).forEach(function (ev, i) {
+      var r = ev.r,
+        t = ev.type;
+      var label = t === "start" ? "📦 Wydanie" : t === "end" ? "🔙 Zwrot" : t === "plannedReturn" ? "🔙 Odbiór" : t === "cycle" ? "💳 Opłata" : "👀 Podgląd";
+      var noTime = t === "cycle" || t === "cyclePreview";
+      var allDay = noTime || (t === "start" ? r.startAllDay || r.allDay : t === "end" ? r.endAllDay || r.allDay : r.plannedReturnAllDay !== false);
+      var time = t === "start" ? r.startTime : t === "end" ? r.endTime : t === "plannedReturn" ? r.plannedReturnTime || "10:00" : "";
+      var until = t === "start" ? r.startUntil : t === "end" ? r.endUntil : r.plannedReturnUntil;
+      var kind = t === "start" ? "delivery" : "pickup";
+      var s = allDay ? null : hmToMin(time);
+      out.push({
+        key: "r" + r.id + "-" + t + "-" + i,
+        kind: "rental",
+        allDay: s === null,
+        start: s,
+        end: s === null ? null : hmToMin(calEnd(durs, kind, time, until)),
+        title: label + " · " + (demo ? "Pacjent" : r.patientName || ""),
+        sub: r.equipment || "❓ Do ustalenia",
+        color: t === "cyclePreview" ? "#9AA8BC" : "#7C6AF4",
+        done: r.status === "zakończone",
+        open: function open() {
+          return setQuickRental(r);
+        }
+      });
+    });
+    (eventsByDay[ds] || []).forEach(function (ev, i) {
+      var kid = ev.cat === "dzieci";
+      if (kid && !showKids) return;
+      var s = ev.allDay ? null : hmToMin(ev.time);
+      var base = (events || []).find(function (x) {
+        return x && x.id === ev.id;
+      }) || ev;
+      out.push({
+        key: "e" + ev.id + "-" + ds + "-" + i,
+        kind: "event",
+        allDay: s === null,
+        start: s,
+        end: s === null ? null : hmToMin(calEnd(durs, "event", ev.time, ev.endTime)),
+        title: (kid ? "👧 " : "") + (demo ? "Wydarzenie" : ev.title),
+        sub: ev.notes && !demo ? ev.notes : "",
+        color: kid ? EVT_KID_COLOR : "#F4A261",
+        done: false,
+        open: function open() {
+          setEvtForm(evtFromRecord(base));
+          setShowEvtModal(true);
+        }
+      });
+    });
+    return out;
+  }, [visitsByDay, rentalEventsByDay, eventsByDay, showKids, demo, durs, events, onEditVisit]);
 
   // jeden wiersz wydarzenia (zwykłego albo wystąpienia serii) w liście dnia
   var renderEvt = function renderEvt(ev, timed) {
@@ -590,6 +726,18 @@ function MiniCalendar(_ref) {
   }))).sort(function (a, b) {
     return a._time.localeCompare(b._time);
   }) : [];
+  var navBtn = {
+    background: "#D9E2F0",
+    border: "none",
+    borderRadius: 8,
+    width: 28,
+    height: 28,
+    cursor: "pointer",
+    fontSize: 14,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 16
@@ -599,7 +747,7 @@ function MiniCalendar(_ref) {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 10
+      marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -630,20 +778,9 @@ function MiniCalendar(_ref) {
       fontFamily: "inherit",
       opacity: showKids ? 1 : .8
     }
-  }, "\uD83D\uDC67 ", showKids ? "wł." : "wył."), /*#__PURE__*/React.createElement("button", {
+  }, "\uD83D\uDC67 ", showKids ? "wł." : "wył."), view === "month" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     onClick: prevMonth,
-    style: {
-      background: "#D9E2F0",
-      border: "none",
-      borderRadius: 8,
-      width: 28,
-      height: 28,
-      cursor: "pointer",
-      fontSize: 14,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center"
-    }
+    style: navBtn
   }, "\u2039"), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 13,
@@ -658,19 +795,171 @@ function MiniCalendar(_ref) {
     year: "numeric"
   })), /*#__PURE__*/React.createElement("button", {
     onClick: nextMonth,
+    style: navBtn
+  }, "\u203A")))), /*#__PURE__*/React.createElement("div", {
+    role: "tablist",
+    "aria-label": "Widok kalendarza",
     style: {
-      background: "#D9E2F0",
-      border: "none",
-      borderRadius: 8,
-      width: 28,
-      height: 28,
-      cursor: "pointer",
-      fontSize: 14,
+      display: "flex",
+      gap: 4,
+      background: dk ? "#18202F" : "#E9EEF6",
+      borderRadius: 12,
+      padding: 3,
+      marginBottom: 10
+    }
+  }, [{
+    v: "month",
+    l: "Miesiąc"
+  }, {
+    v: "week",
+    l: "Tydzień"
+  }, {
+    v: "agenda",
+    l: "Agenda"
+  }].map(function (o) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: o.v,
+      role: "tab",
+      "aria-selected": view === o.v,
+      onClick: function onClick() {
+        return changeView(o.v);
+      },
+      style: {
+        flex: 1,
+        border: "none",
+        borderRadius: 9,
+        padding: "7px 0",
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        background: view === o.v ? dk ? "#3E6FB0" : "#fff" : "transparent",
+        color: view === o.v ? dk ? "#fff" : "#1C2B3A" : "#7A8FA6",
+        boxShadow: view === o.v && !dk ? "0 1px 4px rgba(16,40,40,.12)" : "none"
+      }
+    }, o.l);
+  })), view !== "month" && /*#__PURE__*/React.createElement("div", {
+    style: {
       display: "flex",
       alignItems: "center",
-      justifyContent: "center"
+      justifyContent: "space-between",
+      gap: 8,
+      marginBottom: 10
     }
-  }, "\u203A"))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return shiftRange(-1);
+    },
+    "aria-label": "Wstecz",
+    style: navBtn
+  }, "\u2039"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 600,
+      color: dk ? "#E8F5F5" : "#1C2B3A",
+      minWidth: 130,
+      textAlign: "center"
+    }
+  }, calRangeLabel(rangeDays)), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return shiftRange(1);
+    },
+    "aria-label": "Dalej",
+    style: navBtn
+  }, "\u203A")), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      setWkStart(today);
+      setAgStart(today);
+      if (view === "week") setOpenDay(today);
+    },
+    style: {
+      background: "#EFF3FA",
+      border: "1.5px solid #D9E2F0",
+      borderRadius: 8,
+      height: 28,
+      padding: "0 10px",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700,
+      color: "#3E6FB0",
+      fontFamily: "inherit"
+    }
+  }, "Dzi\u015B")), view === "week" && /*#__PURE__*/React.createElement(CalWeekView, {
+    days: wkDays,
+    itemsFor: itemsFor,
+    today: today,
+    holidays: holidays,
+    openDay: openDay,
+    onPickDay: function onPickDay(ds) {
+      return setOpenDay(openDay === ds ? null : ds);
+    }
+  }), view === "agenda" && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      setEvtForm(evtBlank(today));
+      setShowEvtModal(true);
+    },
+    style: {
+      flex: 1,
+      background: "#FFF4E8",
+      color: "#F4A261",
+      border: "none",
+      borderRadius: 10,
+      padding: "8px 0",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "+ Wydarzenie"), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return onAddVisit(today);
+    },
+    style: {
+      flex: 1,
+      background: "#3DAA72",
+      color: "#fff",
+      border: "none",
+      borderRadius: 10,
+      padding: "8px 0",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "+ Wizyta"), onAddRental && /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return onAddRental(today);
+    },
+    style: {
+      flex: 1,
+      background: "#7C6AF4",
+      color: "#fff",
+      border: "none",
+      borderRadius: 10,
+      padding: "8px 0",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer",
+      fontFamily: "inherit"
+    }
+  }, "+ Sprz\u0119t")), /*#__PURE__*/React.createElement(CalAgenda, {
+    days: agDays,
+    itemsFor: itemsFor,
+    today: today,
+    holidays: holidays
+  })), view === "month" && /*#__PURE__*/React.createElement("div", {
     style: {
       background: dk ? "#18202F" : "#fff",
       borderRadius: 16,
@@ -850,7 +1139,7 @@ function MiniCalendar(_ref) {
       background: "#F4A261",
       display: "inline-block"
     }
-  }), "Wydarzenia"))), openDay && /*#__PURE__*/React.createElement("div", {
+  }), "Wydarzenia"))), openDay && view !== "agenda" && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       background: dk ? "#18202F" : "#fff",
@@ -1828,26 +2117,26 @@ function Dashboard(_ref3) {
   var demo = useDemo();
   var today = todayLocal();
   var dk = useContext(DarkCtx);
-  var _useState15 = useState(false),
-    _useState16 = _slicedToArray(_useState15, 2),
-    showAdd = _useState16[0],
-    setShowAdd = _useState16[1];
-  var _useState17 = useState(emptyVisit),
-    _useState18 = _slicedToArray(_useState17, 2),
-    vf = _useState18[0],
-    setVf = _useState18[1];
-  var _useState19 = useState(null),
-    _useState20 = _slicedToArray(_useState19, 2),
-    editV = _useState20[0],
-    setEditV = _useState20[1];
-  var _useState21 = useState(null),
+  var _useState21 = useState(false),
     _useState22 = _slicedToArray(_useState21, 2),
-    confirmDel = _useState22[0],
-    setConfirmDel = _useState22[1];
-  var _useState23 = useState(null),
+    showAdd = _useState22[0],
+    setShowAdd = _useState22[1];
+  var _useState23 = useState(emptyVisit),
     _useState24 = _slicedToArray(_useState23, 2),
-    toast = _useState24[0],
-    setToast = _useState24[1];
+    vf = _useState24[0],
+    setVf = _useState24[1];
+  var _useState25 = useState(null),
+    _useState26 = _slicedToArray(_useState25, 2),
+    editV = _useState26[0],
+    setEditV = _useState26[1];
+  var _useState27 = useState(null),
+    _useState28 = _slicedToArray(_useState27, 2),
+    confirmDel = _useState28[0],
+    setConfirmDel = _useState28[1];
+  var _useState29 = useState(null),
+    _useState30 = _slicedToArray(_useState29, 2),
+    toast = _useState30[0],
+    setToast = _useState30[1];
   var todayV = visits.filter(function (v) {
     return v.date === today;
   }).sort(function (a, b) {
@@ -2049,10 +2338,10 @@ function Dashboard(_ref3) {
     setConfirmDel(null);
     setEditV(null);
   };
-  var _useState25 = useState(""),
-    _useState26 = _slicedToArray(_useState25, 2),
-    searchQ = _useState26[0],
-    setSearchQ = _useState26[1];
+  var _useState31 = useState(""),
+    _useState32 = _slicedToArray(_useState31, 2),
+    searchQ = _useState32[0],
+    setSearchQ = _useState32[1];
   var searchResults = useMemo(function () {
     var q = (searchQ || "").trim().toLowerCase();
     if (q.length < 2) return null;
@@ -2112,22 +2401,22 @@ function Dashboard(_ref3) {
     });
     return res;
   }, [searchQ, visits, rentals, patients, events, demo]);
-  var _useState27 = useState(""),
-    _useState28 = _slicedToArray(_useState27, 2),
-    todoInput = _useState28[0],
-    setTodoInput = _useState28[1];
-  var _useState29 = useState(false),
-    _useState30 = _slicedToArray(_useState29, 2),
-    todoOpen = _useState30[0],
-    setTodoOpen = _useState30[1];
-  var _useState31 = useState(null),
-    _useState32 = _slicedToArray(_useState31, 2),
-    editTodoId = _useState32[0],
-    setEditTodoId = _useState32[1];
   var _useState33 = useState(""),
     _useState34 = _slicedToArray(_useState33, 2),
-    editTodoText = _useState34[0],
-    setEditTodoText = _useState34[1];
+    todoInput = _useState34[0],
+    setTodoInput = _useState34[1];
+  var _useState35 = useState(false),
+    _useState36 = _slicedToArray(_useState35, 2),
+    todoOpen = _useState36[0],
+    setTodoOpen = _useState36[1];
+  var _useState37 = useState(null),
+    _useState38 = _slicedToArray(_useState37, 2),
+    editTodoId = _useState38[0],
+    setEditTodoId = _useState38[1];
+  var _useState39 = useState(""),
+    _useState40 = _slicedToArray(_useState39, 2),
+    editTodoText = _useState40[0],
+    setEditTodoText = _useState40[1];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       padding: "28px 20px 18px"

@@ -55,6 +55,12 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
   const [showKids,setShowKids]=useState(()=>{try{return localStorage.getItem("fizjo-show-kids")!=="0";}catch{return true;}});
   const [kidsOpen,setKidsOpen]=useState(false);
   const toggleKids=()=>setShowKids(v=>{const n=!v;try{localStorage.setItem("fizjo-show-kids",n?"1":"0");}catch{}return n;});
+  // Widok kalendarza: miesiąc (jak dotąd), tydzień (oś godzin) albo agenda (lista najbliższych dni). Wybór pamiętany na tym urządzeniu.
+  const [view,setView]=useState(()=>{try{const v=localStorage.getItem("fizjo-cal-view");return v==="week"||v==="agenda"?v:"month";}catch{return "month";}});
+  const changeView=v=>{setView(v);try{localStorage.setItem("fizjo-cal-view",v);}catch{}};
+  const wide=useCalWide();
+  const [wkStart,setWkStart]=useState(()=>today);
+  const [agStart,setAgStart]=useState(()=>today);
 
   const daysInMonth=new Date(calYear,calMonth,0).getDate();
   const firstDow=new Date(calYear,calMonth-1,1).getDay();
@@ -64,13 +70,19 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
   const nextMonthStr=calMonth===12?`${calYear+1}-01`:`${calYear}-${String(calMonth+1).padStart(2,"0")}`;
   const prevMonthDays=new Date(calYear,calMonth-1,0).getDate();
 
+  const wkDays=useMemo(()=>wide?Array.from({length:7},(_,i)=>addDays(calMondayOf(wkStart),i)):Array.from({length:3},(_,i)=>addDays(wkStart,i)),[wkStart,wide]);
+  const agDays=useMemo(()=>Array.from({length:14},(_,i)=>addDays(agStart,i)),[agStart]);
+  const rangeDays=view==="week"?wkDays:view==="agenda"?agDays:[];
+  // miesiące, z których potrzebne są wpisy: sąsiednie miesiące widoku miesiąca + miesiące dni z tygodnia/agendy
+  const needMonths=useMemo(()=>{const st=new Set([prevMonthStr,monthStr,nextMonthStr]);rangeDays.forEach(d=>st.add(d.slice(0,7)));return [...st].sort();},[prevMonthStr,monthStr,nextMonthStr,view,wkStart,agStart,wide]);
+  const shiftRange=n=>{if(view==="week")setWkStart(s=>wide?addDays(calMondayOf(s),7*n):addDays(s,3*n));else setAgStart(s=>addDays(s,14*n));};
   const prevMonth=()=>{if(calMonth===1){setCalYear(y=>y-1);setCalMonth(12);}else setCalMonth(m=>m-1);setOpenDay(null);};
   const nextMonth=()=>{if(calMonth===12){setCalYear(y=>y+1);setCalMonth(1);}else setCalMonth(m=>m+1);setOpenDay(null);};
 
   const rentalEventsByDay=useMemo(()=>{
     const m={};
     const add=(dateStr,ev)=>{if(!m[dateStr])m[dateStr]=[];m[dateStr].push(ev);};
-    const visibleMonths=[prevMonthStr,monthStr,nextMonthStr];
+    const visibleMonths=needMonths;
     rentals.forEach(r=>{
       if(r.status==="zakończone"&&!visibleMonths.some(ms=>(r.startDate||"").startsWith(ms))&&!visibleMonths.some(ms=>(r.endDate||"").startsWith(ms)))return;
       if(!r.renewable){
@@ -105,21 +117,21 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
       }
     });
     return m;
-  },[rentals,monthStr,prevMonthStr,nextMonthStr,today]);
+  },[rentals,monthStr,prevMonthStr,nextMonthStr,today,needMonths]);
 
   const visitsByDay=useMemo(()=>{
     const m={};
-    const visibleMonths=[prevMonthStr,monthStr,nextMonthStr];
+    const visibleMonths=needMonths;
     visits.filter(v=>v.date&&visibleMonths.some(ms=>v.date.startsWith(ms))).forEach(v=>{
       if(!m[v.date])m[v.date]=[];
       m[v.date].push(v);
     });
     return m;
-  },[visits,monthStr,prevMonthStr,nextMonthStr]);
+  },[visits,monthStr,prevMonthStr,nextMonthStr,needMonths]);
 
   const eventsByDay=useMemo(()=>{
-    return evtByDay(events,prevMonthStr+"-01",nextMonthStr+"-31");
-  },[events,monthStr,prevMonthStr,nextMonthStr]);
+    return evtByDay(events,needMonths[0]+"-01",needMonths[needMonths.length-1]+"-31");
+  },[events,monthStr,prevMonthStr,nextMonthStr,needMonths]);
 
   const saveEvt=()=>{
     if(!evtForm.title.trim()||!evtForm.date)return;
@@ -134,6 +146,33 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
     }
     setShowEvtModal(false);
   };
+
+  // Wpisy dnia w jednolitej postaci dla widoków Tydzień i Agenda (godziny w minutach; null = bez godziny / cały dzień)
+  const itemsFor=React.useCallback(ds=>{
+    const out=[];
+    (visitsByDay[ds]||[]).forEach(v=>{
+      const s=v.allDay?null:hmToMin(v.time);
+      out.push({key:"v"+v.id,kind:"visit",allDay:s===null,start:s,end:s===null?null:hmToMin(calEnd(durs,"visit",v.time,v.endTime)),title:demo?"Pacjent":(v.patientName||"Wizyta"),sub:"",color:"#3DAA72",done:visitStatus(v)==="zakończona",open:()=>onEditVisit(v)});
+    });
+    (rentalEventsByDay[ds]||[]).forEach((ev,i)=>{
+      const r=ev.r,t=ev.type;
+      const label=t==="start"?"📦 Wydanie":t==="end"?"🔙 Zwrot":t==="plannedReturn"?"🔙 Odbiór":t==="cycle"?"💳 Opłata":"👀 Podgląd";
+      const noTime=t==="cycle"||t==="cyclePreview";
+      const allDay=noTime||(t==="start"?(r.startAllDay||r.allDay):t==="end"?(r.endAllDay||r.allDay):(r.plannedReturnAllDay!==false));
+      const time=t==="start"?r.startTime:t==="end"?r.endTime:t==="plannedReturn"?(r.plannedReturnTime||"10:00"):"";
+      const until=t==="start"?r.startUntil:t==="end"?r.endUntil:r.plannedReturnUntil;
+      const kind=t==="start"?"delivery":"pickup";
+      const s=allDay?null:hmToMin(time);
+      out.push({key:"r"+r.id+"-"+t+"-"+i,kind:"rental",allDay:s===null,start:s,end:s===null?null:hmToMin(calEnd(durs,kind,time,until)),title:label+" · "+(demo?"Pacjent":(r.patientName||"")),sub:r.equipment||"❓ Do ustalenia",color:t==="cyclePreview"?"#9AA8BC":"#7C6AF4",done:r.status==="zakończone",open:()=>setQuickRental(r)});
+    });
+    (eventsByDay[ds]||[]).forEach((ev,i)=>{
+      const kid=ev.cat==="dzieci";if(kid&&!showKids)return;
+      const s=ev.allDay?null:hmToMin(ev.time);
+      const base=(events||[]).find(x=>x&&x.id===ev.id)||ev;
+      out.push({key:"e"+ev.id+"-"+ds+"-"+i,kind:"event",allDay:s===null,start:s,end:s===null?null:hmToMin(calEnd(durs,"event",ev.time,ev.endTime)),title:(kid?"👧 ":"")+(demo?"Wydarzenie":ev.title),sub:ev.notes&&!demo?ev.notes:"",color:kid?EVT_KID_COLOR:"#F4A261",done:false,open:()=>{setEvtForm(evtFromRecord(base));setShowEvtModal(true);}});
+    });
+    return out;
+  },[visitsByDay,rentalEventsByDay,eventsByDay,showKids,demo,durs,events,onEditVisit]);
 
   // jeden wiersz wydarzenia (zwykłego albo wystąpienia serii) w liście dnia
   const renderEvt=(ev,timed)=>{
@@ -191,18 +230,42 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
     ...dayRentals.filter(ev=>!(ev.type==="start"?(ev.r.startAllDay||ev.r.allDay):ev.type==="end"?(ev.r.endAllDay||ev.r.allDay):ev.type==="plannedReturn"?(ev.r.plannedReturnAllDay!==false):false)).map(ev=>({_kind:"rental",_time:ev.type==="start"?(ev.r.startTime||"00:00"):ev.type==="end"?(ev.r.endTime||"00:00"):ev.type==="plannedReturn"?(ev.r.plannedReturnTime||"00:00"):"00:00",ev}))
   ].sort((a,b)=>a._time.localeCompare(b._time)):[];
 
+  const navBtn={background:"#D9E2F0",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"};
   return <div style={{marginTop:16}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
       <div style={{fontFamily:"'Syne',sans-serif",fontSize:17,fontWeight:700}}>Kalendarz</div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
         <button onClick={toggleKids} title={showKids?"Ukryj zajęcia dzieci":"Pokaż zajęcia dzieci"} aria-pressed={showKids} style={{background:showKids?"#FDEBF4":"#EFF3FA",border:`1.5px solid ${showKids?EVT_KID_COLOR:"#D9E2F0"}`,borderRadius:8,height:28,padding:"0 8px",cursor:"pointer",fontSize:12,fontWeight:700,color:showKids?EVT_KID_COLOR:"#7A8FA6",fontFamily:"inherit",opacity:showKids?1:.8}}>👧 {showKids?"wł.":"wył."}</button>
-        <button onClick={prevMonth} style={{background:"#D9E2F0",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-        <span style={{fontSize:13,fontWeight:600,color:"#1C2B3A",minWidth:100,textAlign:"center",textTransform:"capitalize"}}>{new Date(calYear,calMonth-1,15).toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</span>
-        <button onClick={nextMonth} style={{background:"#D9E2F0",border:"none",borderRadius:8,width:28,height:28,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+        {view==="month"&&<>
+          <button onClick={prevMonth} style={navBtn}>‹</button>
+          <span style={{fontSize:13,fontWeight:600,color:"#1C2B3A",minWidth:100,textAlign:"center",textTransform:"capitalize"}}>{new Date(calYear,calMonth-1,15).toLocaleDateString("pl-PL",{month:"long",year:"numeric"})}</span>
+          <button onClick={nextMonth} style={navBtn}>›</button>
+        </>}
       </div>
     </div>
+    <div role="tablist" aria-label="Widok kalendarza" style={{display:"flex",gap:4,background:dk?"#18202F":"#E9EEF6",borderRadius:12,padding:3,marginBottom:10}}>
+      {[{v:"month",l:"Miesiąc"},{v:"week",l:"Tydzień"},{v:"agenda",l:"Agenda"}].map(o=><button key={o.v} role="tab" aria-selected={view===o.v} onClick={()=>changeView(o.v)} style={{flex:1,border:"none",borderRadius:9,padding:"7px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:view===o.v?(dk?"#3E6FB0":"#fff"):"transparent",color:view===o.v?(dk?"#fff":"#1C2B3A"):"#7A8FA6",boxShadow:view===o.v&&!dk?"0 1px 4px rgba(16,40,40,.12)":"none"}}>{o.l}</button>)}
+    </div>
+    {view!=="month"&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <button onClick={()=>shiftRange(-1)} aria-label="Wstecz" style={navBtn}>‹</button>
+        <span style={{fontSize:13,fontWeight:600,color:dk?"#E8F5F5":"#1C2B3A",minWidth:130,textAlign:"center"}}>{calRangeLabel(rangeDays)}</span>
+        <button onClick={()=>shiftRange(1)} aria-label="Dalej" style={navBtn}>›</button>
+      </div>
+      <button onClick={()=>{setWkStart(today);setAgStart(today);if(view==="week")setOpenDay(today);}} style={{background:"#EFF3FA",border:"1.5px solid #D9E2F0",borderRadius:8,height:28,padding:"0 10px",cursor:"pointer",fontSize:12,fontWeight:700,color:"#3E6FB0",fontFamily:"inherit"}}>Dziś</button>
+    </div>}
 
-    <div style={{background:dk?"#18202F":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
+    {view==="week"&&<CalWeekView days={wkDays} itemsFor={itemsFor} today={today} holidays={holidays} openDay={openDay} onPickDay={ds=>setOpenDay(openDay===ds?null:ds)}/>}
+    {view==="agenda"&&<>
+      <div style={{display:"flex",gap:6,marginBottom:8}}>
+        <button onClick={()=>{setEvtForm(evtBlank(today));setShowEvtModal(true);}} style={{flex:1,background:"#FFF4E8",color:"#F4A261",border:"none",borderRadius:10,padding:"8px 0",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wydarzenie</button>
+        <button onClick={()=>onAddVisit(today)} style={{flex:1,background:"#3DAA72",color:"#fff",border:"none",borderRadius:10,padding:"8px 0",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Wizyta</button>
+        {onAddRental&&<button onClick={()=>onAddRental(today)} style={{flex:1,background:"#7C6AF4",color:"#fff",border:"none",borderRadius:10,padding:"8px 0",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Sprzęt</button>}
+      </div>
+      <CalAgenda days={agDays} itemsFor={itemsFor} today={today} holidays={holidays}/>
+    </>}
+
+    {view==="month"&&<div style={{background:dk?"#18202F":"#fff",borderRadius:16,padding:"12px 10px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:6}}>
         {DOW.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,color:i>=5?(dk?"#F4A261":"#D0622A"):"#7A8FA6",padding:"2px 0"}}>{d}</div>)}
       </div>
@@ -239,9 +302,9 @@ function MiniCalendar({visits,rentals,today,onEditVisit,onAddVisit,onGoToRental,
         <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#7C6AF4",display:"inline-block"}}/>Wypożyczenia</span>
         <span style={{fontSize:11,color:"#7A8FA6",display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:"50%",background:"#F4A261",display:"inline-block"}}/>Wydarzenia</span>
       </div>
-    </div>
+    </div>}
 
-    {openDay&&<div style={{marginTop:8,background:dk?"#18202F":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
+    {openDay&&view!=="agenda"&&<div style={{marginTop:8,background:dk?"#18202F":"#fff",borderRadius:16,padding:"14px 16px",boxShadow:dk?"0 2px 14px rgba(0,0,0,.22)":"0 2px 14px rgba(16,40,40,.06)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:14,color:dk?"#E8F5F5":"#1C2B3A"}}>{new Date(openDateStr+"T12:00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</div>
         <div style={{display:"flex",gap:6}}>
